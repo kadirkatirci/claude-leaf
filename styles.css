@@ -1,0 +1,88 @@
+/* Navigation Buttons Container */
+.claude-nav-buttons {
+  position: fixed;
+  right: 30px;
+  bottom: 100px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.claude-nav-buttons:hover {
+  opacity: 1;
+}
+
+.claude-nav-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.claude-nav-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.claude-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.claude-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.claude-nav-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Tooltip */
+.claude-nav-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 60px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.claude-nav-btn:hover::after {
+  opacity: 1;
+}
+
+/* Message counter badge */
+.claude-nav-counter {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff4757;
+  color: white;
+  border-radius: 12px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}

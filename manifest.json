@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Productivity Tools",
+  "version": "1.0.0",
+  "description": "Claude web arayüzü için verimlilik araçları - Navigation buttons, outline viewer ve daha fazlası",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://claude.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
