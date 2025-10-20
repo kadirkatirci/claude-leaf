@@ -5,9 +5,9 @@
 import settingsManager from './utils/SettingsManager.js';
 import { eventBus, Events } from './utils/EventBus.js';
 import NavigationModule from './modules/NavigationModule.js';
+import EditHistoryModule from './modules/EditHistoryModule.js';
 // Future imports:
 // import TOCModule from './modules/TOCModule.js';
-// import EditHistoryModule from './modules/EditHistoryModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -54,9 +54,11 @@ class ClaudeProductivityApp {
     // Navigation
     this.registerModule('navigation', new NavigationModule());
 
+    // Edit History
+    this.registerModule('editHistory', new EditHistoryModule());
+
     // TODO: Gelecekteki modüller
     // this.registerModule('toc', new TOCModule());
-    // this.registerModule('editHistory', new EditHistoryModule());
     // this.registerModule('export', new ExportModule());
     // this.registerModule('search', new SearchModule());
   }
@@ -168,13 +170,75 @@ class ClaudeProductivityApp {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
       }
 
-      /* Future: TOC stilleri */
-      .claude-toc {
-        /* TODO: Gelecekte eklenecek */
+      /* Edit History Styles */
+      .claude-edit-highlighted {
+        position: relative;
       }
 
-      /* Future: Edit history stilleri */
-      .claude-edit-badge {
+      .claude-edit-highlighted::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        pointer-events: none;
+        opacity: 0.4;
+      }
+
+      /* Modal Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      /* Scrollbar for modal */
+      .claude-edit-modal-content::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .claude-edit-modal-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      .claude-edit-modal-content::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+      }
+
+      .claude-edit-modal-content::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+      }
+
+      /* Future: TOC stilleri */
+      .claude-toc {
         /* TODO: Gelecekte eklenecek */
       }
     `;

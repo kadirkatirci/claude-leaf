@@ -250,6 +250,31 @@ kbd {
   margin: 8px 0;
 }
 
+/* Info Box */
+.info-box {
+  margin-top: 20px;
+  padding: 15px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.info-box h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.info-box ul {
+  margin: 8px 0 0 0;
+  padding-left: 0;
+}
+
+.info-box li {
+  margin: 6px 0;
+  padding-left: 8px;
+}
+
 /* Footer */
 .popup-footer {
   display: flex;

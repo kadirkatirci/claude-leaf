@@ -17,6 +17,7 @@
     <!-- Tabs -->
     <div class="tabs">
       <button class="tab active" data-tab="navigation">🧭 Navigation</button>
+      <button class="tab" data-tab="editHistory">✏️ Edit History</button>
       <button class="tab disabled" data-tab="toc">📑 TOC</button>
       <button class="tab disabled" data-tab="general">⚙️ Genel</button>
     </div>
@@ -83,6 +84,44 @@
             <li><kbd>Alt</kbd> + <kbd>↑</kbd> - Önceki mesaj</li>
             <li><kbd>Alt</kbd> + <kbd>↓</kbd> - Sonraki mesaj</li>
             <li><kbd>Alt</kbd> + <kbd>Home</kbd> - En üste git</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-editHistory">
+      <div class="section">
+        <div class="section-header">
+          <h2>Edit History</h2>
+          <label class="toggle">
+            <input type="checkbox" id="editHistory-enabled">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-item">
+            <label for="edit-badges">Edit Badge'leri Göster</label>
+            <label class="toggle">
+              <input type="checkbox" id="edit-badges" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="edit-highlight">Mesajları Vurgula</label>
+            <label class="toggle">
+              <input type="checkbox" id="edit-highlight" checked>
+            </label>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <h3>ℹ️ Nasıl Çalışır?</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li>Edit yapılmış promptlar otomatik tespit edilir</li>
+            <li>"✏️ Edited" badge'ine tıklayarak detayları görün</li>
+            <li>Edit mesajlar kesikli çerçeve ile vurgulanır</li>
           </ul>
         </div>
       </div>

@@ -69,13 +69,79 @@ const DOMUtils = {
 
   /**
    * Edit edilmiş promptları bul
-   * @returns {HTMLElement[]}
+   * Claude'un edit ikonlarına sahip mesajları tespit eder
+   * @returns {Array<{element: HTMLElement, editButton: HTMLElement}>}
    */
   getEditedPrompts() {
-    // TODO: Edit badge'leri veya edited class'ları bul
-    // Claude'un edit sistemi DOM yapısına göre güncellenmeli
-    const editedElements = document.querySelectorAll('[class*="edited"]');
-    return Array.from(editedElements);
+    const edited = [];
+    const messages = this.findMessages();
+    
+    messages.forEach(message => {
+      // Edit ikonu veya butonu ara
+      const editButton = message.querySelector('[aria-label*="edit" i], [title*="edit" i], button[class*="edit" i]');
+      
+      // Veya edit yapılmış mesajlarda genelde bir indicator var
+      const editIndicator = message.querySelector('[class*="edited" i], [data-edited]');
+      
+      if (editButton || editIndicator) {
+        edited.push({
+          element: message,
+          editButton: editButton || editIndicator,
+          hasEditHistory: true
+        });
+      }
+    });
+    
+    return edited;
+  },
+
+  /**
+   * Bir mesajın edit history'sini bul
+   * @param {HTMLElement} messageElement
+   * @returns {Object|null} Edit history bilgisi
+   */
+  getEditHistory(messageElement) {
+    if (!messageElement) return null;
+
+    // Claude'un edit sisteminde, edit yapılmış mesajlarda
+    // genelde version bilgisi veya edit badge'i bulunur
+    
+    // 1. Edit badge'i ara
+    const editBadge = messageElement.querySelector('[class*="edit" i][class*="badge" i]');
+    
+    // 2. Version indicator ara
+    const versionText = messageElement.querySelector('[class*="version" i]');
+    
+    // 3. Timestamp ara (edited at...)
+    const timestamp = messageElement.querySelector('[class*="edited" i][class*="time" i]');
+
+    return {
+      hasHistory: !!(editBadge || versionText || timestamp),
+      badge: editBadge,
+      version: versionText?.textContent,
+      timestamp: timestamp?.textContent,
+      element: messageElement
+    };
+  },
+
+  /**
+   * Bir mesajın kullanıcı mesajı olup olmadığını kontrol et
+   * @param {HTMLElement} element
+   * @returns {boolean}
+   */
+  isUserMessage(element) {
+    if (!element) return false;
+    
+    // Claude'un kullanıcı mesajları genelde belirli class'lara sahip
+    const indicators = [
+      element.querySelector('[class*="user" i]'),
+      element.querySelector('[class*="human" i]'),
+      element.getAttribute('data-message-author') === 'user',
+      // Genelde sağda hizalı olur
+      window.getComputedStyle(element).textAlign === 'right'
+    ];
+    
+    return indicators.some(indicator => indicator);
   },
 
   /**

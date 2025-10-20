@@ -80,6 +80,11 @@ function getDefaultSettings() {
 function updateUI() {
   // Navigation settings
   document.getElementById('navigation-enabled').checked = currentSettings.navigation.enabled;
+  
+  // Edit History settings
+  document.getElementById('editHistory-enabled').checked = currentSettings.editHistory.enabled;
+  document.getElementById('edit-badges').checked = currentSettings.editHistory.showBadges;
+  document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
   document.getElementById('nav-position').value = currentSettings.navigation.position;
   document.getElementById('nav-counter').checked = currentSettings.navigation.showCounter;
   document.getElementById('nav-smooth').checked = currentSettings.navigation.smoothScroll;
@@ -100,6 +105,21 @@ function setupEventListeners() {
   // Navigation enabled toggle
   document.getElementById('navigation-enabled').addEventListener('change', (e) => {
     currentSettings.navigation.enabled = e.target.checked;
+  });
+
+  // Edit History enabled toggle
+  document.getElementById('editHistory-enabled').addEventListener('change', (e) => {
+    currentSettings.editHistory.enabled = e.target.checked;
+  });
+
+  // Edit badges
+  document.getElementById('edit-badges').addEventListener('change', (e) => {
+    currentSettings.editHistory.showBadges = e.target.checked;
+  });
+
+  // Edit highlight
+  document.getElementById('edit-highlight').addEventListener('change', (e) => {
+    currentSettings.editHistory.highlightEdited = e.target.checked;
   });
 
   // Nav position
