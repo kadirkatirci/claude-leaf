@@ -70,25 +70,43 @@ const DOMUtils = {
   /**
    * Edit edilmiş promptları bul
    * Claude'un edit ikonlarına sahip mesajları tespit eder
-   * @returns {Array<{element: HTMLElement, editButton: HTMLElement}>}
+   * @returns {Array<{element: HTMLElement, editButton: HTMLElement, versionInfo: string}>}
    */
   getEditedPrompts() {
     const edited = [];
     const messages = this.findMessages();
     
     messages.forEach(message => {
-      // Edit ikonu veya butonu ara
-      const editButton = message.querySelector('[aria-label*="edit" i], [title*="edit" i], button[class*="edit" i]');
-      
-      // Veya edit yapılmış mesajlarda genelde bir indicator var
-      const editIndicator = message.querySelector('[class*="edited" i], [data-edited]');
-      
-      if (editButton || editIndicator) {
-        edited.push({
-          element: message,
-          editButton: editButton || editIndicator,
-          hasEditHistory: true
-        });
+      // Kullanıcı mesajı mı kontrol et
+      const isUser = message.querySelector('[data-testid="user-message"]');
+      if (!isUser) return;
+
+      // Version counter'ı ara ("3 / 3" gibi)
+      // Bu, edit yapılmış mesajlarda görünür
+      const versionSpan = Array.from(message.querySelectorAll('span')).find(span => {
+        const text = span.textContent.trim();
+        return /^\d+\s*\/\s*\d+$/.test(text); // "3 / 3" formatı
+      });
+
+      if (versionSpan) {
+        // Version counter varsa, bu edit edilmiş bir mesaj
+        const versionText = versionSpan.textContent.trim();
+        const [current, total] = versionText.split('/').map(n => parseInt(n.trim()));
+
+        // Sadece toplam > 1 ise edit yapılmış demektir
+        if (total > 1) {
+          // Edit butonlarını da bul (retry ve navigation butonları)
+          const retryButton = message.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
+          
+          edited.push({
+            element: message,
+            editButton: retryButton,
+            versionInfo: versionText,
+            currentVersion: current,
+            totalVersions: total,
+            hasEditHistory: true
+          });
+        }
       }
     });
     

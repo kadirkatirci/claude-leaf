@@ -20,6 +20,9 @@ class EditHistoryModule extends BaseModule {
 
     this.log('Edit History başlatılıyor...');
 
+    // DOM'un hazır olmasını bekle
+    await this.waitForDOM();
+
     // Edited mesajları bul
     this.findEditedMessages();
 
@@ -30,6 +33,30 @@ class EditHistoryModule extends BaseModule {
     this.setupModalListeners();
 
     this.log(`✅ ${this.editedMessages.length} edit edilmiş mesaj bulundu`);
+  }
+
+  /**
+   * DOM'un hazır olmasını bekle
+   */
+  async waitForDOM() {
+    // İlk mesajların yüklenmesini bekle
+    let attempts = 0;
+    const maxAttempts = 20; // 2 saniye max
+
+    while (attempts < maxAttempts) {
+      const messages = this.dom.findMessages();
+      if (messages.length > 0) {
+        this.log(`DOM hazır: ${messages.length} mesaj bulundu`);
+        // Biraz daha bekle, version counter'ın render olması için
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    this.warn('DOM timeout: Mesajlar bulunamadı');
   }
 
   destroy() {
@@ -48,67 +75,54 @@ class EditHistoryModule extends BaseModule {
   }
 
   findEditedMessages() {
-    const messages = this.dom.findMessages();
+    // DOMUtils'den edited promptları al
+    const editedPrompts = this.dom.getEditedPrompts();
+    this.log(`getEditedPrompts() döndü: ${editedPrompts.length} mesaj`);
+    
+    // Eski badge'leri temizleme - sadece artık edit olmayan mesajlardakiler
+    const currentEditedElements = new Set(editedPrompts.map(e => e.element));
+    const oldBadges = document.querySelectorAll('.claude-edit-badge');
+    this.log(`Mevcut badge sayısı: ${oldBadges.length}`);
+    
+    oldBadges.forEach(badge => {
+      const parent = badge.parentElement;
+      if (parent && !currentEditedElements.has(parent)) {
+        this.log('Eski badge kaldırılıyor');
+        badge.remove();
+      }
+    });
+
     this.editedMessages = [];
 
-    messages.forEach((message, index) => {
-      // Kullanıcı mesajlarını kontrol et
-      if (!this.dom.isUserMessage(message)) return;
+    editedPrompts.forEach((editInfo, index) => {
+      this.log(`Edit mesaj ${index + 1}: version=${editInfo.versionInfo}`);
+      
+      this.editedMessages.push({
+        element: editInfo.element,
+        index,
+        versionInfo: editInfo.versionInfo,
+        currentVersion: editInfo.currentVersion,
+        totalVersions: editInfo.totalVersions,
+        history: this.dom.getEditHistory(editInfo.element)
+      });
 
-      // Edit button veya indicator var mı?
-      const hasEditIndicator = this.detectEditIndicator(message);
+      // Badge ekle (sadece yoksa)
+      if (this.getSetting('showBadges')) {
+        this.addEditBadge(editInfo.element, editInfo.versionInfo);
+      }
 
-      if (hasEditIndicator) {
-        this.editedMessages.push({
-          element: message,
-          index,
-          history: this.dom.getEditHistory(message)
-        });
-
-        // Badge ekle
-        if (this.getSetting('showBadges')) {
-          this.addEditBadge(message);
-        }
-
-        // Highlight ekle
-        if (this.getSetting('highlightEdited')) {
-          this.highlightEditedMessage(message);
-        }
+      // Highlight ekle
+      if (this.getSetting('highlightEdited')) {
+        this.highlightEditedMessage(editInfo.element);
+      } else {
+        editInfo.element.classList.remove('claude-edit-highlighted');
       }
     });
 
     this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
   }
 
-  detectEditIndicator(messageElement) {
-    // Claude'da edit yapılmış mesajlar genelde:
-    // 1. Hover'da edit butonu gösterir
-    // 2. Veya zaten bir edit badge'i vardır
-    
-    const selectors = [
-      '[aria-label*="edit" i]',
-      '[title*="edit" i]',
-      'button[class*="edit" i]',
-      '[data-edited="true"]',
-      '[class*="edited" i]'
-    ];
-
-    for (const selector of selectors) {
-      if (messageElement.querySelector(selector)) {
-        return true;
-      }
-    }
-
-    // Alternatif: Mesajın text content'inde "(edited)" gibi bir şey var mı?
-    const text = messageElement.textContent.toLowerCase();
-    if (text.includes('edited') && text.includes('ago')) {
-      return true;
-    }
-
-    return false;
-  }
-
-  addEditBadge(messageElement) {
+  addEditBadge(messageElement, versionInfo = '') {
     // Zaten badge var mı kontrol et
     if (messageElement.querySelector('.claude-edit-badge')) {
       return;
@@ -116,14 +130,14 @@ class EditHistoryModule extends BaseModule {
 
     const badge = this.dom.createElement('div', {
       className: 'claude-edit-badge',
-      innerHTML: '✏️ Edited',
+      innerHTML: `✏️ Edited ${versionInfo ? `(${versionInfo})` : ''}`,
       style: {
         position: 'absolute',
         top: '8px',
         right: '8px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
-        padding: '4px 8px',
+        padding: '4px 10px',
         borderRadius: '12px',
         fontSize: '11px',
         fontWeight: '600',
@@ -151,7 +165,7 @@ class EditHistoryModule extends BaseModule {
     // Click handler - Modal aç
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.showEditHistoryModal(messageElement);
+      this.showEditHistoryModal(messageElement, versionInfo);
     });
 
     // Mesajın position'ını relative yap
@@ -167,11 +181,12 @@ class EditHistoryModule extends BaseModule {
     messageElement.classList.add('claude-edit-highlighted');
   }
 
-  showEditHistoryModal(messageElement) {
-    this.log('Edit history modal açılıyor...');
+  showEditHistoryModal(messageElement, versionInfo = '') {
+    this.log('Edit history modal açılıyor...', versionInfo);
 
     // Mesaj içeriğini al
-    const messageText = messageElement.textContent || messageElement.innerText;
+    const userMessage = messageElement.querySelector('[data-testid="user-message"]');
+    const messageText = userMessage ? userMessage.textContent : messageElement.textContent;
     
     // Modal oluştur
     const modal = this.dom.createElement('div', {
@@ -218,7 +233,7 @@ class EditHistoryModule extends BaseModule {
     });
 
     const title = this.dom.createElement('h2', {
-      textContent: '✏️ Edit History',
+      innerHTML: versionInfo ? `✏️ Edit History <span style="color: #667eea; font-size: 16px;">(${versionInfo})</span>` : '✏️ Edit History',
       style: {
         fontSize: '20px',
         fontWeight: '600',
@@ -275,9 +290,8 @@ class EditHistoryModule extends BaseModule {
     const infoBox = this.dom.createElement('div', {
       innerHTML: `
         <p style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 14px;">
-          ℹ️ <strong>Not:</strong> Claude web arayüzü edit history'yi API'de saklamıyor. 
-          Bu özellik, sadece edit yapıldığını gösterir. Önceki versiyonları görmek için 
-          Claude'un kendi edit sistemini kullanın.
+          ℹ️ <strong>Not:</strong> Claude web arayüzü edit history'yi tam olarak saklamıyor. 
+          Bu özellik, edit yapıldığını ve versiyon sayısını gösterir.
         </p>
       `,
     });
@@ -318,11 +332,11 @@ class EditHistoryModule extends BaseModule {
     const tips = this.dom.createElement('div', {
       innerHTML: `
         <div style="margin-top: 20px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 13px; color: #856404;">
-          💡 <strong>İpucu:</strong> Edit history'yi görmek için:
+          💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için:
           <ul style="margin: 8px 0 0 20px; padding: 0;">
-            <li>Mesajın üzerine gelin</li>
-            <li>Edit butonuna tıklayın</li>
-            <li>Claude'un kendi edit panelinde versiyonlar arası geçiş yapın</li>
+            <li>Mesajın üzerinde görünen <strong>◀ / ▶</strong> butonlarını kullanın</li>
+            <li>Claude'un navigation sistemi ile önceki versiyonları görüntüleyin</li>
+            <li>Toplam ${versionInfo} versiyon mevcut</li>
           </ul>
         </div>
       `,
@@ -358,7 +372,7 @@ class EditHistoryModule extends BaseModule {
     };
 
     document.body.appendChild(modal);
-    this.emit(Events.EDIT_MODAL_OPENED, { messageElement });
+    this.emit(Events.EDIT_MODAL_OPENED, { messageElement, versionInfo });
   }
 
   closeModal() {
@@ -386,7 +400,7 @@ class EditHistoryModule extends BaseModule {
         if (this.editedMessages.length !== oldCount) {
           this.log(`Edit mesaj sayısı güncellendi: ${oldCount} → ${this.editedMessages.length}`);
         }
-      }, 1000);
+      }, 1500); // 1.5 saniye debounce - version counter render için yeterli
     });
   }
 
