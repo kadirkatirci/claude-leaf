@@ -10,7 +10,7 @@ const DOMUtils = {
   findMessages() {
     // Claude'un mesaj yapısı için multiple selector dene
     const selectors = [
-      '[data-test-render-count]',
+      '[data-test-render-count]', // Claude'un ana mesaj container'ı
       '.font-claude-message',
       '[class*="Message"]',
       '[role="article"]',
@@ -74,38 +74,52 @@ const DOMUtils = {
    */
   getEditedPrompts() {
     const edited = [];
-    const messages = this.findMessages();
     
-    messages.forEach(message => {
-      // Kullanıcı mesajı mı kontrol et
-      const isUser = message.querySelector('[data-testid="user-message"]');
-      if (!isUser) return;
+    // Tüm render-count elementlerini bul (her biri bir mesaj grubu)
+    const messageContainers = document.querySelectorAll('[data-test-render-count]');
+    
+    messageContainers.forEach(container => {
+      // Bu container içinde kullanıcı mesajı var mı?
+      const userMessage = container.querySelector('[data-testid="user-message"]');
+      if (!userMessage) return;
 
-      // Version counter'ı ara ("3 / 3" gibi)
-      // Bu, edit yapılmış mesajlarda görünür
-      const versionSpan = Array.from(message.querySelectorAll('span')).find(span => {
+      // Version counter'ı ara ("örn: 3 / 3")
+      // Container içindeki tüm span'leri kontrol et
+      const allSpans = container.querySelectorAll('span');
+      let versionSpan = null;
+      
+      for (const span of allSpans) {
         const text = span.textContent.trim();
-        return /^\d+\s*\/\s*\d+$/.test(text); // "3 / 3" formatı
-      });
+        if (/^\d+\s*\/\s*\d+$/.test(text)) {
+          versionSpan = span;
+          break;
+        }
+      }
 
       if (versionSpan) {
-        // Version counter varsa, bu edit edilmiş bir mesaj
         const versionText = versionSpan.textContent.trim();
-        const [current, total] = versionText.split('/').map(n => parseInt(n.trim()));
+        const parts = versionText.split('/');
+        
+        if (parts.length === 2) {
+          const current = parseInt(parts[0].trim());
+          const total = parseInt(parts[1].trim());
 
-        // Sadece toplam > 1 ise edit yapılmış demektir
-        if (total > 1) {
-          // Edit butonlarını da bul (retry ve navigation butonları)
-          const retryButton = message.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
-          
-          edited.push({
-            element: message,
-            editButton: retryButton,
-            versionInfo: versionText,
-            currentVersion: current,
-            totalVersions: total,
-            hasEditHistory: true
-          });
+          // Sadece toplam > 1 ise edit yapılmış demektir
+          if (total > 1 && !isNaN(current) && !isNaN(total)) {
+            // Edit butonunu bul (retry button - circular arrow icon)
+            const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
+            
+            edited.push({
+              element: container,
+              editButton: retryButton,
+              versionInfo: versionText,
+              currentVersion: current,
+              totalVersions: total,
+              hasEditHistory: true,
+              // Debug bilgisi
+              containerId: container.getAttribute('data-test-render-count')
+            });
+          }
         }
       }
     });

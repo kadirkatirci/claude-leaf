@@ -1,6 +1,8 @@
 /**
  * EditHistoryModule - Edit yapılmış promptları gösterir
  * BaseModule'den türetilir
+ * 
+ * Robust timing sistemi ile sürekli tarama yapar
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
@@ -12,6 +14,8 @@ class EditHistoryModule extends BaseModule {
     this.editedMessages = [];
     this.activeModal = null;
     this.observerTimeout = null;
+    this.scanInterval = null;
+    this.scrollHandler = null;
   }
 
   async init() {
@@ -20,117 +24,166 @@ class EditHistoryModule extends BaseModule {
 
     this.log('Edit History başlatılıyor...');
 
-    // DOM'un hazır olmasını bekle
-    await this.waitForDOM();
-
-    // Edited mesajları bul
-    this.findEditedMessages();
-
-    // DOM değişikliklerini izle
-    this.observeDOM();
+    // DOM'u sürekli izle ve edit'leri güncelle
+    this.startContinuousScanning();
 
     // Modal için event listeners
     this.setupModalListeners();
 
-    this.log(`✅ ${this.editedMessages.length} edit edilmiş mesaj bulundu`);
+    this.log('✅ Edit History aktif - sürekli tarama modu');
   }
 
   /**
-   * DOM'un hazır olmasını bekle
+   * Sürekli tarama modunu başlat
+   * Timing sorunlarını çözmek için multiple stratejiler kullanır
    */
-  async waitForDOM() {
-    // İlk mesajların yüklenmesini bekle
-    let attempts = 0;
-    const maxAttempts = 20; // 2 saniye max
+  startContinuousScanning() {
+    // 1. Hemen ilk tarama (100ms sonra, DOM'un render olması için)
+    setTimeout(() => this.scanForEdits(), 100);
+    
+    // 2. Düzenli periyodik taramalar (her 2 saniyede bir)
+    this.scanInterval = setInterval(() => {
+      this.scanForEdits();
+    }, 2000);
 
-    while (attempts < maxAttempts) {
-      const messages = this.dom.findMessages();
-      if (messages.length > 0) {
-        this.log(`DOM hazır: ${messages.length} mesaj bulundu`);
-        // Biraz daha bekle, version counter'ın render olması için
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
+    // 3. DOM observer - değişiklik olduğunda (debounced)
+    this.observer = this.dom.observeDOM(() => {
+      clearTimeout(this.observerTimeout);
+      this.observerTimeout = setTimeout(() => {
+        this.scanForEdits();
+      }, 1000);
+    });
 
-    this.warn('DOM timeout: Mesajlar bulunamadı');
+    // 4. Scroll event - kullanıcı scroll ettiğinde (debounced)
+    this.scrollHandler = this.dom.debounce(() => {
+      this.scanForEdits();
+    }, 500);
+    window.addEventListener('scroll', this.scrollHandler);
+
+    this.log('➡️ Sürekli tarama başlatıldı (interval + observer + scroll)');
   }
 
-  destroy() {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
-
-    // Tüm badge'leri kaldır
-    document.querySelectorAll('.claude-edit-badge').forEach(badge => badge.remove());
-
-    // Modal'ı kapat
-    this.closeModal();
-
-    super.destroy();
-  }
-
-  findEditedMessages() {
-    // DOMUtils'den edited promptları al
+  /**
+   * Edit'leri tara ve güncelle
+   */
+  scanForEdits() {
     const editedPrompts = this.dom.getEditedPrompts();
-    this.log(`getEditedPrompts() döndü: ${editedPrompts.length} mesaj`);
     
-    // Eski badge'leri temizleme - sadece artık edit olmayan mesajlardakiler
-    const currentEditedElements = new Set(editedPrompts.map(e => e.element));
-    const oldBadges = document.querySelectorAll('.claude-edit-badge');
-    this.log(`Mevcut badge sayısı: ${oldBadges.length}`);
+    // Eğer sayı değiştiyse veya ilk tarama ise güncelle
+    const currentCount = editedPrompts.length;
+    const hadEdits = this.editedMessages.length;
     
-    oldBadges.forEach(badge => {
+    if (currentCount !== hadEdits || currentCount > 0) {
+      this.updateEditedMessages(editedPrompts);
+    }
+  }
+
+  /**
+   * Edit mesajlarını güncelle
+   */
+  updateEditedMessages(editedPrompts) {
+    const oldCount = this.editedMessages.length;
+    
+    // Mevcut edit'leri takip et (containerId bazlı)
+    const currentEditIds = new Set(editedPrompts.map(e => e.containerId));
+    const previousEditIds = new Set(this.editedMessages.map(e => e.containerId));
+    
+    // Yeni eklenenler
+    const newEdits = editedPrompts.filter(e => !previousEditIds.has(e.containerId));
+    
+    // Kaldırılanlar
+    const removedEdits = this.editedMessages.filter(e => !currentEditIds.has(e.containerId));
+    
+    // Log changes
+    if (newEdits.length > 0) {
+      this.log(`➕ ${newEdits.length} yeni edit bulundu`);
+      newEdits.forEach(edit => {
+        this.log(`   ID:${edit.containerId} → ${edit.versionInfo}`);
+      });
+    }
+    
+    if (removedEdits.length > 0) {
+      this.log(`➖ ${removedEdits.length} edit kaldırıldı`);
+    }
+
+    // Badge'leri güncelle
+    this.updateBadges(editedPrompts);
+    
+    // Highlight'ları güncelle
+    this.updateHighlights(editedPrompts);
+    
+    // State'i güncelle
+    this.editedMessages = editedPrompts.map((editInfo, index) => ({
+      element: editInfo.element,
+      index,
+      versionInfo: editInfo.versionInfo,
+      currentVersion: editInfo.currentVersion,
+      totalVersions: editInfo.totalVersions,
+      containerId: editInfo.containerId,
+      history: this.dom.getEditHistory(editInfo.element)
+    }));
+
+    // Emit event
+    if (this.editedMessages.length !== oldCount) {
+      this.log(`🔄 Toplam edit: ${oldCount} → ${this.editedMessages.length}`);
+      this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
+    }
+  }
+
+  /**
+   * Badge'leri güncelle
+   */
+  updateBadges(editedPrompts) {
+    if (!this.getSetting('showBadges')) {
+      // Badge'ler kapalıysa hepsini kaldır
+      document.querySelectorAll('.claude-edit-badge').forEach(b => b.remove());
+      return;
+    }
+
+    const currentElements = new Set(editedPrompts.map(e => e.element));
+    
+    // Eski badge'leri temizle (artık edit olmayan mesajlardan)
+    document.querySelectorAll('.claude-edit-badge').forEach(badge => {
       const parent = badge.parentElement;
-      if (parent && !currentEditedElements.has(parent)) {
-        this.log('Eski badge kaldırılıyor');
+      if (parent && !currentElements.has(parent)) {
         badge.remove();
       }
     });
-
-    this.editedMessages = [];
-
-    editedPrompts.forEach((editInfo, index) => {
-      this.log(`Edit mesaj ${index + 1}: version=${editInfo.versionInfo}`);
-      
-      this.editedMessages.push({
-        element: editInfo.element,
-        index,
-        versionInfo: editInfo.versionInfo,
-        currentVersion: editInfo.currentVersion,
-        totalVersions: editInfo.totalVersions,
-        history: this.dom.getEditHistory(editInfo.element)
-      });
-
-      // Badge ekle (sadece yoksa)
-      if (this.getSetting('showBadges')) {
-        this.addEditBadge(editInfo.element, editInfo.versionInfo);
-      }
-
-      // Highlight ekle
-      if (this.getSetting('highlightEdited')) {
-        this.highlightEditedMessage(editInfo.element);
-      } else {
-        editInfo.element.classList.remove('claude-edit-highlighted');
-      }
+    
+    // Yeni badge'leri ekle
+    editedPrompts.forEach(editInfo => {
+      this.addEditBadge(editInfo.element, editInfo.versionInfo);
     });
+  }
 
-    this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
+  /**
+   * Highlight'ları güncelle
+   */
+  updateHighlights(editedPrompts) {
+    const shouldHighlight = this.getSetting('highlightEdited');
+    
+    // Önce hepsini kaldır
+    document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
+      el.classList.remove('claude-edit-highlighted');
+    });
+    
+    // Gerekiyorsa yeniden ekle
+    if (shouldHighlight) {
+      editedPrompts.forEach(editInfo => {
+        editInfo.element.classList.add('claude-edit-highlighted');
+      });
+    }
   }
 
   addEditBadge(messageElement, versionInfo = '') {
-    // Zaten badge var mı kontrol et
+    // Zaten badge var mı?
     if (messageElement.querySelector('.claude-edit-badge')) {
-      return;
+      return; // Duplicate önleme
     }
 
     const badge = this.dom.createElement('div', {
       className: 'claude-edit-badge',
-      innerHTML: `✏️ Edited ${versionInfo ? `(${versionInfo})` : ''}`,
+      innerHTML: `✏️ ${versionInfo}`,
       style: {
         position: 'absolute',
         top: '8px',
@@ -151,7 +204,7 @@ class EditHistoryModule extends BaseModule {
       }
     });
 
-    // Hover effect
+    // Hover effects
     badge.addEventListener('mouseenter', () => {
       badge.style.transform = 'scale(1.05)';
       badge.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
@@ -162,13 +215,13 @@ class EditHistoryModule extends BaseModule {
       badge.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
     });
 
-    // Click handler - Modal aç
+    // Click handler
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
       this.showEditHistoryModal(messageElement, versionInfo);
     });
 
-    // Mesajın position'ını relative yap
+    // Parent'ın position'ını ayarla
     const position = window.getComputedStyle(messageElement).position;
     if (position === 'static') {
       messageElement.style.position = 'relative';
@@ -177,12 +230,8 @@ class EditHistoryModule extends BaseModule {
     messageElement.appendChild(badge);
   }
 
-  highlightEditedMessage(messageElement) {
-    messageElement.classList.add('claude-edit-highlighted');
-  }
-
   showEditHistoryModal(messageElement, versionInfo = '') {
-    this.log('Edit history modal açılıyor...', versionInfo);
+    this.log('Edit modal açılıyor:', versionInfo);
 
     // Mesaj içeriğini al
     const userMessage = messageElement.querySelector('[data-testid="user-message"]');
@@ -233,7 +282,7 @@ class EditHistoryModule extends BaseModule {
     });
 
     const title = this.dom.createElement('h2', {
-      innerHTML: versionInfo ? `✏️ Edit History <span style="color: #667eea; font-size: 16px;">(${versionInfo})</span>` : '✏️ Edit History',
+      innerHTML: `✏️ Edit History ${versionInfo ? `<span style="color: #667eea; font-size: 16px;">${versionInfo}</span>` : ''}`,
       style: {
         fontSize: '20px',
         fontWeight: '600',
@@ -271,80 +320,30 @@ class EditHistoryModule extends BaseModule {
       closeBtn.style.color = '#999';
     });
 
-    closeBtn.addEventListener('click', () => {
-      this.closeModal();
-    });
+    closeBtn.addEventListener('click', () => this.closeModal());
 
     header.appendChild(title);
     header.appendChild(closeBtn);
 
     // Content
     const content = this.dom.createElement('div', {
-      style: {
-        color: '#555',
-        lineHeight: '1.6',
-      }
-    });
-
-    // Info message
-    const infoBox = this.dom.createElement('div', {
       innerHTML: `
         <p style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 14px;">
-          ℹ️ <strong>Not:</strong> Claude web arayüzü edit history'yi tam olarak saklamıyor. 
-          Bu özellik, edit yapıldığını ve versiyon sayısını gösterir.
+          ℹ️ <strong>Not:</strong> Claude edit history'yi tam saklamıyor. Bu badge edit yapıldığını gösterir.
         </p>
-      `,
-    });
-
-    // Current message
-    const currentMsg = this.dom.createElement('div', {
-      style: {
-        marginTop: '20px',
-        padding: '16px',
-        background: '#f8f9fa',
-        borderRadius: '8px',
-        border: '2px solid #667eea',
-      }
-    });
-
-    const currentLabel = this.dom.createElement('div', {
-      innerHTML: '<strong style="color: #667eea;">📝 Güncel Mesaj:</strong>',
-      style: {
-        marginBottom: '12px',
-        fontSize: '14px',
-      }
-    });
-
-    const currentText = this.dom.createElement('div', {
-      textContent: messageText.substring(0, 500) + (messageText.length > 500 ? '...' : ''),
-      style: {
-        fontSize: '14px',
-        color: '#333',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-      }
-    });
-
-    currentMsg.appendChild(currentLabel);
-    currentMsg.appendChild(currentText);
-
-    // Tips
-    const tips = this.dom.createElement('div', {
-      innerHTML: `
+        <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 2px solid #667eea;">
+          <div style="margin-bottom: 12px; font-size: 14px;">
+            <strong style="color: #667eea;">📝 Güncel Mesaj:</strong>
+          </div>
+          <div style="fontSize: 14px; color: #333; white-space: pre-wrap; word-break: break-word;">
+            ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
+          </div>
+        </div>
         <div style="margin-top: 20px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 13px; color: #856404;">
-          💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için:
-          <ul style="margin: 8px 0 0 20px; padding: 0;">
-            <li>Mesajın üzerinde görünen <strong>◀ / ▶</strong> butonlarını kullanın</li>
-            <li>Claude'un navigation sistemi ile önceki versiyonları görüntüleyin</li>
-            <li>Toplam ${versionInfo} versiyon mevcut</li>
-          </ul>
+          💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için mesaj üzerindeki <strong>◀ / ▶</strong> butonlarını kullanın.
         </div>
       `,
     });
-
-    content.appendChild(infoBox);
-    content.appendChild(currentMsg);
-    content.appendChild(tips);
 
     modalContent.appendChild(header);
     modalContent.appendChild(content);
@@ -352,24 +351,17 @@ class EditHistoryModule extends BaseModule {
 
     // Click outside to close
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        this.closeModal();
-      }
+      if (e.target === modal) this.closeModal();
     });
 
     // ESC to close
     const escHandler = (e) => {
-      if (e.key === 'Escape') {
-        this.closeModal();
-      }
+      if (e.key === 'Escape') this.closeModal();
     };
     document.addEventListener('keydown', escHandler);
 
     // Store for cleanup
-    this.activeModal = {
-      element: modal,
-      escHandler
-    };
+    this.activeModal = { element: modal, escHandler };
 
     document.body.appendChild(modal);
     this.emit(Events.EDIT_MODAL_OPENED, { messageElement, versionInfo });
@@ -379,8 +371,6 @@ class EditHistoryModule extends BaseModule {
     if (!this.activeModal) return;
 
     const { element, escHandler } = this.activeModal;
-
-    // Animation çıkış
     element.style.animation = 'fadeOut 0.2s ease';
 
     setTimeout(() => {
@@ -391,55 +381,65 @@ class EditHistoryModule extends BaseModule {
     }, 200);
   }
 
-  observeDOM() {
-    this.observer = this.dom.observeDOM(() => {
-      clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => {
-        const oldCount = this.editedMessages.length;
-        this.findEditedMessages();
-        if (this.editedMessages.length !== oldCount) {
-          this.log(`Edit mesaj sayısı güncellendi: ${oldCount} → ${this.editedMessages.length}`);
-        }
-      }, 1500); // 1.5 saniye debounce - version counter render için yeterli
-    });
-  }
-
   setupModalListeners() {
-    // ESC tuşu ile modal'ı kapat
     this.subscribe(Events.EDIT_MODAL_OPENED, () => {
-      this.log('Edit modal açıldı');
+      this.log('✅ Modal açıldı');
     });
 
     this.subscribe(Events.EDIT_MODAL_CLOSED, () => {
-      this.log('Edit modal kapandı');
+      this.log('✅ Modal kapandı');
     });
   }
 
   onSettingsChanged(settings) {
-    this.log('Settings güncellendi:', settings);
+    this.log('⚙️ Settings değişti:', settings);
+    
+    // Hemen yeniden tara
+    this.scanForEdits();
+  }
 
-    // Badge göster/gizle
-    const badges = document.querySelectorAll('.claude-edit-badge');
-    badges.forEach(badge => {
-      badge.style.display = settings.showBadges ? 'flex' : 'none';
+  destroy() {
+    this.log('🛑 Edit History durduruluyor...');
+
+    // Interval'i durdur
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+    }
+
+    // Observer'i durdur
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+
+    // Scroll handler'ı kaldır
+    if (this.scrollHandler) {
+      window.removeEventListener('scroll', this.scrollHandler);
+      this.scrollHandler = null;
+    }
+
+    // Timeout'ları temizle
+    if (this.observerTimeout) {
+      clearTimeout(this.observerTimeout);
+    }
+
+    // Tüm badge'leri kaldır
+    document.querySelectorAll('.claude-edit-badge').forEach(badge => badge.remove());
+
+    // Tüm highlight'ları kaldır
+    document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
+      el.classList.remove('claude-edit-highlighted');
     });
 
-    // Highlight göster/gizle
-    const highlighted = document.querySelectorAll('.claude-edit-highlighted');
-    highlighted.forEach(el => {
-      if (settings.highlightEdited) {
-        el.classList.add('claude-edit-highlighted');
-      } else {
-        el.classList.remove('claude-edit-highlighted');
-      }
-    });
+    // Modal'ı kapat
+    this.closeModal();
 
-    // Yeniden tara
-    this.findEditedMessages();
+    super.destroy();
   }
 }
 
-// Event constants ekle
+// Event constants
 Events.EDIT_MESSAGES_FOUND = 'edit:messages_found';
 Events.EDIT_MODAL_OPENED = 'edit:modal_opened';
 Events.EDIT_MODAL_CLOSED = 'edit:modal_closed';
