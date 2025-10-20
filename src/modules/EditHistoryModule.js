@@ -16,6 +16,11 @@ class EditHistoryModule extends BaseModule {
     this.observerTimeout = null;
     this.scanInterval = null;
     this.scrollHandler = null;
+    
+    // Yeni UI elementleri
+    this.miniMap = null;
+    this.floatingPanel = null;
+    this.isPanelOpen = false;
   }
 
   async init() {
@@ -23,6 +28,10 @@ class EditHistoryModule extends BaseModule {
     if (!this.enabled) return;
 
     this.log('Edit History başlatılıyor...');
+
+    // Mini-map ve panel oluştur
+    this.createMiniMap();
+    this.createFloatingPanel();
 
     // DOM'u sürekli izle ve edit'leri güncelle
     this.startContinuousScanning();
@@ -57,6 +66,7 @@ class EditHistoryModule extends BaseModule {
     // 4. Scroll event - kullanıcı scroll ettiğinde (debounced)
     this.scrollHandler = this.dom.debounce(() => {
       this.scanForEdits();
+      this.updateCurrentPositionIndicator(); // Mini-map pozisyon güncellemesi
     }, 500);
     window.addEventListener('scroll', this.scrollHandler);
 
@@ -128,6 +138,388 @@ class EditHistoryModule extends BaseModule {
       this.log(`🔄 Toplam edit: ${oldCount} → ${this.editedMessages.length}`);
       this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
     }
+    
+    // Mini-map ve paneli güncelle
+    this.updateMiniMap();
+    this.updateFloatingPanel();
+  }
+
+  /**
+   * Mini-map oluştur (sağ tarafta edit overview)
+   */
+  createMiniMap() {
+    const position = this.getSetting('position') || 'right';
+    const opposite = position === 'right' ? 'left' : 'right';
+
+    this.miniMap = this.dom.createElement('div', {
+      id: 'claude-edit-minimap',
+      className: 'claude-edit-minimap',
+      style: {
+        position: 'fixed',
+        [opposite]: '10px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: '8px',
+        height: '300px',
+        background: 'rgba(0, 0, 0, 0.1)',
+        borderRadius: '4px',
+        zIndex: '9998',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      }
+    });
+
+    // Hover effect
+    this.miniMap.addEventListener('mouseenter', () => {
+      this.miniMap.style.width = '12px';
+      this.miniMap.style.background = 'rgba(102, 126, 234, 0.2)';
+    });
+
+    this.miniMap.addEventListener('mouseleave', () => {
+      this.miniMap.style.width = '8px';
+      this.miniMap.style.background = 'rgba(0, 0, 0, 0.1)';
+    });
+
+    // Click - toggle floating panel
+    this.miniMap.addEventListener('click', (e) => {
+      // Marker'a tıklandıysa panel açma (marker kendi handler'ını çalıştırır)
+      if (e.target.classList.contains('edit-marker')) return;
+      this.toggleFloatingPanel();
+    });
+
+    document.body.appendChild(this.miniMap);
+    this.elements.miniMap = this.miniMap;
+  }
+
+  /**
+   * Floating panel oluştur (edit listesi)
+   */
+  createFloatingPanel() {
+    const position = this.getSetting('position') || 'right';
+    const opposite = position === 'right' ? 'left' : 'right';
+
+    this.floatingPanel = this.dom.createElement('div', {
+      id: 'claude-edit-panel',
+      className: 'claude-edit-panel',
+      style: {
+        position: 'fixed',
+        [opposite]: '30px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: '250px',
+        maxHeight: '400px',
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        zIndex: '9999',
+        display: 'none', // Başlangıçta kapalı
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }
+    });
+
+    // Header
+    const header = this.dom.createElement('div', {
+      style: {
+        padding: '12px 16px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        fontWeight: '600',
+        fontSize: '14px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }
+    });
+
+    const title = this.dom.createElement('span', {
+      textContent: '✏️ Edit Points',
+    });
+
+    const closeBtn = this.dom.createElement('button', {
+      innerHTML: '✕',
+      style: {
+        background: 'none',
+        border: 'none',
+        color: 'white',
+        cursor: 'pointer',
+        fontSize: '16px',
+        padding: '0',
+        width: '24px',
+        height: '24px',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background 0.2s',
+      }
+    });
+
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    });
+
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = 'none';
+    });
+
+    closeBtn.addEventListener('click', () => {
+      this.toggleFloatingPanel();
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Content container
+    const content = this.dom.createElement('div', {
+      id: 'claude-edit-panel-content',
+      style: {
+        padding: '8px',
+        overflowY: 'auto',
+        flex: '1',
+      }
+    });
+
+    this.floatingPanel.appendChild(header);
+    this.floatingPanel.appendChild(content);
+    document.body.appendChild(this.floatingPanel);
+    
+    this.elements.floatingPanel = this.floatingPanel;
+  }
+
+  /**
+   * Mini-map'ı güncelle
+   */
+  updateMiniMap() {
+    if (!this.miniMap) return;
+
+    // Önceki marker'ları temizle
+    this.miniMap.querySelectorAll('.edit-marker').forEach(m => m.remove());
+
+    if (this.editedMessages.length === 0) {
+      this.miniMap.style.display = 'none';
+      return;
+    }
+
+    this.miniMap.style.display = 'block';
+
+    // Sayfa yüksekliği
+    const pageHeight = document.documentElement.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    const miniMapHeight = 300;
+
+    this.editedMessages.forEach((editMsg, index) => {
+      const element = editMsg.element;
+      const elementTop = element.offsetTop;
+      
+      // Mini-map üzerindeki pozisyon (yüzdesel)
+      const percentage = elementTop / pageHeight;
+      const markerTop = percentage * miniMapHeight;
+
+      const marker = this.dom.createElement('div', {
+        className: 'edit-marker',
+        title: `Edit ${index + 1}: ${editMsg.versionInfo}`,
+        style: {
+          position: 'absolute',
+          top: `${markerTop}px`,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          height: '4px',
+          background: '#667eea',
+          borderRadius: '2px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }
+      });
+
+      // Hover
+      marker.addEventListener('mouseenter', () => {
+        marker.style.height = '8px';
+        marker.style.background = '#764ba2';
+      });
+
+      marker.addEventListener('mouseleave', () => {
+        marker.style.height = '4px';
+        marker.style.background = '#667eea';
+      });
+
+      // Click - scroll to edit
+      marker.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.scrollToEdit(index);
+      });
+
+      this.miniMap.appendChild(marker);
+    });
+
+    // Current position indicator
+    this.updateCurrentPositionIndicator();
+  }
+
+  /**
+   * Mevcut scroll pozisyonunu mini-map'te göster
+   */
+  updateCurrentPositionIndicator() {
+    if (!this.miniMap) return;
+
+    // Önceki indicator'ı kaldır
+    const oldIndicator = this.miniMap.querySelector('.position-indicator');
+    if (oldIndicator) oldIndicator.remove();
+
+    const pageHeight = document.documentElement.scrollHeight;
+    const scrollTop = window.scrollY;
+    const viewportHeight = window.innerHeight;
+    const miniMapHeight = 300;
+
+    // Şu anki pozisyon
+    const currentPercentage = scrollTop / pageHeight;
+    const indicatorTop = currentPercentage * miniMapHeight;
+    const indicatorHeight = (viewportHeight / pageHeight) * miniMapHeight;
+
+    const indicator = this.dom.createElement('div', {
+      className: 'position-indicator',
+      style: {
+        position: 'absolute',
+        top: `${indicatorTop}px`,
+        left: '0',
+        right: '0',
+        height: `${Math.max(indicatorHeight, 4)}px`,
+        background: 'rgba(255, 71, 87, 0.3)',
+        border: '1px solid rgba(255, 71, 87, 0.6)',
+        pointerEvents: 'none',
+      }
+    });
+
+    this.miniMap.appendChild(indicator);
+  }
+
+  /**
+   * Floating panel'ı güncelle
+   */
+  updateFloatingPanel() {
+    if (!this.floatingPanel) return;
+
+    const content = this.floatingPanel.querySelector('#claude-edit-panel-content');
+    if (!content) return;
+
+    // İçeriği temizle
+    content.innerHTML = '';
+
+    if (this.editedMessages.length === 0) {
+      content.innerHTML = '<div style="padding: 20px; text-align: center; color: #999; font-size: 13px;">Henüz edit yok</div>';
+      return;
+    }
+
+    // Her edit için item oluştur
+    this.editedMessages.forEach((editMsg, index) => {
+      const item = this.dom.createElement('div', {
+        className: 'edit-panel-item',
+        style: {
+          padding: '10px 12px',
+          marginBottom: '4px',
+          background: '#f8f9fa',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          borderLeft: '3px solid #667eea',
+        }
+      });
+
+      const header = this.dom.createElement('div', {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '4px',
+        }
+      });
+
+      const label = this.dom.createElement('span', {
+        textContent: `Edit ${index + 1}`,
+        style: {
+          fontWeight: '600',
+          fontSize: '13px',
+          color: '#333',
+        }
+      });
+
+      const version = this.dom.createElement('span', {
+        textContent: editMsg.versionInfo,
+        style: {
+          fontSize: '11px',
+          color: '#667eea',
+          fontWeight: '600',
+        }
+      });
+
+      header.appendChild(label);
+      header.appendChild(version);
+
+      // Preview text
+      const userMessage = editMsg.element.querySelector('[data-testid="user-message"]');
+      const messageText = userMessage ? userMessage.textContent : '';
+      const preview = this.dom.createElement('div', {
+        textContent: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+        style: {
+          fontSize: '12px',
+          color: '#666',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }
+      });
+
+      item.appendChild(header);
+      item.appendChild(preview);
+
+      // Hover
+      item.addEventListener('mouseenter', () => {
+        item.style.background = '#e3f2fd';
+        item.style.transform = 'translateX(2px)';
+      });
+
+      item.addEventListener('mouseleave', () => {
+        item.style.background = '#f8f9fa';
+        item.style.transform = 'translateX(0)';
+      });
+
+      // Click - scroll to edit
+      item.addEventListener('click', () => {
+        this.scrollToEdit(index);
+      });
+
+      content.appendChild(item);
+    });
+  }
+
+  /**
+   * Belirli bir edit'e scroll yap
+   */
+  scrollToEdit(index) {
+    if (index < 0 || index >= this.editedMessages.length) return;
+
+    const editMsg = this.editedMessages[index];
+    this.log(`🎯 Edit ${index + 1}'e scroll yapılıyor`);
+
+    // Scroll
+    this.dom.scrollToElement(editMsg.element, 'center');
+
+    // Highlight
+    this.dom.flashClass(editMsg.element, 'claude-nav-highlight', 2000);
+  }
+
+  /**
+   * Floating panel'ı aç/kapat
+   */
+  toggleFloatingPanel() {
+    this.isPanelOpen = !this.isPanelOpen;
+    
+    if (this.floatingPanel) {
+      this.floatingPanel.style.display = this.isPanelOpen ? 'flex' : 'none';
+    }
+    
+    this.log(`Panel ${this.isPanelOpen ? 'açıldı' : 'kapandı'}`);
   }
 
   /**
