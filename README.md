@@ -44,17 +44,17 @@ Extension ikonuna tıklayarak ayarlar panelini açabilirsiniz. Her özellik içi
 ```
 claude_productivity_ext/
 ├── manifest.json                 # Extension tanımları
-├── content.js                    # Ana entry point
 ├── styles.css                    # Global stiller
 │
-├── src/
+├── src/                          # Ana kaynak kod (ES Modules)
+│   ├── content.js               # Entry point
 │   ├── App.js                   # Ana uygulama yöneticisi
 │   │
 │   ├── modules/                 # Özellik modülleri
-│   │   ├── BaseModule.js        # Base class (tüm modüller buradan türer)
+│   │   ├── BaseModule.js        # Base class
 │   │   ├── NavigationModule.js  # Navigation özelliği
-│   │   ├── TOCModule.js         # TODO: Table of Contents
-│   │   └── EditHistoryModule.js # TODO: Edit History
+│   │   ├── TOCModule.js         # TODO
+│   │   └── EditHistoryModule.js # TODO
 │   │
 │   ├── utils/                   # Yardımcı araçlar
 │   │   ├── EventBus.js          # Event-driven iletişim
@@ -62,7 +62,6 @@ claude_productivity_ext/
 │   │   └── DOMUtils.js          # DOM işlemleri
 │   │
 │   └── styles/                  # Modül stilleri
-│       └── navigation.css       # Navigation stilleri
 │
 ├── popup/                       # Settings UI
 │   ├── popup.html              # Popup HTML
@@ -79,8 +78,16 @@ claude_productivity_ext/
 
 ## 🧩 Mimari
 
+### ES Modules (Native)
+Bu proje **native ES modules** kullanıyor. Build sistemi gereksiz!
+
+- ✅ Direkt geliştirme
+- ✅ Import/Export syntax
+- ✅ Hot reload kolay
+- ✅ Modern JavaScript
+
 ### Modüler Tasarım
-Her özellik bağımsız bir modül olarak tasarlanmıştır:
+Her özellik bağımsız bir modül:
 
 ```javascript
 class YourModule extends BaseModule {
@@ -101,7 +108,7 @@ class YourModule extends BaseModule {
 ```
 
 ### Event-Driven İletişim
-Modüller arası iletişim için EventBus kullanılır:
+Modüller arası iletişim için EventBus:
 
 ```javascript
 // Event emit et
@@ -114,7 +121,7 @@ this.subscribe(Events.CUSTOM_EVENT, (data) => {
 ```
 
 ### Settings Yönetimi
-Her modülün kendi ayarları vardır:
+Her modülün kendi ayarları:
 
 ```javascript
 // Ayar oku
@@ -127,29 +134,15 @@ await this.setSetting('keyName', newValue);
 await this.toggle();
 ```
 
-### DOM Utils
-Ortak DOM işlemleri için yardımcı fonksiyonlar:
-
-```javascript
-// Mesajları bul
-const messages = DOMUtils.findMessages();
-
-// Element'e scroll
-DOMUtils.scrollToElement(element);
-
-// DOM değişikliklerini izle
-const observer = DOMUtils.observeDOM(callback);
-```
-
 ## 🔧 Geliştirme
 
 ### Yeni Modül Ekleme
 
-1. `src/modules/` altında yeni modül dosyası oluştur
+1. `src/modules/` altında yeni modül oluştur
 2. `BaseModule`'den türet
-3. `init()` ve `destroy()` metodlarını implement et
-4. `src/App.js` içinde modülü kaydet
-5. `SettingsManager.js` içinde default ayarları ekle
+3. `src/App.js` içinde kaydet
+4. `src/utils/SettingsManager.js` içinde default ayarları ekle
+5. Extension'ı yenile - **build gereksiz!**
 
 Örnek:
 
@@ -166,12 +159,10 @@ class MyModule extends BaseModule {
     await super.init();
     if (!this.enabled) return;
     
-    // Özelliği başlat
     this.log('My feature başlatıldı');
   }
 
   destroy() {
-    // Temizlik
     super.destroy();
   }
 }
@@ -191,7 +182,7 @@ registerModules() {
 
 ### Debug
 
-Console'da şu komutları kullanabilirsiniz:
+Console'da:
 
 ```javascript
 // Extension bilgisi
@@ -204,21 +195,28 @@ window.claudeProductivity.getModule('navigation')
 window.claudeProductivity.getModule('navigation').getSettings()
 ```
 
+### Hot Reload
+
+Extension'da değişiklik yapınca:
+1. `chrome://extensions/` üzerinden extension'ı yenile
+2. Claude.ai sayfasını yenile
+3. **Build adımı yok!** ✨
+
 ## 🐛 Sorun Giderme
 
 ### Extension çalışmıyor
 1. `chrome://extensions/` üzerinden extension'ı yenileyin
-2. Claude.ai sayfasını yenileyin
+2. Claude.ai sayfasını yenileyin (F5)
 3. Console'da (F12) hata mesajlarını kontrol edin
+4. Chrome 91+ kullandığınızdan emin olun (ES Modules için)
 
 ### Butonlar görünmüyor
 1. Settings'de Navigation özelliğinin açık olduğunu kontrol edin
 2. Console'da `window.claudeProductivity.getDebugInfo()` çalıştırın
 3. `activeModules` array'inde 'navigation' olmalı
 
-### Settings kayboldu
-1. Settings'i sıfırlayın (Popup > Sıfırla butonu)
-2. Extension'ı kaldırıp yeniden yükleyin
+### ES Module hatası
+Chrome versiyonunuz 91+ olmalı. Eski versiyonlar ES Modules'ü desteklemez.
 
 ## 📝 Changelog
 
@@ -226,8 +224,33 @@ window.claudeProductivity.getModule('navigation').getSettings()
 - ✨ İlk release
 - ✅ Navigation Buttons özelliği
 - ⚙️ Settings UI
-- 🏗️ Modüler mimari
+- 🏗️ Modüler mimari (ES Modules)
 - 📚 Kapsamlı dokümantasyon
+
+## 🚀 Yol Haritası
+
+### v1.1.0
+- [ ] Table of Contents modülü
+- [ ] Edit History modülü
+- [ ] Geliştirilmiş DOM selectors
+
+### v1.2.0
+- [ ] Export özelliği (MD/PDF)
+- [ ] Search modülü
+- [ ] Bookmarks
+
+### v2.0.0
+- [ ] Multi-language support
+- [ ] Theme customization
+- [ ] Cloud sync (optional)
+
+## 💡 Teknik Detaylar
+
+- **ES Modules**: Native browser modules, build gereksiz
+- **Chrome Manifest v3**: En güncel standart
+- **Chrome Storage API**: Cross-device sync için
+- **MutationObserver**: DOM değişikliklerini takip
+- **Event-driven**: Loosely coupled architecture
 
 ## 🤝 Katkıda Bulunma
 

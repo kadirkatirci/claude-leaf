@@ -22,9 +22,19 @@
   "content_scripts": [
     {
       "matches": ["https://claude.ai/*"],
-      "js": ["content.js"],
+      "js": ["src/content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/*.js",
+        "src/modules/*.js",
+        "src/utils/*.js"
+      ],
+      "matches": ["https://claude.ai/*"]
     }
   ],
   "icons": {
