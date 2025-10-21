@@ -32,8 +32,7 @@ class EditHistoryModule extends BaseModule {
     // Header butonu oluştur
     setTimeout(() => this.createHeaderButton(), 500); // Header'in render olması için bekle
 
-    // Mini-map ve panel oluştur
-    this.createMiniMap();
+    // Floating panel oluştur (mini-map kaldırıldı, sadece panel)
     this.createFloatingPanel();
 
     // DOM'u sürekli izle ve edit'leri güncelle
@@ -141,8 +140,7 @@ class EditHistoryModule extends BaseModule {
       this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
     }
     
-    // Mini-map ve paneli güncelle
-    this.updateMiniMap();
+    // Paneli ve header butonunu güncelle
     this.updateFloatingPanel();
     this.updateHeaderButton();
   }
@@ -151,15 +149,26 @@ class EditHistoryModule extends BaseModule {
    * Mini-map oluştur (sağ tarafta edit overview)
    */
   createMiniMap() {
-    const position = this.getSetting('position') || 'right';
-    const opposite = position === 'right' ? 'left' : 'right';
+    // Navigation buttons'ın pozisyonunu al
+    const navButtons = document.getElementById('claude-nav-buttons');
+    let mapSide = 'left'; // default (navigation'ın karşısı)
+    
+    if (navButtons) {
+      const navStyle = window.getComputedStyle(navButtons);
+      // Eğer navigation sağdaysa, mini-map solda olmalı
+      if (navStyle.right !== 'auto' && navStyle.right !== '') {
+        mapSide = 'left';
+      } else {
+        mapSide = 'right';
+      }
+    }
 
     this.miniMap = this.dom.createElement('div', {
       id: 'claude-edit-minimap',
       className: 'claude-edit-minimap',
       style: {
         position: 'fixed',
-        [opposite]: '10px',
+        [mapSide]: '10px',
         top: '50%',
         transform: 'translateY(-50%)',
         width: '8px',
@@ -196,28 +205,27 @@ class EditHistoryModule extends BaseModule {
 
   /**
    * Floating panel oluştur (edit listesi)
+   * Header butonunun hemen altında açılır
    */
   createFloatingPanel() {
-    const position = this.getSetting('position') || 'right';
-    const opposite = position === 'right' ? 'left' : 'right';
-
     this.floatingPanel = this.dom.createElement('div', {
       id: 'claude-edit-panel',
       className: 'claude-edit-panel',
       style: {
         position: 'fixed',
-        [opposite]: '30px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        width: '250px',
-        maxHeight: '400px',
+        top: '60px', // Header'dan biraz aşağıda
+        right: '20px', // Sağ üst köşe
+        width: '280px',
+        maxHeight: '500px',
         background: 'white',
         borderRadius: '12px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
         zIndex: '9999',
         display: 'none', // Başlangıçta kapalı
         flexDirection: 'column',
         overflow: 'hidden',
+        animation: 'slideDown 0.2s ease',
       }
     });
 
@@ -866,6 +874,16 @@ class EditHistoryModule extends BaseModule {
     // Timeout'ları temizle
     if (this.observerTimeout) {
       clearTimeout(this.observerTimeout);
+    }
+
+    // Header butonunu kaldır
+    if (this.elements.headerButton) {
+      this.elements.headerButton.remove();
+    }
+
+    // Floating panel'ı kaldır
+    if (this.floatingPanel) {
+      this.floatingPanel.remove();
     }
 
     // Tüm badge'leri kaldır
