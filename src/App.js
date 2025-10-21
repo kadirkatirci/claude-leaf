@@ -110,8 +110,13 @@ class ClaudeProductivityApp {
     });
 
     // Settings değişikliklerini logla
-    eventBus.on(Events.SETTINGS_CHANGED, (settings) => {
+    eventBus.on(Events.SETTINGS_CHANGED, async (settings) => {
       console.log('⚙️ Settings güncellendi:', settings);
+      
+      // Eğer tema değiştiyse, CSS'i yeniden inject et
+      if (settings.general) {
+        await this.reinjectStyles();
+      }
     });
 
     // Feature toggle'ları logla
@@ -123,19 +128,50 @@ class ClaudeProductivityApp {
   /**
    * Global CSS stilleri inject et
    */
-  injectGlobalStyles() {
+  async injectGlobalStyles() {
+    // Tema renklerini al
+    const settings = await settingsManager.getAll();
+    const general = settings.general || {};
+    const themeName = general.colorTheme || 'purple';
+    const customColor = general.customColor || '#667eea';
+    
+    // Tema renklerini hesapla
+    let primary, secondary;
+    if (themeName === 'native') {
+      primary = '#CC785C';
+      secondary = '#8B7355';
+    } else if (themeName === 'purple') {
+      primary = '#667eea';
+      secondary = '#764ba2';
+    } else if (themeName === 'custom') {
+      primary = customColor;
+      // Biraz koyulaştır
+      const hex = customColor.replace('#', '');
+      const r = Math.max(0, parseInt(hex.substr(0, 2), 16) - 30);
+      const g = Math.max(0, parseInt(hex.substr(2, 2), 16) - 30);
+      const b = Math.max(0, parseInt(hex.substr(4, 2), 16) - 30);
+      secondary = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+
     const css = `
       /* Navigation highlight animasyonu */
       .claude-nav-highlight {
         animation: claude-highlight-pulse 0.5s ease-in-out;
-        outline: 3px solid #667eea !important;
+        outline: 3px solid ${primary} !important;
         outline-offset: 4px;
         border-radius: 8px;
       }
       
       @keyframes claude-highlight-pulse {
-        0%, 100% { outline-color: #667eea; }
-        50% { outline-color: #764ba2; }
+        0%, 100% { outline-color: ${primary}; }
+        50% { outline-color: ${secondary}; }
+      }
+
+      /* Edit History highlight */
+      .claude-edit-highlighted {
+        outline: 2px dashed ${primary} !important;
+        outline-offset: 2px;
+        border-radius: 8px;
       }
 
       /* Tooltip stilleri */
@@ -247,6 +283,18 @@ class ClaudeProductivityApp {
     style.id = 'claude-productivity-global-styles';
     style.textContent = css;
     document.head.appendChild(style);
+  }
+
+  /**
+   * CSS'i yeniden inject et (tema değişikliğinde)
+   */
+  async reinjectStyles() {
+    const oldStyle = document.getElementById('claude-productivity-global-styles');
+    if (oldStyle) {
+      oldStyle.remove();
+    }
+    await this.injectGlobalStyles();
+    console.log('🎨 Global CSS tema ile güncellendi');
   }
 
   /**

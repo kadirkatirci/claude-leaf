@@ -19,6 +19,7 @@ class BaseModule {
     this.initialized = false;
     this.elements = {}; // DOM elementleri sakla
     this.unsubscribers = []; // Event listener'ları temizlemek için
+    this.settings = {}; // Global settings cache
   }
 
   /**
@@ -83,6 +84,8 @@ class BaseModule {
    */
   async loadSettings() {
     await settingsManager.load();
+    // Tüm settings'i cache'le
+    this.settings = await settingsManager.getAll();
   }
 
   /**
@@ -137,21 +140,32 @@ class BaseModule {
    */
   subscribeToSettings() {
     const unsub = eventBus.on('settings:changed', async (settings) => {
+      // Tüm settings'ı güncelle (general dahil)
+      this.settings = settings;
+      
       const moduleSettings = settings[this.name];
+      
+      // Eğer sadece general değiştiyse (tema vb.)
+      if (!moduleSettings && settings.general) {
+        this.onSettingsChanged({});
+        return;
+      }
       
       if (!moduleSettings) return;
 
       // Eğer modül disabled olduysa, yok et
       if (!moduleSettings.enabled && this.enabled) {
         this.destroy();
+        return;
       }
       
       // Eğer modül enabled olduysa ve henüz başlamamışsa, başlat
       if (moduleSettings.enabled && !this.enabled) {
         await this.init();
+        return;
       }
 
-      // Settings güncellendiğinde modüle bildir
+      // Settings güncellendiginde modüle bildir
       this.onSettingsChanged(moduleSettings);
     });
 
@@ -198,8 +212,11 @@ class BaseModule {
    * @returns {Object} Tema renkleri
    */
   getTheme() {
-    const themeName = this.getSetting('theme') || 'purple';
-    const customColor = this.getSetting('customColor');
+    // Tema artık general ayarlarında
+    const settings = this.settings || {};
+    const general = settings.general || {};
+    const themeName = general.colorTheme || 'purple';
+    const customColor = general.customColor;
     return getThemeColors(themeName, customColor);
   }
 

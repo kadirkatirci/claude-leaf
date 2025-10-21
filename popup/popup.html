@@ -19,7 +19,7 @@
       <button class="tab active" data-tab="navigation" title="Navigation">🧭</button>
       <button class="tab" data-tab="editHistory" title="Edit History">✏️</button>
       <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
-      <button class="tab disabled" data-tab="general" title="Genel Ayarlar">⚙️</button>
+      <button class="tab" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
 
     <!-- Tab Contents -->
@@ -115,27 +115,6 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
-
-          <div class="setting-item">
-            <label for="edit-theme">🎨 Tema</label>
-            <select id="edit-theme">
-              <option value="native">Claude Native</option>
-              <option value="purple" selected>Purple</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-
-          <div class="setting-item" id="edit-custom-color-container" style="display: none;">
-            <label for="edit-custom-color">Custom Renk</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="color" id="edit-custom-color" value="#667eea" style="width: 50px; height: 35px; border: none; border-radius: 4px; cursor: pointer;">
-              <input type="text" id="edit-custom-color-hex" value="#667eea" placeholder="#667eea" style="width: 100px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: monospace;">
-            </div>
-          </div>
-        </div>
-
-        <div class="theme-preview" id="edit-theme-preview" style="margin-top: 16px; padding: 16px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; font-weight: 600;">
-          ✏️ Theme Preview
         </div>
 
         <div class="info-box" style="margin-top: 16px;">
@@ -144,7 +123,7 @@
             <li>Edit yapılmış promptlar otomatik tespit edilir</li>
             <li>Header'da "Edit Points" butonu görünür</li>
             <li>Butona tıklayarak edit listesini görün</li>
-            <li>Temalar badge ve panel renklerini değiştirir</li>
+            <li>Renk teması Genel ayarlardan değiştirilir</li>
           </ul>
         </div>
       </div>
@@ -165,9 +144,45 @@
     <div class="tab-content hidden" id="tab-general">
       <div class="section">
         <h2>Genel Ayarlar</h2>
+        
         <div class="settings-group">
           <div class="setting-item">
-            <label for="general-theme">Tema</label>
+            <label for="general-color-theme">🎨 Renk Teması</label>
+            <select id="general-color-theme">
+              <option value="native">Claude Native</option>
+              <option value="purple" selected>Purple</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="setting-item" id="general-custom-color-container" style="display: none;">
+            <label for="general-custom-color">Custom Renk</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="general-custom-color" value="#667eea" style="width: 50px; height: 35px; border: none; border-radius: 4px; cursor: pointer;">
+              <input type="text" id="general-custom-color-hex" value="#667eea" placeholder="#667eea" style="width: 100px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: monospace;">
+            </div>
+          </div>
+        </div>
+
+        <div class="theme-preview" id="general-theme-preview" style="margin-top: 16px; padding: 16px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; font-weight: 600;">
+          🎨 Theme Preview
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Tema Hakkında</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li><strong>Claude Native:</strong> Claude'un orijinal turuncu/kahverengi tonu</li>
+            <li><strong>Purple:</strong> Modern mor gradient</li>
+            <li><strong>Custom:</strong> Kendi renginizi seçin</li>
+            <li>Tema tüm modüllere uygulanır (Navigation, Edit History vb.)</li>
+          </ul>
+        </div>
+
+        <hr style="margin: 24px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+        <div class="settings-group">
+          <div class="setting-item">
+            <label for="general-theme">Arayüz Teması</label>
             <select id="general-theme">
               <option value="auto">Otomatik</option>
               <option value="light">Açık</option>

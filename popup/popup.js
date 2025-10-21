@@ -44,8 +44,6 @@ function getDefaultSettings() {
       smoothScroll: true,
       highlightDuration: 2000,
       keyboardShortcuts: true,
-      theme: 'purple',
-      customColor: '#667eea',
     },
     toc: {
       enabled: false,
@@ -57,8 +55,6 @@ function getDefaultSettings() {
       enabled: false,
       showBadges: true,
       highlightEdited: true,
-      theme: 'purple',
-      customColor: '#667eea',
     },
     export: {
       enabled: false,
@@ -74,6 +70,8 @@ function getDefaultSettings() {
       theme: 'auto',
       opacity: 0.7,
       showNotifications: true,
+      colorTheme: 'purple',
+      customColor: '#667eea',
     }
   };
 }
@@ -90,20 +88,6 @@ function updateUI() {
   document.getElementById('edit-badges').checked = currentSettings.editHistory.showBadges;
   document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
   
-  // Edit History theme
-  const editTheme = currentSettings.editHistory.theme || 'purple';
-  const editCustomColor = currentSettings.editHistory.customColor || '#667eea';
-  document.getElementById('edit-theme').value = editTheme;
-  document.getElementById('edit-custom-color').value = editCustomColor;
-  document.getElementById('edit-custom-color-hex').value = editCustomColor;
-  
-  // Custom color container göster/gizle
-  document.getElementById('edit-custom-color-container').style.display = 
-    editTheme === 'custom' ? 'flex' : 'none';
-  
-  // Theme preview güncelle
-  updateThemePreview(editTheme, editCustomColor);
-  
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
   document.getElementById('nav-counter').checked = currentSettings.navigation.showCounter;
@@ -116,6 +100,20 @@ function updateUI() {
   // General settings
   document.getElementById('general-theme').value = currentSettings.general.theme;
   document.getElementById('general-notifications').checked = currentSettings.general.showNotifications;
+  
+  // General color theme
+  const colorTheme = currentSettings.general.colorTheme || 'purple';
+  const customColor = currentSettings.general.customColor || '#667eea';
+  document.getElementById('general-color-theme').value = colorTheme;
+  document.getElementById('general-custom-color').value = customColor;
+  document.getElementById('general-custom-color-hex').value = customColor;
+  
+  // Custom color container göster/gizle
+  document.getElementById('general-custom-color-container').style.display = 
+    colorTheme === 'custom' ? 'flex' : 'none';
+  
+  // Theme preview güncelle
+  updateThemePreview(colorTheme, customColor);
 }
 
 /**
@@ -184,34 +182,34 @@ function setupEventListeners() {
     currentSettings.general.showNotifications = e.target.checked;
   });
 
-  // Edit theme
-  document.getElementById('edit-theme').addEventListener('change', (e) => {
+  // General color theme
+  document.getElementById('general-color-theme').addEventListener('change', (e) => {
     const theme = e.target.value;
-    currentSettings.editHistory.theme = theme;
+    currentSettings.general.colorTheme = theme;
     
     // Custom color container göster/gizle
-    document.getElementById('edit-custom-color-container').style.display = 
+    document.getElementById('general-custom-color-container').style.display = 
       theme === 'custom' ? 'flex' : 'none';
     
     // Preview güncelle
-    updateThemePreview(theme, currentSettings.editHistory.customColor);
+    updateThemePreview(theme, currentSettings.general.customColor);
   });
 
-  // Edit custom color (color picker)
-  document.getElementById('edit-custom-color').addEventListener('input', (e) => {
+  // General custom color (color picker)
+  document.getElementById('general-custom-color').addEventListener('input', (e) => {
     const color = e.target.value;
-    currentSettings.editHistory.customColor = color;
-    document.getElementById('edit-custom-color-hex').value = color;
+    currentSettings.general.customColor = color;
+    document.getElementById('general-custom-color-hex').value = color;
     updateThemePreview('custom', color);
   });
 
-  // Edit custom color (hex input)
-  document.getElementById('edit-custom-color-hex').addEventListener('input', (e) => {
+  // General custom color (hex input)
+  document.getElementById('general-custom-color-hex').addEventListener('input', (e) => {
     const color = e.target.value;
     // Validate hex color
     if (/^#[0-9A-F]{6}$/i.test(color)) {
-      currentSettings.editHistory.customColor = color;
-      document.getElementById('edit-custom-color').value = color;
+      currentSettings.general.customColor = color;
+      document.getElementById('general-custom-color').value = color;
       updateThemePreview('custom', color);
     }
   });
@@ -303,7 +301,7 @@ function showToast(message, type = 'success') {
  * Theme preview güncelle
  */
 function updateThemePreview(theme, customColor) {
-  const preview = document.getElementById('edit-theme-preview');
+  const preview = document.getElementById('general-theme-preview');
   if (!preview) return;
 
   let gradient;

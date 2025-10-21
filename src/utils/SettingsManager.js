@@ -149,6 +149,16 @@ class SettingsManager {
   }
 
   /**
+   * Tüm ayarları getir
+   */
+  async getAll() {
+    if (!this.settings) {
+      await this.load();
+    }
+    return this.settings;
+  }
+
+  /**
    * Settings'i defaults ile birleştir (eksik değerleri ekle)
    */
   mergeWithDefaults(settings) {

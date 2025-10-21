@@ -128,6 +128,9 @@ class NavigationModule extends BaseModule {
   }
 
   createButton(icon, tooltip, onClick) {
+    // Tema renklerini al
+    const theme = this.getTheme();
+
     const btn = this.dom.createElement('button', {
       className: 'claude-nav-btn',
       innerHTML: icon,
@@ -136,7 +139,7 @@ class NavigationModule extends BaseModule {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: theme.gradient,
         border: 'none',
         cursor: 'pointer',
         display: 'flex',
@@ -359,6 +362,29 @@ class NavigationModule extends BaseModule {
         document.removeEventListener('keydown', this.keydownHandler);
       }
     }
+    
+    // Tema değişti mi? (general ayarlarından kontrol et)
+    if (this.settings && this.settings.general) {
+      this.recreateUI();
+    }
+  }
+
+  /**
+   * UI'ı yeniden oluştur (tema değişikliğinde)
+   */
+  recreateUI() {
+    // Eski container'ı kaldır
+    if (this.elements.container) {
+      this.elements.container.remove();
+    }
+
+    // Yeni container oluştur
+    this.createUI();
+
+    // Button state'lerini güncelle
+    this.updateButtonStates();
+
+    this.log('🎨 UI tema ile yenilendi');
   }
 }
 
