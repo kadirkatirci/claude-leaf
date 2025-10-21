@@ -5,6 +5,7 @@
 import { eventBus } from '../utils/EventBus.js';
 import settingsManager from '../utils/SettingsManager.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import { getThemeColors } from '../config/themes.js';
 
 class BaseModule {
   /**
@@ -190,6 +191,16 @@ class BaseModule {
    */
   get dom() {
     return DOMUtils;
+  }
+
+  /**
+   * Tema renklerini al
+   * @returns {Object} Tema renkleri
+   */
+  getTheme() {
+    const themeName = this.getSetting('theme') || 'purple';
+    const customColor = this.getSetting('customColor');
+    return getThemeColors(themeName, customColor);
   }
 
   /**

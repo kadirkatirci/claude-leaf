@@ -208,6 +208,9 @@ class EditHistoryModule extends BaseModule {
    * Header butonunun hemen altında açılır
    */
   createFloatingPanel() {
+    // Tema renklerini al
+    const theme = this.getTheme();
+
     this.floatingPanel = this.dom.createElement('div', {
       id: 'claude-edit-panel',
       className: 'claude-edit-panel',
@@ -233,7 +236,7 @@ class EditHistoryModule extends BaseModule {
     const header = this.dom.createElement('div', {
       style: {
         padding: '12px 16px',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: theme.gradient,
         color: 'white',
         fontWeight: '600',
         fontSize: '14px',
@@ -471,6 +474,9 @@ class EditHistoryModule extends BaseModule {
       return;
     }
 
+    // Tema renklerini al
+    const theme = this.getTheme();
+
     // Her edit için item oluştur
     this.editedMessages.forEach((editMsg, index) => {
       const item = this.dom.createElement('div', {
@@ -482,7 +488,7 @@ class EditHistoryModule extends BaseModule {
           borderRadius: '8px',
           cursor: 'pointer',
           transition: 'all 0.2s',
-          borderLeft: '3px solid #667eea',
+          borderLeft: `3px solid ${theme.primary}`,
         }
       });
 
@@ -508,7 +514,7 @@ class EditHistoryModule extends BaseModule {
         textContent: editMsg.versionInfo,
         style: {
           fontSize: '11px',
-          color: '#667eea',
+          color: theme.primary,
           fontWeight: '600',
         }
       });
@@ -633,6 +639,9 @@ class EditHistoryModule extends BaseModule {
       return; // Duplicate önleme
     }
 
+    // Tema renklerini al
+    const theme = this.getTheme();
+
     const badge = this.dom.createElement('div', {
       className: 'claude-edit-badge',
       innerHTML: `✏️ ${versionInfo}`,
@@ -640,7 +649,7 @@ class EditHistoryModule extends BaseModule {
         position: 'absolute',
         top: '8px',
         right: '8px',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: theme.gradient,
         color: 'white',
         padding: '4px 10px',
         borderRadius: '12px',
@@ -846,8 +855,37 @@ class EditHistoryModule extends BaseModule {
   onSettingsChanged(settings) {
     this.log('⚙️ Settings değişti:', settings);
     
+    // Eğer tema değiştiyse, UI'ı yeniden oluştur
+    if (settings.theme !== undefined || settings.customColor !== undefined) {
+      this.log('🎨 Tema değişti, UI yenileniyor...');
+      
+      // Panel ve badge'leri yeniden oluştur
+      this.recreateUI();
+    }
+    
     // Hemen yeniden tara
     this.scanForEdits();
+  }
+
+  /**
+   * UI'ı yeniden oluştur (tema değişikliğinde)
+   */
+  recreateUI() {
+    // Eski floating panel'ı kaldır
+    if (this.floatingPanel) {
+      this.floatingPanel.remove();
+      this.floatingPanel = null;
+    }
+
+    // Yeni panel oluştur
+    this.createFloatingPanel();
+
+    // Badge'leri yeniden oluştur
+    document.querySelectorAll('.claude-edit-badge').forEach(badge => badge.remove());
+    this.updateBadges(this.dom.getEditedPrompts());
+
+    // Panel içeriğini güncelle
+    this.updateFloatingPanel();
   }
 
   destroy() {

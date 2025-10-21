@@ -16,10 +16,10 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="navigation">🧭 Navigation</button>
-      <button class="tab" data-tab="editHistory">✏️ Edit History</button>
-      <button class="tab disabled" data-tab="toc">📑 TOC</button>
-      <button class="tab disabled" data-tab="general">⚙️ Genel</button>
+      <button class="tab active" data-tab="navigation" title="Navigation">🧭</button>
+      <button class="tab" data-tab="editHistory" title="Edit History">✏️</button>
+      <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
+      <button class="tab disabled" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
 
     <!-- Tab Contents -->
@@ -112,16 +112,39 @@
             <label for="edit-highlight">Mesajları Vurgula</label>
             <label class="toggle">
               <input type="checkbox" id="edit-highlight" checked>
+              <span class="toggle-slider"></span>
             </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="edit-theme">🎨 Tema</label>
+            <select id="edit-theme">
+              <option value="native">Claude Native</option>
+              <option value="purple" selected>Purple</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="setting-item" id="edit-custom-color-container" style="display: none;">
+            <label for="edit-custom-color">Custom Renk</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="edit-custom-color" value="#667eea" style="width: 50px; height: 35px; border: none; border-radius: 4px; cursor: pointer;">
+              <input type="text" id="edit-custom-color-hex" value="#667eea" placeholder="#667eea" style="width: 100px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: monospace;">
+            </div>
           </div>
         </div>
 
-        <div class="info-box">
+        <div class="theme-preview" id="edit-theme-preview" style="margin-top: 16px; padding: 16px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; font-weight: 600;">
+          ✏️ Theme Preview
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
           <h3>ℹ️ Nasıl Çalışır?</h3>
           <ul style="font-size: 13px; color: #666; list-style-position: inside;">
             <li>Edit yapılmış promptlar otomatik tespit edilir</li>
-            <li>"✏️ Edited" badge'ine tıklayarak detayları görün</li>
-            <li>Edit mesajlar kesikli çerçeve ile vurgulanır</li>
+            <li>Header'da "Edit Points" butonu görünür</li>
+            <li>Butona tıklayarak edit listesini görün</li>
+            <li>Temalar badge ve panel renklerini değiştirir</li>
           </ul>
         </div>
       </div>

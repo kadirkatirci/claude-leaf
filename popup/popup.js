@@ -44,6 +44,8 @@ function getDefaultSettings() {
       smoothScroll: true,
       highlightDuration: 2000,
       keyboardShortcuts: true,
+      theme: 'purple',
+      customColor: '#667eea',
     },
     toc: {
       enabled: false,
@@ -55,6 +57,8 @@ function getDefaultSettings() {
       enabled: false,
       showBadges: true,
       highlightEdited: true,
+      theme: 'purple',
+      customColor: '#667eea',
     },
     export: {
       enabled: false,
@@ -85,6 +89,22 @@ function updateUI() {
   document.getElementById('editHistory-enabled').checked = currentSettings.editHistory.enabled;
   document.getElementById('edit-badges').checked = currentSettings.editHistory.showBadges;
   document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
+  
+  // Edit History theme
+  const editTheme = currentSettings.editHistory.theme || 'purple';
+  const editCustomColor = currentSettings.editHistory.customColor || '#667eea';
+  document.getElementById('edit-theme').value = editTheme;
+  document.getElementById('edit-custom-color').value = editCustomColor;
+  document.getElementById('edit-custom-color-hex').value = editCustomColor;
+  
+  // Custom color container göster/gizle
+  document.getElementById('edit-custom-color-container').style.display = 
+    editTheme === 'custom' ? 'flex' : 'none';
+  
+  // Theme preview güncelle
+  updateThemePreview(editTheme, editCustomColor);
+  
+  // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
   document.getElementById('nav-counter').checked = currentSettings.navigation.showCounter;
   document.getElementById('nav-smooth').checked = currentSettings.navigation.smoothScroll;
@@ -162,6 +182,38 @@ function setupEventListeners() {
   // General notifications
   document.getElementById('general-notifications').addEventListener('change', (e) => {
     currentSettings.general.showNotifications = e.target.checked;
+  });
+
+  // Edit theme
+  document.getElementById('edit-theme').addEventListener('change', (e) => {
+    const theme = e.target.value;
+    currentSettings.editHistory.theme = theme;
+    
+    // Custom color container göster/gizle
+    document.getElementById('edit-custom-color-container').style.display = 
+      theme === 'custom' ? 'flex' : 'none';
+    
+    // Preview güncelle
+    updateThemePreview(theme, currentSettings.editHistory.customColor);
+  });
+
+  // Edit custom color (color picker)
+  document.getElementById('edit-custom-color').addEventListener('input', (e) => {
+    const color = e.target.value;
+    currentSettings.editHistory.customColor = color;
+    document.getElementById('edit-custom-color-hex').value = color;
+    updateThemePreview('custom', color);
+  });
+
+  // Edit custom color (hex input)
+  document.getElementById('edit-custom-color-hex').addEventListener('input', (e) => {
+    const color = e.target.value;
+    // Validate hex color
+    if (/^#[0-9A-F]{6}$/i.test(color)) {
+      currentSettings.editHistory.customColor = color;
+      document.getElementById('edit-custom-color').value = color;
+      updateThemePreview('custom', color);
+    }
   });
 
   // Save button
@@ -245,4 +297,35 @@ function showToast(message, type = 'success') {
   setTimeout(() => {
     toast.classList.add('hidden');
   }, 3000);
+}
+
+/**
+ * Theme preview güncelle
+ */
+function updateThemePreview(theme, customColor) {
+  const preview = document.getElementById('edit-theme-preview');
+  if (!preview) return;
+
+  let gradient;
+  
+  if (theme === 'native') {
+    // Claude Native
+    gradient = 'linear-gradient(135deg, #CC785C 0%, #8B7355 100%)';
+  } else if (theme === 'purple') {
+    // Purple
+    gradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+  } else if (theme === 'custom' && customColor) {
+    // Custom - rengi biraz koyulaştır
+    const darkenColor = (hex) => {
+      const r = parseInt(hex.substr(1, 2), 16);
+      const g = parseInt(hex.substr(3, 2), 16);
+      const b = parseInt(hex.substr(5, 2), 16);
+      const darken = (val) => Math.max(0, val - 30);
+      return `#${darken(r).toString(16).padStart(2, '0')}${darken(g).toString(16).padStart(2, '0')}${darken(b).toString(16).padStart(2, '0')}`;
+    };
+    const darker = darkenColor(customColor);
+    gradient = `linear-gradient(135deg, ${customColor} 0%, ${darker} 100%)`;
+  }
+
+  preview.style.background = gradient;
 }
