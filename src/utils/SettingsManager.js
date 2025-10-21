@@ -49,9 +49,9 @@ class SettingsManager {
       
       // General
       general: {
-        theme: 'auto', // 'light' | 'dark' | 'auto'
         opacity: 0.7,
-        showNotifications: true,
+        colorTheme: 'purple',
+        customColor: '#667eea',
       }
     };
   }

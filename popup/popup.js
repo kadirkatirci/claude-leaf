@@ -67,9 +67,7 @@ function getDefaultSettings() {
       regexSupport: false,
     },
     general: {
-      theme: 'auto',
       opacity: 0.7,
-      showNotifications: true,
       colorTheme: 'purple',
       customColor: '#667eea',
     }
@@ -96,10 +94,6 @@ function updateUI() {
   document.getElementById('nav-highlight').value = currentSettings.navigation.highlightDuration;
   document.getElementById('nav-opacity').value = currentSettings.general.opacity;
   document.getElementById('nav-opacity-value').textContent = currentSettings.general.opacity;
-
-  // General settings
-  document.getElementById('general-theme').value = currentSettings.general.theme;
-  document.getElementById('general-notifications').checked = currentSettings.general.showNotifications;
   
   // General color theme
   const colorTheme = currentSettings.general.colorTheme || 'purple';
@@ -170,16 +164,6 @@ function setupEventListeners() {
     const value = parseFloat(e.target.value);
     currentSettings.general.opacity = value;
     document.getElementById('nav-opacity-value').textContent = value.toFixed(1);
-  });
-
-  // General theme
-  document.getElementById('general-theme').addEventListener('change', (e) => {
-    currentSettings.general.theme = e.target.value;
-  });
-
-  // General notifications
-  document.getElementById('general-notifications').addEventListener('change', (e) => {
-    currentSettings.general.showNotifications = e.target.checked;
   });
 
   // General color theme
