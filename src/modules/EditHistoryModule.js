@@ -29,6 +29,9 @@ class EditHistoryModule extends BaseModule {
 
     this.log('Edit History başlatılıyor...');
 
+    // Header butonu oluştur
+    setTimeout(() => this.createHeaderButton(), 500); // Header'in render olması için bekle
+
     // Mini-map ve panel oluştur
     this.createMiniMap();
     this.createFloatingPanel();
@@ -66,7 +69,6 @@ class EditHistoryModule extends BaseModule {
     // 4. Scroll event - kullanıcı scroll ettiğinde (debounced)
     this.scrollHandler = this.dom.debounce(() => {
       this.scanForEdits();
-      this.updateCurrentPositionIndicator(); // Mini-map pozisyon güncellemesi
     }, 500);
     window.addEventListener('scroll', this.scrollHandler);
 
@@ -142,6 +144,7 @@ class EditHistoryModule extends BaseModule {
     // Mini-map ve paneli güncelle
     this.updateMiniMap();
     this.updateFloatingPanel();
+    this.updateHeaderButton();
   }
 
   /**
@@ -352,46 +355,95 @@ class EditHistoryModule extends BaseModule {
 
       this.miniMap.appendChild(marker);
     });
-
-    // Current position indicator
-    this.updateCurrentPositionIndicator();
   }
 
   /**
-   * Mevcut scroll pozisyonunu mini-map'te göster
+   * Header'a Edit Points butonu ekle
    */
-  updateCurrentPositionIndicator() {
-    if (!this.miniMap) return;
+  createHeaderButton() {
+    // Header'ı bul
+    const header = document.querySelector('header[data-testid="page-header"]');
+    if (!header) {
+      this.warn('Header bulunamadı, buton eklenemedi');
+      return;
+    }
 
-    // Önceki indicator'ı kaldır
-    const oldIndicator = this.miniMap.querySelector('.position-indicator');
-    if (oldIndicator) oldIndicator.remove();
+    // Zaten eklendiyse tekrar ekleme
+    if (header.querySelector('#claude-edit-header-btn')) {
+      return;
+    }
 
-    const pageHeight = document.documentElement.scrollHeight;
-    const scrollTop = window.scrollY;
-    const viewportHeight = window.innerHeight;
-    const miniMapHeight = 300;
+    // Sağ taraftaki action butonları konteynerını bul
+    const rightActions = header.querySelector('[data-testid="chat-actions"]')?.parentElement;
+    if (!rightActions) {
+      this.warn('Actions container bulunamadı');
+      return;
+    }
 
-    // Şu anki pozisyon
-    const currentPercentage = scrollTop / pageHeight;
-    const indicatorTop = currentPercentage * miniMapHeight;
-    const indicatorHeight = (viewportHeight / pageHeight) * miniMapHeight;
-
-    const indicator = this.dom.createElement('div', {
-      className: 'position-indicator',
+    // Edit Points butonu oluştur
+    const button = this.dom.createElement('button', {
+      id: 'claude-edit-header-btn',
+      className: 'inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 text-text-000 font-base-bold border-0.5 border-border-200 relative overflow-hidden transition duration-100 hover:border-border-300/0 bg-bg-300/0 hover:bg-bg-400 h-8 rounded-md px-3 min-w-[4rem] active:scale-[0.985] whitespace-nowrap !text-xs',
+      type: 'button',
       style: {
-        position: 'absolute',
-        top: `${indicatorTop}px`,
-        left: '0',
-        right: '0',
-        height: `${Math.max(indicatorHeight, 4)}px`,
-        background: 'rgba(255, 71, 87, 0.3)',
-        border: '1px solid rgba(255, 71, 87, 0.6)',
-        pointerEvents: 'none',
+        display: 'none', // Başlangıçta gizli (edit yoksa)
       }
     });
 
-    this.miniMap.appendChild(indicator);
+    // İçerik
+    const content = this.dom.createElement('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+      }
+    });
+
+    const icon = this.dom.createElement('span', {
+      textContent: '✏️',
+      style: {
+        fontSize: '14px',
+      }
+    });
+
+    const label = this.dom.createElement('span', {
+      id: 'claude-edit-header-label',
+      textContent: 'Edit Points',
+    });
+
+    content.appendChild(icon);
+    content.appendChild(label);
+    button.appendChild(content);
+
+    // Click handler - toggle floating panel
+    button.addEventListener('click', () => {
+      this.toggleFloatingPanel();
+    });
+
+    // Share butonundan önce ekle
+    rightActions.insertBefore(button, rightActions.firstChild);
+    this.elements.headerButton = button;
+
+    this.log('✅ Header butonu eklendi');
+  }
+
+  /**
+   * Header butonunu güncelle
+   */
+  updateHeaderButton() {
+    const button = this.elements.headerButton;
+    if (!button) return;
+
+    const label = button.querySelector('#claude-edit-header-label');
+    if (!label) return;
+
+    // Edit sayısına göre göster/gizle
+    if (this.editedMessages.length > 0) {
+      button.style.display = 'inline-flex';
+      label.textContent = `${this.editedMessages.length} Edit${this.editedMessages.length > 1 ? 's' : ''}`;
+    } else {
+      button.style.display = 'none';
+    }
   }
 
   /**
