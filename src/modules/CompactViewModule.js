@@ -39,10 +39,13 @@ class CompactViewModule extends BaseModule {
     this.processMessages();
 
     // Auto collapse açıksa tüm mesajları daralt
-    if (this.getSetting('autoCollapseEnabled')) {
+    const autoCollapseEnabled = this.getSetting('autoCollapseEnabled');
+    this.log(`[Auto Collapse] Durum: ${autoCollapseEnabled ? '✅ ACIK' : '❌ KAPALI'}`);
+    
+    if (autoCollapseEnabled) {
       setTimeout(() => {
-        this.collapseAllMessages();
-        this.log('🔄 Auto collapse etkin - tüm mesajlar daraltıldı');
+        const count = this.collapseAllMessages();
+        this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
       }, 500);
     }
 
@@ -50,7 +53,7 @@ class CompactViewModule extends BaseModule {
     this.observeMessages();
 
     // Klavye kısayolu
-    if (this.settings.keyboardShortcuts) {
+    if (this.getSetting('keyboardShortcuts')) {
       this.setupKeyboardShortcuts();
     }
 
@@ -87,7 +90,7 @@ class CompactViewModule extends BaseModule {
 
     // Auto-collapse açıksa otomatik collapse et (init sırasında değil, yeni mesajlar için)
     // Init sırasında tüm mesajlar collapseAllMessages() ile daraltılır
-    if (this.settings.autoCollapse) {
+    if (this.getSetting('autoCollapse')) {
       this.collapse.collapseMessage(messageElement);
     }
 
@@ -251,7 +254,8 @@ class CompactViewModule extends BaseModule {
     this.log('⚙️ Settings değişti');
     
     // AutoCollapseEnabled değişti mi?
-    if (settings.autoCollapseEnabled !== undefined && settings.autoCollapseEnabled) {
+    const compactViewSettings = settings.compactView || {};
+    if (compactViewSettings.autoCollapseEnabled !== undefined && compactViewSettings.autoCollapseEnabled) {
       // Tüm mesajları daralt
       this.collapseAllMessages();
     }

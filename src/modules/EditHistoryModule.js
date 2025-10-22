@@ -86,6 +86,14 @@ class EditHistoryModule extends BaseModule {
     this.ui.updateHeaderButton(this.editedMessages.length);
     this.panel.updateContent(this.editedMessages);
 
+    // Tümünü Daralt buttonunu göster/gizle
+    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    if (compactViewEnabled && this.editedMessages.length > 0) {
+      this.ui.showCollapseAllButton(true);
+    } else {
+      this.ui.showCollapseAllButton(false);
+    }
+
     // Event
     if (this.editedMessages.length !== oldCount) {
       this.log(`🔄 Toplam edit: ${oldCount} → ${this.editedMessages.length}`);
