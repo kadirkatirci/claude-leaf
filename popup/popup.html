@@ -18,6 +18,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="navigation" title="Navigation">🧭</button>
       <button class="tab" data-tab="editHistory" title="Edit History">✏️</button>
+      <button class="tab" data-tab="compactView" title="Compact View">📦</button>
       <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
       <button class="tab" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
@@ -124,6 +125,63 @@
             <li>Header'da "Edit Points" butonu görünür</li>
             <li>Butona tıklayarak edit listesini görün</li>
             <li>Renk teması Genel ayarlardan değiştirilir</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-compactView">
+      <div class="section">
+        <div class="section-header">
+          <h2>Compact View</h2>
+          <label class="toggle">
+            <input type="checkbox" id="compactView-enabled">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-item">
+            <label for="compact-autoCollapse">Otomatik Collapse</label>
+            <label class="toggle">
+              <input type="checkbox" id="compact-autoCollapse" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="compact-keyboard">Klavye Kısayolları</label>
+            <label class="toggle">
+              <input type="checkbox" id="compact-keyboard" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="compact-minLines">Minimum Satır Sayısı (Collapse için)</label>
+            <input type="number" id="compact-minLines" value="10" min="5" max="50" step="1">
+          </div>
+
+          <div class="setting-item">
+            <label for="compact-previewLines">Collapsed Durumda Gösterilecek Satır Sayısı</label>
+            <input type="number" id="compact-previewLines" value="3" min="1" max="10" step="1">
+          </div>
+        </div>
+
+        <div class="keyboard-shortcuts">
+          <h3>⌚️ Klavye Kısayolları</h3>
+          <ul>
+            <li><kbd>Alt</kbd> + <kbd>E</kbd> - Odaklanmış mesajı expand/collapse et</li>
+          </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Nasıl Çalışır?</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li>Uzun Claude yanıtları otomatik olarak collapse edilir</li>
+            <li>Her mesajın yanında expand butonu görünür</li>
+            <li>Minimum satır sayısını aşan mesajlar collapse edilebilir</li>
+            <li>Collapsed durumda ilk birkaç satır gösterilir</li>
           </ul>
         </div>
       </div>

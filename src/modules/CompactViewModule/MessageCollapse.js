@@ -14,10 +14,14 @@ class MessageCollapse {
    * Mesajın collapse edilip edilmeyeceğini kontrol et
    */
   shouldCollapse(messageElement) {
-    const minHeight = this.settings.minHeight || 300;
-    const height = messageElement.scrollHeight;
+    const settings = this.settings();
+    const minLines = settings.minLines || 10;
     
-    return height > minHeight;
+    // Satır sayısını hesapla (yaklaşık 24px per line)
+    const lineHeight = 24;
+    const lines = Math.floor(messageElement.scrollHeight / lineHeight);
+    
+    return lines > minLines;
   }
 
   /**
@@ -28,8 +32,9 @@ class MessageCollapse {
       return; // Zaten collapsed
     }
 
-    const previewLines = this.settings.previewLines || 10;
-    const fadeHeight = this.settings.fadeHeight || 50;
+    const settings = this.settings();
+    const previewLines = settings.previewLines || 3;
+    const fadeHeight = 50;
     
     // Wrapper oluştur
     const wrapper = DOMUtils.createElement('div', {

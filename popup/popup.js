@@ -56,6 +56,13 @@ function getDefaultSettings() {
       showBadges: true,
       highlightEdited: true,
     },
+    compactView: {
+      enabled: false,
+      autoCollapse: true,
+      keyboardShortcuts: true,
+      minLines: 10,
+      previewLines: 3,
+    },
     export: {
       enabled: false,
       defaultFormat: 'markdown',
@@ -85,6 +92,13 @@ function updateUI() {
   document.getElementById('editHistory-enabled').checked = currentSettings.editHistory.enabled;
   document.getElementById('edit-badges').checked = currentSettings.editHistory.showBadges;
   document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
+  
+  // Compact View settings
+  document.getElementById('compactView-enabled').checked = currentSettings.compactView.enabled;
+  document.getElementById('compact-autoCollapse').checked = currentSettings.compactView.autoCollapse;
+  document.getElementById('compact-keyboard').checked = currentSettings.compactView.keyboardShortcuts;
+  document.getElementById('compact-minLines').value = currentSettings.compactView.minLines;
+  document.getElementById('compact-previewLines').value = currentSettings.compactView.previewLines;
   
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
@@ -132,6 +146,31 @@ function setupEventListeners() {
   // Edit highlight
   document.getElementById('edit-highlight').addEventListener('change', (e) => {
     currentSettings.editHistory.highlightEdited = e.target.checked;
+  });
+
+  // Compact View enabled toggle
+  document.getElementById('compactView-enabled').addEventListener('change', (e) => {
+    currentSettings.compactView.enabled = e.target.checked;
+  });
+
+  // Compact auto-collapse
+  document.getElementById('compact-autoCollapse').addEventListener('change', (e) => {
+    currentSettings.compactView.autoCollapse = e.target.checked;
+  });
+
+  // Compact keyboard shortcuts
+  document.getElementById('compact-keyboard').addEventListener('change', (e) => {
+    currentSettings.compactView.keyboardShortcuts = e.target.checked;
+  });
+
+  // Compact min lines
+  document.getElementById('compact-minLines').addEventListener('input', (e) => {
+    currentSettings.compactView.minLines = parseInt(e.target.value);
+  });
+
+  // Compact preview lines
+  document.getElementById('compact-previewLines').addEventListener('input', (e) => {
+    currentSettings.compactView.previewLines = parseInt(e.target.value);
   });
 
   // Nav position

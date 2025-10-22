@@ -42,7 +42,7 @@ class CompactViewModule extends BaseModule {
     this.observeMessages();
 
     // Klavye kısayolu
-    if (this.getSetting('keyboardShortcuts')) {
+    if (this.settings.keyboardShortcuts) {
       this.setupKeyboardShortcuts();
     }
 
@@ -78,7 +78,7 @@ class CompactViewModule extends BaseModule {
     }
 
     // Auto-collapse açıksa otomatik collapse et
-    if (this.getSetting('autoCollapse')) {
+    if (this.settings.autoCollapse) {
       this.collapse.collapseMessage(messageElement);
     }
 
