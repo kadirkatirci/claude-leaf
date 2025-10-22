@@ -6,8 +6,7 @@ import settingsManager from './utils/SettingsManager.js';
 import { eventBus, Events } from './utils/EventBus.js';
 import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
-// Future imports:
-// import TOCModule from './modules/TOCModule.js';
+import CompactViewModule from './modules/CompactViewModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -57,10 +56,8 @@ class ClaudeProductivityApp {
     // Edit History
     this.registerModule('editHistory', new EditHistoryModule());
 
-    // TODO: Gelecekteki modüller
-    // this.registerModule('toc', new TOCModule());
-    // this.registerModule('export', new ExportModule());
-    // this.registerModule('search', new SearchModule());
+    // Compact View
+    this.registerModule('compactView', new CompactViewModule());
   }
 
   /**

@@ -26,11 +26,21 @@ class SettingsManager {
         showOnHover: false,
       },
       
-      // Edit History (future)
+      // Edit History
       editHistory: {
         enabled: false,
         showBadges: true,
         highlightEdited: true,
+      },
+      
+      // Compact View
+      compactView: {
+        enabled: false,
+        minHeight: 300,
+        previewLines: 10,
+        fadeHeight: 50,
+        autoCollapse: true,
+        keyboardShortcuts: true,
       },
       
       // Export (future)
