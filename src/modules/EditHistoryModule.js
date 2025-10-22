@@ -370,72 +370,77 @@ class EditHistoryModule extends BaseModule {
 
   /**
    * Header'a Edit Points butonu ekle
+   * Chat title'ın yanına ekler (daha robust)
    */
   createHeaderButton() {
-    // Header'ı bul
-    const header = document.querySelector('header[data-testid="page-header"]');
-    if (!header) {
-      this.warn('Header bulunamadı, buton eklenemedi');
+    // Chat title butonunu bul
+    const chatTitleButton = document.querySelector('[data-testid="chat-title-button"]');
+    if (!chatTitleButton) {
+      this.warn('Chat title button bulunamadı, tekrar denenecek...');
+      setTimeout(() => this.createHeaderButton(), 1000);
       return;
     }
 
     // Zaten eklendiyse tekrar ekleme
-    if (header.querySelector('#claude-edit-header-btn')) {
+    if (document.querySelector('#claude-edit-header-btn')) {
       return;
     }
 
-    // Sağ taraftaki action butonları konteynerını bul
-    const rightActions = header.querySelector('[data-testid="chat-actions"]')?.parentElement;
-    if (!rightActions) {
-      this.warn('Actions container bulunamadı');
+    // Chat title'ın parent container'ını bul
+    const titleContainer = chatTitleButton.parentElement;
+    if (!titleContainer) {
+      this.warn('Title container bulunamadı');
       return;
     }
+
+    // Tema renklerini al
+    const theme = this.getTheme();
 
     // Edit Points butonu oluştur
     const button = this.dom.createElement('button', {
       id: 'claude-edit-header-btn',
-      className: 'inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 text-text-000 font-base-bold border-0.5 border-border-200 relative overflow-hidden transition duration-100 hover:border-border-300/0 bg-bg-300/0 hover:bg-bg-400 h-8 rounded-md px-3 min-w-[4rem] active:scale-[0.985] whitespace-nowrap !text-xs',
       type: 'button',
       style: {
-        display: 'none', // Başlangıçta gizli (edit yoksa)
+        display: 'none', // Başlangıçta gizli
+        marginLeft: '8px',
+        padding: '4px 12px',
+        borderRadius: '8px',
+        background: theme.gradient,
+        color: 'white',
+        fontSize: '12px',
+        fontWeight: '600',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
       }
     });
 
-    // İçerik
-    const content = this.dom.createElement('div', {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-      }
+    // Icon + Label
+    button.innerHTML = '✏️ <span id="claude-edit-header-label" style="margin-left: 4px;">0 Edits</span>';
+
+    // Hover effects
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.05)';
+      button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
     });
 
-    const icon = this.dom.createElement('span', {
-      textContent: '✏️',
-      style: {
-        fontSize: '14px',
-      }
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
     });
 
-    const label = this.dom.createElement('span', {
-      id: 'claude-edit-header-label',
-      textContent: 'Edit Points',
-    });
-
-    content.appendChild(icon);
-    content.appendChild(label);
-    button.appendChild(content);
-
-    // Click handler - toggle floating panel
-    button.addEventListener('click', () => {
+    // Click - toggle panel
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.toggleFloatingPanel();
     });
 
-    // Share butonundan önce ekle
-    rightActions.insertBefore(button, rightActions.firstChild);
+    // Chat title'ın yanına ekle
+    titleContainer.appendChild(button);
     this.elements.headerButton = button;
 
-    this.log('✅ Header butonu eklendi');
+    this.log('✅ Edit Points butonu chat title yanına eklendi');
   }
 
   /**
