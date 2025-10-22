@@ -1,0 +1,15 @@
+{
+  "name": "claude-productivity-extension",
+  "version": "1.0.9",
+  "description": "Claude productivity tools extension",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "dev": "rollup -c -w"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "rollup": "^4.9.6"
+  }
+}
