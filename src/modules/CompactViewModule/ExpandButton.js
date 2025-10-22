@@ -21,7 +21,7 @@ class ExpandButton {
       style: {
         display: 'inline-flex',
         gap: '8px',
-        marginLeft: '8px',
+        // marginLeft kaldırıldı - parent'ta gap var
       }
     });
 
@@ -72,7 +72,6 @@ class ExpandButton {
     this.remove(messageElement);
     
     // Mesajın en üst parent container'ını bul
-    // (wrapper içine alındığında bile erişilebilir olacak)
     let targetContainer = messageElement;
     
     // Eğer mesaj wrapper içindeyse, wrapper'ın parent'ını kullan
@@ -83,20 +82,26 @@ class ExpandButton {
     // Claude'un edit butonlarını bul
     const editButtonContainer = targetContainer.querySelector('[data-testid="composer-parent"]')?.parentElement;
     
-    if (editButtonContainer) {
-      // Edit butonunun yanına ekle
+    // Son mesaj mı kontrol et (streaming olmayan son mesaj)
+    const allMessages = document.querySelectorAll('[data-is-streaming="false"]');
+    const isLastMessage = allMessages[allMessages.length - 1] === messageElement;
+    
+    if (editButtonContainer && !isLastMessage) {
+      // Son mesaj DEĞİLSE edit butonunun yanına ekle
       editButtonContainer.style.display = 'flex';
       editButtonContainer.style.alignItems = 'center';
       editButtonContainer.style.flexWrap = 'wrap';
+      editButtonContainer.style.gap = '8px';
       editButtonContainer.appendChild(expandButton);
     } else {
-      // Edit buton yoksa mesajın altına ekle
+      // Son mesajsa VEYA edit buton yoksa mesajın altına ayrı footer ekle
       const footer = DOMUtils.createElement('div', {
         className: 'claude-expand-footer',
         style: {
           marginTop: '12px',
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'flex-start', // Sola hizala
+          paddingLeft: '8px',
         }
       });
       footer.appendChild(expandButton);
