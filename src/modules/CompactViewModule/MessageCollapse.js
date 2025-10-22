@@ -15,7 +15,7 @@ class MessageCollapse {
    */
   shouldCollapse(messageElement) {
     const settings = this.settings();
-    const minLines = settings.minLines || 10;
+    const minLines = settings.minLines || 30;
     
     // Satır sayısını hesapla (yaklaşık 24px per line)
     const lineHeight = 24;
@@ -33,8 +33,17 @@ class MessageCollapse {
     }
 
     const settings = this.settings();
-    const previewLines = settings.previewLines || 3;
-    const fadeHeight = 50;
+    const previewLines = settings.previewLines || 8;
+    const fadeHeight = 120; // Daha uzun fade için
+    
+    // Arka plan rengini otomatik tespit et (light/dark mode için)
+    const bgColor = window.getComputedStyle(messageElement.parentElement).backgroundColor || 'rgb(255, 255, 255)';
+    
+    // RGB değerlerini parse et
+    const rgbMatch = bgColor.match(/\d+/g);
+    const r = rgbMatch ? rgbMatch[0] : 255;
+    const g = rgbMatch ? rgbMatch[1] : 255;
+    const b = rgbMatch ? rgbMatch[2] : 255;
     
     // Wrapper oluştur
     const wrapper = DOMUtils.createElement('div', {
@@ -47,7 +56,7 @@ class MessageCollapse {
       }
     });
 
-    // Fade overlay
+    // Daha yumuşak ve şeffaf fade overlay - dinamik arka plan
     const fadeOverlay = DOMUtils.createElement('div', {
       className: 'claude-collapse-fade',
       style: {
@@ -56,7 +65,7 @@ class MessageCollapse {
         left: '0',
         right: '0',
         height: `${fadeHeight}px`,
-        background: 'linear-gradient(to bottom, transparent, white)',
+        background: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0) 0%, rgba(${r}, ${g}, ${b}, 0.7) 50%, rgba(${r}, ${g}, ${b}, 0.95) 100%)`,
         pointerEvents: 'none',
       }
     });

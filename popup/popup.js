@@ -82,8 +82,8 @@ function getDefaultSettings() {
       enabled: false,
       autoCollapse: true,
       keyboardShortcuts: true,
-      minLines: 10,
-      previewLines: 3,
+      minLines: 30,
+      previewLines: 8,
     },
     export: {
       enabled: false,
@@ -120,8 +120,8 @@ function updateUI() {
   document.getElementById('compactView-enabled').checked = compactView.enabled || false;
   document.getElementById('compact-autoCollapse').checked = compactView.autoCollapse !== undefined ? compactView.autoCollapse : true;
   document.getElementById('compact-keyboard').checked = compactView.keyboardShortcuts !== undefined ? compactView.keyboardShortcuts : true;
-  document.getElementById('compact-minLines').value = compactView.minLines || 10;
-  document.getElementById('compact-previewLines').value = compactView.previewLines || 3;
+  document.getElementById('compact-minLines').value = compactView.minLines || 30;
+  document.getElementById('compact-previewLines').value = compactView.previewLines || 8;
   
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
