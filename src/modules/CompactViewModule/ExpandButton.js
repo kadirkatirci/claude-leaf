@@ -65,53 +65,37 @@ class ExpandButton {
   }
 
   /**
-   * Edit butonunu bul ve yanına ekle
+   * Expand butonunu mesajın altına ekle
    */
   insertNextToEditButton(messageElement, expandButton) {
     // Önce mevcut butonu kaldır (varsa)
     this.remove(messageElement);
     
-    // Mesajın en üst parent container'ını bul
+    // Mesajın hedef container'ını bul
     let targetContainer = messageElement;
     
-    // Eğer mesaj wrapper içindeyse, wrapper'ın parent'ını kullan
+    // Eğer mesaj wrapper içindeyse, wrapper'ı kullan
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       targetContainer = messageElement.parentElement;
     }
     
-    // Claude'un edit butonlarını bul
-    const editButtonContainer = targetContainer.querySelector('[data-testid="composer-parent"]')?.parentElement;
-    
-    // Son mesaj mı kontrol et (streaming olmayan son mesaj)
-    const allMessages = document.querySelectorAll('[data-is-streaming="false"]');
-    const isLastMessage = allMessages[allMessages.length - 1] === messageElement;
-    
-    if (editButtonContainer && !isLastMessage) {
-      // Son mesaj DEĞİLSE edit butonunun yanına ekle
-      editButtonContainer.style.display = 'flex';
-      editButtonContainer.style.alignItems = 'center';
-      editButtonContainer.style.flexWrap = 'wrap';
-      editButtonContainer.style.gap = '8px';
-      editButtonContainer.appendChild(expandButton);
-    } else {
-      // Son mesajsa VEYA edit buton yoksa mesajın altına ayrı footer ekle
-      const footer = DOMUtils.createElement('div', {
-        className: 'claude-expand-footer',
-        style: {
-          marginTop: '12px',
-          display: 'flex',
-          justifyContent: 'flex-start', // Sola hizala
-          paddingLeft: '8px',
-        }
-      });
-      footer.appendChild(expandButton);
-      
-      // Mesajın hemen sonrasına ekle (wrapper dışında)
-      if (targetContainer.parentElement) {
-        targetContainer.parentElement.insertBefore(footer, targetContainer.nextSibling);
-      } else {
-        targetContainer.appendChild(footer);
+    // Tüm mesajlar için ayrı footer oluştur (tutarlı görünüm)
+    const footer = DOMUtils.createElement('div', {
+      className: 'claude-expand-footer',
+      style: {
+        marginTop: '12px',
+        display: 'flex',
+        justifyContent: 'flex-start',
+        paddingLeft: '8px',
       }
+    });
+    footer.appendChild(expandButton);
+    
+    // Mesajın hemen sonrasına ekle (wrapper dışında)
+    if (targetContainer.parentElement) {
+      targetContainer.parentElement.insertBefore(footer, targetContainer.nextSibling);
+    } else {
+      targetContainer.appendChild(footer);
     }
   }
 
@@ -119,26 +103,13 @@ class ExpandButton {
    * Butonu kaldır
    */
   remove(messageElement) {
-    // Mesaj içindeki butonu ara
-    let button = messageElement.querySelector('.claude-expand-button-container');
-    if (button) {
-      button.remove();
-    }
-    
-    // Wrapper içindeki butonu ara
-    if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
-      button = messageElement.parentElement.querySelector('.claude-expand-button-container');
-      if (button) {
-        button.remove();
-      }
-    }
-    
-    // Footer'daki butonu ara ve footer'ı da kaldır
+    // Mesaj container'ını bul
     let current = messageElement;
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       current = messageElement.parentElement;
     }
     
+    // Footer'ı bul ve kaldır
     const nextSibling = current.nextElementSibling;
     if (nextSibling?.classList.contains('claude-expand-footer')) {
       nextSibling.remove();
