@@ -201,6 +201,21 @@ class EditUI {
   }
 
   /**
+   * Tümünü Daralt buttonunun state'ini ayarla
+   * @param {boolean} isCollapsed - true ise mesajlar daraltılı, "Genişlet" göster
+   */
+  setCollapsedState(isCollapsed) {
+    this.isAllCollapsed = isCollapsed;
+    
+    if (this.collapseAllButton) {
+      const label = this.collapseAllButton.querySelector('#claude-collapse-all-label');
+      if (label) {
+        label.textContent = isCollapsed ? 'Tümünü Genişlet' : 'Tümünü Daralt';
+      }
+    }
+  }
+
+  /**
    * Header button'u kaldır
    */
   removeHeaderButton() {

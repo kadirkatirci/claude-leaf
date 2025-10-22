@@ -90,6 +90,12 @@ class EditHistoryModule extends BaseModule {
     const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
     if (compactViewEnabled && this.editedMessages.length > 0) {
       this.ui.showCollapseAllButton(true);
+      
+      // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
+      const autoCollapseEnabled = this.settings && this.settings.compactView && this.settings.compactView.autoCollapseEnabled;
+      if (autoCollapseEnabled) {
+        this.ui.setCollapsedState(true); // true = mesajlar daraltılı = "Tümünü Genişlet" göster
+      }
     } else {
       this.ui.showCollapseAllButton(false);
     }
@@ -155,6 +161,13 @@ class EditHistoryModule extends BaseModule {
     const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
     if (compactViewEnabled && this.editedMessages.length > 0) {
       this.ui.showCollapseAllButton(true);
+      
+      // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
+      const autoCollapseEnabled = this.settings && this.settings.compactView && this.settings.compactView.autoCollapseEnabled;
+      if (autoCollapseEnabled) {
+        this.ui.setCollapsedState(true); // true = mesajlar daraltılı = "Tümünü Genişlet" göster
+        this.log('🔄 Auto collapse - button state güncellendi');
+      }
     } else {
       this.ui.showCollapseAllButton(false);
       this.ui.resetCollapseAllButton();

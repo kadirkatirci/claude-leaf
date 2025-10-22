@@ -212,39 +212,33 @@ class CompactViewModule extends BaseModule {
 
   /**
    * Klavye kısayolları
+   * Alt + ArrowLeft = Tümünü Daralt
+   * Alt + ArrowRight = Tümünü Genişlet
    */
   setupKeyboardShortcuts() {
     const handleKeydown = (e) => {
-      // Alt + E - Expand/Collapse focused message
-      if (e.altKey && e.key === 'e') {
+      // Alt + ArrowLeft (Sol) - Tümünü Daralt
+      if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
-        
-        // En yakın mesajı bul
-        const messages = document.querySelectorAll('[data-is-streaming="false"]');
-        const scrollY = window.scrollY + window.innerHeight / 2;
-        
-        let closestMessage = null;
-        let minDistance = Infinity;
-        
-        messages.forEach(msg => {
-          const rect = msg.getBoundingClientRect();
-          const distance = Math.abs(rect.top - scrollY);
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestMessage = msg;
-          }
-        });
-        
-        if (closestMessage) {
-          this.collapse.toggleMessage(closestMessage);
-        }
+        this.collapseAllMessages();
+        this.log('⌨️ Alt+← (Daralt)');
+      }
+      
+      // Alt + ArrowRight (Sağ) - Tümünü Genişlet
+      if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        this.expandAllMessages();
+        this.log('⌨️ Alt+→ (Genişlet)');
       }
     };
 
     document.addEventListener('keydown', handleKeydown);
+    this.keydownHandler = handleKeydown;
     this.unsubscribers.push(() => {
       document.removeEventListener('keydown', handleKeydown);
     });
+
+    this.log('⌨️ Keyboard shortcuts aktif: Alt+← (Daralt), Alt+→ (Genişlet)');
   }
 
   /**
