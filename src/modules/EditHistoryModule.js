@@ -24,7 +24,11 @@ class EditHistoryModule extends BaseModule {
     this.badge = new EditBadge(() => this.getTheme(), (el, ver) => this.modal.show(el, ver));
     this.panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
     this.modal = new EditModal();
-    this.ui = new EditUI(() => this.getTheme(), () => this.panel.toggle());
+    this.ui = new EditUI(
+      () => this.getTheme(),
+      () => this.panel.toggle(),
+      (shouldCollapse) => this.handleCollapseAll(shouldCollapse)
+    );
   }
 
   async init() {
@@ -103,6 +107,29 @@ class EditHistoryModule extends BaseModule {
   }
 
   /**
+   * Tümünü Daralt/Genişlet işlemi
+   */
+  handleCollapseAll(shouldCollapse) {
+    // CompactViewModule'ü bul
+    const app = window.claudeProductivity;
+    if (!app) return;
+
+    const compactViewModule = app.getModule('compactView');
+    if (!compactViewModule || !compactViewModule.enabled) {
+      this.warn('CompactView modülü aktif değil');
+      return;
+    }
+
+    if (shouldCollapse) {
+      compactViewModule.collapseAllMessages();
+      this.log('📦 Tüm mesajlar daraltıldı');
+    } else {
+      compactViewModule.expandAllMessages();
+      this.log('📂 Tüm mesajlar genişletildi');
+    }
+  }
+
+  /**
    * Settings değiştiğinde
    */
   onSettingsChanged(settings) {
@@ -115,6 +142,15 @@ class EditHistoryModule extends BaseModule {
     
     // Yeniden tara
     this.scanner.scan();
+    
+    // CompactView aktif mi?
+    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    if (compactViewEnabled && this.editedMessages.length > 0) {
+      this.ui.showCollapseAllButton(true);
+    } else {
+      this.ui.showCollapseAllButton(false);
+      this.ui.resetCollapseAllButton();
+    }
   }
 
   /**

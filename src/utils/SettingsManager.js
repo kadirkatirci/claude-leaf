@@ -40,6 +40,7 @@ class SettingsManager {
         previewLines: 10,
         fadeHeight: 50,
         autoCollapse: true,
+        autoCollapseEnabled: false,
         keyboardShortcuts: true,
       },
       

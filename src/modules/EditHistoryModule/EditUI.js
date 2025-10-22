@@ -4,10 +4,13 @@
 import DOMUtils from '../../utils/DOMUtils.js';
 
 class EditUI {
-  constructor(getTheme, onButtonClick) {
+  constructor(getTheme, onButtonClick, onCollapseAllClick) {
     this.getTheme = getTheme;
     this.onButtonClick = onButtonClick;
+    this.onCollapseAllClick = onCollapseAllClick;
     this.headerButton = null;
+    this.collapseAllButton = null;
+    this.isAllCollapsed = false;
   }
 
   /**
@@ -74,6 +77,9 @@ class EditUI {
     titleContainer.appendChild(button);
     this.headerButton = button;
 
+    // Tümünü Daralt butonu
+    this.createCollapseAllButton(titleContainer, theme);
+
     console.log('[EditUI] ✅ Header button eklendi');
   }
 
@@ -112,12 +118,99 @@ class EditUI {
   }
 
   /**
+   * Tümünü Daralt/Genişlet butonu oluştur
+   */
+  createCollapseAllButton(titleContainer, theme) {
+    if (document.querySelector('#claude-collapse-all-btn')) {
+      return;
+    }
+
+    const button = DOMUtils.createElement('button', {
+      id: 'claude-collapse-all-btn',
+      type: 'button',
+      style: {
+        display: 'none',
+        marginLeft: '8px',
+        padding: '4px 12px',
+        borderRadius: '8px',
+        background: theme.gradient,
+        color: 'white',
+        fontSize: '12px',
+        fontWeight: '600',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+      }
+    });
+
+    button.innerHTML = '📦 <span id="claude-collapse-all-label" style="margin-left: 4px;">Tümünü Daralt</span>';
+
+    // Hover
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.05)';
+      button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+    });
+
+    // Click
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.isAllCollapsed = !this.isAllCollapsed;
+      
+      const label = button.querySelector('#claude-collapse-all-label');
+      if (this.isAllCollapsed) {
+        label.textContent = 'Tümünü Genişlet';
+      } else {
+        label.textContent = 'Tümünü Daralt';
+      }
+      
+      this.onCollapseAllClick(this.isAllCollapsed);
+    });
+
+    titleContainer.appendChild(button);
+    this.collapseAllButton = button;
+
+    console.log('[EditUI] ✅ Tümünü Daralt butonu eklendi');
+  }
+
+  /**
+   * Tümünü Daralt buttonunu göster/gizle
+   */
+  showCollapseAllButton(show) {
+    if (this.collapseAllButton) {
+      this.collapseAllButton.style.display = show ? 'inline-flex' : 'none';
+    }
+  }
+
+  /**
+   * Tümünü Daralt buttonunun state'ini sıfırla
+   */
+  resetCollapseAllButton() {
+    if (this.collapseAllButton) {
+      this.isAllCollapsed = false;
+      const label = this.collapseAllButton.querySelector('#claude-collapse-all-label');
+      if (label) {
+        label.textContent = 'Tümünü Daralt';
+      }
+    }
+  }
+
+  /**
    * Header button'u kaldır
    */
   removeHeaderButton() {
     if (this.headerButton) {
       this.headerButton.remove();
       this.headerButton = null;
+    }
+    if (this.collapseAllButton) {
+      this.collapseAllButton.remove();
+      this.collapseAllButton = null;
     }
   }
 }

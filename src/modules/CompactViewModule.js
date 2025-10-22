@@ -38,6 +38,14 @@ class CompactViewModule extends BaseModule {
     // Mevcut mesajları işle
     this.processMessages();
 
+    // Auto collapse açıksa tüm mesajları daralt
+    if (this.getSetting('autoCollapseEnabled')) {
+      setTimeout(() => {
+        this.collapseAllMessages();
+        this.log('🔄 Auto collapse etkin - tüm mesajlar daraltıldı');
+      }, 500);
+    }
+
     // Yeni mesajları izle
     this.observeMessages();
 
@@ -77,7 +85,8 @@ class CompactViewModule extends BaseModule {
       return;
     }
 
-    // Auto-collapse açıksa otomatik collapse et
+    // Auto-collapse açıksa otomatik collapse et (init sırasında değil, yeni mesajlar için)
+    // Init sırasında tüm mesajlar collapseAllMessages() ile daraltılır
     if (this.settings.autoCollapse) {
       this.collapse.collapseMessage(messageElement);
     }
@@ -145,6 +154,60 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
+   * Tüm mesajları daralt
+   */
+  collapseAllMessages() {
+    const messages = document.querySelectorAll('[data-is-streaming="false"]');
+    let collapsedCount = 0;
+
+    messages.forEach(message => {
+      // User mesajlarını atla
+      if (message.querySelector('[data-testid="user-message"]')) return;
+
+      // Collapse edilmeli mi?
+      if (this.collapse.shouldCollapse(message)) {
+        const wasCollapsed = this.collapse.isCollapsed(message);
+        
+        // Zaten collapsed değilse, collapse et
+        if (!wasCollapsed) {
+          this.collapse.collapseMessage(message);
+          collapsedCount++;
+        }
+      }
+    });
+
+    this.log(`📦 ${collapsedCount} mesaj daraltıldı`);
+    return collapsedCount;
+  }
+
+  /**
+   * Tüm mesajları genişlet
+   */
+  expandAllMessages() {
+    const messages = document.querySelectorAll('[data-is-streaming="false"]');
+    let expandedCount = 0;
+
+    messages.forEach(message => {
+      // User mesajlarını atla
+      if (message.querySelector('[data-testid="user-message"]')) return;
+
+      // Expand edilmeli mi?
+      if (this.collapse.shouldCollapse(message)) {
+        const wasCollapsed = this.collapse.isCollapsed(message);
+        
+        // Zaten collapsed ise, expand et
+        if (wasCollapsed) {
+          this.collapse.expandMessage(message);
+          expandedCount++;
+        }
+      }
+    });
+
+    this.log(`📂 ${expandedCount} mesaj genişletildi`);
+    return expandedCount;
+  }
+
+  /**
    * Klavye kısayolları
    */
   setupKeyboardShortcuts() {
@@ -186,6 +249,12 @@ class CompactViewModule extends BaseModule {
    */
   onSettingsChanged(settings) {
     this.log('⚙️ Settings değişti');
+    
+    // AutoCollapseEnabled değişti mi?
+    if (settings.autoCollapseEnabled !== undefined && settings.autoCollapseEnabled) {
+      // Tüm mesajları daralt
+      this.collapseAllMessages();
+    }
     
     // Mesajları yeniden işle
     this.processedMessages = new WeakSet();
