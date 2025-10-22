@@ -22,7 +22,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
-      currentSettings = result.settings || getDefaultSettings();
+      const savedSettings = result.settings || {};
+      const defaultSettings = getDefaultSettings();
+      
+      // Deep merge: default settings + saved settings
+      currentSettings = deepMerge(defaultSettings, savedSettings);
+      
       console.log('Settings yüklendi:', currentSettings);
       
       // UI'ı güncelle
@@ -30,6 +35,23 @@ async function loadSettings() {
       resolve();
     });
   });
+}
+
+/**
+ * Deep merge iki objeyi birleştirir
+ */
+function deepMerge(target, source) {
+  const result = { ...target };
+  
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  
+  return result;
 }
 
 /**
@@ -94,11 +116,12 @@ function updateUI() {
   document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
   
   // Compact View settings
-  document.getElementById('compactView-enabled').checked = currentSettings.compactView.enabled;
-  document.getElementById('compact-autoCollapse').checked = currentSettings.compactView.autoCollapse;
-  document.getElementById('compact-keyboard').checked = currentSettings.compactView.keyboardShortcuts;
-  document.getElementById('compact-minLines').value = currentSettings.compactView.minLines;
-  document.getElementById('compact-previewLines').value = currentSettings.compactView.previewLines;
+  const compactView = currentSettings.compactView || {};
+  document.getElementById('compactView-enabled').checked = compactView.enabled || false;
+  document.getElementById('compact-autoCollapse').checked = compactView.autoCollapse !== undefined ? compactView.autoCollapse : true;
+  document.getElementById('compact-keyboard').checked = compactView.keyboardShortcuts !== undefined ? compactView.keyboardShortcuts : true;
+  document.getElementById('compact-minLines').value = compactView.minLines || 10;
+  document.getElementById('compact-previewLines').value = compactView.previewLines || 3;
   
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
@@ -150,26 +173,31 @@ function setupEventListeners() {
 
   // Compact View enabled toggle
   document.getElementById('compactView-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.compactView) currentSettings.compactView = {};
     currentSettings.compactView.enabled = e.target.checked;
   });
 
   // Compact auto-collapse
   document.getElementById('compact-autoCollapse').addEventListener('change', (e) => {
+    if (!currentSettings.compactView) currentSettings.compactView = {};
     currentSettings.compactView.autoCollapse = e.target.checked;
   });
 
   // Compact keyboard shortcuts
   document.getElementById('compact-keyboard').addEventListener('change', (e) => {
+    if (!currentSettings.compactView) currentSettings.compactView = {};
     currentSettings.compactView.keyboardShortcuts = e.target.checked;
   });
 
   // Compact min lines
   document.getElementById('compact-minLines').addEventListener('input', (e) => {
+    if (!currentSettings.compactView) currentSettings.compactView = {};
     currentSettings.compactView.minLines = parseInt(e.target.value);
   });
 
   // Compact preview lines
   document.getElementById('compact-previewLines').addEventListener('input', (e) => {
+    if (!currentSettings.compactView) currentSettings.compactView = {};
     currentSettings.compactView.previewLines = parseInt(e.target.value);
   });
 
@@ -261,7 +289,11 @@ function setupTabs() {
 
       // Seçili tab'ı aktif yap
       tab.classList.add('active');
-      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      const targetContent = document.getElementById(`tab-${tabName}`);
+      
+      if (targetContent) {
+        targetContent.classList.remove('hidden');
+      }
     });
   });
 }
