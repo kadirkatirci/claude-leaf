@@ -102,7 +102,46 @@ class CompactViewModule extends BaseModule {
    */
   onMessageStateChanged(messageElement, isCollapsed) {
     this.log(`Mesaj ${isCollapsed ? 'collapsed' : 'expanded'}`);
+    
+    // Butonu güncelle
+    this.updateButtonState(messageElement, isCollapsed);
+    
     this.emit(Events.MESSAGE_COLLAPSED, { messageElement, isCollapsed });
+  }
+
+  /**
+   * Buton state'ini güncelle
+   */
+  updateButtonState(messageElement, isCollapsed) {
+    // Mesaj container'ını bul (wrapper içinde olabilir)
+    let targetContainer = messageElement;
+    if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
+      targetContainer = messageElement.parentElement;
+    }
+    
+    // Mevcut butonu bul - birkaç yerde olabilir
+    let container = targetContainer.querySelector('.claude-expand-button-container');
+    
+    // Footer'da da arayabiliriz
+    if (!container) {
+      const nextSibling = targetContainer.nextElementSibling;
+      if (nextSibling?.classList.contains('claude-expand-footer')) {
+        container = nextSibling.querySelector('.claude-expand-button-container');
+      }
+    }
+    
+    if (!container) {
+      // Buton yoksa yeni oluştur
+      const button = this.expandButton.create(messageElement, isCollapsed);
+      this.expandButton.insertNextToEditButton(messageElement, button);
+      return;
+    }
+    
+    // Mevcut butonu güncelle
+    const button = container.querySelector('.claude-expand-btn');
+    if (button) {
+      button.innerHTML = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+    }
   }
 
   /**

@@ -36,6 +36,9 @@ class MessageCollapse {
     const previewLines = settings.previewLines || 8;
     const fadeHeight = 120; // Daha uzun fade için
     
+    // Scroll position'u kaydet (scroll sorunu için)
+    const scrollY = window.scrollY;
+    
     // Arka plan rengini otomatik tespit et (light/dark mode için)
     const bgColor = window.getComputedStyle(messageElement.parentElement).backgroundColor || 'rgb(255, 255, 255)';
     
@@ -83,6 +86,11 @@ class MessageCollapse {
       originalHeight: messageElement.scrollHeight
     });
 
+    // Scroll position'u geri yükle
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY);
+    });
+
     this.onStateChange?.(messageElement, true);
   }
 
@@ -94,6 +102,9 @@ class MessageCollapse {
     if (!state) return;
 
     const { wrapper, fadeOverlay } = state;
+    
+    // Scroll position'u kaydet
+    const scrollY = window.scrollY;
 
     // Max height'ı kaldır
     wrapper.style.maxHeight = 'none';
@@ -108,6 +119,12 @@ class MessageCollapse {
       wrapper.remove();
       
       this.collapsedMessages.delete(messageElement);
+      
+      // Scroll position'u geri yükle
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
+      
       this.onStateChange?.(messageElement, false);
     }, 300);
   }
