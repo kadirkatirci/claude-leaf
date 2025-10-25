@@ -8,11 +8,13 @@ import { Events } from '../utils/EventBus.js';
 class NavigationModule extends BaseModule {
   constructor() {
     super('navigation');
-    
+
     this.messages = [];
     this.currentIndex = -1;
     this.observerTimeout = null;
     this.scrollTimeout = null;
+    this.lastCounterText = ''; // Track counter to avoid unnecessary updates
+    this.lastButtonStates = { prev: null, next: null, top: null }; // Track button states
   }
 
   async init() {
@@ -256,11 +258,18 @@ class NavigationModule extends BaseModule {
     const counter = document.getElementById('claude-nav-counter');
     if (!counter) return;
 
+    let newText;
     if (this.messages.length > 0) {
       const current = this.dom.getCurrentVisibleMessageIndex() + 1;
-      counter.textContent = `${current}/${this.messages.length}`;
+      newText = `${current}/${this.messages.length}`;
     } else {
-      counter.textContent = '0/0';
+      newText = '0/0';
+    }
+
+    // Only update if text changed
+    if (this.lastCounterText !== newText) {
+      counter.textContent = newText;
+      this.lastCounterText = newText;
     }
 
     // Butonları enable/disable et
@@ -272,21 +281,34 @@ class NavigationModule extends BaseModule {
     if (!prevBtn || !nextBtn || !topBtn) return;
 
     const currentIdx = this.dom.getCurrentVisibleMessageIndex();
-    
-    prevBtn.disabled = currentIdx === 0 || this.messages.length === 0;
-    nextBtn.disabled = currentIdx === this.messages.length - 1 || this.messages.length === 0;
-    topBtn.disabled = this.messages.length === 0;
 
-    // Disabled style
-    [prevBtn, nextBtn, topBtn].forEach(btn => {
-      if (btn.disabled) {
-        btn.style.opacity = '0.3';
-        btn.style.cursor = 'not-allowed';
-      } else {
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-      }
-    });
+    const newStates = {
+      prev: currentIdx === 0 || this.messages.length === 0,
+      next: currentIdx === this.messages.length - 1 || this.messages.length === 0,
+      top: this.messages.length === 0
+    };
+
+    // Only update if states changed
+    if (newStates.prev !== this.lastButtonStates.prev) {
+      prevBtn.disabled = newStates.prev;
+      prevBtn.style.opacity = newStates.prev ? '0.3' : '1';
+      prevBtn.style.cursor = newStates.prev ? 'not-allowed' : 'pointer';
+      this.lastButtonStates.prev = newStates.prev;
+    }
+
+    if (newStates.next !== this.lastButtonStates.next) {
+      nextBtn.disabled = newStates.next;
+      nextBtn.style.opacity = newStates.next ? '0.3' : '1';
+      nextBtn.style.cursor = newStates.next ? 'not-allowed' : 'pointer';
+      this.lastButtonStates.next = newStates.next;
+    }
+
+    if (newStates.top !== this.lastButtonStates.top) {
+      topBtn.disabled = newStates.top;
+      topBtn.style.opacity = newStates.top ? '0.3' : '1';
+      topBtn.style.cursor = newStates.top ? 'not-allowed' : 'pointer';
+      this.lastButtonStates.top = newStates.top;
+    }
   }
 
   setupKeyboardShortcuts() {
@@ -322,12 +344,13 @@ class NavigationModule extends BaseModule {
   }
 
   setupScrollListener() {
+    // Increase throttle from 100ms to 300ms for better performance
     const handleScroll = this.dom.throttle(() => {
       this.updateCounter();
-    }, 100);
+    }, 300);
 
-    window.addEventListener('scroll', handleScroll);
-    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     this.unsubscribers.push(() => {
       window.removeEventListener('scroll', handleScroll);
     });
@@ -336,33 +359,50 @@ class NavigationModule extends BaseModule {
   onSettingsChanged(settings) {
     this.log('Settings güncellendi:', settings);
 
-    // Pozisyon değişti mi?
-    if (this.elements.container) {
-      const position = settings.position || 'right';
-      this.elements.container.style.left = position === 'left' ? '30px' : 'auto';
-      this.elements.container.style.right = position === 'right' ? '30px' : 'auto';
+    // Only update position if it actually changed
+    if (this.elements.container && settings.navigation) {
+      const newPosition = settings.navigation.position || 'right';
+      const currentLeft = this.elements.container.style.left;
+      const currentRight = this.elements.container.style.right;
+
+      const shouldBeLeft = newPosition === 'left';
+      const isCurrentlyLeft = currentLeft === '30px';
+
+      if (shouldBeLeft !== isCurrentlyLeft) {
+        this.elements.container.style.left = shouldBeLeft ? '30px' : 'auto';
+        this.elements.container.style.right = shouldBeLeft ? 'auto' : '30px';
+      }
     }
 
-    // Opacity değişti mi?
-    if (this.elements.container && settings.opacity !== undefined) {
-      this.elements.container.style.opacity = settings.opacity;
+    // Only update opacity if it actually changed
+    if (this.elements.container && settings.general && settings.general.opacity !== undefined) {
+      const newOpacity = settings.general.opacity.toString();
+      if (this.elements.container.style.opacity !== newOpacity) {
+        this.elements.container.style.opacity = newOpacity;
+      }
     }
 
-    // Counter göster/gizle
+    // Counter göster/gizle - only if changed
     const counter = document.getElementById('claude-nav-counter');
-    if (counter) {
-      counter.style.display = settings.showCounter ? 'block' : 'none';
+    if (counter && settings.navigation) {
+      const shouldShow = settings.navigation.showCounter;
+      const currentDisplay = counter.style.display;
+      const targetDisplay = shouldShow ? 'block' : 'none';
+
+      if (currentDisplay !== targetDisplay) {
+        counter.style.display = targetDisplay;
+      }
     }
 
     // Klavye kısayolları değişti mi?
-    if (settings.keyboardShortcuts !== this.getSetting('keyboardShortcuts')) {
-      if (settings.keyboardShortcuts) {
+    if (settings.navigation && settings.navigation.keyboardShortcuts !== this.getSetting('keyboardShortcuts')) {
+      if (settings.navigation.keyboardShortcuts) {
         this.setupKeyboardShortcuts();
       } else if (this.keydownHandler) {
         document.removeEventListener('keydown', this.keydownHandler);
       }
     }
-    
+
     // Tema değişti mi? (general ayarlarından kontrol et)
     if (this.settings && this.settings.general) {
       this.recreateUI();
