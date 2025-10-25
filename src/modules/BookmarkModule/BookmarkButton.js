@@ -13,12 +13,16 @@ export class BookmarkButton {
    */
   addToMessages(messages, getMessageId, isBookmarked, onToggle) {
     messages.forEach((message, index) => {
-      // Skip if button already exists
-      if (this.buttons.has(message)) return;
-
       const messageId = getMessageId(message, index);
       const bookmarked = isBookmarked(messageId);
 
+      // Update existing button if it exists
+      if (this.buttons.has(message)) {
+        this.updateButton(message, bookmarked);
+        return;
+      }
+
+      // Create new button
       const button = this.createButton(message, messageId, bookmarked, onToggle);
       this.buttons.set(message, button);
     });

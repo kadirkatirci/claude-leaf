@@ -124,9 +124,11 @@ function createBookmarkCard(bookmark) {
  * Navigate to bookmarked message
  */
 function navigateToBookmark(bookmark) {
-  // Open Claude.ai with the conversation URL
+  // Open Claude.ai with the conversation URL and bookmark ID as parameter
   if (bookmark.conversationUrl) {
-    window.location.href = bookmark.conversationUrl;
+    const url = new URL(bookmark.conversationUrl);
+    url.searchParams.set('bookmark', bookmark.id);
+    window.location.href = url.toString();
   }
 }
 

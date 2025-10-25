@@ -76,7 +76,37 @@ class BookmarkModule extends BaseModule {
     // Initial UI update
     this.updateUI();
 
+    // Check if navigating from bookmarks page
+    this.checkBookmarkNavigation();
+
     this.log(`✅ ${this.bookmarks.length} bookmarks loaded`);
+  }
+
+  /**
+   * Check if we need to navigate to a specific bookmark from URL
+   */
+  checkBookmarkNavigation() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookmarkId = urlParams.get('bookmark');
+
+    if (bookmarkId) {
+      this.log('Navigating to bookmark from URL:', bookmarkId);
+
+      // Wait for messages to load, then navigate
+      setTimeout(() => {
+        const bookmark = this.bookmarks.find(b => b.id === bookmarkId);
+        if (bookmark) {
+          this.navigateToBookmark(bookmark);
+
+          // Clean up URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete('bookmark');
+          window.history.replaceState({}, '', url.toString());
+        } else {
+          this.warn('Bookmark not found:', bookmarkId);
+        }
+      }, 1000); // Give time for messages to render
+    }
   }
 
   /**
@@ -122,9 +152,15 @@ class BookmarkModule extends BaseModule {
   async addBookmark(messageElement, messageId) {
     const previewText = messageElement.textContent.trim().substring(0, 200);
 
+    // Store reliable identifiers
+    const renderCount = messageElement.getAttribute('data-test-render-count');
+    const textHash = this.hashText(previewText);
+
     const bookmark = {
       id: `bookmark-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       messageId: messageId,
+      renderCount: renderCount, // More reliable identifier
+      textHash: textHash, // Fallback identifier
       previewText: previewText,
       note: '',
       timestamp: Date.now(),
@@ -186,16 +222,43 @@ class BookmarkModule extends BaseModule {
   navigateToBookmark(bookmark) {
     const messages = this.dom.findMessages();
 
-    // Find message by ID
-    for (let i = 0; i < messages.length; i++) {
-      const messageId = this.getMessageId(messages[i], i);
-      if (messageId === bookmark.messageId) {
-        this.dom.scrollToElement(messages[i], 'center');
-        this.dom.flashClass(messages[i], 'claude-nav-highlight', 2000);
-        this.panel.toggle(); // Close panel
-        this.log('Navigated to bookmark:', bookmark.id);
-        return;
+    // Try multiple strategies to find the message
+    let foundMessage = null;
+
+    // Strategy 1: Match by render count (most reliable)
+    if (bookmark.renderCount) {
+      foundMessage = Array.from(messages).find(msg =>
+        msg.getAttribute('data-test-render-count') === bookmark.renderCount
+      );
+    }
+
+    // Strategy 2: Match by text hash
+    if (!foundMessage && bookmark.textHash) {
+      foundMessage = Array.from(messages).find(msg => {
+        const msgText = msg.textContent.trim().substring(0, 200);
+        return this.hashText(msgText) === bookmark.textHash;
+      });
+    }
+
+    // Strategy 3: Match by messageId (fallback)
+    if (!foundMessage) {
+      for (let i = 0; i < messages.length; i++) {
+        const messageId = this.getMessageId(messages[i], i);
+        if (messageId === bookmark.messageId) {
+          foundMessage = messages[i];
+          break;
+        }
       }
+    }
+
+    if (foundMessage) {
+      this.dom.scrollToElement(foundMessage, 'center');
+      this.dom.flashClass(foundMessage, 'claude-nav-highlight', 2000);
+      if (this.panel && this.panel.elements.panel && this.panel.elements.panel.style.display === 'flex') {
+        this.panel.toggle(); // Close panel if open
+      }
+      this.log('Navigated to bookmark:', bookmark.id);
+      return;
     }
 
     // Message not found
@@ -204,6 +267,19 @@ class BookmarkModule extends BaseModule {
     if (confirm('Bookmarked message not found on this page. Delete bookmark?')) {
       this.deleteBookmark(bookmark.id);
     }
+  }
+
+  /**
+   * Hash text for identification
+   */
+  hashText(text) {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      const char = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
   }
 
   /**

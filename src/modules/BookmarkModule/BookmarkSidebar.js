@@ -65,32 +65,15 @@ export class BookmarkSidebar {
 
     list.innerHTML = '';
 
-    // Add "View All" button
-    const viewAllItem = this.createViewAllLink();
+    // Only show "View All" button - no individual bookmark items
+    const viewAllItem = this.createViewAllLink(bookmarks.length);
     list.appendChild(viewAllItem);
-
-    // Show empty state if no bookmarks
-    if (bookmarks.length === 0) {
-      const empty = this.createEmptyState();
-      list.appendChild(empty);
-      return;
-    }
-
-    // Show recent 10 bookmarks
-    const recent = [...bookmarks]
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 10);
-
-    recent.forEach(bookmark => {
-      const item = this.createBookmarkItem(bookmark, onNavigate);
-      list.appendChild(item);
-    });
   }
 
   /**
    * Create "View All Bookmarks" link
    */
-  createViewAllLink() {
+  createViewAllLink(count = 0) {
     const theme = this.getTheme();
 
     const li = this.dom.createElement('li', {
@@ -121,7 +104,11 @@ export class BookmarkSidebar {
     });
 
     const innerDiv = this.dom.createElement('div', {
-      className: '-translate-x-2 w-full flex flex-row items-center justify-start gap-3',
+      className: '-translate-x-2 w-full flex flex-row items-center justify-between gap-3',
+    });
+
+    const leftSection = this.dom.createElement('div', {
+      className: 'flex items-center gap-3',
     });
 
     const icon = this.dom.createElement('div', {
@@ -133,7 +120,7 @@ export class BookmarkSidebar {
     });
 
     const textSpan = this.dom.createElement('span', {
-      className: `truncate text-sm whitespace-nowrap w-full`,
+      className: `truncate text-sm whitespace-nowrap`,
       textContent: 'View All Bookmarks',
       style: {
         color: theme.primary,
@@ -141,8 +128,30 @@ export class BookmarkSidebar {
       }
     });
 
-    innerDiv.appendChild(icon);
-    innerDiv.appendChild(textSpan);
+    leftSection.appendChild(icon);
+    leftSection.appendChild(textSpan);
+
+    // Count badge
+    if (count > 0) {
+      const badge = this.dom.createElement('span', {
+        textContent: count.toString(),
+        style: {
+          background: theme.primary,
+          color: 'white',
+          padding: '2px 8px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: '700',
+          minWidth: '20px',
+          textAlign: 'center',
+        }
+      });
+      innerDiv.appendChild(leftSection);
+      innerDiv.appendChild(badge);
+    } else {
+      innerDiv.appendChild(leftSection);
+    }
+
     link.appendChild(innerDiv);
 
     // Click handler - open bookmarks page in new tab
