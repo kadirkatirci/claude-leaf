@@ -43,7 +43,16 @@ class SettingsManager {
         autoCollapseEnabled: false,
         keyboardShortcuts: true,
       },
-      
+
+      // Bookmarks
+      bookmarks: {
+        enabled: true,
+        position: 'right', // 'left' | 'right'
+        keyboardShortcuts: true,
+        showOnHover: true,
+        storageType: 'local', // 'local' | 'sync'
+      },
+
       // Export (future)
       export: {
         enabled: false,

@@ -7,6 +7,7 @@ import { eventBus, Events } from './utils/EventBus.js';
 import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
 import CompactViewModule from './modules/CompactViewModule.js';
+import BookmarkModule from './modules/BookmarkModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -58,6 +59,9 @@ class ClaudeProductivityApp {
 
     // Compact View
     this.registerModule('compactView', new CompactViewModule());
+
+    // Bookmarks
+    this.registerModule('bookmarks', new BookmarkModule());
   }
 
   /**

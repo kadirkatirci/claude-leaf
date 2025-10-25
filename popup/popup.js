@@ -85,6 +85,13 @@ function getDefaultSettings() {
       minLines: 30,
       previewLines: 8,
     },
+    bookmarks: {
+      enabled: true,
+      position: 'right',
+      keyboardShortcuts: true,
+      showOnHover: true,
+      storageType: 'local',
+    },
     export: {
       enabled: false,
       defaultFormat: 'markdown',
@@ -122,7 +129,15 @@ function updateUI() {
   document.getElementById('compact-keyboard').checked = compactView.keyboardShortcuts !== undefined ? compactView.keyboardShortcuts : true;
   document.getElementById('compact-minLines').value = compactView.minLines || 30;
   document.getElementById('compact-previewLines').value = compactView.previewLines || 8;
-  
+
+  // Bookmarks settings
+  const bookmarks = currentSettings.bookmarks || {};
+  document.getElementById('bookmarks-enabled').checked = bookmarks.enabled !== undefined ? bookmarks.enabled : true;
+  document.getElementById('bookmarks-storageType').value = bookmarks.storageType || 'local';
+  document.getElementById('bookmarks-position').value = bookmarks.position || 'right';
+  document.getElementById('bookmarks-keyboard').checked = bookmarks.keyboardShortcuts !== undefined ? bookmarks.keyboardShortcuts : true;
+  document.getElementById('bookmarks-showOnHover').checked = bookmarks.showOnHover !== undefined ? bookmarks.showOnHover : true;
+
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
   document.getElementById('nav-counter').checked = currentSettings.navigation.showCounter;
@@ -201,6 +216,36 @@ function setupEventListeners() {
     currentSettings.compactView.previewLines = parseInt(e.target.value);
   });
 
+  // Bookmarks enabled toggle
+  document.getElementById('bookmarks-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
+    currentSettings.bookmarks.enabled = e.target.checked;
+  });
+
+  // Bookmarks storage type
+  document.getElementById('bookmarks-storageType').addEventListener('change', (e) => {
+    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
+    currentSettings.bookmarks.storageType = e.target.value;
+  });
+
+  // Bookmarks position
+  document.getElementById('bookmarks-position').addEventListener('change', (e) => {
+    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
+    currentSettings.bookmarks.position = e.target.value;
+  });
+
+  // Bookmarks keyboard shortcuts
+  document.getElementById('bookmarks-keyboard').addEventListener('change', (e) => {
+    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
+    currentSettings.bookmarks.keyboardShortcuts = e.target.checked;
+  });
+
+  // Bookmarks show on hover
+  document.getElementById('bookmarks-showOnHover').addEventListener('change', (e) => {
+    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
+    currentSettings.bookmarks.showOnHover = e.target.checked;
+  });
+
   // Nav position
   document.getElementById('nav-position').addEventListener('change', (e) => {
     currentSettings.navigation.position = e.target.value;
@@ -270,6 +315,12 @@ function setupEventListeners() {
 
   // Reset button
   document.getElementById('reset-btn').addEventListener('click', resetSettings);
+
+  // Bookmarks Export button
+  document.getElementById('bookmarks-export-btn').addEventListener('click', exportBookmarks);
+
+  // Bookmarks Import button
+  document.getElementById('bookmarks-import-btn').addEventListener('click', importBookmarks);
 }
 
 /**
@@ -360,7 +411,7 @@ function updateThemePreview(theme, customColor) {
   if (!preview) return;
 
   let gradient;
-  
+
   if (theme === 'native') {
     // Claude Native
     gradient = 'linear-gradient(135deg, #CC785C 0%, #8B7355 100%)';
@@ -381,4 +432,116 @@ function updateThemePreview(theme, customColor) {
   }
 
   preview.style.background = gradient;
+}
+
+/**
+ * Export bookmarks to JSON file
+ */
+async function exportBookmarks() {
+  try {
+    // Load bookmarks from Chrome storage
+    const result = await new Promise((resolve) => {
+      chrome.storage.local.get(['claude-bookmarks'], resolve);
+    });
+
+    const bookmarks = result['claude-bookmarks'] || [];
+
+    if (bookmarks.length === 0) {
+      showToast('Henüz bookmark yok! ⚠️', 'warning');
+      return;
+    }
+
+    // Create JSON file
+    const dataStr = JSON.stringify(bookmarks, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+
+    // Download file
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `claude-bookmarks-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`${bookmarks.length} bookmark export edildi! 📤`, 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Export başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Import bookmarks from JSON file
+ */
+async function importBookmarks() {
+  try {
+    // Create file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+
+          if (!Array.isArray(imported)) {
+            throw new Error('Invalid bookmark file format');
+          }
+
+          // Load existing bookmarks
+          const result = await new Promise((resolve) => {
+            chrome.storage.local.get(['claude-bookmarks'], resolve);
+          });
+
+          const existingBookmarks = result['claude-bookmarks'] || [];
+
+          // Merge bookmarks (avoid duplicates)
+          const existingIds = new Set(existingBookmarks.map(b => b.id));
+          const newBookmarks = imported.filter(b => !existingIds.has(b.id));
+
+          if (newBookmarks.length === 0) {
+            showToast('Hiçbir yeni bookmark bulunamadı! ⚠️', 'warning');
+            return;
+          }
+
+          const mergedBookmarks = [...existingBookmarks, ...newBookmarks];
+
+          // Save to Chrome storage
+          await new Promise((resolve) => {
+            chrome.storage.local.set({ 'claude-bookmarks': mergedBookmarks }, resolve);
+          });
+
+          showToast(`${newBookmarks.length} bookmark import edildi! 📥`, 'success');
+
+          // Notify content script to refresh
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'BOOKMARKS_UPDATED'
+              }).catch(() => {
+                console.log('Content script not ready');
+              });
+            }
+          });
+        } catch (error) {
+          console.error('Import error:', error);
+          showToast('Import başarısız: Geçersiz dosya! ❌', 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    };
+
+    input.click();
+  } catch (error) {
+    console.error('Import error:', error);
+    showToast('Import başarısız! ❌', 'error');
+  }
 }

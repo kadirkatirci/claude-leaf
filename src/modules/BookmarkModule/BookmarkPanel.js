@@ -1,0 +1,303 @@
+/**
+ * BookmarkPanel - Manages the floating bookmark panel
+ */
+export class BookmarkPanel {
+  constructor(domUtils, getTheme, getSetting) {
+    this.dom = domUtils;
+    this.getTheme = getTheme;
+    this.getSetting = getSetting;
+    this.elements = {};
+  }
+
+  /**
+   * Create the panel UI
+   */
+  create(onClose) {
+    const position = this.getSetting('position') || 'right';
+    const theme = this.getTheme();
+
+    // Panel container
+    const panel = this.dom.createElement('div', {
+      id: 'claude-bookmarks-panel',
+      className: 'claude-bookmarks-panel',
+      style: {
+        position: 'fixed',
+        [position]: '20px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: '320px',
+        maxHeight: '70vh',
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+        zIndex: '9998',
+        display: 'none',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }
+    });
+
+    // Header
+    const header = this.dom.createElement('div', {
+      className: 'claude-bookmarks-header',
+      style: {
+        padding: '16px 20px',
+        background: theme.gradient,
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        fontWeight: 'bold',
+        fontSize: '16px',
+      }
+    });
+
+    const title = this.dom.createElement('span', {
+      textContent: '🔖 Bookmarks',
+    });
+
+    const closeBtn = this.dom.createElement('button', {
+      innerHTML: '×',
+      style: {
+        background: 'transparent',
+        border: 'none',
+        color: 'white',
+        fontSize: '24px',
+        cursor: 'pointer',
+        padding: '0',
+        width: '24px',
+        height: '24px',
+        lineHeight: '24px',
+      }
+    });
+    closeBtn.addEventListener('click', onClose);
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Content area
+    const content = this.dom.createElement('div', {
+      id: 'claude-bookmarks-content',
+      className: 'claude-bookmarks-content',
+      style: {
+        padding: '16px',
+        overflowY: 'auto',
+        flex: '1',
+      }
+    });
+
+    panel.appendChild(header);
+    panel.appendChild(content);
+    document.body.appendChild(panel);
+
+    // Toggle button
+    const toggleBtn = this.createToggleButton(position, theme, onClose);
+    document.body.appendChild(toggleBtn);
+
+    this.elements = { panel, content, toggleBtn };
+    return this.elements;
+  }
+
+  /**
+   * Create toggle button
+   */
+  createToggleButton(position, theme, onToggle) {
+    const toggleBtn = this.dom.createElement('button', {
+      id: 'claude-bookmarks-toggle',
+      innerHTML: '🔖',
+      style: {
+        position: 'fixed',
+        [position]: '20px',
+        bottom: '80px',
+        width: '50px',
+        height: '50px',
+        borderRadius: '50%',
+        background: theme.gradient,
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.2s ease',
+        fontSize: '20px',
+        zIndex: '9999',
+        opacity: this.getSetting('opacity') || 0.7,
+      }
+    });
+
+    toggleBtn.addEventListener('click', onToggle);
+    toggleBtn.addEventListener('mouseenter', () => {
+      toggleBtn.style.transform = 'scale(1.1)';
+      toggleBtn.style.opacity = '1';
+    });
+    toggleBtn.addEventListener('mouseleave', () => {
+      toggleBtn.style.transform = 'scale(1)';
+      toggleBtn.style.opacity = this.getSetting('opacity') || 0.7;
+    });
+
+    return toggleBtn;
+  }
+
+  /**
+   * Toggle panel visibility
+   */
+  toggle() {
+    if (!this.elements.panel) return;
+
+    const isVisible = this.elements.panel.style.display === 'flex';
+    this.elements.panel.style.display = isVisible ? 'none' : 'flex';
+    return !isVisible;
+  }
+
+  /**
+   * Update panel content
+   */
+  updateContent(bookmarks, onNavigate, onDelete) {
+    const content = this.elements.content;
+    if (!content) return;
+
+    content.innerHTML = '';
+
+    if (bookmarks.length === 0) {
+      const empty = this.dom.createElement('div', {
+        textContent: 'Henüz bookmark yok. Bir mesaja tıklayarak bookmark ekleyin.',
+        style: {
+          textAlign: 'center',
+          color: '#666',
+          padding: '20px',
+          fontSize: '14px',
+        }
+      });
+      content.appendChild(empty);
+      return;
+    }
+
+    // Sort by date (newest first)
+    const sortedBookmarks = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
+
+    sortedBookmarks.forEach((bookmark) => {
+      const item = this.createBookmarkItem(bookmark, onNavigate, onDelete);
+      content.appendChild(item);
+    });
+  }
+
+  /**
+   * Create a bookmark item for the panel
+   */
+  createBookmarkItem(bookmark, onNavigate, onDelete) {
+    const theme = this.getTheme();
+
+    const item = this.dom.createElement('div', {
+      className: 'claude-bookmark-item',
+      style: {
+        padding: '12px',
+        marginBottom: '8px',
+        background: '#f8f9fa',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        borderLeft: `4px solid ${theme.primary}`,
+      }
+    });
+
+    // Preview text
+    const preview = this.dom.createElement('div', {
+      textContent: bookmark.previewText,
+      style: {
+        fontSize: '13px',
+        lineHeight: '1.5',
+        marginBottom: '8px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: '3',
+        WebkitBoxOrient: 'vertical',
+      }
+    });
+
+    // Metadata
+    const meta = this.dom.createElement('div', {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: '11px',
+        color: '#999',
+      }
+    });
+
+    const timestamp = this.dom.createElement('span', {
+      textContent: new Date(bookmark.timestamp).toLocaleString(),
+    });
+
+    // Delete button
+    const deleteBtn = this.dom.createElement('button', {
+      innerHTML: '🗑️',
+      style: {
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '14px',
+        padding: '4px',
+        opacity: '0.6',
+        transition: 'opacity 0.2s ease',
+      }
+    });
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onDelete(bookmark.id);
+    });
+    deleteBtn.addEventListener('mouseenter', () => {
+      deleteBtn.style.opacity = '1';
+    });
+    deleteBtn.addEventListener('mouseleave', () => {
+      deleteBtn.style.opacity = '0.6';
+    });
+
+    meta.appendChild(timestamp);
+    meta.appendChild(deleteBtn);
+
+    item.appendChild(preview);
+    item.appendChild(meta);
+
+    // Click to navigate
+    item.addEventListener('click', () => onNavigate(bookmark));
+
+    // Hover effect
+    item.addEventListener('mouseenter', () => {
+      item.style.background = '#e9ecef';
+      item.style.transform = 'translateX(-4px)';
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.background = '#f8f9fa';
+      item.style.transform = 'translateX(0)';
+    });
+
+    return item;
+  }
+
+  /**
+   * Update position
+   */
+  updatePosition(position) {
+    if (!this.elements.panel || !this.elements.toggleBtn) return;
+
+    // Panel position
+    this.elements.panel.style.left = position === 'left' ? '20px' : 'auto';
+    this.elements.panel.style.right = position === 'right' ? '20px' : 'auto';
+
+    // Toggle button position
+    this.elements.toggleBtn.style.left = position === 'left' ? '20px' : 'auto';
+    this.elements.toggleBtn.style.right = position === 'right' ? '20px' : 'auto';
+  }
+
+  /**
+   * Destroy panel
+   */
+  destroy() {
+    if (this.elements.panel) this.elements.panel.remove();
+    if (this.elements.toggleBtn) this.elements.toggleBtn.remove();
+    this.elements = {};
+  }
+}
