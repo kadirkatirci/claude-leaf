@@ -92,20 +92,44 @@ class BookmarkModule extends BaseModule {
     if (bookmarkId) {
       this.log('Navigating to bookmark from URL:', bookmarkId);
 
-      // Wait for messages to load, then navigate
-      setTimeout(() => {
-        const bookmark = this.bookmarks.find(b => b.id === bookmarkId);
-        if (bookmark) {
-          this.navigateToBookmark(bookmark);
+      const bookmark = this.bookmarks.find(b => b.id === bookmarkId);
+      if (!bookmark) {
+        this.warn('Bookmark not found:', bookmarkId);
+        return;
+      }
 
-          // Clean up URL
-          const url = new URL(window.location.href);
-          url.searchParams.delete('bookmark');
-          window.history.replaceState({}, '', url.toString());
-        } else {
-          this.warn('Bookmark not found:', bookmarkId);
-        }
-      }, 1000); // Give time for messages to render
+      // Wait for messages to load with retry mechanism
+      this.waitForMessagesAndNavigate(bookmark, 0);
+    }
+  }
+
+  /**
+   * Wait for messages to load, then navigate to bookmark
+   */
+  waitForMessagesAndNavigate(bookmark, retryCount) {
+    const maxRetries = 20; // Try for up to 10 seconds (20 * 500ms)
+    const retryDelay = 500;
+
+    const messages = this.dom.findMessages();
+
+    if (messages.length > 0) {
+      // Messages loaded, navigate now
+      this.log(`✅ Messages loaded (${messages.length} found), navigating to bookmark`);
+      this.navigateToBookmark(bookmark);
+
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('bookmark');
+      window.history.replaceState({}, '', url.toString());
+    } else if (retryCount < maxRetries) {
+      // Messages not loaded yet, retry
+      this.log(`Waiting for messages to load... (attempt ${retryCount + 1}/${maxRetries})`);
+      setTimeout(() => {
+        this.waitForMessagesAndNavigate(bookmark, retryCount + 1);
+      }, retryDelay);
+    } else {
+      // Give up after max retries
+      this.warn('❌ Timed out waiting for messages to load');
     }
   }
 
@@ -167,13 +191,16 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
-   * Find bookmark by index and verify content
+   * Find bookmark by index and verify content (current conversation only)
    */
   findBookmarkByIndex(index, messageElement) {
     const contentSignature = this.hashText(messageElement.textContent.trim().substring(0, 1000));
+    const currentUrl = window.location.href;
 
-    // Find bookmarks at this index
-    const candidateBookmarks = this.bookmarks.filter(b => b.messageIndex === index);
+    // Find bookmarks at this index in current conversation
+    const candidateBookmarks = this.bookmarks.filter(b =>
+      b.messageIndex === index && b.conversationUrl === currentUrl
+    );
 
     // Verify content signature matches
     for (const bookmark of candidateBookmarks) {
@@ -232,16 +259,28 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
+   * Get bookmarks for current conversation
+   */
+  getCurrentConversationBookmarks() {
+    const currentUrl = window.location.href;
+    // Match bookmarks for this specific conversation
+    return this.bookmarks.filter(b => b.conversationUrl === currentUrl);
+  }
+
+  /**
    * Update all UI components
    */
   updateUI() {
+    // Only show bookmarks for current conversation
+    const currentBookmarks = this.getCurrentConversationBookmarks();
+
     this.panel.updateContent(
-      this.bookmarks,
+      currentBookmarks,
       (bookmark) => this.navigateToBookmark(bookmark),
       (id) => this.deleteBookmark(id)
     );
     this.sidebar.update(
-      this.bookmarks,
+      currentBookmarks,
       (bookmark) => this.navigateToBookmark(bookmark)
     );
   }
