@@ -120,26 +120,28 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
-   * Wait for messages to load, then navigate to bookmark
+   * Wait for messages to load AND stabilize, then navigate to bookmark
    */
-  waitForMessagesAndNavigate(bookmark, retryCount) {
-    const maxRetries = 30; // Try for up to 15 seconds (30 * 500ms)
+  waitForMessagesAndNavigate(bookmark, retryCount, previousCount = 0, stableCount = 0) {
+    const maxRetries = 40; // Try for up to 20 seconds (40 * 500ms)
     const retryDelay = 500;
+    const requiredStableChecks = 3; // Message count must be stable for 3 checks (1.5 seconds)
 
     const messages = this.dom.findMessages();
+    const currentCount = messages.length;
 
-    this.log(`[Retry ${retryCount}] Checking for messages... Found: ${messages.length}`);
+    this.log(`[Retry ${retryCount}] Messages: ${currentCount} (previous: ${previousCount}, stable: ${stableCount}/${requiredStableChecks})`);
 
-    if (messages.length > 0) {
-      // Messages loaded! But wait a bit more to ensure they're fully rendered and stable
-      this.log(`✅ Messages loaded (${messages.length} found)`);
+    // Check if message count has stabilized
+    if (currentCount > 0 && currentCount === previousCount) {
+      // Message count hasn't changed, increment stable counter
+      const newStableCount = stableCount + 1;
 
-      // Wait for messages to stabilize (sometimes they re-render)
-      setTimeout(() => {
-        const finalMessages = this.dom.findMessages();
-        this.log(`Final check: ${finalMessages.length} messages ready. Navigating now...`);
+      if (newStableCount >= requiredStableChecks) {
+        // Message count is stable! Safe to navigate
+        this.log(`✅ Messages stabilized at ${currentCount}. Navigating now...`);
 
-        // Pass fromUrlNavigation=true to suppress error dialogs
+        // Navigate immediately
         this.navigateToBookmark(bookmark, true);
 
         // Clean up URL
@@ -148,20 +150,33 @@ class BookmarkModule extends BaseModule {
           url.searchParams.delete('bookmark');
           window.history.replaceState({}, '', url.toString());
         }, 100);
-      }, 800); // Longer wait to ensure DOM is stable
-
+      } else {
+        // Keep checking for stability
+        this.log(`⏳ Messages stable (${newStableCount}/${requiredStableChecks})...`);
+        setTimeout(() => {
+          this.waitForMessagesAndNavigate(bookmark, retryCount + 1, currentCount, newStableCount);
+        }, retryDelay);
+      }
     } else if (retryCount < maxRetries) {
-      // Messages not loaded yet, retry
-      this.log(`⏳ Waiting for messages to load... (attempt ${retryCount + 1}/${maxRetries})`);
+      // Message count changed or still at 0, reset stability counter
+      if (currentCount > 0 && currentCount !== previousCount) {
+        this.log(`⏳ Messages still loading (${previousCount} → ${currentCount})...`);
+      }
       setTimeout(() => {
-        this.waitForMessagesAndNavigate(bookmark, retryCount + 1);
+        this.waitForMessagesAndNavigate(bookmark, retryCount + 1, currentCount, 0);
       }, retryDelay);
     } else {
       // Give up after max retries
-      this.warn('❌ Timed out waiting for messages to load');
-      alert('Could not load conversation messages. Please try refreshing the page.');
+      this.warn('❌ Timed out waiting for messages to stabilize');
+      this.warn(`Last count: ${currentCount}, never stabilized`);
 
-      // Clean up URL anyway
+      // Try to navigate anyway with what we have
+      if (currentCount > 0) {
+        this.warn('⚠️ Attempting navigation with unstable message count...');
+        this.navigateToBookmark(bookmark, true);
+      }
+
+      // Clean up URL
       const url = new URL(window.location.href);
       url.searchParams.delete('bookmark');
       window.history.replaceState({}, '', url.toString());
