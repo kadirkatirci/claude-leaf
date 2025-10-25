@@ -11,6 +11,8 @@ class EditUI {
     this.headerButton = null;
     this.collapseAllButton = null;
     this.isAllCollapsed = false;
+    this.lastEditCount = -1; // Track last count to avoid unnecessary updates
+    this.lastHighlightedElements = new Set(); // Track highlighted elements
   }
 
   /**
@@ -85,9 +87,17 @@ class EditUI {
 
   /**
    * Header button'u güncelle
+   * Only updates DOM if count actually changed
    */
   updateHeaderButton(editCount) {
     if (!this.headerButton) return;
+
+    // Skip if count hasn't changed
+    if (this.lastEditCount === editCount) {
+      return;
+    }
+
+    this.lastEditCount = editCount;
 
     const label = this.headerButton.querySelector('#claude-edit-header-label');
     if (!label) return;
@@ -102,19 +112,46 @@ class EditUI {
 
   /**
    * Highlight'ları güncelle
+   * Only updates DOM if highlighted elements actually changed
    */
   updateHighlights(editedPrompts, shouldHighlight) {
-    // Önce hepsini kaldır
-    document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
-      el.classList.remove('claude-edit-highlighted');
-    });
-    
-    // Gerekiyorsa ekle
-    if (shouldHighlight) {
-      editedPrompts.forEach(editInfo => {
-        editInfo.element.classList.add('claude-edit-highlighted');
-      });
+    if (!shouldHighlight) {
+      // Remove all highlights if disabled
+      if (this.lastHighlightedElements.size > 0) {
+        this.lastHighlightedElements.forEach(el => {
+          el.classList.remove('claude-edit-highlighted');
+        });
+        this.lastHighlightedElements.clear();
+      }
+      return;
     }
+
+    const currentElements = new Set(editedPrompts.map(e => e.element));
+
+    // Check if highlighted elements changed
+    const elementsChanged =
+      currentElements.size !== this.lastHighlightedElements.size ||
+      [...currentElements].some(el => !this.lastHighlightedElements.has(el));
+
+    if (!elementsChanged) {
+      return; // Nothing changed, skip DOM updates
+    }
+
+    // Remove highlights from elements that are no longer edited
+    this.lastHighlightedElements.forEach(el => {
+      if (!currentElements.has(el)) {
+        el.classList.remove('claude-edit-highlighted');
+      }
+    });
+
+    // Add highlights to new edited elements
+    currentElements.forEach(el => {
+      if (!this.lastHighlightedElements.has(el)) {
+        el.classList.add('claude-edit-highlighted');
+      }
+    });
+
+    this.lastHighlightedElements = currentElements;
   }
 
   /**

@@ -35,11 +35,17 @@ class EditBadge {
   }
 
   /**
-   * Tek bir badge ekle
+   * Tek bir badge ekle veya güncelle
    */
   add(messageElement, versionInfo = '') {
-    // Duplicate kontrolü
-    if (messageElement.querySelector('.claude-edit-badge')) {
+    // Check if badge already exists
+    const existingBadge = messageElement.querySelector('.claude-edit-badge');
+    if (existingBadge) {
+      // Only update if text changed
+      const newText = `✏️ ${versionInfo}`;
+      if (existingBadge.innerHTML !== newText) {
+        existingBadge.innerHTML = newText;
+      }
       return;
     }
 

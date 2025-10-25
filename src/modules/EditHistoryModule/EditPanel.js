@@ -9,6 +9,7 @@ class EditPanel {
     this.onItemClick = onItemClick;
     this.panel = null;
     this.isOpen = false;
+    this.lastEditIds = []; // Track edit container IDs to detect changes
   }
 
   /**
@@ -102,12 +103,23 @@ class EditPanel {
 
   /**
    * Panel içeriğini güncelle
+   * Only updates DOM if edits actually changed
    */
   updateContent(editedMessages) {
     if (!this.panel) return;
 
     const content = this.panel.querySelector('#claude-edit-panel-content');
     if (!content) return;
+
+    // Check if edits changed
+    const currentIds = editedMessages.map(e => e.containerId).join(',');
+    const lastIds = this.lastEditIds.join(',');
+
+    if (currentIds === lastIds) {
+      return; // Nothing changed, skip update
+    }
+
+    this.lastEditIds = editedMessages.map(e => e.containerId);
 
     content.innerHTML = '';
 
