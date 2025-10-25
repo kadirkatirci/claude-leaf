@@ -114,6 +114,12 @@ class BookmarkModule extends BaseModule {
    */
   async reloadBookmarks() {
     this.bookmarks = await this.storage.load();
+    this.log('📚 Reloaded bookmarks:', this.bookmarks.map(b => ({
+      id: b.id,
+      messageId: b.messageId,
+      renderCount: b.renderCount,
+      preview: b.previewText.substring(0, 50)
+    })));
     this.addBookmarkButtons();
     this.updateUI();
   }
@@ -123,44 +129,74 @@ class BookmarkModule extends BaseModule {
    */
   addBookmarkButtons() {
     const messages = this.dom.findMessages();
+
     this.buttonManager.addToMessages(
       messages,
-      (msg, idx) => this.getMessageId(msg, idx),
-      (msgId) => this.isMessageBookmarked(msgId),
-      (msgElement, msgId) => this.toggleBookmark(msgElement, msgId)
+      (msg, idx) => idx, // Use simple index as ID
+      (idx) => this.isMessageBookmarkedByIndex(idx),
+      (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
     );
   }
 
   /**
-   * Toggle bookmark for a message
+   * Toggle bookmark by index
    */
-  async toggleBookmark(messageElement, messageId) {
-    const existing = this.findBookmarkByMessageId(messageId);
+  async toggleBookmarkByIndex(messageElement, index) {
+    const existing = this.findBookmarkByIndex(index, messageElement);
 
     if (existing) {
       // Remove bookmark
+      this.log('Removing bookmark at index:', index);
       await this.deleteBookmark(existing.id);
     } else {
       // Add bookmark
-      await this.addBookmark(messageElement, messageId);
+      this.log('Adding bookmark at index:', index);
+      await this.addBookmark(messageElement, index);
     }
+  }
+
+  /**
+   * Check if message at index is bookmarked
+   */
+  isMessageBookmarkedByIndex(index) {
+    const messages = this.dom.findMessages();
+    if (index >= messages.length) return false;
+
+    const messageElement = messages[index];
+    return this.findBookmarkByIndex(index, messageElement) !== null;
+  }
+
+  /**
+   * Find bookmark by index and verify content
+   */
+  findBookmarkByIndex(index, messageElement) {
+    const contentSignature = this.hashText(messageElement.textContent.trim().substring(0, 1000));
+
+    // Find bookmarks at this index
+    const candidateBookmarks = this.bookmarks.filter(b => b.messageIndex === index);
+
+    // Verify content signature matches
+    for (const bookmark of candidateBookmarks) {
+      if (bookmark.contentSignature === contentSignature) {
+        return bookmark;
+      }
+    }
+
+    return null;
   }
 
   /**
    * Add a bookmark
    */
-  async addBookmark(messageElement, messageId) {
-    const previewText = messageElement.textContent.trim().substring(0, 200);
-
-    // Store reliable identifiers
-    const renderCount = messageElement.getAttribute('data-test-render-count');
-    const textHash = this.hashText(previewText);
+  async addBookmark(messageElement, messageIndex) {
+    const fullText = messageElement.textContent.trim();
+    const previewText = fullText.substring(0, 200);
+    const contentSignature = this.hashText(fullText.substring(0, 1000));
 
     const bookmark = {
       id: `bookmark-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-      messageId: messageId,
-      renderCount: renderCount, // More reliable identifier
-      textHash: textHash, // Fallback identifier
+      messageIndex: messageIndex, // Array index of the message
+      contentSignature: contentSignature, // Hash of content for verification
       previewText: previewText,
       note: '',
       timestamp: Date.now(),
@@ -170,11 +206,15 @@ class BookmarkModule extends BaseModule {
     this.bookmarks.push(bookmark);
     await this.storage.save(this.bookmarks);
 
+    this.log('✅ Bookmark added:', {
+      id: bookmark.id,
+      messageIndex: bookmark.messageIndex,
+      preview: previewText.substring(0, 50)
+    });
+
     // Update UI
     this.updateUI();
     this.addBookmarkButtons(); // Refresh buttons
-
-    this.log('Bookmark added:', bookmark.id);
   }
 
   /**
@@ -221,48 +261,51 @@ class BookmarkModule extends BaseModule {
    */
   navigateToBookmark(bookmark) {
     const messages = this.dom.findMessages();
-
-    // Try multiple strategies to find the message
     let foundMessage = null;
+    let matchStrategy = null;
 
-    // Strategy 1: Match by render count (most reliable)
-    if (bookmark.renderCount) {
-      foundMessage = Array.from(messages).find(msg =>
-        msg.getAttribute('data-test-render-count') === bookmark.renderCount
-      );
+    // Strategy 1: Try the stored index first (fast path)
+    if (bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
+      const candidateMessage = messages[bookmark.messageIndex];
+      const candidateSignature = this.hashText(candidateMessage.textContent.trim().substring(0, 1000));
+
+      if (candidateSignature === bookmark.contentSignature) {
+        foundMessage = candidateMessage;
+        matchStrategy = 'index';
+        this.log('✅ Found by index:', bookmark.messageIndex);
+      }
     }
 
-    // Strategy 2: Match by text hash
-    if (!foundMessage && bookmark.textHash) {
-      foundMessage = Array.from(messages).find(msg => {
-        const msgText = msg.textContent.trim().substring(0, 200);
-        return this.hashText(msgText) === bookmark.textHash;
-      });
-    }
-
-    // Strategy 3: Match by messageId (fallback)
-    if (!foundMessage) {
+    // Strategy 2: Search by content signature (slower but reliable)
+    if (!foundMessage && bookmark.contentSignature) {
       for (let i = 0; i < messages.length; i++) {
-        const messageId = this.getMessageId(messages[i], i);
-        if (messageId === bookmark.messageId) {
-          foundMessage = messages[i];
+        const msg = messages[i];
+        const msgSignature = this.hashText(msg.textContent.trim().substring(0, 1000));
+
+        if (msgSignature === bookmark.contentSignature) {
+          foundMessage = msg;
+          matchStrategy = 'contentSignature';
+          this.log('✅ Found by contentSignature at index:', i);
           break;
         }
       }
     }
 
+    // Navigate if found
     if (foundMessage) {
+      this.log(`✅ Navigation successful using ${matchStrategy}`);
       this.dom.scrollToElement(foundMessage, 'center');
       this.dom.flashClass(foundMessage, 'claude-nav-highlight', 2000);
+
+      // Close panel if open
       if (this.panel && this.panel.elements.panel && this.panel.elements.panel.style.display === 'flex') {
-        this.panel.toggle(); // Close panel if open
+        this.panel.toggle();
       }
-      this.log('Navigated to bookmark:', bookmark.id);
       return;
     }
 
     // Message not found
-    this.warn('Bookmarked message not found. Page may have been refreshed.');
+    this.warn('❌ Bookmarked message not found on this page');
 
     if (confirm('Bookmarked message not found on this page. Delete bookmark?')) {
       this.deleteBookmark(bookmark.id);
@@ -280,41 +323,6 @@ class BookmarkModule extends BaseModule {
       hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
-  }
-
-  /**
-   * Get unique message ID
-   */
-  getMessageId(messageElement, index) {
-    // Try data-test-render-count first
-    const renderCount = messageElement.getAttribute('data-test-render-count');
-    if (renderCount) {
-      return `msg-${renderCount}`;
-    }
-
-    // Fallback to hash-based ID
-    const text = messageElement.textContent.trim().substring(0, 100);
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
-  }
-
-  /**
-   * Check if message is bookmarked
-   */
-  isMessageBookmarked(messageId) {
-    return this.bookmarks.some(b => b.messageId === messageId);
-  }
-
-  /**
-   * Find bookmark by message ID
-   */
-  findBookmarkByMessageId(messageId) {
-    return this.bookmarks.find(b => b.messageId === messageId);
   }
 
   /**
@@ -363,8 +371,7 @@ class BookmarkModule extends BaseModule {
     if (currentIndex < 0 || currentIndex >= messages.length) return;
 
     const message = messages[currentIndex];
-    const messageId = this.getMessageId(message, currentIndex);
-    this.toggleBookmark(message, messageId);
+    this.toggleBookmarkByIndex(message, currentIndex);
   }
 
   /**
