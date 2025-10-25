@@ -6,6 +6,7 @@ export class BookmarkSidebar {
     this.dom = domUtils;
     this.getTheme = getTheme;
     this.elements = {};
+    this.lastBookmarkIds = []; // Track to avoid unnecessary updates
   }
 
   /**
@@ -73,13 +74,22 @@ export class BookmarkSidebar {
 
   /**
    * Update sidebar with bookmarks
+   * Only updates DOM if bookmarks actually changed
    */
   update(bookmarks, onNavigate) {
-    // Update header to be clickable
-    this.updateHeaderLink();
-
     const list = this.elements.list;
     if (!list) return;
+
+    // Check if bookmarks actually changed
+    const currentIds = bookmarks.map(b => b.id).sort().join(',');
+    const lastIds = this.lastBookmarkIds.join(',');
+
+    // Skip update if nothing changed
+    if (currentIds === lastIds) {
+      return;
+    }
+
+    this.lastBookmarkIds = bookmarks.map(b => b.id).sort();
 
     list.innerHTML = '';
 

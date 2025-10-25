@@ -6,6 +6,7 @@ export class BookmarkButton {
     this.dom = domUtils;
     this.getTheme = getTheme;
     this.buttons = new Map(); // messageElement -> button
+    this.buttonStates = new Map(); // messageElement -> isBookmarked state
   }
 
   /**
@@ -18,13 +19,19 @@ export class BookmarkButton {
 
       // Update existing button if it exists
       if (this.buttons.has(message)) {
-        this.updateButton(message, bookmarked);
+        // Only update if state changed (avoid unnecessary DOM manipulation)
+        const currentState = this.buttonStates.get(message);
+        if (currentState !== bookmarked) {
+          this.updateButton(message, bookmarked);
+          this.buttonStates.set(message, bookmarked);
+        }
         return;
       }
 
       // Create new button
       const button = this.createButton(message, messageId, bookmarked, onToggle);
       this.buttons.set(message, button);
+      this.buttonStates.set(message, bookmarked);
     });
   }
 
@@ -108,6 +115,7 @@ export class BookmarkButton {
   clear() {
     this.buttons.forEach(button => button.remove());
     this.buttons.clear();
+    this.buttonStates.clear();
   }
 
   /**

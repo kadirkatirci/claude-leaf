@@ -58,7 +58,9 @@ class BookmarkModule extends BaseModule {
     // Listen for message updates
     this.subscribe(Events.MESSAGES_UPDATED, () => {
       this.addBookmarkButtons();
-      this.updateUI();
+      // Only update counter, no need to update full UI on message updates
+      const currentBookmarks = this.getCurrentConversationBookmarks();
+      this.panel.updateCounter(currentBookmarks.length);
     });
 
     // Listen for bookmark updates from popup
@@ -497,10 +499,19 @@ class BookmarkModule extends BaseModule {
    * Observe DOM changes
    */
   observeMessages() {
+    let lastMessageCount = 0;
+
     this.observer = this.dom.observeDOM(() => {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => {
-        this.addBookmarkButtons();
+        // Only add buttons if message count changed
+        const messages = this.dom.findMessages();
+        const currentCount = messages.length;
+
+        if (currentCount !== lastMessageCount) {
+          lastMessageCount = currentCount;
+          this.addBookmarkButtons();
+        }
       }, 500);
     });
   }

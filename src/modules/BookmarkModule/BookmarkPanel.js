@@ -7,6 +7,8 @@ export class BookmarkPanel {
     this.getTheme = getTheme;
     this.getSetting = getSetting;
     this.elements = {};
+    this.lastCount = -1; // Track last counter value to avoid unnecessary updates
+    this.lastBookmarkIds = []; // Track bookmark IDs to detect actual changes
   }
 
   /**
@@ -211,15 +213,27 @@ export class BookmarkPanel {
 
   /**
    * Update panel content
+   * Only updates DOM if bookmarks actually changed
    */
   updateContent(bookmarks, onNavigate, onDelete) {
     const content = this.elements.content;
     if (!content) return;
 
-    content.innerHTML = '';
+    // Check if bookmarks actually changed
+    const currentIds = bookmarks.map(b => b.id).sort().join(',');
+    const lastIds = this.lastBookmarkIds.join(',');
 
-    // Update counter badge
+    // Update counter regardless (it has its own change detection)
     this.updateCounter(bookmarks.length);
+
+    // Skip content update if bookmarks haven't changed
+    if (currentIds === lastIds) {
+      return;
+    }
+
+    this.lastBookmarkIds = bookmarks.map(b => b.id).sort();
+
+    content.innerHTML = '';
 
     if (bookmarks.length === 0) {
       const empty = this.dom.createElement('div', {
@@ -246,8 +260,16 @@ export class BookmarkPanel {
 
   /**
    * Update counter badge on toggle button
+   * Only updates DOM if count actually changed
    */
   updateCounter(count) {
+    // Skip if count hasn't changed
+    if (this.lastCount === count) {
+      return;
+    }
+
+    this.lastCount = count;
+
     const toggleBtn = this.elements.toggleBtn;
     const badge = document.querySelector('#claude-bookmarks-counter');
 
@@ -257,7 +279,14 @@ export class BookmarkPanel {
 
     // Show/hide entire button based on count (like collapse button)
     if (toggleBtn) {
-      toggleBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+      const shouldDisplay = count > 0;
+      const currentDisplay = toggleBtn.style.display;
+      const targetDisplay = shouldDisplay ? 'inline-flex' : 'none';
+
+      // Only update if display value needs to change
+      if (currentDisplay !== targetDisplay) {
+        toggleBtn.style.display = targetDisplay;
+      }
     }
   }
 
