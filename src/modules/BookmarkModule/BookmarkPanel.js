@@ -122,7 +122,7 @@ export class BookmarkPanel {
     });
 
     // Button content: icon + counter badge
-    toggleBtn.innerHTML = '🔖 <span id="claude-bookmarks-counter" style="margin-left: 4px; background: rgba(255, 255, 255, 0.3); padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold;">0</span>';
+    toggleBtn.innerHTML = '🔖 <span id="claude-bookmarks-counter" style="margin-left: 4px; font-size: 11px; font-weight: bold;">0</span>';
 
     // Click handler
     toggleBtn.addEventListener('click', onToggle);
