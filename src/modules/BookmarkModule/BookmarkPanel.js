@@ -15,21 +15,21 @@ export class BookmarkPanel {
   create(onClose) {
     const theme = this.getTheme();
 
-    // Panel container (fixed to right side)
+    // Panel container (matches EditPanel design)
     const panel = this.dom.createElement('div', {
       id: 'claude-bookmarks-panel',
       className: 'claude-bookmarks-panel',
       style: {
         position: 'fixed',
+        top: '60px',
         right: '20px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        width: '320px',
-        maxHeight: '70vh',
+        width: '280px',
+        maxHeight: '500px',
         background: 'white',
         borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-        zIndex: '9998',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        zIndex: '9999',
         display: 'none',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -40,14 +40,14 @@ export class BookmarkPanel {
     const header = this.dom.createElement('div', {
       className: 'claude-bookmarks-header',
       style: {
-        padding: '16px 20px',
+        padding: '12px 16px',
         background: theme.gradient,
         color: 'white',
+        fontWeight: '600',
+        fontSize: '14px',
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        fontWeight: 'bold',
-        fontSize: '16px',
+        alignItems: 'center',
       }
     });
 
@@ -56,19 +56,29 @@ export class BookmarkPanel {
     });
 
     const closeBtn = this.dom.createElement('button', {
-      innerHTML: '×',
+      innerHTML: '✕',
       style: {
-        background: 'transparent',
+        background: 'none',
         border: 'none',
         color: 'white',
-        fontSize: '24px',
         cursor: 'pointer',
+        fontSize: '16px',
         padding: '0',
         width: '24px',
         height: '24px',
-        lineHeight: '24px',
+        borderRadius: '50%',
+        transition: 'background 0.2s',
       }
     });
+
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    });
+
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = 'none';
+    });
+
     closeBtn.addEventListener('click', onClose);
 
     header.appendChild(title);
@@ -79,7 +89,7 @@ export class BookmarkPanel {
       id: 'claude-bookmarks-content',
       className: 'claude-bookmarks-content',
       style: {
-        padding: '16px',
+        padding: '8px',
         overflowY: 'auto',
         flex: '1',
       }
@@ -208,12 +218,12 @@ export class BookmarkPanel {
 
     if (bookmarks.length === 0) {
       const empty = this.dom.createElement('div', {
-        textContent: 'Henüz bookmark yok. Bir mesaja tıklayarak bookmark ekleyin.',
+        textContent: 'Henüz bookmark yok',
         style: {
-          textAlign: 'center',
-          color: '#666',
           padding: '20px',
-          fontSize: '14px',
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '13px',
         }
       });
       content.appendChild(empty);
@@ -247,7 +257,7 @@ export class BookmarkPanel {
   }
 
   /**
-   * Create a bookmark item for the panel
+   * Create a bookmark item for the panel (matches EditPanel item style)
    */
   createBookmarkItem(bookmark, onNavigate, onDelete) {
     const theme = this.getTheme();
@@ -255,57 +265,49 @@ export class BookmarkPanel {
     const item = this.dom.createElement('div', {
       className: 'claude-bookmark-item',
       style: {
-        padding: '12px',
-        marginBottom: '8px',
+        padding: '10px 12px',
+        marginBottom: '4px',
         background: '#f8f9fa',
         borderRadius: '8px',
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        borderLeft: `4px solid ${theme.primary}`,
+        transition: 'all 0.2s',
+        borderLeft: `3px solid ${theme.primary}`,
       }
     });
 
-    // Preview text
-    const preview = this.dom.createElement('div', {
-      textContent: bookmark.previewText,
-      style: {
-        fontSize: '13px',
-        lineHeight: '1.5',
-        marginBottom: '8px',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        display: '-webkit-box',
-        WebkitLineClamp: '3',
-        WebkitBoxOrient: 'vertical',
-      }
-    });
-
-    // Metadata
-    const meta = this.dom.createElement('div', {
+    // Header with index and delete button
+    const header = this.dom.createElement('div', {
       style: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        fontSize: '11px',
-        color: '#999',
+        marginBottom: '4px',
       }
     });
 
     const timestamp = this.dom.createElement('span', {
-      textContent: new Date(bookmark.timestamp).toLocaleString(),
+      textContent: new Date(bookmark.timestamp).toLocaleDateString(),
+      style: {
+        fontSize: '11px',
+        color: theme.primary,
+        fontWeight: '600',
+      }
     });
 
     // Delete button
     const deleteBtn = this.dom.createElement('button', {
-      innerHTML: '🗑️',
+      innerHTML: '✕',
       style: {
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
         fontSize: '14px',
-        padding: '4px',
-        opacity: '0.6',
-        transition: 'opacity 0.2s ease',
+        padding: '0',
+        width: '16px',
+        height: '16px',
+        opacity: '0.5',
+        transition: 'opacity 0.2s',
+        color: '#666',
       }
     });
     deleteBtn.addEventListener('click', (e) => {
@@ -314,29 +316,43 @@ export class BookmarkPanel {
     });
     deleteBtn.addEventListener('mouseenter', () => {
       deleteBtn.style.opacity = '1';
+      deleteBtn.style.color = '#d32f2f';
     });
     deleteBtn.addEventListener('mouseleave', () => {
-      deleteBtn.style.opacity = '0.6';
+      deleteBtn.style.opacity = '0.5';
+      deleteBtn.style.color = '#666';
     });
 
-    meta.appendChild(timestamp);
-    meta.appendChild(deleteBtn);
+    header.appendChild(timestamp);
+    header.appendChild(deleteBtn);
 
+    // Preview text
+    const preview = this.dom.createElement('div', {
+      textContent: bookmark.previewText.substring(0, 50) + (bookmark.previewText.length > 50 ? '...' : ''),
+      style: {
+        fontSize: '12px',
+        color: '#666',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }
+    });
+
+    item.appendChild(header);
     item.appendChild(preview);
-    item.appendChild(meta);
 
-    // Click to navigate
-    item.addEventListener('click', () => onNavigate(bookmark));
-
-    // Hover effect
+    // Hover effect (matches EditPanel)
     item.addEventListener('mouseenter', () => {
-      item.style.background = '#e9ecef';
-      item.style.transform = 'translateX(-4px)';
+      item.style.background = '#e3f2fd';
+      item.style.transform = 'translateX(2px)';
     });
     item.addEventListener('mouseleave', () => {
       item.style.background = '#f8f9fa';
       item.style.transform = 'translateX(0)';
     });
+
+    // Click to navigate
+    item.addEventListener('click', () => onNavigate(bookmark));
 
     return item;
   }
