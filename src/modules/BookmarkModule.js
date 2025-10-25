@@ -123,7 +123,7 @@ class BookmarkModule extends BaseModule {
    * Wait for messages to load, then navigate to bookmark
    */
   waitForMessagesAndNavigate(bookmark, retryCount) {
-    const maxRetries = 20; // Try for up to 10 seconds (20 * 500ms)
+    const maxRetries = 30; // Try for up to 15 seconds (30 * 500ms)
     const retryDelay = 500;
 
     const messages = this.dom.findMessages();
@@ -131,18 +131,25 @@ class BookmarkModule extends BaseModule {
     this.log(`[Retry ${retryCount}] Checking for messages... Found: ${messages.length}`);
 
     if (messages.length > 0) {
-      // Messages loaded, navigate now
-      this.log(`✅ Messages loaded (${messages.length} found), navigating to bookmark`);
+      // Messages loaded! But wait a bit more to ensure they're fully rendered and stable
+      this.log(`✅ Messages loaded (${messages.length} found)`);
 
-      // Wait a bit more to ensure messages are fully rendered
+      // Wait for messages to stabilize (sometimes they re-render)
       setTimeout(() => {
-        this.navigateToBookmark(bookmark);
+        const finalMessages = this.dom.findMessages();
+        this.log(`Final check: ${finalMessages.length} messages ready. Navigating now...`);
+
+        // Pass fromUrlNavigation=true to suppress error dialogs
+        this.navigateToBookmark(bookmark, true);
 
         // Clean up URL
-        const url = new URL(window.location.href);
-        url.searchParams.delete('bookmark');
-        window.history.replaceState({}, '', url.toString());
-      }, 300);
+        setTimeout(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('bookmark');
+          window.history.replaceState({}, '', url.toString());
+        }, 100);
+      }, 800); // Longer wait to ensure DOM is stable
+
     } else if (retryCount < maxRetries) {
       // Messages not loaded yet, retry
       this.log(`⏳ Waiting for messages to load... (attempt ${retryCount + 1}/${maxRetries})`);
@@ -152,6 +159,7 @@ class BookmarkModule extends BaseModule {
     } else {
       // Give up after max retries
       this.warn('❌ Timed out waiting for messages to load');
+      alert('Could not load conversation messages. Please try refreshing the page.');
 
       // Clean up URL anyway
       const url = new URL(window.location.href);
@@ -341,8 +349,10 @@ class BookmarkModule extends BaseModule {
 
   /**
    * Navigate to a bookmarked message - ROBUST approach
+   * @param {Object} bookmark - The bookmark to navigate to
+   * @param {Boolean} fromUrlNavigation - True if coming from bookmarks page (suppress error dialogs)
    */
-  navigateToBookmark(bookmark) {
+  navigateToBookmark(bookmark, fromUrlNavigation = false) {
     // First check if we're on the correct conversation page
     const currentUrl = window.location.href.split('?')[0];
     const bookmarkUrl = bookmark.conversationUrl.split('?')[0];
@@ -356,6 +366,14 @@ class BookmarkModule extends BaseModule {
     const messages = this.dom.findMessages();
     let foundMessage = null;
     let matchStrategy = null;
+
+    if (messages.length === 0) {
+      this.warn('❌ No messages found on page yet!');
+      if (!fromUrlNavigation) {
+        alert('No messages loaded yet. Please wait for the page to load.');
+      }
+      return;
+    }
 
     this.log(`Searching for bookmark in ${messages.length} messages`);
     this.log(`Looking for index ${bookmark.messageIndex} with preview: "${bookmark.previewText.substring(0, 50)}..."`);
@@ -428,7 +446,8 @@ class BookmarkModule extends BaseModule {
       preview: bookmark.previewText.substring(0, 100)
     });
 
-    if (confirm('Bookmarked message not found on this page. Delete bookmark?')) {
+    // Only show error dialog if NOT from URL navigation
+    if (!fromUrlNavigation && confirm('Bookmarked message not found on this page. Delete bookmark?')) {
       this.deleteBookmark(bookmark.id);
     }
   }
