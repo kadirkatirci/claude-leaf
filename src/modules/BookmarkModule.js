@@ -202,7 +202,20 @@ class BookmarkModule extends BaseModule {
    * Add bookmark buttons to all messages
    */
   addBookmarkButtons() {
-    const messages = this.dom.findMessages();
+    const allMessages = this.dom.findMessages();
+
+    // Filter out sidebar elements and only keep actual chat messages
+    const messages = allMessages.filter(msg => {
+      // Exclude elements inside sidebar
+      const isInSidebar = msg.closest('.flex.flex-col.overflow-y-auto.overflow-x-hidden') !== null ||
+                          msg.closest('[data-testid="sidebar"]') !== null ||
+                          msg.closest('nav') !== null;
+
+      // Exclude our own bookmark sidebar section
+      const isBookmarkSidebar = msg.closest('#claude-bookmarks-sidebar-list') !== null;
+
+      return !isInSidebar && !isBookmarkSidebar;
+    });
 
     this.buttonManager.addToMessages(
       messages,
