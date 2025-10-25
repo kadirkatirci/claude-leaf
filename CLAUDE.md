@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, and compact view for managing long conversations.
+A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, and compact view for managing long conversations.
 
 ## Development Commands
 
@@ -34,6 +34,7 @@ The extension uses a **modular architecture** where each feature is a self-conta
 - **Module lifecycle**: Each module has `init()`, `destroy()`, and `restart()` methods
 - **Settings-driven**: All modules respond to settings changes dynamically
 - **DOM observation**: Modules watch for DOM changes to handle Claude's dynamic UI
+- **Performance-optimized**: State tracking to prevent unnecessary DOM manipulations
 
 ### Core Components
 
@@ -74,11 +75,17 @@ src/modules/
 ├── NavigationModule.js           # Main module file (extends BaseModule)
 ├── EditHistoryModule.js          # Main module file
 ├── CompactViewModule.js          # Main module file
-└── EditHistoryModule/            # Sub-components (if complex)
-    ├── EditScanner.js
-    ├── EditBadge.js
-    ├── EditPanel.js
-    └── EditModal.js
+├── BookmarkModule.js             # Main module file
+├── EditHistoryModule/            # Sub-components (if complex)
+│   ├── EditScanner.js
+│   ├── EditBadge.js
+│   ├── EditPanel.js
+│   └── EditModal.js
+└── BookmarkModule/               # Sub-components
+    ├── BookmarkStorage.js
+    ├── BookmarkButton.js
+    ├── BookmarkPanel.js
+    └── BookmarkSidebar.js
 ```
 
 **Current Modules:**
@@ -86,11 +93,14 @@ src/modules/
 1. **NavigationModule** - Floating navigation buttons for message-to-message navigation
    - Keyboard shortcuts: Alt+↑ (prev), Alt+↓ (next), Alt+Home (top)
    - Finds messages via `[data-is-streaming="false"]` selector
-   - Updates button states based on scroll position
+   - Smart state tracking: Only updates buttons/counter when values change
+   - Throttled scroll listener (300ms) with passive event handling
 
 2. **EditHistoryModule** - Tracks and displays edited prompts
    - Uses `EditScanner` to detect edit indicators in Claude's UI
    - Shows badges on edited messages, panel with edit list, modal with version history
+   - Optimized scanning: Only notifies when edits actually change
+   - Smart badge updates: Updates instead of recreating
    - Complex sub-component architecture
 
 3. **CompactViewModule** - Collapse/expand long Claude responses
@@ -98,6 +108,24 @@ src/modules/
    - `ExpandButton` component for UI controls
    - Keyboard shortcuts: Alt+← (collapse all), Alt+→ (expand all)
    - Auto-collapse feature for new messages
+
+4. **BookmarkModule** - Save and navigate to important messages
+   - Index-based bookmark system (simple and reliable)
+   - Stores bookmarks locally or synced across Chrome browsers
+   - Features:
+     - Hover-triggered bookmark buttons on messages (SVG icons)
+     - Toggle button in header (shows count badge)
+     - Floating panel for quick access
+     - Sidebar integration with clickable header
+     - Dedicated bookmarks page (bookmarks/bookmarks.html)
+     - Export/Import functionality in popup
+     - Conversation-aware: Only shows bookmarks for current conversation
+   - Navigation:
+     - Message count stabilization algorithm for reliable navigation
+     - Retry mechanism for navigating from bookmarks page
+     - Content signature verification to ensure correct message
+   - Keyboard shortcuts: Alt+B (toggle bookmark), Alt+Shift+B (toggle panel)
+   - Performance: State tracking prevents unnecessary DOM updates
 
 ### Settings System
 
@@ -108,6 +136,7 @@ Settings are organized by module with a shared `general` section:
   navigation: { enabled, position, showCounter, smoothScroll, ... },
   editHistory: { enabled, showBadges, highlightEdited },
   compactView: { enabled, minHeight, autoCollapse, autoCollapseEnabled, ... },
+  bookmarks: { enabled, keyboardShortcuts, showOnHover, storageType },
   general: { opacity, colorTheme, customColor }  // Shared across modules
 }
 ```
@@ -168,6 +197,45 @@ Themes are defined in `src/config/themes.js` and managed centrally:
 - CSS animations defined globally: `fadeIn`, `fadeOut`, `slideUp`, `claude-highlight-pulse`
 - Highlight classes: `.claude-nav-highlight`, `.claude-edit-highlighted`
 
+### Performance Optimization Patterns
+
+All modules implement performance optimizations to minimize unnecessary DOM manipulations:
+
+**1. State Tracking**
+- Track previous values (counter text, button states, bookmark IDs, etc.)
+- Only update DOM when values actually change
+- Example: `if (this.lastCounterText !== newText) { update DOM }`
+
+**2. Content Diffing**
+- Compare current vs previous content before rebuilding
+- Use ID arrays/sets to detect changes efficiently
+- Example: `const currentIds = bookmarks.map(b => b.id).join(',')`
+
+**3. Conditional Updates**
+- Check if each property needs updating before modifying
+- Avoid batch updates when only one property changed
+- Example: `if (newStates.prev !== this.lastButtonStates.prev) { update only prev button }`
+
+**4. Event Optimization**
+- Throttle/debounce frequent events (scroll, DOM mutations)
+- Use passive event listeners where possible: `{ passive: true }`
+- Increase throttle intervals for better performance (e.g., 100ms → 300ms)
+
+**5. Smart Observers**
+- Only trigger callbacks when meaningful changes occur
+- Track message counts to avoid unnecessary scans
+- Example: `if (currentCount !== lastMessageCount) { update }`
+
+**6. Update-in-Place**
+- Update existing DOM elements instead of recreating
+- Example: Badge updates innerHTML instead of removing and recreating
+
+**Performance Metrics:**
+- BookmarkModule: Updates only when bookmarks added/removed
+- EditHistoryModule: Updates only when edits appear/disappear
+- NavigationModule: Updates only when scroll position crosses message boundaries
+- Result: Minimal DOM manipulation visible in DevTools inspector
+
 ## Common Patterns
 
 ### Adding a New Module
@@ -200,6 +268,46 @@ Modules automatically receive `onSettingsChanged(settings)` callback:
 - Update UI or behavior accordingly
 - Theme changes trigger full UI recreation via `recreateUI()`
 
+### Bookmark Module Architecture
+
+The BookmarkModule uses a modular sub-component architecture:
+
+**BookmarkStorage** (`BookmarkModule/BookmarkStorage.js`)
+- Handles all storage operations (load, save, export, import)
+- Supports both `chrome.storage.local` and `chrome.storage.sync`
+- User can switch storage type in settings
+
+**BookmarkButton** (`BookmarkModule/BookmarkButton.js`)
+- Manages bookmark buttons on individual messages
+- Uses WeakMap for button tracking
+- State tracking: Only updates button if bookmark state changed
+- SVG icons: Filled (bookmarked) vs stroked (not bookmarked)
+
+**BookmarkPanel** (`BookmarkModule/BookmarkPanel.js`)
+- Floating panel UI (matches EditPanel design)
+- Toggle button in header with counter badge
+- Content diffing: Only rebuilds when bookmarks actually change
+- Counter optimization: Only updates when count changes
+
+**BookmarkSidebar** (`BookmarkModule/BookmarkSidebar.js`)
+- Integrates with Claude's native sidebar
+- Clickable header opens bookmarks page
+- Content diffing: Only updates when bookmarks change
+- SVG icons with dark/light mode support
+
+**Bookmarks Page** (`bookmarks/bookmarks.html` + `bookmarks.js`)
+- Dedicated full-page view of all bookmarks
+- Search functionality
+- Delete and navigate features
+- URL parameter navigation: `?bookmark=<id>` for direct access
+
+**Key Patterns:**
+- Index-based system: Bookmarks use message array index (simple, reliable)
+- Content signature: Hash of first 1000 characters for verification
+- Navigation retry: Message stabilization algorithm waits for full load
+- Conversation filtering: Only shows bookmarks for current URL
+- Export/Import: JSON format with timestamp and metadata
+
 ## Extension Manifest
 
 - Manifest v3
@@ -207,6 +315,7 @@ Modules automatically receive `onSettingsChanged(settings)` callback:
 - Host: `https://claude.ai/*` only
 - Popup UI at `popup/popup.html` for settings
 - Content script: `dist/content.bundle.js` + `styles.css`
+- Web accessible resources: `bookmarks/bookmarks.html`, `bookmarks/bookmarks.js` (for dedicated bookmarks page)
 
 ## Debugging
 
