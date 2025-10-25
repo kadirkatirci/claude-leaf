@@ -52,8 +52,13 @@ export class BookmarkPanel {
     });
 
     const title = this.dom.createElement('span', {
-      textContent: '🔖 Bookmarks',
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+      }
     });
+    title.innerHTML = `${this.getBookmarkSVG(false, '#ffffff')} <span>Bookmarks</span>`;
 
     const closeBtn = this.dom.createElement('button', {
       innerHTML: '✕',
