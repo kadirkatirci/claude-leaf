@@ -112,24 +112,35 @@ class BookmarkModule extends BaseModule {
 
     const messages = this.dom.findMessages();
 
+    this.log(`[Retry ${retryCount}] Checking for messages... Found: ${messages.length}`);
+
     if (messages.length > 0) {
       // Messages loaded, navigate now
       this.log(`✅ Messages loaded (${messages.length} found), navigating to bookmark`);
-      this.navigateToBookmark(bookmark);
 
-      // Clean up URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete('bookmark');
-      window.history.replaceState({}, '', url.toString());
+      // Wait a bit more to ensure messages are fully rendered
+      setTimeout(() => {
+        this.navigateToBookmark(bookmark);
+
+        // Clean up URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('bookmark');
+        window.history.replaceState({}, '', url.toString());
+      }, 300);
     } else if (retryCount < maxRetries) {
       // Messages not loaded yet, retry
-      this.log(`Waiting for messages to load... (attempt ${retryCount + 1}/${maxRetries})`);
+      this.log(`⏳ Waiting for messages to load... (attempt ${retryCount + 1}/${maxRetries})`);
       setTimeout(() => {
         this.waitForMessagesAndNavigate(bookmark, retryCount + 1);
       }, retryDelay);
     } else {
       // Give up after max retries
       this.warn('❌ Timed out waiting for messages to load');
+
+      // Clean up URL anyway
+      const url = new URL(window.location.href);
+      url.searchParams.delete('bookmark');
+      window.history.replaceState({}, '', url.toString());
     }
   }
 
@@ -194,7 +205,8 @@ class BookmarkModule extends BaseModule {
    * Find bookmark by index and verify content (current conversation only)
    */
   findBookmarkByIndex(index, messageElement) {
-    const contentSignature = this.hashText(messageElement.textContent.trim().substring(0, 1000));
+    const cleanText = this.getCleanMessageText(messageElement);
+    const contentSignature = this.hashText(cleanText.substring(0, 1000));
     const currentUrl = window.location.href;
 
     // Find bookmarks at this index in current conversation
@@ -213,10 +225,26 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
+   * Get clean text content (excluding bookmark button)
+   */
+  getCleanMessageText(messageElement) {
+    // Clone the element to avoid modifying the original
+    const clone = messageElement.cloneNode(true);
+
+    // Remove bookmark button from clone
+    const bookmarkBtn = clone.querySelector('.claude-bookmark-btn');
+    if (bookmarkBtn) {
+      bookmarkBtn.remove();
+    }
+
+    return clone.textContent.trim();
+  }
+
+  /**
    * Add a bookmark
    */
   async addBookmark(messageElement, messageIndex) {
-    const fullText = messageElement.textContent.trim();
+    const fullText = this.getCleanMessageText(messageElement);
     const previewText = fullText.substring(0, 200);
     const contentSignature = this.hashText(fullText.substring(0, 1000));
 
@@ -306,7 +334,8 @@ class BookmarkModule extends BaseModule {
     // Strategy 1: Try the stored index first (fast path)
     if (bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
       const candidateMessage = messages[bookmark.messageIndex];
-      const candidateSignature = this.hashText(candidateMessage.textContent.trim().substring(0, 1000));
+      const cleanText = this.getCleanMessageText(candidateMessage);
+      const candidateSignature = this.hashText(cleanText.substring(0, 1000));
 
       if (candidateSignature === bookmark.contentSignature) {
         foundMessage = candidateMessage;
@@ -319,7 +348,8 @@ class BookmarkModule extends BaseModule {
     if (!foundMessage && bookmark.contentSignature) {
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
-        const msgSignature = this.hashText(msg.textContent.trim().substring(0, 1000));
+        const cleanText = this.getCleanMessageText(msg);
+        const msgSignature = this.hashText(cleanText.substring(0, 1000));
 
         if (msgSignature === bookmark.contentSignature) {
           foundMessage = msg;
