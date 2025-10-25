@@ -99,60 +99,35 @@ export class BookmarkPanel {
 
   /**
    * Create toggle button (inline, positioned before collapse button)
+   * Matches the style of collapse button exactly
    */
   createToggleButton(theme, onToggle) {
     const toggleBtn = this.dom.createElement('button', {
       id: 'claude-bookmarks-toggle',
+      type: 'button',
       style: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '8px 14px',
+        display: 'none', // Initially hidden, will be shown when bookmarks exist
+        marginLeft: '8px',
+        padding: '4px 12px',
         borderRadius: '8px',
         background: theme.gradient,
         color: 'white',
         border: 'none',
         cursor: 'pointer',
-        fontSize: '14px',
-        fontWeight: '500',
+        fontSize: '12px',
+        fontWeight: '600',
         transition: 'all 0.2s ease',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-        marginRight: '8px',
-        position: 'relative',
       }
     });
 
-    // Bookmark icon
-    const icon = this.dom.createElement('span', {
-      textContent: '🔖',
-      style: {
-        fontSize: '16px',
-      }
-    });
-
-    // Counter badge
-    const badge = this.dom.createElement('span', {
-      id: 'claude-bookmarks-counter',
-      textContent: '0',
-      className: 'claude-bookmarks-badge',
-      style: {
-        background: 'rgba(255, 255, 255, 0.3)',
-        padding: '2px 6px',
-        borderRadius: '10px',
-        fontSize: '11px',
-        fontWeight: 'bold',
-        minWidth: '18px',
-        textAlign: 'center',
-      }
-    });
-
-    toggleBtn.appendChild(icon);
-    toggleBtn.appendChild(badge);
+    // Button content: icon + counter badge
+    toggleBtn.innerHTML = '🔖 <span id="claude-bookmarks-counter" style="margin-left: 4px; background: rgba(255, 255, 255, 0.3); padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold;">0</span>';
 
     // Click handler
     toggleBtn.addEventListener('click', onToggle);
 
-    // Hover effects
+    // Hover effects (same as collapse button)
     toggleBtn.addEventListener('mouseenter', () => {
       toggleBtn.style.transform = 'scale(1.05)';
       toggleBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
@@ -238,11 +213,16 @@ export class BookmarkPanel {
    * Update counter badge on toggle button
    */
   updateCounter(count) {
+    const toggleBtn = this.elements.toggleBtn;
     const badge = document.querySelector('#claude-bookmarks-counter');
+
     if (badge) {
       badge.textContent = count.toString();
-      // Hide badge if count is 0
-      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+
+    // Show/hide entire button based on count (like collapse button)
+    if (toggleBtn) {
+      toggleBtn.style.display = count > 0 ? 'inline-flex' : 'none';
     }
   }
 
