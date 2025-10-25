@@ -134,7 +134,6 @@ function updateUI() {
   const bookmarks = currentSettings.bookmarks || {};
   document.getElementById('bookmarks-enabled').checked = bookmarks.enabled !== undefined ? bookmarks.enabled : true;
   document.getElementById('bookmarks-storageType').value = bookmarks.storageType || 'local';
-  document.getElementById('bookmarks-position').value = bookmarks.position || 'right';
   document.getElementById('bookmarks-keyboard').checked = bookmarks.keyboardShortcuts !== undefined ? bookmarks.keyboardShortcuts : true;
   document.getElementById('bookmarks-showOnHover').checked = bookmarks.showOnHover !== undefined ? bookmarks.showOnHover : true;
 
@@ -226,12 +225,6 @@ function setupEventListeners() {
   document.getElementById('bookmarks-storageType').addEventListener('change', (e) => {
     if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
     currentSettings.bookmarks.storageType = e.target.value;
-  });
-
-  // Bookmarks position
-  document.getElementById('bookmarks-position').addEventListener('change', (e) => {
-    if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
-    currentSettings.bookmarks.position = e.target.value;
   });
 
   // Bookmarks keyboard shortcuts

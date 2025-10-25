@@ -13,16 +13,15 @@ export class BookmarkPanel {
    * Create the panel UI
    */
   create(onClose) {
-    const position = this.getSetting('position') || 'right';
     const theme = this.getTheme();
 
-    // Panel container
+    // Panel container (fixed to right side)
     const panel = this.dom.createElement('div', {
       id: 'claude-bookmarks-panel',
       className: 'claude-bookmarks-panel',
       style: {
         position: 'fixed',
-        [position]: '20px',
+        right: '20px',
         top: '50%',
         transform: 'translateY(-50%)',
         width: '320px',
@@ -343,14 +342,12 @@ export class BookmarkPanel {
   }
 
   /**
-   * Update position (panel only, toggle button is inline)
+   * Update position - No longer needed, panel is always on the right
+   * Kept for backward compatibility
    */
-  updatePosition(position) {
-    if (!this.elements.panel) return;
-
-    // Panel position
-    this.elements.panel.style.left = position === 'left' ? '20px' : 'auto';
-    this.elements.panel.style.right = position === 'right' ? '20px' : 'auto';
+  updatePosition() {
+    // Position is now fixed to right side
+    // This method is kept for compatibility but does nothing
   }
 
   /**

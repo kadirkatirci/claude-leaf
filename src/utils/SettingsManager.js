@@ -47,7 +47,6 @@ class SettingsManager {
       // Bookmarks
       bookmarks: {
         enabled: true,
-        position: 'right', // 'left' | 'right'
         keyboardShortcuts: true,
         showOnHover: true,
         storageType: 'local', // 'local' | 'sync'
