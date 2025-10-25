@@ -95,11 +95,27 @@ class BookmarkModule extends BaseModule {
       const bookmark = this.bookmarks.find(b => b.id === bookmarkId);
       if (!bookmark) {
         this.warn('Bookmark not found:', bookmarkId);
+        // Clean up URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('bookmark');
+        window.history.replaceState({}, '', url.toString());
         return;
       }
 
-      // Wait for messages to load with retry mechanism
-      this.waitForMessagesAndNavigate(bookmark, 0);
+      // Check if we're already on the correct conversation page
+      const currentUrl = window.location.href.split('?')[0]; // Remove query params
+      const bookmarkUrl = bookmark.conversationUrl.split('?')[0];
+
+      if (currentUrl === bookmarkUrl) {
+        // Same page, just wait for messages and navigate
+        this.log('Already on correct page, waiting for messages...');
+        this.waitForMessagesAndNavigate(bookmark, 0);
+      } else {
+        // Different page, redirect first (the URL param will be preserved)
+        this.log('Redirecting to conversation:', bookmark.conversationUrl);
+        // URL already has ?bookmark=X, so navigation will continue after redirect
+        return; // Let the page redirect happen
+      }
     }
   }
 
@@ -324,40 +340,72 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
-   * Navigate to a bookmarked message
+   * Navigate to a bookmarked message - ROBUST approach
    */
   navigateToBookmark(bookmark) {
+    // First check if we're on the correct conversation page
+    const currentUrl = window.location.href.split('?')[0];
+    const bookmarkUrl = bookmark.conversationUrl.split('?')[0];
+
+    if (currentUrl !== bookmarkUrl) {
+      this.warn('❌ Wrong conversation! Current:', currentUrl, 'Bookmark:', bookmarkUrl);
+      this.warn('This bookmark belongs to a different conversation.');
+      return; // Don't show error dialog, this is expected
+    }
+
     const messages = this.dom.findMessages();
     let foundMessage = null;
     let matchStrategy = null;
 
-    // Strategy 1: Try the stored index first (fast path)
+    this.log(`Searching for bookmark in ${messages.length} messages`);
+    this.log(`Looking for index ${bookmark.messageIndex} with preview: "${bookmark.previewText.substring(0, 50)}..."`);
+
+    // Strategy 1: Direct index match with fuzzy text verification
     if (bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
       const candidateMessage = messages[bookmark.messageIndex];
       const cleanText = this.getCleanMessageText(candidateMessage);
-      const candidateSignature = this.hashText(cleanText.substring(0, 1000));
 
-      if (candidateSignature === bookmark.contentSignature) {
+      // Use first 100 chars for fuzzy matching (more forgiving)
+      const candidatePreview = cleanText.substring(0, 100).toLowerCase().trim();
+      const bookmarkPreview = bookmark.previewText.substring(0, 100).toLowerCase().trim();
+
+      this.log(`Index ${bookmark.messageIndex} preview: "${candidatePreview.substring(0, 50)}..."`);
+
+      // If first 50 chars match, it's the right message
+      if (candidatePreview.substring(0, 50) === bookmarkPreview.substring(0, 50)) {
         foundMessage = candidateMessage;
-        matchStrategy = 'index';
-        this.log('✅ Found by index:', bookmark.messageIndex);
+        matchStrategy = 'index+preview';
+        this.log('✅ Found by index with preview match');
+      } else {
+        this.log(`Preview mismatch at index ${bookmark.messageIndex}`);
       }
     }
 
-    // Strategy 2: Search by content signature (slower but reliable)
-    if (!foundMessage && bookmark.contentSignature) {
+    // Strategy 2: Search ALL messages by preview text
+    if (!foundMessage) {
+      this.log('Searching all messages by preview text...');
+      const searchText = bookmark.previewText.substring(0, 100).toLowerCase().trim();
+
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
         const cleanText = this.getCleanMessageText(msg);
-        const msgSignature = this.hashText(cleanText.substring(0, 1000));
+        const msgPreview = cleanText.substring(0, 100).toLowerCase().trim();
 
-        if (msgSignature === bookmark.contentSignature) {
+        // Match first 50 chars
+        if (msgPreview.substring(0, 50) === searchText.substring(0, 50)) {
           foundMessage = msg;
-          matchStrategy = 'contentSignature';
-          this.log('✅ Found by contentSignature at index:', i);
+          matchStrategy = 'preview-search';
+          this.log(`✅ Found by preview search at index: ${i}`);
           break;
         }
       }
+    }
+
+    // Strategy 3: Fallback - just use the index if it exists
+    if (!foundMessage && bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
+      this.warn('⚠️ Using fallback: navigating to index without verification');
+      foundMessage = messages[bookmark.messageIndex];
+      matchStrategy = 'index-fallback';
     }
 
     // Navigate if found
@@ -375,6 +423,10 @@ class BookmarkModule extends BaseModule {
 
     // Message not found
     this.warn('❌ Bookmarked message not found on this page');
+    this.warn('Bookmark details:', {
+      index: bookmark.messageIndex,
+      preview: bookmark.previewText.substring(0, 100)
+    });
 
     if (confirm('Bookmarked message not found on this page. Delete bookmark?')) {
       this.deleteBookmark(bookmark.id);
