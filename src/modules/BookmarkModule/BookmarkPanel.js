@@ -90,53 +90,102 @@ export class BookmarkPanel {
     panel.appendChild(content);
     document.body.appendChild(panel);
 
-    // Toggle button
-    const toggleBtn = this.createToggleButton(position, theme, onClose);
-    document.body.appendChild(toggleBtn);
+    // Toggle button (inline, positioned before collapse button)
+    const toggleBtn = this.createToggleButton(theme, onClose);
 
     this.elements = { panel, content, toggleBtn };
     return this.elements;
   }
 
   /**
-   * Create toggle button
+   * Create toggle button (inline, positioned before collapse button)
    */
-  createToggleButton(position, theme, onToggle) {
+  createToggleButton(theme, onToggle) {
     const toggleBtn = this.dom.createElement('button', {
       id: 'claude-bookmarks-toggle',
-      innerHTML: '🔖',
       style: {
-        position: 'fixed',
-        [position]: '20px',
-        bottom: '80px',
-        width: '50px',
-        height: '50px',
-        borderRadius: '50%',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '8px 14px',
+        borderRadius: '8px',
         background: theme.gradient,
+        color: 'white',
         border: 'none',
         cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        fontSize: '14px',
+        fontWeight: '500',
         transition: 'all 0.2s ease',
-        fontSize: '20px',
-        zIndex: '9999',
-        opacity: this.getSetting('opacity') || 0.7,
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+        marginRight: '8px',
+        position: 'relative',
       }
     });
 
+    // Bookmark icon
+    const icon = this.dom.createElement('span', {
+      textContent: '🔖',
+      style: {
+        fontSize: '16px',
+      }
+    });
+
+    // Counter badge
+    const badge = this.dom.createElement('span', {
+      id: 'claude-bookmarks-counter',
+      textContent: '0',
+      className: 'claude-bookmarks-badge',
+      style: {
+        background: 'rgba(255, 255, 255, 0.3)',
+        padding: '2px 6px',
+        borderRadius: '10px',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        minWidth: '18px',
+        textAlign: 'center',
+      }
+    });
+
+    toggleBtn.appendChild(icon);
+    toggleBtn.appendChild(badge);
+
+    // Click handler
     toggleBtn.addEventListener('click', onToggle);
+
+    // Hover effects
     toggleBtn.addEventListener('mouseenter', () => {
-      toggleBtn.style.transform = 'scale(1.1)';
-      toggleBtn.style.opacity = '1';
+      toggleBtn.style.transform = 'scale(1.05)';
+      toggleBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
     });
     toggleBtn.addEventListener('mouseleave', () => {
       toggleBtn.style.transform = 'scale(1)';
-      toggleBtn.style.opacity = this.getSetting('opacity') || 0.7;
+      toggleBtn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
     });
 
+    // Insert before collapse button
+    this.insertToggleButton(toggleBtn);
+
     return toggleBtn;
+  }
+
+  /**
+   * Insert toggle button before collapse button in header
+   */
+  insertToggleButton(toggleBtn) {
+    // Wait for collapse button to exist
+    const checkAndInsert = () => {
+      const collapseBtn = document.querySelector('#claude-collapse-all-btn');
+      if (collapseBtn && collapseBtn.parentElement) {
+        // Insert before collapse button
+        collapseBtn.parentElement.insertBefore(toggleBtn, collapseBtn);
+        console.log('[BookmarkPanel] ✅ Toggle button inserted before collapse button');
+      } else {
+        // Retry after 500ms if collapse button not found yet
+        setTimeout(checkAndInsert, 500);
+      }
+    };
+
+    checkAndInsert();
   }
 
   /**
@@ -159,6 +208,9 @@ export class BookmarkPanel {
 
     content.innerHTML = '';
 
+    // Update counter badge
+    this.updateCounter(bookmarks.length);
+
     if (bookmarks.length === 0) {
       const empty = this.dom.createElement('div', {
         textContent: 'Henüz bookmark yok. Bir mesaja tıklayarak bookmark ekleyin.',
@@ -180,6 +232,18 @@ export class BookmarkPanel {
       const item = this.createBookmarkItem(bookmark, onNavigate, onDelete);
       content.appendChild(item);
     });
+  }
+
+  /**
+   * Update counter badge on toggle button
+   */
+  updateCounter(count) {
+    const badge = document.querySelector('#claude-bookmarks-counter');
+    if (badge) {
+      badge.textContent = count.toString();
+      // Hide badge if count is 0
+      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
   }
 
   /**
@@ -278,18 +342,14 @@ export class BookmarkPanel {
   }
 
   /**
-   * Update position
+   * Update position (panel only, toggle button is inline)
    */
   updatePosition(position) {
-    if (!this.elements.panel || !this.elements.toggleBtn) return;
+    if (!this.elements.panel) return;
 
     // Panel position
     this.elements.panel.style.left = position === 'left' ? '20px' : 'auto';
     this.elements.panel.style.right = position === 'right' ? '20px' : 'auto';
-
-    // Toggle button position
-    this.elements.toggleBtn.style.left = position === 'left' ? '20px' : 'auto';
-    this.elements.toggleBtn.style.right = position === 'right' ? '20px' : 'auto';
   }
 
   /**

@@ -27,11 +27,21 @@ export class BookmarkSidebar {
       }
     });
 
-    // Header
+    // Header - make it clickable
     const header = this.dom.createElement('h3', {
       textContent: '🔖 Bookmarks',
-      className: 'text-text-300 pb-2 mt-1 text-xs select-none pl-2 sticky top-0 z-10 bg-gradient-to-b from-bg-200 from-50% to-bg-200/40 pointer-events-none',
+      className: 'text-text-300 pb-2 mt-1 text-xs select-none pl-2 sticky top-0 z-10 bg-gradient-to-b from-bg-200 from-50% to-bg-200/40 cursor-pointer hover:text-text-100',
       'aria-hidden': 'true',
+      style: {
+        pointerEvents: 'auto',
+        transition: 'color 0.2s ease',
+      }
+    });
+
+    // Make header clickable to open bookmarks page
+    header.addEventListener('click', () => {
+      const bookmarksUrl = chrome.runtime.getURL('bookmarks/bookmarks.html');
+      window.open(bookmarksUrl, '_blank');
     });
 
     // List container
@@ -60,111 +70,27 @@ export class BookmarkSidebar {
    * Update sidebar with bookmarks
    */
   update(bookmarks, onNavigate) {
+    // Update header to be clickable
+    this.updateHeaderLink();
+
     const list = this.elements.list;
     if (!list) return;
 
     list.innerHTML = '';
 
-    // Only show "View All" button - no individual bookmark items
-    const viewAllItem = this.createViewAllLink(bookmarks.length);
-    list.appendChild(viewAllItem);
+    // Show message if no bookmarks
+    if (bookmarks.length === 0) {
+      const empty = this.createEmptyState();
+      list.appendChild(empty);
+    }
   }
 
   /**
-   * Create "View All Bookmarks" link
+   * Update header to be clickable (called on updates)
    */
-  createViewAllLink(count = 0) {
-    const theme = this.getTheme();
-
-    const li = this.dom.createElement('li', {
-      style: {
-        opacity: '1',
-        marginBottom: '8px',
-      }
-    });
-
-    const container = this.dom.createElement('div', {
-      className: 'relative group',
-      'data-state': 'closed',
-    });
-
-    const link = this.dom.createElement('a', {
-      className: `inline-flex items-center justify-center relative shrink-0 can-focus select-none
-        text-text-300 border-transparent transition font-base duration-300
-        ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-bg-300 aria-checked:bg-bg-400
-        aria-expanded:bg-bg-400 hover:text-text-100 h-8 rounded-md px-3 min-w-[4rem]
-        active:scale-[0.985] whitespace-nowrap !text-xs w-full hover:bg-bg-400 overflow-hidden
-        !min-w-0 group active:bg-bg-400 active:scale-[1.0] px-4`,
-      style: {
-        cursor: 'pointer',
-        textDecoration: 'none',
-        background: `${theme.primary}15`,
-        fontWeight: '600',
-      }
-    });
-
-    const innerDiv = this.dom.createElement('div', {
-      className: '-translate-x-2 w-full flex flex-row items-center justify-between gap-3',
-    });
-
-    const leftSection = this.dom.createElement('div', {
-      className: 'flex items-center gap-3',
-    });
-
-    const icon = this.dom.createElement('div', {
-      className: 'size-4 flex items-center justify-center',
-      innerHTML: '📚',
-      style: {
-        fontSize: '14px',
-      }
-    });
-
-    const textSpan = this.dom.createElement('span', {
-      className: `truncate text-sm whitespace-nowrap`,
-      textContent: 'View All Bookmarks',
-      style: {
-        color: theme.primary,
-        fontWeight: '600',
-      }
-    });
-
-    leftSection.appendChild(icon);
-    leftSection.appendChild(textSpan);
-
-    // Count badge
-    if (count > 0) {
-      const badge = this.dom.createElement('span', {
-        textContent: count.toString(),
-        style: {
-          background: theme.primary,
-          color: 'white',
-          padding: '2px 8px',
-          borderRadius: '12px',
-          fontSize: '11px',
-          fontWeight: '700',
-          minWidth: '20px',
-          textAlign: 'center',
-        }
-      });
-      innerDiv.appendChild(leftSection);
-      innerDiv.appendChild(badge);
-    } else {
-      innerDiv.appendChild(leftSection);
-    }
-
-    link.appendChild(innerDiv);
-
-    // Click handler - open bookmarks page in new tab
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const bookmarksUrl = chrome.runtime.getURL('bookmarks/bookmarks.html');
-      window.open(bookmarksUrl, '_blank');
-    });
-
-    container.appendChild(link);
-    li.appendChild(container);
-
-    return li;
+  updateHeaderLink() {
+    // Header is already set up as clickable in inject()
+    // This method is here for consistency
   }
 
   /**
