@@ -22,6 +22,7 @@
       <button class="tab" data-tab="bookmarks" title="Bookmarks">🔖</button>
       <button class="tab" data-tab="emojiMarkers" title="Emoji Markers">📍</button>
       <button class="tab" data-tab="sidebarCollapse" title="Sidebar Collapse">📑</button>
+      <button class="tab" data-tab="contentFolding" title="Content Folding">📄</button>
       <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
       <button class="tab" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
@@ -384,6 +385,101 @@
           <h3>💡 İpucu</h3>
           <p style="font-size: 13px; color: #1565c0; margin-top: 8px;">
             Bu özellik sidebar'ı daha temiz ve organize tutar. İhtiyacınız olmayan section'ları kapatarak sadece ilgilendiğiniz alana odaklanabilirsiniz!
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-contentFolding">
+      <div class="section">
+        <div class="section-header">
+          <h2>Content Folding</h2>
+          <label class="toggle">
+            <input type="checkbox" id="contentFolding-enabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Headings Section -->
+        <div class="settings-group">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">📋 Heading Folding</h3>
+
+          <div class="setting-item">
+            <label for="contentFolding-headings-enabled">Enable Heading Folding</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-headings-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Code Blocks Section -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">💻 Code Block Folding</h3>
+
+          <div class="setting-item">
+            <label for="contentFolding-codeBlocks-enabled">Enable Code Block Folding</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-codeBlocks-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-minLines">Minimum Lines (Show collapse button if longer)</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="range" id="contentFolding-minLines" min="5" max="50" step="1" value="15" style="flex: 1;">
+              <span id="contentFolding-minLines-value" style="min-width: 40px; font-weight: 600; color: #667eea;">15</span>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-previewLines">Preview Lines (Lines shown when collapsed)</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="range" id="contentFolding-previewLines" min="1" max="10" step="1" value="5" style="flex: 1;">
+              <span id="contentFolding-previewLines-value" style="min-width: 40px; font-weight: 600; color: #667eea;">5</span>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-autoCollapse">Auto-Collapse Long Code Blocks</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-autoCollapse">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- General Settings -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">⚙️ General</h3>
+
+          <div class="setting-item">
+            <label for="contentFolding-rememberState">Remember Fold States</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-rememberState" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Nasıl Çalışır?</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li><strong>Heading Folding:</strong> Claude response'lardaki başlıklara (h1-h6) chevron (▶/▼) ikonu ekler</li>
+            <li>Başlığa tıklayarak altındaki içeriği gizleyip gösterebilirsiniz (Obsidian tarzı)</li>
+            <li>Hiyerarşik folding: Üst seviye başlık kapatılınca alt başlıklar da kapanır</li>
+            <li><strong>Code Block Folding:</strong> Uzun kod bloklarına collapse butonu ekler (sağ üstte)</li>
+            <li>Collapsed durumda ilk birkaç satır + "Show X more lines" butonu görünür</li>
+            <li>Chevronlar ve butonlar sadece <strong>hover'da görünür</strong> (collapsed olmadıkça)</li>
+            <li>State'ler conversation bazında hatırlanır (opsiyonel)</li>
+          </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px; background: #e8f5e9; border-left: 4px solid #4caf50;">
+          <h3>✨ Obsidian/VSCode Tarzı Folding</h3>
+          <p style="font-size: 13px; color: #2e7d32; margin-top: 8px;">
+            Bu özellik Obsidian ve VSCode'daki fold/unfold sistemini Claude'a getiriyor. Uzun response'ları organize etmek ve sadece ilgilendiğiniz bölüme odaklanmak için mükemmel!
           </p>
         </div>
       </div>

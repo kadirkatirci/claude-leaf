@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse (Starred/Recents), and compact view for managing long conversations.
+A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse (Starred/Recents), content folding (headings/code blocks), and compact view for managing long conversations.
 
 ## Development Commands
 
@@ -175,6 +175,7 @@ src/modules/
 ├── BookmarkModule.js             # Main module file
 ├── EmojiMarkerModule.js          # Main module file
 ├── SidebarCollapseModule.js      # Main module file (sidebar chevron injection)
+├── ContentFoldingModule.js       # Main module file (Obsidian-style folding)
 ├── EditHistoryModule/            # Sub-components (if complex)
 │   ├── EditScanner.js
 │   ├── EditBadge.js
@@ -185,12 +186,16 @@ src/modules/
 │   ├── BookmarkButton.js
 │   ├── BookmarkPanel.js
 │   └── BookmarkSidebar.js
-└── EmojiMarkerModule/            # Sub-components
-    ├── MarkerStorage.js
-    ├── MarkerButton.js
-    ├── MarkerBadge.js
-    ├── MarkerPanel.js
-    └── EmojiPicker.js
+├── EmojiMarkerModule/            # Sub-components
+│   ├── MarkerStorage.js
+│   ├── MarkerButton.js
+│   ├── MarkerBadge.js
+│   ├── MarkerPanel.js
+│   └── EmojiPicker.js
+└── ContentFoldingModule/         # Sub-components
+    ├── HeadingFolder.js
+    ├── CodeBlockFolder.js
+    └── FoldingStorage.js
 ```
 
 **Current Modules:**
@@ -294,6 +299,37 @@ src/modules/
      - Clean shutdown: Restores all list visibility on destroy
    - No fixed button needed (operates within Claude's native sidebar)
    - Enabled by default to provide cleaner sidebar organization
+
+7. **ContentFoldingModule** - Obsidian/VSCode style folding for headings and code blocks
+   - Solves UX problem: Long Claude responses with many sections/code blocks are hard to navigate
+   - **Heading Folding**: Adds chevrons (▶/▼) to headings (h1-h6) for hierarchical collapse
+   - **Code Block Folding**: Adds collapse buttons to long code blocks (15+ lines configurable)
+   - **Hover-based UI**: Chevrons and buttons only visible on hover (cleaner interface)
+   - **Exception**: Collapsed items always show their toggle (so user knows how to expand)
+   - Features:
+     - Hierarchical heading collapse: Parent heading collapse hides all children
+     - Code block preview: Shows first N lines + fade gradient + "Show X more lines" button
+     - Conversation-based state persistence via localStorage
+     - Auto-collapse option for long code blocks
+     - Theme-aware styling (dark/light mode)
+     - Smooth animations (slideUp/slideDown for headings, height transition for code)
+   - **Key patterns**:
+     - WeakMap for element caching (memory efficient)
+     - Content-based ID generation (message index + element index + hash)
+     - Hierarchical content detection: `getHeadingContent()` walks DOM until next same/higher level heading
+     - Observer-based: Listens to MESSAGES_UPDATED event for new content
+     - Clean separation: HeadingFolder, CodeBlockFolder, FoldingStorage sub-components
+   - Sub-components:
+     - **HeadingFolder**: Manages heading chevrons, click handlers, hierarchical collapse logic
+     - **CodeBlockFolder**: Manages code collapse buttons, preview mode, fade gradients, expand footers
+     - **FoldingStorage**: localStorage persistence per conversation, load/save state
+   - Settings:
+     - Enable/disable headings and code blocks independently
+     - Min lines threshold (5-50, default 15)
+     - Preview lines (1-10, default 5)
+     - Auto-collapse long code blocks
+     - Remember fold states (per conversation)
+   - Enabled by default to bring Obsidian-style organization to Claude responses
 
 ### Module Details
 
@@ -405,6 +441,7 @@ Settings are organized by module with a shared `general` section:
   bookmarks: { enabled, keyboardShortcuts, showOnHover, storageType },
   emojiMarkers: { enabled, showBadges, showOnHover, storageType, favoriteEmojis },
   sidebarCollapse: { enabled, defaultState, rememberState },
+  contentFolding: { enabled, headings: { enabled, levels }, codeBlocks: { enabled, minLines, previewLines, autoCollapse }, rememberState },
   general: { opacity, colorTheme, customColor }  // Shared across modules
 }
 ```

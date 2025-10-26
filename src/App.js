@@ -10,6 +10,7 @@ import CompactViewModule from './modules/CompactViewModule.js';
 import BookmarkModule from './modules/BookmarkModule.js';
 import EmojiMarkerModule from './modules/EmojiMarkerModule.js';
 import SidebarCollapseModule from './modules/SidebarCollapseModule.js';
+import ContentFoldingModule from './modules/ContentFoldingModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -70,6 +71,9 @@ class ClaudeProductivityApp {
 
     // Sidebar Collapse
     this.registerModule('sidebarCollapse', new SidebarCollapseModule());
+
+    // Content Folding
+    this.registerModule('contentFolding', new ContentFoldingModule());
   }
 
   /**

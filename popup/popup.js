@@ -104,6 +104,20 @@ function getDefaultSettings() {
       defaultState: 'expanded',
       rememberState: true,
     },
+    contentFolding: {
+      enabled: true,
+      headings: {
+        enabled: true,
+        levels: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+      },
+      codeBlocks: {
+        enabled: true,
+        minLines: 15,
+        previewLines: 5,
+        autoCollapse: false,
+      },
+      rememberState: true,
+    },
     export: {
       enabled: false,
       defaultFormat: 'markdown',
@@ -163,6 +177,18 @@ function updateUI() {
   const sidebarCollapse = currentSettings.sidebarCollapse || {};
   document.getElementById('sidebarCollapse-enabled').checked = sidebarCollapse.enabled !== undefined ? sidebarCollapse.enabled : true;
   document.getElementById('sidebarCollapse-rememberState').checked = sidebarCollapse.rememberState !== undefined ? sidebarCollapse.rememberState : true;
+
+  // Content Folding settings
+  const contentFolding = currentSettings.contentFolding || {};
+  document.getElementById('contentFolding-enabled').checked = contentFolding.enabled !== undefined ? contentFolding.enabled : true;
+  document.getElementById('contentFolding-headings-enabled').checked = contentFolding.headings?.enabled !== undefined ? contentFolding.headings.enabled : true;
+  document.getElementById('contentFolding-codeBlocks-enabled').checked = contentFolding.codeBlocks?.enabled !== undefined ? contentFolding.codeBlocks.enabled : true;
+  document.getElementById('contentFolding-minLines').value = contentFolding.codeBlocks?.minLines || 15;
+  document.getElementById('contentFolding-minLines-value').textContent = contentFolding.codeBlocks?.minLines || 15;
+  document.getElementById('contentFolding-previewLines').value = contentFolding.codeBlocks?.previewLines || 5;
+  document.getElementById('contentFolding-previewLines-value').textContent = contentFolding.codeBlocks?.previewLines || 5;
+  document.getElementById('contentFolding-autoCollapse').checked = contentFolding.codeBlocks?.autoCollapse || false;
+  document.getElementById('contentFolding-rememberState').checked = contentFolding.rememberState !== undefined ? contentFolding.rememberState : true;
 
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
@@ -303,6 +329,57 @@ function setupEventListeners() {
   document.getElementById('sidebarCollapse-rememberState').addEventListener('change', (e) => {
     if (!currentSettings.sidebarCollapse) currentSettings.sidebarCollapse = {};
     currentSettings.sidebarCollapse.rememberState = e.target.checked;
+  });
+
+  // Content Folding enabled toggle
+  document.getElementById('contentFolding-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    currentSettings.contentFolding.enabled = e.target.checked;
+  });
+
+  // Content Folding headings enabled
+  document.getElementById('contentFolding-headings-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.headings) currentSettings.contentFolding.headings = {};
+    currentSettings.contentFolding.headings.enabled = e.target.checked;
+  });
+
+  // Content Folding code blocks enabled
+  document.getElementById('contentFolding-codeBlocks-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
+    currentSettings.contentFolding.codeBlocks.enabled = e.target.checked;
+  });
+
+  // Content Folding min lines
+  document.getElementById('contentFolding-minLines').addEventListener('input', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
+    const value = parseInt(e.target.value);
+    currentSettings.contentFolding.codeBlocks.minLines = value;
+    document.getElementById('contentFolding-minLines-value').textContent = value;
+  });
+
+  // Content Folding preview lines
+  document.getElementById('contentFolding-previewLines').addEventListener('input', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
+    const value = parseInt(e.target.value);
+    currentSettings.contentFolding.codeBlocks.previewLines = value;
+    document.getElementById('contentFolding-previewLines-value').textContent = value;
+  });
+
+  // Content Folding auto collapse
+  document.getElementById('contentFolding-autoCollapse').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
+    currentSettings.contentFolding.codeBlocks.autoCollapse = e.target.checked;
+  });
+
+  // Content Folding remember state
+  document.getElementById('contentFolding-rememberState').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    currentSettings.contentFolding.rememberState = e.target.checked;
   });
 
   // Nav position
