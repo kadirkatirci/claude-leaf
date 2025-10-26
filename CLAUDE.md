@@ -23,7 +23,7 @@ npm run dev              # Alias for watch mode
 4. Click "Load unpacked" and select the extension folder
 5. Navigate to https://claude.ai to test changes
 
-## Architecture
+## Architecture Overview
 
 ### Module-Based System
 
@@ -66,6 +66,102 @@ The extension uses a **modular architecture** where each feature is a self-conta
 - Helper utilities for DOM manipulation specific to Claude's UI
 - Key methods: `findMessages()`, `scrollToElement()`, `observeDOM()`, `flashClass()`
 - Handles Claude-specific selectors and DOM structure
+
+### Key Patterns
+
+#### Fixed Button Pattern
+
+All UI buttons use a consistent pattern for stability across page navigation:
+
+**Core Principle**: Append all persistent UI elements to `document.body` with `position: fixed`. This ensures they NEVER get removed when Claude.ai changes page content.
+
+**Implementation**:
+```javascript
+createFixedButton() {
+  const theme = this.getTheme();
+
+  const button = this.dom.createElement('button', {
+    id: 'my-module-fixed-btn',
+    innerHTML: '🔖',
+    style: {
+      position: 'fixed',
+      right: '30px',
+      top: '50%',
+      transform: 'translateY(-40px)', // Adjust for vertical positioning
+      width: '48px',
+      height: '48px',
+      borderRadius: '50%',
+      background: theme.gradient,
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: '9999',
+      // ... other styling
+    }
+  });
+
+  // Counter badge (optional)
+  const counter = this.dom.createElement('div', {
+    id: 'my-module-counter',
+    textContent: '0',
+    style: {
+      position: 'absolute',
+      top: '-5px',
+      right: '-5px',
+      background: '#ef4444',
+      color: 'white',
+      fontSize: '11px',
+      // ... badge styling
+    }
+  });
+
+  button.appendChild(counter);
+  document.body.appendChild(button); // KEY: Append to body
+
+  this.elements.button = button;
+  this.elements.counter = counter;
+}
+```
+
+**Button Positioning**:
+- Navigation: `translateY(0)` - center
+- Edit History: `translateY(-100px)` - above center
+- Collapse All: `translateY(-160px)` - top
+- Bookmark: `translateY(-40px)` - slightly above center
+
+**Data Updates Only**:
+- UI elements created once in `init()`
+- Only update counter text/button states when data changes
+- No recreation needed when navigating between chats
+
+**Event Listening**:
+Listen to `MESSAGES_UPDATED` event from NavigationModule to trigger data scanning:
+```javascript
+this.subscribe(Events.MESSAGES_UPDATED, () => {
+  this.log('🔄 Messages updated, scanning...');
+  this.scanForNewData();
+});
+```
+
+#### Inter-Module Communication
+
+Modules can interact in two ways:
+
+1. **Events** (preferred for loose coupling):
+   ```javascript
+   this.emit(Events.MESSAGES_UPDATED, data);
+   this.subscribe(Events.SETTINGS_CHANGED, callback);
+   ```
+
+2. **Direct access** (when necessary):
+   ```javascript
+   const app = window.claudeProductivity;
+   const otherModule = app.getModule('moduleName');
+   otherModule.someMethod();
+   ```
+
+Example: `EditHistoryModule` calls `CompactViewModule.collapseAllMessages()` for the "Collapse All" button.
+
+## Modules
 
 ### Module Structure
 
@@ -142,6 +238,50 @@ src/modules/
    - **Key pattern**: Fixed button in body, data-driven counter updates
    - Performance: State tracking prevents unnecessary DOM updates
 
+### Module Details
+
+#### BookmarkModule Architecture
+
+The BookmarkModule uses a modular sub-component architecture:
+
+**BookmarkStorage** ([BookmarkModule/BookmarkStorage.js](src/modules/BookmarkModule/BookmarkStorage.js))
+- Handles all storage operations (load, save, export, import)
+- Supports both `chrome.storage.local` and `chrome.storage.sync`
+- User can switch storage type in settings
+
+**BookmarkButton** ([BookmarkModule/BookmarkButton.js](src/modules/BookmarkModule/BookmarkButton.js))
+- Manages bookmark buttons on individual messages
+- Uses WeakMap for button tracking
+- State tracking: Only updates button if bookmark state changed
+- SVG icons: Filled (bookmarked) vs stroked (not bookmarked)
+
+**BookmarkPanel** ([BookmarkModule/BookmarkPanel.js](src/modules/BookmarkModule/BookmarkPanel.js))
+- Floating panel UI (matches EditPanel design)
+- Toggle button in header with counter badge
+- Content diffing: Only rebuilds when bookmarks actually change
+- Counter optimization: Only updates when count changes
+
+**BookmarkSidebar** ([BookmarkModule/BookmarkSidebar.js](src/modules/BookmarkModule/BookmarkSidebar.js))
+- Integrates with Claude's native sidebar
+- Clickable header opens bookmarks page
+- Content diffing: Only updates when bookmarks change
+- SVG icons with dark/light mode support
+
+**Bookmarks Page** ([bookmarks/bookmarks.html](bookmarks/bookmarks.html) + [bookmarks.js](bookmarks/bookmarks.js))
+- Dedicated full-page view of all bookmarks
+- Search functionality
+- Delete and navigate features
+- URL parameter navigation: `?bookmark=<id>` for direct access
+
+**Key Patterns:**
+- Index-based system: Bookmarks use message array index (simple, reliable)
+- Content signature: Hash of first 1000 characters for verification
+- Navigation retry: Message stabilization algorithm waits for full load
+- Conversation filtering: Only shows bookmarks for current URL
+- Export/Import: JSON format with timestamp and metadata
+
+## System Components
+
 ### Settings System
 
 Settings are organized by module with a shared `general` section:
@@ -158,24 +298,13 @@ Settings are organized by module with a shared `general` section:
 
 **Important**: Theme settings (`colorTheme`, `customColor`) are in `general`, not per-module.
 
-### Inter-Module Communication
+### Theming System
 
-Modules can interact in two ways:
-
-1. **Events** (preferred for loose coupling):
-   ```javascript
-   this.emit(Events.MESSAGES_UPDATED, data);
-   this.subscribe(Events.SETTINGS_CHANGED, callback);
-   ```
-
-2. **Direct access** (when necessary):
-   ```javascript
-   const app = window.claudeProductivity;
-   const otherModule = app.getModule('moduleName');
-   otherModule.someMethod();
-   ```
-
-Example: `EditHistoryModule` calls `CompactViewModule.collapseAllMessages()` for the "Collapse All" button.
+Themes are defined in [src/config/themes.js](src/config/themes.js) and managed centrally:
+- Built-in themes: `native` (Claude orange), `purple` (default)
+- Custom theme: User-defined color with auto-generated gradient
+- Theme colors injected as CSS custom properties in [App.js](src/App.js)
+- All modules access theme via `this.getTheme()` from BaseModule
 
 ### Build System
 
@@ -187,13 +316,46 @@ Uses **Rollup** to bundle ES6 modules into single `dist/content.bundle.js`:
 
 The content script is injected at `document_idle` on `https://claude.ai/*` pages only.
 
-### Theming System
+### Extension Manifest
 
-Themes are defined in `src/config/themes.js` and managed centrally:
-- Built-in themes: `native` (Claude orange), `purple` (default)
-- Custom theme: User-defined color with auto-generated gradient
-- Theme colors injected as CSS custom properties in `App.js`
-- All modules access theme via `this.getTheme()` from BaseModule
+- Manifest v3
+- Permissions: `storage`, `activeTab`
+- Host: `https://claude.ai/*` only
+- Popup UI at [popup/popup.html](popup/popup.html) for settings
+- Content script: `dist/content.bundle.js` + [styles.css](styles.css)
+- Web accessible resources: [bookmarks/bookmarks.html](bookmarks/bookmarks.html), [bookmarks/bookmarks.js](bookmarks/bookmarks.js) (for dedicated bookmarks page)
+
+## Implementation Guide
+
+### Adding a New Module
+
+1. Create class extending `BaseModule` in `src/modules/YourModule.js`
+2. Implement `async init()` - check `if (!this.enabled) return;` early
+3. Override `onSettingsChanged()` if module responds to settings updates
+4. Override `destroy()` to clean up (call `super.destroy()`)
+5. Register in [App.js](src/App.js) `registerModules()`: `this.registerModule('yourModule', new YourModule())`
+6. Add default settings to [SettingsManager](src/utils/SettingsManager.js) defaults
+
+### Keyboard Shortcuts
+
+Register in module's `init()`:
+```javascript
+const handleKeydown = (e) => {
+  if (e.altKey && e.key === 'SomeKey') {
+    e.preventDefault();
+    this.yourAction();
+  }
+};
+document.addEventListener('keydown', handleKeydown);
+this.unsubscribers.push(() => document.removeEventListener('keydown', handleKeydown));
+```
+
+### Responding to Settings Changes
+
+Modules automatically receive `onSettingsChanged(settings)` callback:
+- Check if specific setting changed
+- Update UI or behavior accordingly
+- Theme changes trigger full UI recreation via `recreateUI()`
 
 ### DOM Interaction Patterns
 
@@ -201,13 +363,13 @@ Themes are defined in `src/config/themes.js` and managed centrally:
 
 **User vs Assistant**: User messages have `[data-testid="user-message"]`, assistant messages don't
 
-**Edit Detection**: EditHistoryModule scans for version indicators like "Edited X time(s)" text
+**Edit Detection**: [EditHistoryModule](src/modules/EditHistoryModule.js) scans for version indicators like "Edited X time(s)" text
 
-**Observation Pattern**: All modules use `DOMUtils.observeDOM()` with MutationObserver and throttling
+**Observation Pattern**: All modules use [DOMUtils](src/utils/DOMUtils.js)`.observeDOM()` with MutationObserver and throttling
 
 ### CSS Management
 
-- Global styles injected by `App.js` in `<style id="claude-productivity-global-styles">`
+- Global styles injected by [App.js](src/App.js) in `<style id="claude-productivity-global-styles">`
 - Module-specific inline styles created programmatically
 - CSS animations defined globally: `fadeIn`, `fadeOut`, `slideUp`, `claude-highlight-pulse`
 - Highlight classes: `.claude-nav-highlight`, `.claude-edit-highlighted`
@@ -246,164 +408,10 @@ All modules implement performance optimizations to minimize unnecessary DOM mani
 - Example: Badge updates innerHTML instead of removing and recreating
 
 **Performance Metrics:**
-- BookmarkModule: Updates only when bookmarks added/removed
-- EditHistoryModule: Updates only when edits appear/disappear
-- NavigationModule: Updates only when scroll position crosses message boundaries
+- [BookmarkModule](src/modules/BookmarkModule.js): Updates only when bookmarks added/removed
+- [EditHistoryModule](src/modules/EditHistoryModule.js): Updates only when edits appear/disappear
+- [NavigationModule](src/modules/NavigationModule.js): Updates only when scroll position crosses message boundaries
 - Result: Minimal DOM manipulation visible in DevTools inspector
-
-## Common Patterns
-
-### Adding a New Module
-
-1. Create class extending `BaseModule` in `src/modules/YourModule.js`
-2. Implement `async init()` - check `if (!this.enabled) return;` early
-3. Override `onSettingsChanged()` if module responds to settings updates
-4. Override `destroy()` to clean up (call `super.destroy()`)
-5. Register in `App.js` `registerModules()`: `this.registerModule('yourModule', new YourModule())`
-6. Add default settings to `SettingsManager.defaults`
-
-### Keyboard Shortcuts
-
-Register in module's `init()`:
-```javascript
-const handleKeydown = (e) => {
-  if (e.altKey && e.key === 'SomeKey') {
-    e.preventDefault();
-    this.yourAction();
-  }
-};
-document.addEventListener('keydown', handleKeydown);
-this.unsubscribers.push(() => document.removeEventListener('keydown', handleKeydown));
-```
-
-### Responding to Settings Changes
-
-Modules automatically receive `onSettingsChanged(settings)` callback:
-- Check if specific setting changed
-- Update UI or behavior accordingly
-- Theme changes trigger full UI recreation via `recreateUI()`
-
-### Fixed Button Pattern
-
-All UI buttons use a consistent pattern for stability across page navigation:
-
-**Core Principle**: Append all persistent UI elements to `document.body` with `position: fixed`. This ensures they NEVER get removed when Claude.ai changes page content.
-
-**Implementation**:
-```javascript
-createFixedButton() {
-  const theme = this.getTheme();
-
-  const button = this.dom.createElement('button', {
-    id: 'my-module-fixed-btn',
-    innerHTML: '🔖',
-    style: {
-      position: 'fixed',
-      right: '30px',
-      top: '50%',
-      transform: 'translateY(-40px)', // Adjust for vertical positioning
-      width: '48px',
-      height: '48px',
-      borderRadius: '50%',
-      background: theme.gradient,
-      border: 'none',
-      cursor: 'pointer',
-      zIndex: '9999',
-      // ... other styling
-    }
-  });
-
-  // Counter badge (optional)
-  const counter = this.dom.createElement('div', {
-    id: 'my-module-counter',
-    textContent: '0',
-    style: {
-      position: 'absolute',
-      top: '-5px',
-      right: '-5px',
-      background: '#ef4444',
-      color: 'white',
-      fontSize: '11px',
-      // ... badge styling
-    }
-  });
-
-  button.appendChild(counter);
-  document.body.appendChild(button); // KEY: Append to body
-
-  this.elements.button = button;
-  this.elements.counter = counter;
-}
-```
-
-**Button Positioning**:
-- Navigation: `translateY(0)` - center
-- Edit History: `translateY(-100px)` - above center
-- Collapse All: `translateY(-160px)` - top
-- Bookmark: `translateY(-40px)` - slightly above center
-
-**Data Updates Only**:
-- UI elements created once in `init()`
-- Only update counter text/button states when data changes
-- No recreation needed when navigating between chats
-
-**Event Listening**:
-Listen to `MESSAGES_UPDATED` event from NavigationModule to trigger data scanning:
-```javascript
-this.subscribe(Events.MESSAGES_UPDATED, () => {
-  this.log('🔄 Messages updated, scanning...');
-  this.scanForNewData();
-});
-```
-
-### Bookmark Module Architecture
-
-The BookmarkModule uses a modular sub-component architecture:
-
-**BookmarkStorage** (`BookmarkModule/BookmarkStorage.js`)
-- Handles all storage operations (load, save, export, import)
-- Supports both `chrome.storage.local` and `chrome.storage.sync`
-- User can switch storage type in settings
-
-**BookmarkButton** (`BookmarkModule/BookmarkButton.js`)
-- Manages bookmark buttons on individual messages
-- Uses WeakMap for button tracking
-- State tracking: Only updates button if bookmark state changed
-- SVG icons: Filled (bookmarked) vs stroked (not bookmarked)
-
-**BookmarkPanel** (`BookmarkModule/BookmarkPanel.js`)
-- Floating panel UI (matches EditPanel design)
-- Toggle button in header with counter badge
-- Content diffing: Only rebuilds when bookmarks actually change
-- Counter optimization: Only updates when count changes
-
-**BookmarkSidebar** (`BookmarkModule/BookmarkSidebar.js`)
-- Integrates with Claude's native sidebar
-- Clickable header opens bookmarks page
-- Content diffing: Only updates when bookmarks change
-- SVG icons with dark/light mode support
-
-**Bookmarks Page** (`bookmarks/bookmarks.html` + `bookmarks.js`)
-- Dedicated full-page view of all bookmarks
-- Search functionality
-- Delete and navigate features
-- URL parameter navigation: `?bookmark=<id>` for direct access
-
-**Key Patterns:**
-- Index-based system: Bookmarks use message array index (simple, reliable)
-- Content signature: Hash of first 1000 characters for verification
-- Navigation retry: Message stabilization algorithm waits for full load
-- Conversation filtering: Only shows bookmarks for current URL
-- Export/Import: JSON format with timestamp and metadata
-
-## Extension Manifest
-
-- Manifest v3
-- Permissions: `storage`, `activeTab`
-- Host: `https://claude.ai/*` only
-- Popup UI at `popup/popup.html` for settings
-- Content script: `dist/content.bundle.js` + `styles.css`
-- Web accessible resources: `bookmarks/bookmarks.html`, `bookmarks/bookmarks.js` (for dedicated bookmarks page)
 
 ## Debugging
 
