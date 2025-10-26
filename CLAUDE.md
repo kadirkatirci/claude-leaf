@@ -35,6 +35,7 @@ The extension uses a **modular architecture** where each feature is a self-conta
 - **Settings-driven**: All modules respond to settings changes dynamically
 - **DOM observation**: Modules watch for DOM changes to handle Claude's dynamic UI
 - **Performance-optimized**: State tracking to prevent unnecessary DOM manipulations
+- **Fixed UI pattern**: UI elements appended to `document.body` for persistence across page changes
 
 ### Core Components
 
@@ -91,16 +92,25 @@ src/modules/
 **Current Modules:**
 
 1. **NavigationModule** - Floating navigation buttons for message-to-message navigation
+   - **Fixed position sidebar** (right side, center) - NEVER destroyed, always visible
+   - Buttons: Top (⇈), Previous (↑), Next (↓)
+   - Counter badge shows current position (e.g., "5/10")
    - Keyboard shortcuts: Alt+↑ (prev), Alt+↓ (next), Alt+Home (top)
-   - Finds messages via `[data-is-streaming="false"]` selector
+   - MutationObserver watches for DOM changes, updates message array
+   - **Key pattern**: UI elements appended to `document.body`, data updates only
    - Smart state tracking: Only updates buttons/counter when values change
    - Throttled scroll listener (300ms) with passive event handling
 
 2. **EditHistoryModule** - Tracks and displays edited prompts
+   - **Fixed position sidebar button** (right side, above center) - NEVER destroyed
+   - Shows ✏️ icon with red counter badge (e.g., "3" edits)
+   - **Collapse/Expand All button** (📦/📂) appears when edits exist
+   - Listens to `MESSAGES_UPDATED` event for immediate scanning on navigation
    - Uses `EditScanner` to detect edit indicators in Claude's UI
    - Shows badges on edited messages, panel with edit list, modal with version history
    - Optimized scanning: Only notifies when edits actually change
    - Smart badge updates: Updates instead of recreating
+   - **Key pattern**: Fixed buttons in body, MutationObserver for data scanning
    - Complex sub-component architecture
 
 3. **CompactViewModule** - Collapse/expand long Claude responses
@@ -108,14 +118,18 @@ src/modules/
    - `ExpandButton` component for UI controls
    - Keyboard shortcuts: Alt+← (collapse all), Alt+→ (expand all)
    - Auto-collapse feature for new messages
+   - Controlled by EditHistoryModule's Collapse All button
 
 4. **BookmarkModule** - Save and navigate to important messages
+   - **Fixed position sidebar button** (right side, slightly above center) - NEVER destroyed
+   - Shows 🔖 icon with red counter badge (e.g., "5" bookmarks)
+   - Updates counter via `updateUI()` when bookmarks change
    - Index-based bookmark system (simple and reliable)
    - Stores bookmarks locally or synced across Chrome browsers
    - Features:
      - Hover-triggered bookmark buttons on messages (SVG icons)
-     - Toggle button in header (shows count badge)
-     - Floating panel for quick access
+     - Fixed sidebar button for quick access
+     - Floating panel for bookmark management
      - Sidebar integration with clickable header
      - Dedicated bookmarks page (bookmarks/bookmarks.html)
      - Export/Import functionality in popup
@@ -125,6 +139,7 @@ src/modules/
      - Retry mechanism for navigating from bookmarks page
      - Content signature verification to ensure correct message
    - Keyboard shortcuts: Alt+B (toggle bookmark), Alt+Shift+B (toggle panel)
+   - **Key pattern**: Fixed button in body, data-driven counter updates
    - Performance: State tracking prevents unnecessary DOM updates
 
 ### Settings System
@@ -267,6 +282,79 @@ Modules automatically receive `onSettingsChanged(settings)` callback:
 - Check if specific setting changed
 - Update UI or behavior accordingly
 - Theme changes trigger full UI recreation via `recreateUI()`
+
+### Fixed Button Pattern
+
+All UI buttons use a consistent pattern for stability across page navigation:
+
+**Core Principle**: Append all persistent UI elements to `document.body` with `position: fixed`. This ensures they NEVER get removed when Claude.ai changes page content.
+
+**Implementation**:
+```javascript
+createFixedButton() {
+  const theme = this.getTheme();
+
+  const button = this.dom.createElement('button', {
+    id: 'my-module-fixed-btn',
+    innerHTML: '🔖',
+    style: {
+      position: 'fixed',
+      right: '30px',
+      top: '50%',
+      transform: 'translateY(-40px)', // Adjust for vertical positioning
+      width: '48px',
+      height: '48px',
+      borderRadius: '50%',
+      background: theme.gradient,
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: '9999',
+      // ... other styling
+    }
+  });
+
+  // Counter badge (optional)
+  const counter = this.dom.createElement('div', {
+    id: 'my-module-counter',
+    textContent: '0',
+    style: {
+      position: 'absolute',
+      top: '-5px',
+      right: '-5px',
+      background: '#ef4444',
+      color: 'white',
+      fontSize: '11px',
+      // ... badge styling
+    }
+  });
+
+  button.appendChild(counter);
+  document.body.appendChild(button); // KEY: Append to body
+
+  this.elements.button = button;
+  this.elements.counter = counter;
+}
+```
+
+**Button Positioning**:
+- Navigation: `translateY(0)` - center
+- Edit History: `translateY(-100px)` - above center
+- Collapse All: `translateY(-160px)` - top
+- Bookmark: `translateY(-40px)` - slightly above center
+
+**Data Updates Only**:
+- UI elements created once in `init()`
+- Only update counter text/button states when data changes
+- No recreation needed when navigating between chats
+
+**Event Listening**:
+Listen to `MESSAGES_UPDATED` event from NavigationModule to trigger data scanning:
+```javascript
+this.subscribe(Events.MESSAGES_UPDATED, () => {
+  this.log('🔄 Messages updated, scanning...');
+  this.scanForNewData();
+});
+```
 
 ### Bookmark Module Architecture
 
