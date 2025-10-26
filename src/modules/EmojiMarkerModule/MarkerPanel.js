@@ -114,11 +114,12 @@ export class MarkerPanel {
     if (!content) return;
 
     // Check if content actually changed (optimization)
-    const currentIds = markers.map(m => m.id).sort().join(',');
-    if (this.lastMarkerIds === currentIds) {
+    // Include emoji in comparison to detect emoji changes
+    const currentSignature = markers.map(m => `${m.id}:${m.emoji}`).sort().join(',');
+    if (this.lastMarkerIds === currentSignature) {
       return; // No change, skip update
     }
-    this.lastMarkerIds = currentIds;
+    this.lastMarkerIds = currentSignature;
 
     // Update title with count
     const title = this.panel.querySelector('#marker-panel-title');
