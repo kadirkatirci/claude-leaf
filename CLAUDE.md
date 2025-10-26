@@ -307,7 +307,8 @@ src/modules/
    - **Hover-based UI**: Chevrons and buttons only visible on hover (cleaner interface)
    - **Exception**: Collapsed items always show their toggle (so user knows how to expand)
    - Features:
-     - Hierarchical heading collapse: Parent heading collapse hides all children
+     - Hierarchical heading collapse: Parent heading collapse hides all children until next same/higher level heading OR `<hr>` separator
+     - **HR separator support**: `---` (horizontal rule) acts as manual section boundary - collapse stops at HR tags
      - Code block preview: Shows first N lines + fade gradient + "Show X more lines" button
      - Conversation-based state persistence via localStorage
      - Auto-collapse option for long code blocks
@@ -316,7 +317,7 @@ src/modules/
    - **Key patterns**:
      - WeakMap for element caching (memory efficient)
      - Content-based ID generation (message index + element index + hash)
-     - Hierarchical content detection: `getHeadingContent()` walks DOM until next same/higher level heading
+     - Hierarchical content detection: `getHeadingContent()` walks DOM until next same/higher level heading or HR separator
      - Observer-based: Listens to MESSAGES_UPDATED event for new content
      - Clean separation: HeadingFolder, CodeBlockFolder, FoldingStorage sub-components
    - Sub-components:

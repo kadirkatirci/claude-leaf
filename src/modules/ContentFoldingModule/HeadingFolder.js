@@ -245,13 +245,18 @@ class HeadingFolder {
 
   /**
    * Get content elements for a heading (hierarchical)
-   * Returns all elements until next same/higher level heading
+   * Returns all elements until next same/higher level heading or HR separator
    */
   getHeadingContent(heading, level) {
     const elements = [];
     let current = heading.nextElementSibling;
 
     while (current) {
+      // Check if it's an HR tag - stop here (section separator)
+      if (current.tagName === 'HR') {
+        break;
+      }
+
       // Check if it's a heading
       const match = current.tagName.match(/^H([1-6])$/);
 
