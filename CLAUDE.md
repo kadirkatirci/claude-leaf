@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, and compact view for managing long conversations.
+A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, starred section collapse, and compact view for managing long conversations.
 
 ## Development Commands
 
@@ -174,6 +174,7 @@ src/modules/
 ├── CompactViewModule.js          # Main module file
 ├── BookmarkModule.js             # Main module file
 ├── EmojiMarkerModule.js          # Main module file
+├── StarredCollapseModule.js      # Main module file (sidebar injection)
 ├── EditHistoryModule/            # Sub-components (if complex)
 │   ├── EditScanner.js
 │   ├── EditBadge.js
@@ -270,6 +271,29 @@ src/modules/
      - Marker button: Only visible when no marker exists (add mode)
    - Performance: Smart updates, duplicate prevention, content signature tracking
    - Complex sub-component architecture (Storage, Button, Badge, Panel, Picker)
+
+6. **StarredCollapseModule** - Makes starred section in sidebar collapsible
+   - Solves UX problem: Many starred items make it hard to see recent conversations
+   - **No fixed position button** - Injects directly into Claude's sidebar
+   - **Retry injection mechanism** (similar to BookmarkSidebar pattern)
+   - Chevron icon (▶/▼) added to "Starred" header for expand/collapse
+   - **Default state: Collapsed** when module is enabled
+   - **Configurable max items** (default: 5) shown when collapsed
+   - **Show more footer**: "Show X more starred" link when collapsed
+   - **State persistence**: Optional remember state via localStorage
+   - **Interactive header**: Click anywhere on "Starred" header to toggle
+   - Features:
+     - Finds starred section by searching for h3 with text "Starred"
+     - Hides items beyond maxItemsWhenCollapsed when collapsed
+     - Smooth transitions with hover effects
+     - Auto-reinjects when settings change
+   - **Key patterns**:
+     - Injection with retry: Waits for sidebar to load (max 10 retries @ 1s)
+     - Theme-aware: Uses getTheme() for consistent styling
+     - Settings-driven: Respects maxItemsWhenCollapsed, defaultState, rememberState
+     - Clean shutdown: Restores all items visibility on destroy
+   - No fixed button needed (operates within Claude's native sidebar)
+   - Enabled by default to improve conversation list UX
 
 ### Module Details
 
@@ -380,6 +404,7 @@ Settings are organized by module with a shared `general` section:
   compactView: { enabled, minHeight, autoCollapse, autoCollapseEnabled, ... },
   bookmarks: { enabled, keyboardShortcuts, showOnHover, storageType },
   emojiMarkers: { enabled, showBadges, showOnHover, storageType, favoriteEmojis },
+  starredCollapse: { enabled, maxItemsWhenCollapsed, defaultState, rememberState },
   general: { opacity, colorTheme, customColor }  // Shared across modules
 }
 ```

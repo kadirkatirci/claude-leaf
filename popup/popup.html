@@ -21,6 +21,7 @@
       <button class="tab" data-tab="compactView" title="Compact View">📦</button>
       <button class="tab" data-tab="bookmarks" title="Bookmarks">🔖</button>
       <button class="tab" data-tab="emojiMarkers" title="Emoji Markers">📍</button>
+      <button class="tab" data-tab="starredCollapse" title="Starred Collapse">⭐</button>
       <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
       <button class="tab" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
@@ -344,6 +345,55 @@
             <button id="emojiMarkers-export-btn" class="btn btn-secondary" style="flex: 1;">📤 Export Markers</button>
             <button id="emojiMarkers-import-btn" class="btn btn-secondary" style="flex: 1;">📥 Import Markers</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-starredCollapse">
+      <div class="section">
+        <div class="section-header">
+          <h2>Starred Collapse</h2>
+          <label class="toggle">
+            <input type="checkbox" id="starredCollapse-enabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-item">
+            <label for="starredCollapse-maxItems">Collapsed Durumda Gösterilecek Maksimum Öğe</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="range" id="starredCollapse-maxItems" min="1" max="20" step="1" value="5" style="flex: 1;">
+              <span id="starredCollapse-maxItems-value" style="min-width: 30px; font-weight: 600; color: #667eea;">5</span>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <label for="starredCollapse-rememberState">Durumu Hatırla (Expand/Collapse)</label>
+            <label class="toggle">
+              <input type="checkbox" id="starredCollapse-rememberState" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Nasıl Çalışır?</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li>Sidebar'daki Starred section'ı collapsible yapar</li>
+            <li>Çok fazla yıldızlı mesaj olduğunda recent mesajlara erişim kolaylaşır</li>
+            <li>Modül aktifse, default olarak collapsed durumda başlar</li>
+            <li>Starred başlığına tıklayarak veya chevron ikona (▶/▼) tıklayarak açıp-kapatabilirsiniz</li>
+            <li>Collapsed durumda "Show X more starred" linki görünür</li>
+            <li>"Durumu Hatırla" seçeneği ile tercihleriniz kaydedilir</li>
+          </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px; background: #fff3cd; border-left: 4px solid #ffc107;">
+          <h3>⚠️ Not</h3>
+          <p style="font-size: 13px; color: #856404; margin-top: 8px;">
+            Bu özellik sidebar'da en az bir yıldızlı mesaj olduğunda aktif olur. Eğer henüz yıldızlı mesajınız yoksa, bu özellik görünmeyecektir.
+          </p>
         </div>
       </div>
     </div>

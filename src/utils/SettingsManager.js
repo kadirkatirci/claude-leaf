@@ -61,6 +61,14 @@ class SettingsManager {
         storageType: 'sync', // 'local' | 'sync'
       },
 
+      // Starred Collapse
+      starredCollapse: {
+        enabled: true,
+        maxItemsWhenCollapsed: 5,
+        defaultState: 'collapsed', // 'collapsed' | 'expanded'
+        rememberState: true,
+      },
+
       // Export (future)
       export: {
         enabled: false,
