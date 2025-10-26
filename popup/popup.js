@@ -184,9 +184,7 @@ function updateUI() {
   document.getElementById('contentFolding-headings-enabled').checked = contentFolding.headings?.enabled !== undefined ? contentFolding.headings.enabled : true;
   document.getElementById('contentFolding-codeBlocks-enabled').checked = contentFolding.codeBlocks?.enabled !== undefined ? contentFolding.codeBlocks.enabled : true;
   document.getElementById('contentFolding-minLines').value = contentFolding.codeBlocks?.minLines || 15;
-  document.getElementById('contentFolding-minLines-value').textContent = contentFolding.codeBlocks?.minLines || 15;
   document.getElementById('contentFolding-previewLines').value = contentFolding.codeBlocks?.previewLines || 5;
-  document.getElementById('contentFolding-previewLines-value').textContent = contentFolding.codeBlocks?.previewLines || 5;
   document.getElementById('contentFolding-autoCollapse').checked = contentFolding.codeBlocks?.autoCollapse || false;
   document.getElementById('contentFolding-rememberState').checked = contentFolding.rememberState !== undefined ? contentFolding.rememberState : true;
 
@@ -355,18 +353,14 @@ function setupEventListeners() {
   document.getElementById('contentFolding-minLines').addEventListener('input', (e) => {
     if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
     if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
-    const value = parseInt(e.target.value);
-    currentSettings.contentFolding.codeBlocks.minLines = value;
-    document.getElementById('contentFolding-minLines-value').textContent = value;
+    currentSettings.contentFolding.codeBlocks.minLines = parseInt(e.target.value);
   });
 
   // Content Folding preview lines
   document.getElementById('contentFolding-previewLines').addEventListener('input', (e) => {
     if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
     if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
-    const value = parseInt(e.target.value);
-    currentSettings.contentFolding.codeBlocks.previewLines = value;
-    document.getElementById('contentFolding-previewLines-value').textContent = value;
+    currentSettings.contentFolding.codeBlocks.previewLines = parseInt(e.target.value);
   });
 
   // Content Folding auto collapse
