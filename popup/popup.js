@@ -92,6 +92,13 @@ function getDefaultSettings() {
       showOnHover: true,
       storageType: 'local',
     },
+    emojiMarkers: {
+      enabled: true,
+      favoriteEmojis: ['⚠️', '❓', '💡', '⭐', '📌', '🔥'],
+      showBadges: true,
+      showOnHover: true,
+      storageType: 'sync',
+    },
     export: {
       enabled: false,
       defaultFormat: 'markdown',
@@ -136,6 +143,16 @@ function updateUI() {
   document.getElementById('bookmarks-storageType').value = bookmarks.storageType || 'local';
   document.getElementById('bookmarks-keyboard').checked = bookmarks.keyboardShortcuts !== undefined ? bookmarks.keyboardShortcuts : true;
   document.getElementById('bookmarks-showOnHover').checked = bookmarks.showOnHover !== undefined ? bookmarks.showOnHover : true;
+
+  // Emoji Markers settings
+  const emojiMarkers = currentSettings.emojiMarkers || {};
+  document.getElementById('emojiMarkers-enabled').checked = emojiMarkers.enabled !== undefined ? emojiMarkers.enabled : true;
+  document.getElementById('emojiMarkers-storageType').value = emojiMarkers.storageType || 'sync';
+  document.getElementById('emojiMarkers-showBadges').checked = emojiMarkers.showBadges !== undefined ? emojiMarkers.showBadges : true;
+  document.getElementById('emojiMarkers-showOnHover').checked = emojiMarkers.showOnHover !== undefined ? emojiMarkers.showOnHover : true;
+
+  // Render favorite emojis
+  renderFavoriteEmojis();
 
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
@@ -239,6 +256,33 @@ function setupEventListeners() {
     currentSettings.bookmarks.showOnHover = e.target.checked;
   });
 
+  // Emoji Markers enabled toggle
+  document.getElementById('emojiMarkers-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+    currentSettings.emojiMarkers.enabled = e.target.checked;
+  });
+
+  // Emoji Markers storage type
+  document.getElementById('emojiMarkers-storageType').addEventListener('change', (e) => {
+    if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+    currentSettings.emojiMarkers.storageType = e.target.value;
+  });
+
+  // Emoji Markers show badges
+  document.getElementById('emojiMarkers-showBadges').addEventListener('change', (e) => {
+    if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+    currentSettings.emojiMarkers.showBadges = e.target.checked;
+  });
+
+  // Emoji Markers show on hover
+  document.getElementById('emojiMarkers-showOnHover').addEventListener('change', (e) => {
+    if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+    currentSettings.emojiMarkers.showOnHover = e.target.checked;
+  });
+
+  // Emoji Markers add favorite button
+  document.getElementById('emojiMarkers-add-favorite-btn').addEventListener('click', showEmojiPickerForFavorites);
+
   // Nav position
   document.getElementById('nav-position').addEventListener('change', (e) => {
     currentSettings.navigation.position = e.target.value;
@@ -314,6 +358,12 @@ function setupEventListeners() {
 
   // Bookmarks Import button
   document.getElementById('bookmarks-import-btn').addEventListener('click', importBookmarks);
+
+  // Emoji Markers Export button
+  document.getElementById('emojiMarkers-export-btn').addEventListener('click', exportEmojiMarkers);
+
+  // Emoji Markers Import button
+  document.getElementById('emojiMarkers-import-btn').addEventListener('click', importEmojiMarkers);
 }
 
 /**
@@ -518,6 +568,359 @@ async function importBookmarks() {
             if (tabs[0]) {
               chrome.tabs.sendMessage(tabs[0].id, {
                 type: 'BOOKMARKS_UPDATED'
+              }).catch(() => {
+                console.log('Content script not ready');
+              });
+            }
+          });
+        } catch (error) {
+          console.error('Import error:', error);
+          showToast('Import başarısız: Geçersiz dosya! ❌', 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    };
+
+    input.click();
+  } catch (error) {
+    console.error('Import error:', error);
+    showToast('Import başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Render favorite emojis
+ */
+function renderFavoriteEmojis() {
+  const container = document.getElementById('emojiMarkers-favorites-container');
+  if (!container) return;
+
+  const favoriteEmojis = currentSettings.emojiMarkers?.favoriteEmojis || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
+
+  container.innerHTML = '';
+
+  favoriteEmojis.forEach((emoji, index) => {
+    const chip = document.createElement('div');
+    chip.className = 'emoji-chip';
+    chip.draggable = true;
+    chip.dataset.index = index;
+    chip.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: move;
+      user-select: none;
+    `;
+
+    const emojiSpan = document.createElement('span');
+    emojiSpan.textContent = emoji;
+    emojiSpan.style.fontSize = '20px';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.innerHTML = '×';
+    removeBtn.style.cssText = `
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #999;
+      padding: 0;
+      margin-left: 4px;
+    `;
+    removeBtn.title = 'Remove';
+
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFavoriteEmoji(index);
+    });
+
+    chip.appendChild(emojiSpan);
+    chip.appendChild(removeBtn);
+
+    // Drag & drop events
+    chip.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', index);
+      chip.style.opacity = '0.5';
+    });
+
+    chip.addEventListener('dragend', () => {
+      chip.style.opacity = '1';
+    });
+
+    chip.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    chip.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+      const toIndex = parseInt(chip.dataset.index);
+
+      if (fromIndex !== toIndex) {
+        reorderFavoriteEmojis(fromIndex, toIndex);
+      }
+    });
+
+    container.appendChild(chip);
+  });
+}
+
+/**
+ * Remove favorite emoji
+ */
+function removeFavoriteEmoji(index) {
+  if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+  if (!currentSettings.emojiMarkers.favoriteEmojis) return;
+
+  currentSettings.emojiMarkers.favoriteEmojis.splice(index, 1);
+  renderFavoriteEmojis();
+}
+
+/**
+ * Reorder favorite emojis (drag & drop)
+ */
+function reorderFavoriteEmojis(fromIndex, toIndex) {
+  if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+  if (!currentSettings.emojiMarkers.favoriteEmojis) return;
+
+  const emojis = currentSettings.emojiMarkers.favoriteEmojis;
+  const [removed] = emojis.splice(fromIndex, 1);
+  emojis.splice(toIndex, 0, removed);
+
+  renderFavoriteEmojis();
+}
+
+/**
+ * Show emoji picker for adding favorites
+ */
+function showEmojiPickerForFavorites() {
+  // Simple emoji categories for popup
+  const categories = {
+    'Symbols': ['⚠️', '❓', '💡', '⭐', '📌', '🔥', '✅', '❌', '⚡', '🎯', '🏆', '💯', '🎉', '🎊', '💥', '✨', '🌟', '💫', '⭕', '🔴', '🟡', '🟢', '🔵', '🟣'],
+    'Smileys': ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳'],
+    'Gestures': ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤝', '🙏', '💪'],
+    'Objects': ['📝', '📋', '📌', '📍', '🗒️', '📄', '📃', '📑', '🔖', '🏷️', '💼', '📂', '📁', '🗂️', '📊', '📈', '📉', '💡', '🔦', '🔍', '🔎'],
+    'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝'],
+  };
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+
+  const picker = document.createElement('div');
+  picker.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 400px;
+    max-height: 500px;
+    overflow-y: auto;
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = 'Emoji Seç';
+  title.style.marginTop = '0';
+  picker.appendChild(title);
+
+  Object.entries(categories).forEach(([categoryName, emojis]) => {
+    const categoryTitle = document.createElement('h4');
+    categoryTitle.textContent = categoryName;
+    categoryTitle.style.fontSize = '12px';
+    categoryTitle.style.color = '#666';
+    categoryTitle.style.marginBottom = '8px';
+    picker.appendChild(categoryTitle);
+
+    const emojiGrid = document.createElement('div');
+    emojiGrid.style.cssText = `
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    `;
+
+    emojis.forEach(emoji => {
+      const btn = document.createElement('button');
+      btn.textContent = emoji;
+      btn.style.cssText = `
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f5f5f5;
+        cursor: pointer;
+        transition: all 0.2s;
+      `;
+
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = '#e5e5e5';
+        btn.style.transform = 'scale(1.1)';
+      });
+
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = '#f5f5f5';
+        btn.style.transform = 'scale(1)';
+      });
+
+      btn.addEventListener('click', () => {
+        addFavoriteEmoji(emoji);
+        modal.remove();
+      });
+
+      emojiGrid.appendChild(btn);
+    });
+
+    picker.appendChild(emojiGrid);
+  });
+
+  modal.appendChild(picker);
+
+  // Close on outside click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+
+  document.body.appendChild(modal);
+}
+
+/**
+ * Add favorite emoji
+ */
+function addFavoriteEmoji(emoji) {
+  if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
+  if (!currentSettings.emojiMarkers.favoriteEmojis) {
+    currentSettings.emojiMarkers.favoriteEmojis = [];
+  }
+
+  // Check if already exists
+  if (currentSettings.emojiMarkers.favoriteEmojis.includes(emoji)) {
+    showToast('Bu emoji zaten favori listede! ⚠️', 'warning');
+    return;
+  }
+
+  currentSettings.emojiMarkers.favoriteEmojis.push(emoji);
+  renderFavoriteEmojis();
+  showToast(`${emoji} favori emojilere eklendi! ✅`, 'success');
+}
+
+/**
+ * Export emoji markers to JSON file
+ */
+async function exportEmojiMarkers() {
+  try {
+    // Load markers from Chrome storage (check both local and sync)
+    const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
+    const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+
+    const result = await new Promise((resolve) => {
+      storage.get(['claude-emoji-markers'], resolve);
+    });
+
+    const markers = result['claude-emoji-markers'] || [];
+
+    if (markers.length === 0) {
+      showToast('Henüz emoji marker yok! ⚠️', 'warning');
+      return;
+    }
+
+    // Create JSON file
+    const dataStr = JSON.stringify(markers, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+
+    // Download file
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `claude-emoji-markers-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`${markers.length} emoji marker export edildi! 📤`, 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Export başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Import emoji markers from JSON file
+ */
+async function importEmojiMarkers() {
+  try {
+    // Create file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+
+          if (!Array.isArray(imported)) {
+            throw new Error('Invalid marker file format');
+          }
+
+          // Determine storage type
+          const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
+          const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+
+          // Load existing markers
+          const result = await new Promise((resolve) => {
+            storage.get(['claude-emoji-markers'], resolve);
+          });
+
+          const existingMarkers = result['claude-emoji-markers'] || [];
+
+          // Merge markers (avoid duplicates)
+          const existingIds = new Set(existingMarkers.map(m => m.id));
+          const newMarkers = imported.filter(m => !existingIds.has(m.id));
+
+          if (newMarkers.length === 0) {
+            showToast('Hiçbir yeni marker bulunamadı! ⚠️', 'warning');
+            return;
+          }
+
+          const mergedMarkers = [...existingMarkers, ...newMarkers];
+
+          // Save to Chrome storage
+          await new Promise((resolve) => {
+            storage.set({ 'claude-emoji-markers': mergedMarkers }, resolve);
+          });
+
+          showToast(`${newMarkers.length} emoji marker import edildi! 📥`, 'success');
+
+          // Notify content script to refresh
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'EMOJI_MARKERS_UPDATED'
               }).catch(() => {
                 console.log('Content script not ready');
               });

@@ -20,6 +20,7 @@
       <button class="tab" data-tab="editHistory" title="Edit History">✏️</button>
       <button class="tab" data-tab="compactView" title="Compact View">📦</button>
       <button class="tab" data-tab="bookmarks" title="Bookmarks">🔖</button>
+      <button class="tab" data-tab="emojiMarkers" title="Emoji Markers">📍</button>
       <button class="tab disabled" data-tab="toc" title="Table of Contents">📑</button>
       <button class="tab" data-tab="general" title="Genel Ayarlar">⚙️</button>
     </div>
@@ -258,6 +259,90 @@
           <div style="display: flex; gap: 8px;">
             <button id="bookmarks-export-btn" class="btn btn-secondary" style="flex: 1;">📤 Export Bookmarks</button>
             <button id="bookmarks-import-btn" class="btn btn-secondary" style="flex: 1;">📥 Import Bookmarks</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="tab-emojiMarkers">
+      <div class="section">
+        <div class="section-header">
+          <h2>Emoji Markers</h2>
+          <label class="toggle">
+            <input type="checkbox" id="emojiMarkers-enabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-group">
+          <div class="setting-item">
+            <label for="emojiMarkers-storageType">💾 Storage Location</label>
+            <select id="emojiMarkers-storageType">
+              <option value="local">Local Storage (Fast, Device-specific)</option>
+              <option value="sync" selected>Sync Storage (Syncs across Chrome)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label for="emojiMarkers-showBadges">Badge'leri Göster</label>
+            <label class="toggle">
+              <input type="checkbox" id="emojiMarkers-showBadges" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="emojiMarkers-showOnHover">Butonları Hover'da Göster</label>
+            <label class="toggle">
+              <input type="checkbox" id="emojiMarkers-showOnHover" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-group" style="margin-top: 20px;">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">⭐ Favori Emojiler</h3>
+          <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
+            İşaretleme yaparken hızlı erişim için favori emojilerinizi seçin. Sürükle-bırak ile sıralayın.
+          </p>
+
+          <div id="emojiMarkers-favorites-container" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #f5f5f5; border-radius: 8px; min-height: 60px;">
+            <!-- Favorite emojis will be dynamically inserted here -->
+          </div>
+
+          <button id="emojiMarkers-add-favorite-btn" class="btn btn-secondary" style="margin-top: 12px; width: 100%;">
+            ➕ Favori Emoji Ekle
+          </button>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Storage Types</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li><strong>Local Storage:</strong> Faster, stored only on this device</li>
+            <li><strong>Sync Storage:</strong> Slower, but syncs across all your Chrome browsers (max 100KB)</li>
+          </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px;">
+          <h3>ℹ️ Nasıl Çalışır?</h3>
+          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li>Mesajların üzerine geldiğinizde marker butonu görünür</li>
+            <li>Favori emojileriniz hızlı seçim için gösterilir</li>
+            <li>"..." butonuna tıklayarak tüm emojilere erişebilirsiniz</li>
+            <li>Marker'lanmış mesajlar badge ile işaretlenir</li>
+            <li>Sabit buton (📍) ile tüm marker'ları görüntüleyin</li>
+            <li>Export/Import ile marker'larınızı yedekleyebilirsiniz</li>
+          </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 16px; background: #e3f2fd; border-left: 4px solid #2196f3;">
+          <h3>💾 Yedekleme</h3>
+          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
+            <strong>Export/Import:</strong> Emoji marker'larınızı JSON dosyası olarak yedekleyebilir ve geri yükleyebilirsiniz.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <button id="emojiMarkers-export-btn" class="btn btn-secondary" style="flex: 1;">📤 Export Markers</button>
+            <button id="emojiMarkers-import-btn" class="btn btn-secondary" style="flex: 1;">📥 Import Markers</button>
           </div>
         </div>
       </div>

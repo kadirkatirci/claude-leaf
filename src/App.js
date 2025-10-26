@@ -8,6 +8,7 @@ import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
 import CompactViewModule from './modules/CompactViewModule.js';
 import BookmarkModule from './modules/BookmarkModule.js';
+import EmojiMarkerModule from './modules/EmojiMarkerModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -62,6 +63,9 @@ class ClaudeProductivityApp {
 
     // Bookmarks
     this.registerModule('bookmarks', new BookmarkModule());
+
+    // Emoji Markers
+    this.registerModule('emojiMarkers', new EmojiMarkerModule());
   }
 
   /**

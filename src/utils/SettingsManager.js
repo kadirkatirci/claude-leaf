@@ -52,6 +52,15 @@ class SettingsManager {
         storageType: 'local', // 'local' | 'sync'
       },
 
+      // Emoji Markers
+      emojiMarkers: {
+        enabled: true,
+        favoriteEmojis: ['⚠️', '❓', '💡', '⭐', '📌', '🔥'],
+        showBadges: true,
+        showOnHover: true,
+        storageType: 'sync', // 'local' | 'sync'
+      },
+
       // Export (future)
       export: {
         enabled: false,
