@@ -138,20 +138,24 @@ class EditHistoryModule extends BaseModule {
   }
 
   /**
-   * Create Collapse/Expand All button
+   * Create Collapse/Expand All button in navigation container
    */
   createCollapseButton(theme) {
     this.isAllCollapsed = false;
 
+    // Find navigation container
+    const navContainer = document.querySelector('#claude-nav-buttons');
+    if (!navContainer) {
+      this.warn('Navigation container not found, collapse button will not be created');
+      return;
+    }
+
     const collapseBtn = this.dom.createElement('button', {
-      id: 'claude-collapse-fixed-btn',
+      id: 'claude-collapse-btn',
+      className: 'claude-nav-btn', // Same class as navigation buttons
       innerHTML: '📦',
-      title: 'Collapse/Expand All',
+      'data-tooltip': 'Collapse/Expand All (Edited Messages)',
       style: {
-        position: 'fixed',
-        right: '30px',
-        top: '50%',
-        transform: 'translateY(-160px)', // Above edit button
         width: '48px',
         height: '48px',
         borderRadius: '50%',
@@ -162,11 +166,10 @@ class EditHistoryModule extends BaseModule {
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
+        transition: 'transform 0.1s ease',
         color: 'white',
         fontSize: '20px',
-        zIndex: '9998',
-        opacity: this.getSetting('opacity') || 0.7,
+        position: 'relative',
       }
     });
 
@@ -174,24 +177,24 @@ class EditHistoryModule extends BaseModule {
     collapseBtn.addEventListener('click', () => {
       this.isAllCollapsed = !this.isAllCollapsed;
       collapseBtn.innerHTML = this.isAllCollapsed ? '📂' : '📦';
+      collapseBtn.setAttribute('data-tooltip', this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)');
       this.handleCollapseAll(this.isAllCollapsed);
     });
 
-    // Hover effects
-    collapseBtn.addEventListener('mouseenter', () => {
-      collapseBtn.style.transform = 'translateY(-160px) scale(1.1)';
-      collapseBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
-      collapseBtn.style.opacity = '1';
+    // Hover effects (same as navigation buttons)
+    collapseBtn.addEventListener('mousedown', () => {
+      collapseBtn.style.transform = 'scale(0.95)';
     });
 
-    collapseBtn.addEventListener('mouseleave', () => {
-      collapseBtn.style.transform = 'translateY(-160px) scale(1)';
-      collapseBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      collapseBtn.style.opacity = this.getSetting('opacity') || 0.7;
+    collapseBtn.addEventListener('mouseup', () => {
+      collapseBtn.style.transform = 'scale(1.1)';
     });
 
-    document.body.appendChild(collapseBtn);
+    // Append to navigation container (below down button)
+    navContainer.appendChild(collapseBtn);
     this.elements.collapseBtn = collapseBtn;
+
+    this.log('✅ Collapse button added to navigation container');
   }
 
   /**
@@ -288,14 +291,14 @@ class EditHistoryModule extends BaseModule {
   /**
    * Settings değiştiğinde
    */
-  onSettingsChanged(settings) {
+  onSettingsChanged() {
     this.log('⚙️ Settings değişti');
-    
+
     // Tema değiştiyse UI yenile
     if (this.settings && this.settings.general) {
       this.recreateUI();
     }
-    
+
     // Yeniden tara
     this.scanner.scan();
   }
@@ -304,6 +307,20 @@ class EditHistoryModule extends BaseModule {
    * UI'ı yeniden oluştur (tema değişikliğinde)
    */
   recreateUI() {
+    const theme = this.getTheme();
+
+    // Remove old collapse button
+    if (this.elements.collapseBtn) {
+      this.elements.collapseBtn.remove();
+      this.elements.collapseBtn = null;
+    }
+
+    // Recreate collapse button if CompactView is enabled
+    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    if (compactViewEnabled) {
+      this.createCollapseButton(theme);
+    }
+
     // Panel yeniden oluştur
     this.panel.remove();
     this.panel.create();
@@ -324,6 +341,12 @@ class EditHistoryModule extends BaseModule {
    */
   destroy() {
     this.log('🛑 Edit History durduruluyor...');
+
+    // Remove collapse button
+    if (this.elements.collapseBtn) {
+      this.elements.collapseBtn.remove();
+      this.elements.collapseBtn = null;
+    }
 
     // Alt bileşenleri temizle
     this.scanner.stop();
