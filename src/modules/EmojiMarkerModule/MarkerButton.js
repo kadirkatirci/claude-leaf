@@ -31,16 +31,24 @@ export class MarkerButton {
       const button = this.createButton(messageEl, index, markers);
       this.buttonCache.set(messageEl, button);
 
-      // Show/hide on hover
-      messageEl.addEventListener('mouseenter', () => {
-        button.style.opacity = '1';
-        button.style.pointerEvents = 'auto';
-      });
+      // Attach hover listeners (SADECE BİR KEZ!)
+      this.attachHoverListeners(messageEl, button);
+    });
+  }
 
-      messageEl.addEventListener('mouseleave', () => {
-        button.style.opacity = '0';
-        button.style.pointerEvents = 'none';
-      });
+  /**
+   * Attach hover event listeners to show/hide button
+   * Called only once when button is first created
+   */
+  attachHoverListeners(messageEl, button) {
+    messageEl.addEventListener('mouseenter', () => {
+      button.style.opacity = '1';
+      button.style.pointerEvents = 'auto';
+    });
+
+    messageEl.addEventListener('mouseleave', () => {
+      button.style.opacity = '0';
+      button.style.pointerEvents = 'none';
     });
   }
 
@@ -51,6 +59,10 @@ export class MarkerButton {
     const theme = this.getTheme();
     const existingMarker = markers.find(m => m.messageIndex === messageIndex);
 
+    // Dinamik pozisyonlama: Bookmark button var mı kontrol et
+    const bookmarkBtn = messageEl.querySelector('.claude-bookmark-btn');
+    const buttonRight = bookmarkBtn ? '48px' : '8px'; // Bookmark'un yanında veya sağda
+
     const button = DOMUtils.createElement('button', {
       className: 'emoji-marker-btn',
       innerHTML: existingMarker ? existingMarker.emoji : '🏷️',
@@ -58,7 +70,7 @@ export class MarkerButton {
       style: {
         position: 'absolute',
         top: '8px',
-        right: existingMarker ? '48px' : '8px', // Right of bookmark button if exists
+        right: buttonRight, // Dinamik pozisyon
         width: '32px',
         height: '32px',
         borderRadius: '6px',

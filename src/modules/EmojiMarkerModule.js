@@ -179,7 +179,22 @@ class EmojiMarkerModule extends BaseModule {
    * Update all UI components
    */
   updateUI() {
-    const messages = this.dom.findMessages();
+    const allMessages = this.dom.findMessages();
+
+    // Filter: Sadece gerçek mesaj container'larını kullan
+    // Streaming olan mesajları EXCLUDE et (data-is-streaming="true")
+    const messages = allMessages.filter(msg => {
+      // Eğer data-is-streaming attribute'u varsa
+      if (msg.hasAttribute('data-is-streaming')) {
+        // Streaming=true olanları EXCLUDE et (henüz tamamlanmamış)
+        return msg.getAttribute('data-is-streaming') === 'false';
+      }
+      // Attribute yoksa INCLUDE et (eski mesajlar attribute olmayabilir)
+      return true;
+    });
+
+    this.log(`UI güncelleniyor: ${messages.length} mesaj bulundu (${allMessages.length} toplam)`);
+
     const currentConversationUrl = window.location.pathname;
     const conversationMarkers = this.storage.getByConversation(currentConversationUrl, this.markers);
 

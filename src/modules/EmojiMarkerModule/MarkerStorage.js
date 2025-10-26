@@ -35,9 +35,22 @@ export class MarkerStorage {
   }
 
   /**
-   * Add a new marker
+   * Add a new marker (with duplicate prevention)
    */
   async add(marker, existingMarkers) {
+    // Check if a marker already exists for this conversation + messageIndex
+    const existingIndex = existingMarkers.findIndex(
+      m => m.conversationUrl === marker.conversationUrl &&
+           m.messageIndex === marker.messageIndex
+    );
+
+    if (existingIndex !== -1) {
+      // Duplicate found: Update existing marker instead of adding new one
+      console.log(`[MarkerStorage] Duplicate detected, updating existing marker at index ${marker.messageIndex}`);
+      return this.update(existingMarkers[existingIndex].id, marker.emoji, existingMarkers);
+    }
+
+    // No duplicate: Add new marker
     const markers = [...existingMarkers, marker];
     await this.save(markers);
     return markers;

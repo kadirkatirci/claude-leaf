@@ -49,6 +49,19 @@ export class MarkerBadge {
 
     const theme = this.getTheme();
 
+    // Dinamik pozisyonlama: Bookmark ve marker button var mı kontrol et
+    const bookmarkBtn = messageEl.querySelector('.claude-bookmark-btn');
+    const markerBtn = messageEl.querySelector('.emoji-marker-btn');
+
+    let badgeRight = '8px'; // Default
+    if (bookmarkBtn && markerBtn) {
+      badgeRight = '88px'; // Her ikisi de var: bookmark(8px) + marker(48px) + badge(88px)
+    } else if (bookmarkBtn) {
+      badgeRight = '48px'; // Sadece bookmark var
+    } else if (markerBtn) {
+      badgeRight = '48px'; // Sadece marker button var
+    }
+
     const badge = DOMUtils.createElement('div', {
       className: 'emoji-marker-badge',
       innerHTML: marker.emoji,
@@ -56,7 +69,7 @@ export class MarkerBadge {
       style: {
         position: 'absolute',
         top: '8px',
-        right: '88px', // Right of bookmark badge and marker button
+        right: badgeRight, // Dinamik pozisyon
         width: '28px',
         height: '28px',
         borderRadius: '50%',
@@ -100,17 +113,6 @@ export class MarkerBadge {
 
     // Cache badge
     this.badgeCache.set(messageEl, badge);
-  }
-
-  /**
-   * Remove badge from a message
-   */
-  removeBadge(messageEl) {
-    const badge = this.badgeCache.get(messageEl);
-    if (badge) {
-      badge.remove();
-      this.badgeCache.delete(messageEl);
-    }
   }
 
   /**
