@@ -59,9 +59,10 @@ export class MarkerButton {
     const theme = this.getTheme();
     const existingMarker = markers.find(m => m.messageIndex === messageIndex);
 
-    // Dinamik pozisyonlama: Bookmark button var mı kontrol et
+    // Container'ın DIŞINDA göster (sağ tarafın dışında)
+    // Bookmark varsa, bookmark'tan önce (daha solda)
     const bookmarkBtn = messageEl.querySelector('.claude-bookmark-btn');
-    const buttonRight = bookmarkBtn ? '48px' : '8px'; // Bookmark'un yanında veya sağda
+    const buttonRight = bookmarkBtn ? '36px' : '-30px'; // Bookmark varsa yanında, yoksa container dışında
 
     const button = DOMUtils.createElement('button', {
       className: 'emoji-marker-btn',
@@ -70,7 +71,7 @@ export class MarkerButton {
       style: {
         position: 'absolute',
         top: '8px',
-        right: buttonRight, // Dinamik pozisyon
+        right: buttonRight, // Container'ın dışında
         width: '32px',
         height: '32px',
         borderRadius: '6px',
@@ -132,7 +133,7 @@ export class MarkerButton {
       button.innerHTML = emoji;
       button.title = `Marked with ${emoji}`;
       button.style.background = this.getTheme().gradient;
-      button.style.right = '48px'; // Move right
+      // Position stays the same (dynamically set in createButton)
     });
   }
 
@@ -215,7 +216,7 @@ export class MarkerButton {
       button.innerHTML = '🏷️';
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      button.style.right = '8px';
+      // Position stays the same (set in createButton)
     });
 
     menu.appendChild(changeBtn);
@@ -249,13 +250,12 @@ export class MarkerButton {
       button.innerHTML = marker.emoji;
       button.title = `Marked with ${marker.emoji}`;
       button.style.background = theme.gradient;
-      button.style.right = '48px';
     } else {
       button.innerHTML = '🏷️';
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      button.style.right = '8px';
     }
+    // Position stays the same (set in createButton)
   }
 
   /**

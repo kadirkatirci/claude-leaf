@@ -191,9 +191,13 @@ class NavigationModule extends BaseModule {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => {
         const oldLength = this.messages.length;
-        this.findMessages();
+        this.messages = this.dom.findMessages();
+
+        // SADECE mesaj sayısı değiştiğinde emit et ve UI güncelle
         if (this.messages.length !== oldLength) {
           this.log(`Mesaj sayısı güncellendi: ${oldLength} → ${this.messages.length}`);
+          this.updateCounter();
+          this.emit(Events.MESSAGES_UPDATED, this.messages);
         }
       }, 500);
     });

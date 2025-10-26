@@ -19,7 +19,10 @@ class EmojiMarkerModule extends BaseModule {
     this.emojiPicker = new EmojiPicker();
     this.badge = new MarkerBadge(
       () => this.getTheme(),
-      (marker) => this.scrollToMarker(marker)
+      this.emojiPicker,
+      () => this.getFavoriteEmojis(),
+      (markerId, newEmoji) => this.updateMarker(markerId, newEmoji),
+      (markerId) => this.removeMarker(markerId)
     );
     this.button = new MarkerButton(
       () => this.getTheme(),
