@@ -12,16 +12,30 @@ export class MarkerBadge {
 
   /**
    * Update all badges for current messages
+   * Smart update: Only add/update/remove changed badges
    */
   updateAll(messages, markers) {
-    // Remove old badges
-    this.removeAll();
-
-    // Add badges for marked messages
     messages.forEach((messageEl, index) => {
       const marker = markers.find(m => m.messageIndex === index);
+
       if (marker) {
-        this.addBadge(messageEl, marker);
+        // Badge should exist
+        if (!this.badgeCache.has(messageEl)) {
+          // Add new badge
+          this.addBadge(messageEl, marker);
+        } else {
+          // Update existing badge if emoji changed
+          const existingBadge = this.badgeCache.get(messageEl);
+          if (existingBadge.innerHTML !== marker.emoji) {
+            this.updateBadge(messageEl, marker.emoji);
+          }
+        }
+      } else {
+        // Badge should not exist
+        if (this.badgeCache.has(messageEl)) {
+          // Remove badge
+          this.removeBadge(messageEl);
+        }
       }
     });
   }
@@ -100,7 +114,18 @@ export class MarkerBadge {
   }
 
   /**
-   * Remove all badges
+   * Remove badge from a specific message
+   */
+  removeBadge(messageEl) {
+    const badge = this.badgeCache.get(messageEl);
+    if (badge) {
+      badge.remove();
+      this.badgeCache.delete(messageEl);
+    }
+  }
+
+  /**
+   * Remove all badges (used in destroy)
    */
   removeAll() {
     document.querySelectorAll('.emoji-marker-badge').forEach(badge => badge.remove());

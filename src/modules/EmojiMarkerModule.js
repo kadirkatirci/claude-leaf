@@ -37,37 +37,42 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   async init() {
-    await super.init();
-    if (!this.enabled) return;
+    try {
+      await super.init();
+      if (!this.enabled) return;
 
-    this.log('Emoji Markers başlatılıyor...');
+      this.log('Emoji Markers başlatılıyor...');
 
-    // Set storage type from settings
-    const storageType = this.getSetting('storageType') || 'local';
-    this.storage.setStorageType(storageType);
+      // Set storage type from settings
+      const storageType = this.getSetting('storageType') || 'local';
+      this.storage.setStorageType(storageType);
 
-    // Load markers
-    this.markers = await this.storage.load();
-    this.log(`${this.markers.length} marker yüklendi`);
+      // Load markers
+      this.markers = await this.storage.load();
+      this.log(`${this.markers.length} marker yüklendi`);
 
-    // Create fixed button
-    this.createFixedButton();
+      // Create fixed button
+      this.createFixedButton();
 
-    // Create panel
-    this.panel.create();
+      // Create panel
+      this.panel.create();
 
-    // Initial UI update
-    this.updateUI();
-
-    // Listen for message updates
-    this.subscribe(Events.MESSAGES_UPDATED, () => {
+      // Initial UI update
       this.updateUI();
-    });
 
-    // Observe DOM changes
-    this.observeMessages();
+      // Listen for message updates
+      this.subscribe(Events.MESSAGES_UPDATED, () => {
+        this.updateUI();
+      });
 
-    this.log('✅ Emoji Markers aktif');
+      // Observe DOM changes
+      this.observeMessages();
+
+      this.log('✅ Emoji Markers aktif');
+    } catch (error) {
+      this.error('❌ Emoji Markers init failed:', error);
+      throw error; // Re-throw to see in console
+    }
   }
 
   /**
@@ -149,13 +154,24 @@ class EmojiMarkerModule extends BaseModule {
 
   /**
    * Observe DOM changes
+   * Pattern: BookmarkModule (only update when message count changes)
    */
   observeMessages() {
+    let lastMessageCount = 0;
+
     this.observer = this.dom.observeDOM(() => {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => {
-        this.updateUI();
-      }, 300);
+        // Only update UI if message count changed
+        const messages = this.dom.findMessages();
+        const currentCount = messages.length;
+
+        if (currentCount !== lastMessageCount) {
+          this.log(`Mesaj sayısı güncellendi: ${lastMessageCount} → ${currentCount}`);
+          lastMessageCount = currentCount;
+          this.updateUI();
+        }
+      }, 500);
     });
   }
 
