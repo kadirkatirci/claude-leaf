@@ -66,8 +66,8 @@ export class MarkerButton {
 
     const button = DOMUtils.createElement('button', {
       className: 'emoji-marker-btn',
-      innerHTML: existingMarker ? existingMarker.emoji : '🏷️',
-      title: existingMarker ? `Marked with ${existingMarker.emoji}` : 'Add emoji marker',
+      innerHTML: '🏷️',
+      title: 'Add emoji marker',
       style: {
         position: 'absolute',
         top: '8px',
@@ -75,13 +75,13 @@ export class MarkerButton {
         width: '32px',
         height: '32px',
         borderRadius: '6px',
-        background: existingMarker ? theme.gradient : (theme.isDark ? '#3d3d3d' : '#f5f5f5'),
+        background: theme.isDark ? '#3d3d3d' : '#f5f5f5',
         border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
         cursor: 'pointer',
-        display: 'flex',
+        display: existingMarker ? 'none' : 'flex', // Marker varsa gizle
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: existingMarker ? '16px' : '18px',
+        fontSize: '18px',
         opacity: '0',
         pointerEvents: 'none',
         transition: 'all 0.2s ease',
@@ -100,17 +100,12 @@ export class MarkerButton {
       button.style.boxShadow = 'none';
     });
 
-    // Click handler
+    // Click handler - sadece marker yoksa (add için)
     button.addEventListener('click', (e) => {
       e.stopPropagation();
 
-      if (existingMarker) {
-        // Show options: change emoji or remove
-        this.showMarkerOptions(button, messageEl, messageIndex, existingMarker);
-      } else {
-        // Show emoji picker to add marker
-        this.showEmojiPickerForAdd(button, messageEl, messageIndex);
-      }
+      // Marker button sadece marker yoksa görünür, bu yüzden direkt add
+      this.showEmojiPickerForAdd(button, messageEl, messageIndex);
     });
 
     // Append to message
@@ -247,10 +242,11 @@ export class MarkerButton {
     const theme = this.getTheme();
 
     if (marker) {
-      button.innerHTML = marker.emoji;
-      button.title = `Marked with ${marker.emoji}`;
-      button.style.background = theme.gradient;
+      // Marker varsa button'u gizle (badge zaten gösteriyor)
+      button.style.display = 'none';
     } else {
+      // Marker yoksa button'u göster (add marker için)
+      button.style.display = 'flex';
       button.innerHTML = '🏷️';
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
