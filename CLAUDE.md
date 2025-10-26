@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, and compact view for managing long conversations.
+A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, and compact view for managing long conversations.
 
 ## Development Commands
 
@@ -125,7 +125,7 @@ createFixedButton() {
 **Button Positioning**:
 - Navigation: `translateY(0)` - center
 - Edit History: `translateY(-100px)` - above center
-- Collapse All: `translateY(-160px)` - top
+- Emoji Marker: `translateY(-160px)` - top (replaces Collapse All position)
 - Bookmark: `translateY(-40px)` - slightly above center
 
 **Data Updates Only**:
@@ -173,16 +173,23 @@ src/modules/
 ├── EditHistoryModule.js          # Main module file
 ├── CompactViewModule.js          # Main module file
 ├── BookmarkModule.js             # Main module file
+├── EmojiMarkerModule.js          # Main module file
 ├── EditHistoryModule/            # Sub-components (if complex)
 │   ├── EditScanner.js
 │   ├── EditBadge.js
 │   ├── EditPanel.js
 │   └── EditModal.js
-└── BookmarkModule/               # Sub-components
-    ├── BookmarkStorage.js
-    ├── BookmarkButton.js
-    ├── BookmarkPanel.js
-    └── BookmarkSidebar.js
+├── BookmarkModule/               # Sub-components
+│   ├── BookmarkStorage.js
+│   ├── BookmarkButton.js
+│   ├── BookmarkPanel.js
+│   └── BookmarkSidebar.js
+└── EmojiMarkerModule/            # Sub-components
+    ├── MarkerStorage.js
+    ├── MarkerButton.js
+    ├── MarkerBadge.js
+    ├── MarkerPanel.js
+    └── EmojiPicker.js
 ```
 
 **Current Modules:**
@@ -238,7 +245,87 @@ src/modules/
    - **Key pattern**: Fixed button in body, data-driven counter updates
    - Performance: State tracking prevents unnecessary DOM updates
 
+5. **EmojiMarkerModule** - Mark messages with custom emojis for visual organization
+   - **Fixed position sidebar button** (right side, top) - NEVER destroyed
+   - Shows 📍 icon with red counter badge (e.g., "3" markers)
+   - Index-based marker system (same pattern as BookmarkModule)
+   - Stores markers locally or synced across Chrome browsers
+   - Features:
+     - **Hover-triggered add button** (🏷️) on messages without markers
+     - **Emoji badge** on marked messages (outside container, top-right)
+     - Badge click: Emoji picker (favorite emojis) + delete button
+     - Favorite emojis: Customizable list (default: ⚠️ ❓ 💡 ⭐ 📌 🔥)
+     - Fixed sidebar button opens floating panel
+     - Floating panel shows all markers in conversation (sorted by timestamp)
+     - Export/Import functionality in popup
+     - Conversation-aware: Only shows markers for current conversation
+   - **Key patterns**:
+     - Marker button hidden when badge exists (no duplicate badges)
+     - Badge positioned outside message container (`right: -30px`, `top: -25px`)
+     - Emoji picker attached to messageEl (not badge) to prevent position issues
+     - Panel content diffing includes emoji: `${id}:${emoji}` (detects emoji changes)
+   - **Positioning strategy**:
+     - Badge: Container'ın dışında (prevents text overlap)
+     - Dynamic positioning: Adjusts for bookmark button presence
+     - Marker button: Only visible when no marker exists (add mode)
+   - Performance: Smart updates, duplicate prevention, content signature tracking
+   - Complex sub-component architecture (Storage, Button, Badge, Panel, Picker)
+
 ### Module Details
+
+#### EmojiMarkerModule Architecture
+
+The EmojiMarkerModule uses a modular sub-component architecture (similar to BookmarkModule):
+
+**MarkerStorage** ([EmojiMarkerModule/MarkerStorage.js](src/modules/EmojiMarkerModule/MarkerStorage.js))
+- Handles all storage operations (load, save, export, import)
+- Supports both `chrome.storage.local` and `chrome.storage.sync`
+- **Duplicate prevention**: Checks conversationUrl + messageIndex before adding
+- If duplicate found, updates existing marker instead of creating new one
+- `add()`, `remove()`, `update()` methods return updated markers array
+
+**MarkerButton** ([EmojiMarkerModule/MarkerButton.js](src/modules/EmojiMarkerModule/MarkerButton.js))
+- Manages hover-triggered 🏷️ buttons on messages
+- **Only visible when no marker exists** (add mode)
+- Uses WeakMap for button tracking (memory efficient)
+- **Conditional visibility**: `display: marker ? 'none' : 'flex'`
+- Shows emoji quick select on click (favorite emojis)
+- Event listeners attached once per element (memory leak prevention)
+- Positioned outside container (`right: -30px`) with bookmark detection
+
+**MarkerBadge** ([EmojiMarkerModule/MarkerBadge.js](src/modules/EmojiMarkerModule/MarkerBadge.js))
+- Displays emoji badges on marked messages
+- Positioned outside container (`right: -30px`, `top: -25px`)
+- **Click behavior**: Shows emoji picker + delete button
+- Options container attached to messageEl (not badge) to prevent position shift
+- Smart update: Only updates emoji if changed, removes if marker deleted
+- Uses WeakMap for badge tracking
+- Dynamic positioning considers both bookmark and marker button presence
+
+**MarkerPanel** ([EmojiMarkerModule/MarkerPanel.js](src/modules/EmojiMarkerModule/MarkerPanel.js))
+- Floating panel UI (matches BookmarkPanel/EditPanel design)
+- Fixed position, toggleable via sidebar button
+- **Content diffing includes emoji**: `${id}:${emoji}` signature
+- Critical fix: Detects emoji changes (not just ID changes)
+- Sorted by timestamp (newest first)
+- Click marker item → scroll to message with highlight
+- Delete button with confirmation
+
+**EmojiPicker** ([EmojiMarkerModule/EmojiPicker.js](src/modules/EmojiMarkerModule/EmojiPicker.js))
+- Reusable emoji selection component
+- Shows favorite emojis in grid layout
+- Used by both MarkerButton (add) and MarkerBadge (change)
+- Quick select: Click emoji → immediate action
+- Auto-close on selection or outside click
+
+**Key Patterns:**
+- Index-based system: Markers use message array index (same as bookmarks)
+- Content signature: Hash of first 1000 characters for verification
+- Conversation filtering: Only shows markers for current URL
+- **No duplicate badges**: Marker button hidden when badge exists
+- **Position outside container**: Prevents text overlap, better UX
+- **Panel emoji tracking**: Signature includes emoji for change detection
+- Export/Import: JSON format with timestamp and metadata
 
 #### BookmarkModule Architecture
 
@@ -292,6 +379,7 @@ Settings are organized by module with a shared `general` section:
   editHistory: { enabled, showBadges, highlightEdited },
   compactView: { enabled, minHeight, autoCollapse, autoCollapseEnabled, ... },
   bookmarks: { enabled, keyboardShortcuts, showOnHover, storageType },
+  emojiMarkers: { enabled, showBadges, showOnHover, storageType, favoriteEmojis },
   general: { opacity, colorTheme, customColor }  // Shared across modules
 }
 ```
@@ -410,7 +498,8 @@ All modules implement performance optimizations to minimize unnecessary DOM mani
 **Performance Metrics:**
 - [BookmarkModule](src/modules/BookmarkModule.js): Updates only when bookmarks added/removed
 - [EditHistoryModule](src/modules/EditHistoryModule.js): Updates only when edits appear/disappear
-- [NavigationModule](src/modules/NavigationModule.js): Updates only when scroll position crosses message boundaries
+- [NavigationModule](src/modules/NavigationModule.js): **CRITICAL FIX** - Only emits MESSAGES_UPDATED when message count changes (prevents infinite loop)
+- [EmojiMarkerModule](src/modules/EmojiMarkerModule.js): Updates only when message count changes, panel updates only when markers/emojis change
 - Result: Minimal DOM manipulation visible in DevTools inspector
 
 ## Debugging
@@ -420,3 +509,135 @@ All modules implement performance optimizations to minimize unnecessary DOM mani
 - Get debug info: `window.claudeProductivity.getDebugInfo()`
 - Check module state: `window.claudeProductivity.getModule('moduleName')`
 - Restart app: `window.claudeProductivity.restart()`
+
+## Common Issues & Solutions
+
+### Infinite Loop / Performance Issues
+
+**Symptom:** Console floods with repeated messages (e.g., "Messages updated, scanning..."), CPU usage high
+
+**Root Cause:** DOM mutation triggers event → Event handler modifies DOM → New mutation → Infinite loop
+
+**Solution Pattern (CRITICAL):**
+```javascript
+// ❌ BAD: Emits event on every DOM mutation
+observeMessages() {
+  this.observer = this.dom.observeDOM(() => {
+    this.findMessages();
+    this.emit(Events.MESSAGES_UPDATED); // Triggers other modules → DOM change → loop!
+  });
+}
+
+// ✅ GOOD: Only emit when meaningful change occurs
+observeMessages() {
+  this.observer = this.dom.observeDOM(() => {
+    clearTimeout(this.observerTimeout);
+    this.observerTimeout = setTimeout(() => {
+      const oldLength = this.messages.length;
+      this.messages = this.dom.findMessages();
+
+      // ONLY emit if count changed
+      if (this.messages.length !== oldLength) {
+        this.updateCounter();
+        this.emit(Events.MESSAGES_UPDATED, this.messages);
+      }
+    }, 500);
+  });
+}
+```
+
+**Real Example:** NavigationModule was emitting MESSAGES_UPDATED on every mutation → EditHistoryModule scans → Badge DOM change → New mutation → Loop. Fixed by only emitting when message count changes.
+
+### Duplicate UI Elements
+
+**Symptom:** Two identical buttons/badges appear on same element
+
+**Root Cause:** Conditional rendering not properly checking for existing elements
+
+**Solution Pattern:**
+```javascript
+// ❌ BAD: Always creates both button and badge
+if (marker) {
+  button.innerHTML = marker.emoji; // Shows button with emoji
+}
+badge.show(); // Also shows badge!
+
+// ✅ GOOD: Mutually exclusive visibility
+if (marker) {
+  button.style.display = 'none'; // Hide button
+  badge.show(); // Show badge
+} else {
+  button.style.display = 'flex'; // Show button
+  badge.hide(); // Hide badge
+}
+```
+
+**Real Example:** EmojiMarkerModule showed both marker button and badge when marker existed. Fixed by hiding button when badge present.
+
+### Panel Not Updating
+
+**Symptom:** Panel shows old data after update operations (e.g., emoji change not reflected)
+
+**Root Cause:** Content diffing too aggressive, doesn't detect certain changes
+
+**Solution Pattern:**
+```javascript
+// ❌ BAD: Only compares IDs
+const currentIds = items.map(i => i.id).join(',');
+if (this.lastIds === currentIds) return; // Skips if IDs same, even if content changed
+
+// ✅ GOOD: Include relevant properties in signature
+const currentSignature = items.map(i => `${i.id}:${i.emoji}:${i.title}`).join(',');
+if (this.lastSignature === currentSignature) return; // Detects any property change
+```
+
+**Real Example:** MarkerPanel didn't update when emoji changed because signature only included ID. Fixed by including emoji: `${id}:${emoji}`.
+
+### Position Issues (Elements Jumping)
+
+**Symptom:** Element shifts to wrong position when modified (e.g., badge jumps to corner)
+
+**Root Cause:** Changing `position` CSS property from `absolute` to `relative` puts element back in document flow
+
+**Solution Pattern:**
+```javascript
+// ❌ BAD: Changes badge position to attach child
+badge.style.position = 'relative'; // Badge jumps to document flow!
+badge.appendChild(container);
+
+// ✅ GOOD: Attach container to stable parent
+const parent = badge.parentElement;
+const rect = badge.getBoundingClientRect();
+container.style.top = `${rect.bottom}px`;
+parent.appendChild(container); // Badge stays in place
+```
+
+**Real Example:** MarkerBadge jumped to bottom-left corner when options container opened. Fixed by attaching container to messageEl instead of badge.
+
+### Memory Leaks (Event Listeners)
+
+**Symptom:** Browser slows down over time, memory usage increases
+
+**Root Cause:** Event listeners added repeatedly without removal
+
+**Solution Pattern:**
+```javascript
+// ❌ BAD: Adds listeners every update
+updateElements(elements) {
+  elements.forEach(el => {
+    el.addEventListener('click', handler); // Accumulates listeners!
+  });
+}
+
+// ✅ GOOD: Track and only attach once
+updateElements(elements) {
+  elements.forEach(el => {
+    if (this.cache.has(el)) return; // Already has listener
+
+    el.addEventListener('click', handler);
+    this.cache.set(el, true);
+  });
+}
+```
+
+**Real Example:** MarkerButton added mouseenter/mouseleave listeners every time updateUI ran. Fixed by checking cache before attaching.
