@@ -62,7 +62,7 @@ export class MarkerBadge {
     if (markerBtn) {
       // Marker button var: onun üstünde göster
       badgeRight = bookmarkBtn ? '36px' : '-30px'; // Marker button ile aynı hizada
-      badgeTop = '-10px'; // Button'un üstünde
+      badgeTop = '-25px'; // Button'un üstünde (çakışmayı önle)
     } else {
       // Marker button yok: container'ın dışında göster
       badgeRight = '-30px'; // Container dışında
@@ -266,13 +266,28 @@ export class MarkerBadge {
     container.appendChild(emojiGrid);
     container.appendChild(deleteBtn);
 
-    badge.style.position = 'relative';
-    badge.appendChild(container);
+    // Container'ı badge'e değil, badge'in parent'ına (messageEl) ekle
+    // Badge'in position'ını BOZMADAN container'ı göster
+    const messageEl = badge.parentElement;
+    if (messageEl) {
+      // Badge'in pozisyonunu al
+      const badgeRect = badge.getBoundingClientRect();
+      const messageRect = messageEl.getBoundingClientRect();
+
+      // Container'ı badge'in altına konumlandır (message container'a göre)
+      const topPosition = badgeRect.bottom - messageRect.top + 8; // Badge'in altında, 8px gap
+      const rightPosition = messageRect.right - badgeRect.right; // Badge ile aynı right hizasında
+
+      container.style.top = `${topPosition}px`;
+      container.style.right = `${rightPosition}px`;
+
+      messageEl.appendChild(container);
+    }
 
     // Close on outside click
     setTimeout(() => {
       const closeMenu = (e) => {
-        if (!container.contains(e.target)) {
+        if (!container.contains(e.target) && !badge.contains(e.target)) {
           container.remove();
           document.removeEventListener('click', closeMenu);
         }
