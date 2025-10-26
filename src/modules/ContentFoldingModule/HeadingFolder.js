@@ -246,17 +246,14 @@ class HeadingFolder {
   /**
    * Get content elements for a heading (hierarchical)
    * Returns all elements until next same/higher level heading or HR separator
+   * HR separator only applies to top-level content (not inside child headings)
    */
   getHeadingContent(heading, level) {
     const elements = [];
     let current = heading.nextElementSibling;
+    let hasSeenChildHeading = false; // Track if we've encountered any child headings
 
     while (current) {
-      // Check if it's an HR tag - stop here (section separator)
-      if (current.tagName === 'HR') {
-        break;
-      }
-
       // Check if it's a heading
       const match = current.tagName.match(/^H([1-6])$/);
 
@@ -267,6 +264,15 @@ class HeadingFolder {
         if (currentLevel <= level) {
           break;
         }
+
+        // It's a child heading - mark that we've seen one
+        hasSeenChildHeading = true;
+      }
+
+      // Only respect HR if we haven't seen any child headings yet
+      // This ensures HR only separates top-level content, not content inside child sections
+      if (current.tagName === 'HR' && !hasSeenChildHeading) {
+        break;
       }
 
       elements.push(current);

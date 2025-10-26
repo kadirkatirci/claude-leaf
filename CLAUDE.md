@@ -309,6 +309,7 @@ src/modules/
    - Features:
      - Hierarchical heading collapse: Parent heading collapse hides all children until next same/higher level heading OR `<hr>` separator
      - **HR separator support**: `---` (horizontal rule) acts as manual section boundary - collapse stops at HR tags
+     - **Smart HR detection**: HR only separates top-level content - HR inside child headings are ignored (prevents premature collapse stops)
      - Code block preview: Shows first N lines + fade gradient + "Show X more lines" button
      - Conversation-based state persistence via localStorage
      - Auto-collapse option for long code blocks
