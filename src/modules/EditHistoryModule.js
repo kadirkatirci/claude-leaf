@@ -242,17 +242,6 @@ class EditHistoryModule extends BaseModule {
     // Panel güncelle
     this.panel.updateContent(this.editedMessages);
 
-    // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
-    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
-    if (compactViewEnabled && this.editedMessages.length > 0) {
-      const autoCollapseEnabled = this.settings && this.settings.compactView && this.settings.compactView.autoCollapseEnabled;
-      if (autoCollapseEnabled) {
-        this.ui.setCollapsedState(true); // true = mesajlar daraltılı = "Tümünü Genişlet" göster
-      }
-    } else {
-      this.ui.showCollapseAllButton(false);
-    }
-
     // Event
     if (this.editedMessages.length !== oldCount) {
       this.log(`🔄 Toplam edit: ${oldCount} → ${this.editedMessages.length}`);
@@ -309,22 +298,6 @@ class EditHistoryModule extends BaseModule {
     
     // Yeniden tara
     this.scanner.scan();
-    
-    // CompactView aktif mi?
-    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
-    if (compactViewEnabled && this.editedMessages.length > 0) {
-      this.ui.showCollapseAllButton(true);
-      
-      // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
-      const autoCollapseEnabled = this.settings && this.settings.compactView && this.settings.compactView.autoCollapseEnabled;
-      if (autoCollapseEnabled) {
-        this.ui.setCollapsedState(true); // true = mesajlar daraltılı = "Tümünü Genişlet" göster
-        this.log('🔄 Auto collapse - button state güncellendi');
-      }
-    } else {
-      this.ui.showCollapseAllButton(false);
-      this.ui.resetCollapseAllButton();
-    }
   }
 
   /**
@@ -357,7 +330,6 @@ class EditHistoryModule extends BaseModule {
     this.badge.removeAll();
     this.panel.remove();
     this.modal.close();
-    this.ui.removeHeaderButton();
 
     // Highlight'ları kaldır
     document.querySelectorAll('.claude-edit-highlighted').forEach(el => {

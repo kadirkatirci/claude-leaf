@@ -156,8 +156,9 @@ export class BookmarkPanel {
       toggleBtn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
     });
 
-    // Insert before collapse button
-    this.insertToggleButton(toggleBtn);
+    // Note: Toggle button is no longer inserted into header.
+    // It's kept as a floating panel-only button for now.
+    // Could be converted to fixed position sidebar button in the future.
 
     return toggleBtn;
   }
@@ -177,31 +178,6 @@ export class BookmarkPanel {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
         <path d="M12 17.5L19.5 21.5V4.5C19.5 3.39543 18.6046 2.5 17.5 2.5H6.5C5.39543 2.5 4.5 3.39543 4.5 4.5V21.5L12 17.5Z" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`;
-    }
-  }
-
-  /**
-   * Insert toggle button before collapse button in header
-   */
-  insertToggleButton(toggleBtn, retryCount = 0) {
-    const maxRetries = 20; // Try for 10 seconds
-
-    const collapseBtn = document.querySelector('#claude-collapse-all-btn');
-    if (collapseBtn && collapseBtn.parentElement) {
-      // Insert before collapse button
-      collapseBtn.parentElement.insertBefore(toggleBtn, collapseBtn);
-      console.log('[BookmarkPanel] ✅ Toggle button inserted before collapse button');
-    } else if (retryCount < maxRetries) {
-      // Retry after 500ms if collapse button not found yet
-      setTimeout(() => this.insertToggleButton(toggleBtn, retryCount + 1), 500);
-    } else {
-      console.warn('[BookmarkPanel] Collapse button not found after max retries');
-      // Fallback: try to insert in chat title area
-      const titleContainer = document.querySelector('[data-testid="chat-title-button"]')?.parentElement;
-      if (titleContainer) {
-        titleContainer.appendChild(toggleBtn);
-        console.log('[BookmarkPanel] ⚠️ Toggle button inserted in title container (fallback)');
-      }
     }
   }
 
