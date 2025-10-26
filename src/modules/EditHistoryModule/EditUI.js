@@ -18,21 +18,33 @@ class EditUI {
   /**
    * Header button oluştur
    */
-  createHeaderButton() {
-    const chatTitleButton = document.querySelector('[data-testid="chat-title-button"]');
-    if (!chatTitleButton) {
-      console.warn('[EditUI] Chat title button bulunamadı, tekrar denenecek...');
-      setTimeout(() => this.createHeaderButton(), 1000);
+  createHeaderButton(retryCount = 0) {
+    const maxRetries = 10;
+
+    // Don't create if already exists
+    if (document.querySelector('#claude-edit-header-btn')) {
       return;
     }
 
-    if (document.querySelector('#claude-edit-header-btn')) {
+    const chatTitleButton = document.querySelector('[data-testid="chat-title-button"]');
+    if (!chatTitleButton) {
+      if (retryCount < maxRetries) {
+        console.warn(`[EditUI] Chat title button not found, retry ${retryCount + 1}/${maxRetries}...`);
+        setTimeout(() => this.createHeaderButton(retryCount + 1), 1000);
+      } else {
+        console.error('[EditUI] Chat title button not found after max retries');
+      }
       return;
     }
 
     const titleContainer = chatTitleButton.parentElement;
     if (!titleContainer) {
-      console.warn('[EditUI] Title container bulunamadı');
+      if (retryCount < maxRetries) {
+        console.warn(`[EditUI] Title container not found, retry ${retryCount + 1}/${maxRetries}...`);
+        setTimeout(() => this.createHeaderButton(retryCount + 1), 1000);
+      } else {
+        console.error('[EditUI] Title container not found after max retries');
+      }
       return;
     }
 
@@ -76,13 +88,43 @@ class EditUI {
       this.onButtonClick();
     });
 
-    titleContainer.appendChild(button);
+    // IMPORTANT: Append to body (not titleContainer) so it survives navigation
+    // But position it to appear inside the title container
+    document.body.appendChild(button);
     this.headerButton = button;
+
+    // Position button to appear in title container
+    this.positionHeaderButton(button, titleContainer);
 
     // Tümünü Daralt butonu
     this.createCollapseAllButton(titleContainer, theme);
 
     console.log('[EditUI] ✅ Header button eklendi');
+  }
+
+  /**
+   * Position header button to appear inside title container using absolute positioning
+   */
+  positionHeaderButton(button, titleContainer) {
+    const rect = titleContainer.getBoundingClientRect();
+
+    // Make button position: fixed so it stays in place
+    button.style.position = 'fixed';
+    button.style.top = `${rect.top}px`;
+    button.style.left = `${rect.right + 8}px`; // 8px spacing after title
+
+    // Update position on scroll/resize
+    const updatePosition = () => {
+      const rect = titleContainer.getBoundingClientRect();
+      button.style.top = `${rect.top}px`;
+      button.style.left = `${rect.right + 8}px`;
+    };
+
+    window.addEventListener('scroll', updatePosition, { passive: true });
+    window.addEventListener('resize', updatePosition, { passive: true });
+
+    // Store for cleanup
+    this.positionUpdater = updatePosition;
   }
 
   /**

@@ -426,6 +426,22 @@ class NavigationModule extends BaseModule {
 
     this.log('🎨 UI tema ile yenilendi');
   }
+
+  /**
+   * Reinitialize UI on SPA navigation
+   */
+  reinitializeUI() {
+    this.log('🔄 Reinitializing Navigation for new page...');
+
+    // Find messages on new page
+    this.findMessages();
+
+    // Update counter and button states
+    this.updateCounter();
+    this.updateButtonStates();
+
+    this.log('✅ Navigation reinitialized');
+  }
 }
 
 export default NavigationModule;

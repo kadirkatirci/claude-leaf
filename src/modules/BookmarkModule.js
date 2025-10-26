@@ -75,6 +75,9 @@ class BookmarkModule extends BaseModule {
       }
     });
 
+    // Create fixed position button (like NavigationModule)
+    this.createFixedButton();
+
     // Initial UI update
     this.updateUI();
 
@@ -82,6 +85,83 @@ class BookmarkModule extends BaseModule {
     this.checkBookmarkNavigation();
 
     this.log(`✅ ${this.bookmarks.length} bookmarks loaded`);
+  }
+
+  /**
+   * Create fixed position button (same pattern as NavigationModule)
+   */
+  createFixedButton() {
+    const theme = this.getTheme();
+
+    // Bookmark button
+    const bookmarkBtn = this.dom.createElement('button', {
+      id: 'claude-bookmarks-fixed-btn',
+      innerHTML: '🔖',
+      style: {
+        position: 'fixed',
+        right: '30px',
+        top: '50%',
+        transform: 'translateY(-40px)', // Slightly above center
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: theme.gradient,
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.2s ease',
+        color: 'white',
+        fontSize: '20px',
+        zIndex: '9998',
+        opacity: this.getSetting('opacity') || 0.7,
+      }
+    });
+
+    // Counter badge
+    const counter = this.dom.createElement('div', {
+      id: 'claude-bookmarks-counter',
+      textContent: '0',
+      style: {
+        position: 'absolute',
+        top: '-8px',
+        right: '-8px',
+        background: '#ff4757',
+        color: 'white',
+        borderRadius: '12px',
+        padding: '2px 6px',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        minWidth: '20px',
+        textAlign: 'center',
+      }
+    });
+
+    bookmarkBtn.appendChild(counter);
+
+    // Click handler
+    bookmarkBtn.addEventListener('click', () => {
+      this.togglePanel();
+    });
+
+    // Hover effects
+    bookmarkBtn.addEventListener('mouseenter', () => {
+      bookmarkBtn.style.transform = 'translateY(-40px) scale(1.1)';
+      bookmarkBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
+      bookmarkBtn.style.opacity = '1';
+    });
+
+    bookmarkBtn.addEventListener('mouseleave', () => {
+      bookmarkBtn.style.transform = 'translateY(-40px) scale(1)';
+      bookmarkBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      bookmarkBtn.style.opacity = this.getSetting('opacity') || 0.7;
+    });
+
+    document.body.appendChild(bookmarkBtn);
+    this.elements.bookmarkBtn = bookmarkBtn;
+    this.elements.counter = counter;
   }
 
   /**
@@ -356,6 +436,11 @@ class BookmarkModule extends BaseModule {
     // Only show bookmarks for current conversation
     const currentBookmarks = this.getCurrentConversationBookmarks();
 
+    // Update counter
+    if (this.elements.counter) {
+      this.elements.counter.textContent = currentBookmarks.length.toString();
+    }
+
     this.panel.updateContent(
       currentBookmarks,
       (bookmark) => this.navigateToBookmark(bookmark),
@@ -591,6 +676,7 @@ class BookmarkModule extends BaseModule {
     this.addBookmarkButtons();
     this.updateUI();
   }
+
 
   /**
    * Cleanup

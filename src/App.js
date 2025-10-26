@@ -105,6 +105,8 @@ class ClaudeProductivityApp {
    * Global event listener'lar
    */
   setupGlobalListeners() {
+    console.log('🔧 Setting up global listeners...');
+
     // Sayfa yeniden yüklendiğinde
     window.addEventListener('beforeunload', () => {
       this.destroy();
@@ -113,7 +115,7 @@ class ClaudeProductivityApp {
     // Settings değişikliklerini logla
     eventBus.on(Events.SETTINGS_CHANGED, async (settings) => {
       console.log('⚙️ Settings güncellendi:', settings);
-      
+
       // Eğer tema değiştiyse, CSS'i yeniden inject et
       if (settings.general) {
         await this.reinjectStyles();
@@ -124,6 +126,102 @@ class ClaudeProductivityApp {
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
       console.log(`🔄 ${feature} özelliği ${enabled ? 'açıldı' : 'kapatıldı'}`);
     });
+  }
+
+  /**
+   * Setup SPA navigation detection (CENTRALIZED)
+   * SIMPLE APPROACH: Restart entire app on navigation (like page refresh)
+   */
+  setupSPANavigationDetection() {
+    this.currentUrl = window.location.href;
+    this.isNavigating = false;
+
+    console.log('🔗 Setting up SPA navigation detection...');
+    console.log('📍 Current URL:', this.currentUrl);
+
+    const handleNavigation = () => {
+      const newUrl = window.location.href;
+      console.log('🔍 Navigation check:', { current: this.currentUrl, new: newUrl, isNavigating: this.isNavigating });
+
+      if (newUrl !== this.currentUrl && !this.isNavigating) {
+        this.isNavigating = true;
+        console.log(`🔄 SPA navigation detected: ${this.currentUrl} → ${newUrl}`);
+        console.log('🔄 Restarting app (simulating page refresh)...');
+        this.currentUrl = newUrl;
+
+        // Wait a bit for DOM to settle, then restart everything (like refresh)
+        setTimeout(async () => {
+          console.log('⏰ Executing restart now...');
+          await this.restart();
+          console.log('✅ App restarted after navigation');
+          this.isNavigating = false;
+        }, 1000);
+      }
+    };
+
+    // Listen to navigation events
+    window.addEventListener('popstate', (e) => {
+      console.log('🔙 popstate event triggered', e);
+      handleNavigation();
+    });
+
+    // Intercept pushState/replaceState (this is the key!)
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function(...args) {
+      console.log('🔀 pushState intercepted', args);
+      originalPushState.apply(this, args);
+      handleNavigation();
+    };
+
+    history.replaceState = function(...args) {
+      console.log('🔀 replaceState intercepted', args);
+      originalReplaceState.apply(this, args);
+      handleNavigation();
+    };
+
+    console.log('✅ SPA navigation detection active');
+    console.log('✅ History API intercepted');
+  }
+
+  /**
+   * Wait for page content to stabilize before executing callback
+   */
+  waitForPageStabilization(callback, retryCount = 0, previousCount = 0, stableCount = 0) {
+    const maxRetries = 40; // 20 seconds max
+    const retryDelay = 500;
+    const requiredStableChecks = 3; // Must be stable for 1.5 seconds
+
+    // Simple message count check
+    const messages = document.querySelectorAll('[data-is-streaming="false"]');
+    const currentCount = messages.length;
+
+    // Check if message count has stabilized
+    if (currentCount > 0 && currentCount === previousCount) {
+      const newStableCount = stableCount + 1;
+
+      if (newStableCount >= requiredStableChecks) {
+        // Page is stable!
+        console.log(`✅ Page stabilized at ${currentCount} messages`);
+        callback();
+        return;
+      } else {
+        // Keep checking for stability
+        setTimeout(() => {
+          this.waitForPageStabilization(callback, retryCount + 1, currentCount, newStableCount);
+        }, retryDelay);
+      }
+    } else if (retryCount < maxRetries) {
+      // Message count changed or still at 0, reset stability counter
+      setTimeout(() => {
+        this.waitForPageStabilization(callback, retryCount + 1, currentCount, 0);
+      }, retryDelay);
+    } else {
+      // Give up after max retries, execute anyway
+      console.warn('⚠️ Page stabilization timeout, notifying modules anyway...');
+      callback();
+    }
   }
 
   /**

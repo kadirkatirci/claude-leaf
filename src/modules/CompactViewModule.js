@@ -246,18 +246,48 @@ class CompactViewModule extends BaseModule {
    */
   onSettingsChanged(settings) {
     this.log('⚙️ Settings değişti');
-    
+
     // AutoCollapseEnabled değişti mi?
     const compactViewSettings = settings.compactView || {};
     if (compactViewSettings.autoCollapseEnabled !== undefined && compactViewSettings.autoCollapseEnabled) {
       // Tüm mesajları daralt
       this.collapseAllMessages();
     }
-    
+
     // Mesajları yeniden işle
     this.processedMessages = new WeakSet();
     this.collapse.clear();
     this.processMessages();
+  }
+
+  /**
+   * Reinitialize UI on SPA navigation
+   */
+  reinitializeUI() {
+    this.log('🔄 Reinitializing CompactView for new page...');
+
+    // Clear processed messages cache
+    this.processedMessages = new WeakSet();
+    this.collapse.clear();
+
+    // Remove old buttons
+    document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
+      btn.remove();
+    });
+
+    // Process new messages
+    this.processMessages();
+
+    // Auto collapse if enabled
+    const autoCollapseEnabled = this.getSetting('autoCollapseEnabled');
+    if (autoCollapseEnabled) {
+      setTimeout(() => {
+        const count = this.collapseAllMessages();
+        this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
+      }, 500);
+    }
+
+    this.log('✅ CompactView reinitialized');
   }
 
   /**
@@ -271,7 +301,7 @@ class CompactViewModule extends BaseModule {
     }
 
     this.collapse.clear();
-    
+
     // Tüm butonları kaldır
     document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
       btn.remove();

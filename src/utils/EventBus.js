@@ -89,19 +89,22 @@ const Events = {
   MESSAGES_UPDATED: 'messages:updated',
   MESSAGE_CLICKED: 'message:clicked',
   MESSAGE_SCROLLED: 'message:scrolled',
-  
+
   // Settings events
   SETTINGS_CHANGED: 'settings:changed',
   FEATURE_TOGGLED: 'feature:toggled',
-  
+
   // Navigation events
   NAVIGATION_PREV: 'navigation:prev',
   NAVIGATION_NEXT: 'navigation:next',
   NAVIGATION_TOP: 'navigation:top',
-  
+
   // UI events
   UI_READY: 'ui:ready',
   DOM_CHANGED: 'dom:changed',
+
+  // SPA navigation (centralized)
+  URL_CHANGED: 'url:changed',
 };
 
 export { eventBus, Events };

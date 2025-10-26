@@ -37,14 +37,161 @@ class EditHistoryModule extends BaseModule {
 
     this.log('Edit History başlatılıyor...');
 
-    // UI oluştur
-    setTimeout(() => this.ui.createHeaderButton(), 500);
+    // Create fixed position buttons (like NavigationModule)
+    this.createFixedButtons();
+
     this.panel.create();
 
     // Taramayı başlat
     this.scanner.start();
 
+    // Listen to MESSAGES_UPDATED event from NavigationModule to trigger immediate scan
+    this.subscribe(Events.MESSAGES_UPDATED, () => {
+      this.log('🔄 Messages updated, scanning for edits...');
+      this.scanner.scan();
+    });
+
     this.log('✅ Edit History aktif');
+  }
+
+  /**
+   * Create fixed position buttons (same pattern as NavigationModule)
+   */
+  createFixedButtons() {
+    const theme = this.getTheme();
+
+    // Edit History button
+    const editBtn = this.dom.createElement('button', {
+      id: 'claude-edit-fixed-btn',
+      innerHTML: '✏️',
+      style: {
+        position: 'fixed',
+        right: '30px',
+        top: '50%',
+        transform: 'translateY(-100px)', // Above center
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: theme.gradient,
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.2s ease',
+        color: 'white',
+        fontSize: '20px',
+        zIndex: '9998',
+        opacity: this.getSetting('opacity') || 0.7,
+      }
+    });
+
+    // Counter badge
+    const counter = this.dom.createElement('div', {
+      id: 'claude-edit-counter',
+      textContent: '0',
+      style: {
+        position: 'absolute',
+        top: '-8px',
+        right: '-8px',
+        background: '#ff4757',
+        color: 'white',
+        borderRadius: '12px',
+        padding: '2px 6px',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        minWidth: '20px',
+        textAlign: 'center',
+      }
+    });
+
+    editBtn.appendChild(counter);
+
+    // Click handler
+    editBtn.addEventListener('click', () => {
+      this.panel.toggle();
+    });
+
+    // Hover effects
+    editBtn.addEventListener('mouseenter', () => {
+      editBtn.style.transform = 'translateY(-100px) scale(1.1)';
+      editBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
+      editBtn.style.opacity = '1';
+    });
+
+    editBtn.addEventListener('mouseleave', () => {
+      editBtn.style.transform = 'translateY(-100px) scale(1)';
+      editBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      editBtn.style.opacity = this.getSetting('opacity') || 0.7;
+    });
+
+    document.body.appendChild(editBtn);
+    this.elements.editBtn = editBtn;
+    this.elements.counter = counter;
+
+    // Collapse All button (only if CompactView is enabled)
+    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    if (compactViewEnabled) {
+      this.createCollapseButton(theme);
+    }
+  }
+
+  /**
+   * Create Collapse/Expand All button
+   */
+  createCollapseButton(theme) {
+    this.isAllCollapsed = false;
+
+    const collapseBtn = this.dom.createElement('button', {
+      id: 'claude-collapse-fixed-btn',
+      innerHTML: '📦',
+      title: 'Collapse/Expand All',
+      style: {
+        position: 'fixed',
+        right: '30px',
+        top: '50%',
+        transform: 'translateY(-160px)', // Above edit button
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: theme.gradient,
+        border: 'none',
+        cursor: 'pointer',
+        display: this.editedMessages.length > 0 ? 'flex' : 'none', // Hide if no edits
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.2s ease',
+        color: 'white',
+        fontSize: '20px',
+        zIndex: '9998',
+        opacity: this.getSetting('opacity') || 0.7,
+      }
+    });
+
+    // Click handler
+    collapseBtn.addEventListener('click', () => {
+      this.isAllCollapsed = !this.isAllCollapsed;
+      collapseBtn.innerHTML = this.isAllCollapsed ? '📂' : '📦';
+      this.handleCollapseAll(this.isAllCollapsed);
+    });
+
+    // Hover effects
+    collapseBtn.addEventListener('mouseenter', () => {
+      collapseBtn.style.transform = 'translateY(-160px) scale(1.1)';
+      collapseBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
+      collapseBtn.style.opacity = '1';
+    });
+
+    collapseBtn.addEventListener('mouseleave', () => {
+      collapseBtn.style.transform = 'translateY(-160px) scale(1)';
+      collapseBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+      collapseBtn.style.opacity = this.getSetting('opacity') || 0.7;
+    });
+
+    document.body.appendChild(collapseBtn);
+    this.elements.collapseBtn = collapseBtn;
   }
 
   /**
@@ -82,16 +229,22 @@ class EditHistoryModule extends BaseModule {
       containerId: editInfo.containerId,
     }));
 
-    // Header ve panel güncelle
-    this.ui.updateHeaderButton(this.editedMessages.length);
+    // Update counter
+    if (this.elements.counter) {
+      this.elements.counter.textContent = this.editedMessages.length.toString();
+    }
+
+    // Show/hide collapse button based on edit count
+    if (this.elements.collapseBtn) {
+      this.elements.collapseBtn.style.display = this.editedMessages.length > 0 ? 'flex' : 'none';
+    }
+
+    // Panel güncelle
     this.panel.updateContent(this.editedMessages);
 
-    // Tümünü Daralt buttonunu göster/gizle
+    // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
     const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
     if (compactViewEnabled && this.editedMessages.length > 0) {
-      this.ui.showCollapseAllButton(true);
-      
-      // Auto collapse açık ise, button state'ini "collapsed" (genişlet) yap
       const autoCollapseEnabled = this.settings && this.settings.compactView && this.settings.compactView.autoCollapseEnabled;
       if (autoCollapseEnabled) {
         this.ui.setCollapsedState(true); // true = mesajlar daraltılı = "Tümünü Genişlet" göster
@@ -191,6 +344,7 @@ class EditHistoryModule extends BaseModule {
 
     this.log('🎨 UI tema ile yenilendi');
   }
+
 
   /**
    * Modülü durdur

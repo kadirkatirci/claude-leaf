@@ -183,21 +183,26 @@ export class BookmarkPanel {
   /**
    * Insert toggle button before collapse button in header
    */
-  insertToggleButton(toggleBtn) {
-    // Wait for collapse button to exist
-    const checkAndInsert = () => {
-      const collapseBtn = document.querySelector('#claude-collapse-all-btn');
-      if (collapseBtn && collapseBtn.parentElement) {
-        // Insert before collapse button
-        collapseBtn.parentElement.insertBefore(toggleBtn, collapseBtn);
-        console.log('[BookmarkPanel] ✅ Toggle button inserted before collapse button');
-      } else {
-        // Retry after 500ms if collapse button not found yet
-        setTimeout(checkAndInsert, 500);
-      }
-    };
+  insertToggleButton(toggleBtn, retryCount = 0) {
+    const maxRetries = 20; // Try for 10 seconds
 
-    checkAndInsert();
+    const collapseBtn = document.querySelector('#claude-collapse-all-btn');
+    if (collapseBtn && collapseBtn.parentElement) {
+      // Insert before collapse button
+      collapseBtn.parentElement.insertBefore(toggleBtn, collapseBtn);
+      console.log('[BookmarkPanel] ✅ Toggle button inserted before collapse button');
+    } else if (retryCount < maxRetries) {
+      // Retry after 500ms if collapse button not found yet
+      setTimeout(() => this.insertToggleButton(toggleBtn, retryCount + 1), 500);
+    } else {
+      console.warn('[BookmarkPanel] Collapse button not found after max retries');
+      // Fallback: try to insert in chat title area
+      const titleContainer = document.querySelector('[data-testid="chat-title-button"]')?.parentElement;
+      if (titleContainer) {
+        titleContainer.appendChild(toggleBtn);
+        console.log('[BookmarkPanel] ⚠️ Toggle button inserted in title container (fallback)');
+      }
+    }
   }
 
   /**
