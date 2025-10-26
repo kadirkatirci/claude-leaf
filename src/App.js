@@ -9,7 +9,7 @@ import EditHistoryModule from './modules/EditHistoryModule.js';
 import CompactViewModule from './modules/CompactViewModule.js';
 import BookmarkModule from './modules/BookmarkModule.js';
 import EmojiMarkerModule from './modules/EmojiMarkerModule.js';
-import StarredCollapseModule from './modules/StarredCollapseModule.js';
+import SidebarCollapseModule from './modules/SidebarCollapseModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -68,8 +68,8 @@ class ClaudeProductivityApp {
     // Emoji Markers
     this.registerModule('emojiMarkers', new EmojiMarkerModule());
 
-    // Starred Collapse
-    this.registerModule('starredCollapse', new StarredCollapseModule());
+    // Sidebar Collapse
+    this.registerModule('sidebarCollapse', new SidebarCollapseModule());
   }
 
   /**

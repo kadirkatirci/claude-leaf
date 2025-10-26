@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, starred section collapse, and compact view for managing long conversations.
+A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse (Starred/Recents), and compact view for managing long conversations.
 
 ## Development Commands
 
@@ -174,7 +174,7 @@ src/modules/
 ├── CompactViewModule.js          # Main module file
 ├── BookmarkModule.js             # Main module file
 ├── EmojiMarkerModule.js          # Main module file
-├── StarredCollapseModule.js      # Main module file (sidebar injection)
+├── SidebarCollapseModule.js      # Main module file (sidebar chevron injection)
 ├── EditHistoryModule/            # Sub-components (if complex)
 │   ├── EditScanner.js
 │   ├── EditBadge.js
@@ -272,28 +272,28 @@ src/modules/
    - Performance: Smart updates, duplicate prevention, content signature tracking
    - Complex sub-component architecture (Storage, Button, Badge, Panel, Picker)
 
-6. **StarredCollapseModule** - Makes starred section in sidebar collapsible
-   - Solves UX problem: Many starred items make it hard to see recent conversations
-   - **No fixed position button** - Injects directly into Claude's sidebar
+6. **SidebarCollapseModule** - Makes sidebar sections (Starred & Recents) collapsible
+   - Solves UX problem: Long lists make sidebar cluttered and hard to navigate
+   - **No fixed position button** - Injects chevrons directly into Claude's native sidebar
    - **Retry injection mechanism** (similar to BookmarkSidebar pattern)
-   - Chevron icon (▶/▼) added to "Starred" header for expand/collapse
-   - **Default state: Collapsed** when module is enabled
-   - **Configurable max items** (default: 5) shown when collapsed
-   - **Show more footer**: "Show X more starred" link when collapsed
+   - Chevron icons (▶/▼) added to both "Starred" and "Recents" headers
+   - **Full collapse**: Hides entire list, shows only header when collapsed
+   - **Default state: Expanded** (user chooses when to collapse)
    - **State persistence**: Optional remember state via localStorage
-   - **Interactive header**: Click anywhere on "Starred" header to toggle
+   - **Interactive headers**: Click anywhere on section header or chevron to toggle
    - Features:
-     - Finds starred section by searching for h3 with text "Starred"
-     - Hides items beyond maxItemsWhenCollapsed when collapsed
-     - Smooth transitions with hover effects
+     - Finds sections by searching for h3 with text "Starred" or "Recents"
+     - Simple show/hide list logic (no max items, just full toggle)
+     - Smooth transitions with hover effects on chevrons
      - Auto-reinjects when settings change
+     - Independent state for each section (Starred can be collapsed while Recents expanded)
    - **Key patterns**:
      - Injection with retry: Waits for sidebar to load (max 10 retries @ 1s)
-     - Theme-aware: Uses getTheme() for consistent styling
-     - Settings-driven: Respects maxItemsWhenCollapsed, defaultState, rememberState
-     - Clean shutdown: Restores all items visibility on destroy
+     - Uses Map to store section data: { element, list, chevron, isCollapsed }
+     - Settings-driven: Respects defaultState, rememberState
+     - Clean shutdown: Restores all list visibility on destroy
    - No fixed button needed (operates within Claude's native sidebar)
-   - Enabled by default to improve conversation list UX
+   - Enabled by default to provide cleaner sidebar organization
 
 ### Module Details
 
@@ -404,7 +404,7 @@ Settings are organized by module with a shared `general` section:
   compactView: { enabled, minHeight, autoCollapse, autoCollapseEnabled, ... },
   bookmarks: { enabled, keyboardShortcuts, showOnHover, storageType },
   emojiMarkers: { enabled, showBadges, showOnHover, storageType, favoriteEmojis },
-  starredCollapse: { enabled, maxItemsWhenCollapsed, defaultState, rememberState },
+  sidebarCollapse: { enabled, defaultState, rememberState },
   general: { opacity, colorTheme, customColor }  // Shared across modules
 }
 ```

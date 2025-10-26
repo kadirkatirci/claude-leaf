@@ -99,10 +99,9 @@ function getDefaultSettings() {
       showOnHover: true,
       storageType: 'sync',
     },
-    starredCollapse: {
+    sidebarCollapse: {
       enabled: true,
-      maxItemsWhenCollapsed: 5,
-      defaultState: 'collapsed',
+      defaultState: 'expanded',
       rememberState: true,
     },
     export: {
@@ -160,12 +159,10 @@ function updateUI() {
   // Render favorite emojis
   renderFavoriteEmojis();
 
-  // Starred Collapse settings
-  const starredCollapse = currentSettings.starredCollapse || {};
-  document.getElementById('starredCollapse-enabled').checked = starredCollapse.enabled !== undefined ? starredCollapse.enabled : true;
-  document.getElementById('starredCollapse-maxItems').value = starredCollapse.maxItemsWhenCollapsed || 5;
-  document.getElementById('starredCollapse-maxItems-value').textContent = starredCollapse.maxItemsWhenCollapsed || 5;
-  document.getElementById('starredCollapse-rememberState').checked = starredCollapse.rememberState !== undefined ? starredCollapse.rememberState : true;
+  // Sidebar Collapse settings
+  const sidebarCollapse = currentSettings.sidebarCollapse || {};
+  document.getElementById('sidebarCollapse-enabled').checked = sidebarCollapse.enabled !== undefined ? sidebarCollapse.enabled : true;
+  document.getElementById('sidebarCollapse-rememberState').checked = sidebarCollapse.rememberState !== undefined ? sidebarCollapse.rememberState : true;
 
   // Navigation settings
   document.getElementById('nav-position').value = currentSettings.navigation.position;
@@ -296,24 +293,16 @@ function setupEventListeners() {
   // Emoji Markers add favorite button
   document.getElementById('emojiMarkers-add-favorite-btn').addEventListener('click', showEmojiPickerForFavorites);
 
-  // Starred Collapse enabled toggle
-  document.getElementById('starredCollapse-enabled').addEventListener('change', (e) => {
-    if (!currentSettings.starredCollapse) currentSettings.starredCollapse = {};
-    currentSettings.starredCollapse.enabled = e.target.checked;
+  // Sidebar Collapse enabled toggle
+  document.getElementById('sidebarCollapse-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.sidebarCollapse) currentSettings.sidebarCollapse = {};
+    currentSettings.sidebarCollapse.enabled = e.target.checked;
   });
 
-  // Starred Collapse max items
-  document.getElementById('starredCollapse-maxItems').addEventListener('input', (e) => {
-    if (!currentSettings.starredCollapse) currentSettings.starredCollapse = {};
-    const value = parseInt(e.target.value);
-    currentSettings.starredCollapse.maxItemsWhenCollapsed = value;
-    document.getElementById('starredCollapse-maxItems-value').textContent = value;
-  });
-
-  // Starred Collapse remember state
-  document.getElementById('starredCollapse-rememberState').addEventListener('change', (e) => {
-    if (!currentSettings.starredCollapse) currentSettings.starredCollapse = {};
-    currentSettings.starredCollapse.rememberState = e.target.checked;
+  // Sidebar Collapse remember state
+  document.getElementById('sidebarCollapse-rememberState').addEventListener('change', (e) => {
+    if (!currentSettings.sidebarCollapse) currentSettings.sidebarCollapse = {};
+    currentSettings.sidebarCollapse.rememberState = e.target.checked;
   });
 
   // Nav position
