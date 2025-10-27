@@ -19,14 +19,38 @@ class MessageFolder {
     try {
       this.module.log(`📬 MessageFolder scanning ${messages.length} messages...`);
 
-      messages.forEach((messageEl, index) => {
+      // Filter out non-message elements (footer, input area, etc.)
+      const validMessages = messages.filter((messageEl) => {
+        // Skip if it's a footer or input container
+        if (messageEl.tagName === 'FOOTER' ||
+            messageEl.querySelector('textarea') ||
+            messageEl.querySelector('input[type="text"]') ||
+            messageEl.classList.contains('sticky') ||
+            messageEl.style.position === 'fixed' ||
+            messageEl.style.position === 'sticky') {
+          return false;
+        }
+
+        // Must have some text content
+        if (messageEl.textContent.trim().length < 10) {
+          return false;
+        }
+
+        return true;
+      });
+
+      this.module.log(`Filtered to ${validMessages.length} valid messages`);
+
+      const totalValidMessages = validMessages.length;
+
+      validMessages.forEach((messageEl, index) => {
         // Skip if already processed
         if (this.processedMessages.has(messageEl)) {
           this.module.log(`Message ${index} already processed, skipping`);
           return;
         }
 
-        this.processMessage(messageEl, index);
+        this.processMessage(messageEl, index, totalValidMessages);
         this.processedMessages.add(messageEl);
       });
 
@@ -39,27 +63,15 @@ class MessageFolder {
   /**
    * Process individual message
    */
-  processMessage(messageEl, messageIndex) {
-    this.module.log(`Processing message ${messageIndex}`);
+  processMessage(messageEl, messageIndex, totalMessages) {
+    this.module.log(`Processing message ${messageIndex} of ${totalMessages}`);
 
     // Generate unique ID
     const messageId = this.generateMessageId(messageIndex, messageEl);
 
-    // Check saved state or default to expanded
+    // Check saved state, default to expanded
     const savedState = this.storage.getMessageState(messageId);
-    const isCollapsed = savedState !== null ? savedState : false;
-
-    // Check if should auto-collapse (keep last N expanded)
-    const autoCollapse = this.module.getSetting('messages.autoCollapse') || false;
-    const threshold = this.module.getSetting('messages.autoCollapseThreshold') || 5;
-    const totalMessages = this.module.dom.findMessages().length;
-
-    let shouldCollapse = isCollapsed;
-    if (autoCollapse && savedState === null) {
-      // Auto-collapse if not one of the last N messages
-      shouldCollapse = messageIndex < (totalMessages - threshold);
-      this.module.log(`Auto-collapse: ${shouldCollapse} (index: ${messageIndex}, total: ${totalMessages}, threshold: ${threshold})`);
-    }
+    const shouldCollapse = savedState !== null ? savedState : false;
 
     // Find the message content container
     const contentContainer = this.findMessageContent(messageEl);

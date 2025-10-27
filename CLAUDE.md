@@ -310,7 +310,6 @@ src/modules/
    - **Exception**: Collapsed items always show their toggle (so user knows how to expand)
    - Features:
      - **Message preview**: Shows first N lines (default 3) + fade gradient + "Show full message" button
-     - **Auto-collapse messages**: Optionally auto-collapse messages, keeping last N expanded (default 5)
      - Works on both user and Claude messages
      - Hierarchical heading collapse: Parent heading collapse hides all children until next same/higher level heading OR `<hr>` separator
      - **HR separator support**: `---` (horizontal rule) acts as manual section boundary - collapse stops at HR tags
@@ -327,14 +326,13 @@ src/modules/
      - Observer-based: Listens to MESSAGES_UPDATED event for new content
      - Clean separation: MessageFolder, HeadingFolder, CodeBlockFolder, FoldingStorage sub-components
    - Sub-components:
-     - **MessageFolder**: Manages message chevrons, click handlers, preview mode with fade gradients, auto-collapse logic
+     - **MessageFolder**: Manages message chevrons, click handlers, preview mode with fade gradients
      - **HeadingFolder**: Manages heading chevrons, click handlers, hierarchical collapse logic
      - **CodeBlockFolder**: Manages code collapse buttons, preview mode, fade gradients, expand footers
      - **FoldingStorage**: localStorage persistence per conversation, load/save state for messages, headings, and code blocks
    - Settings:
      - Enable/disable messages, headings, and code blocks independently
      - Message preview lines (1-10, default 3)
-     - Message auto-collapse (keep last N expanded, default 5)
      - Code min lines threshold (5-50, default 15)
      - Code preview lines (1-10, default 5)
      - Auto-collapse long code blocks

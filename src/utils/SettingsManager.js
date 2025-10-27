@@ -84,8 +84,6 @@ class SettingsManager {
         messages: {
           enabled: true,
           previewLines: 3,        // Lines shown when collapsed
-          autoCollapse: false,    // Auto-collapse messages
-          autoCollapseThreshold: 5, // Keep last N messages expanded
         },
         rememberState: true,      // Remember fold states
       },
