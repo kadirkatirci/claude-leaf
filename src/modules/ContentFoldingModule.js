@@ -7,6 +7,7 @@ import DOMUtils from '../utils/DOMUtils.js';
 import { Events } from '../utils/EventBus.js';
 import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';
+import MessageFolder from './ContentFoldingModule/MessageFolder.js';
 import FoldingStorage from './ContentFoldingModule/FoldingStorage.js';
 
 class ContentFoldingModule extends BaseModule {
@@ -15,6 +16,7 @@ class ContentFoldingModule extends BaseModule {
 
     this.headingFolder = null;
     this.codeBlockFolder = null;
+    this.messageFolder = null;
     this.storage = null;
     this.observer = null;
     this.lastMessageCount = 0;
@@ -33,6 +35,7 @@ class ContentFoldingModule extends BaseModule {
       // Initialize sub-components
       this.headingFolder = new HeadingFolder(this, this.storage);
       this.codeBlockFolder = new CodeBlockFolder(this, this.storage);
+      this.messageFolder = new MessageFolder(this, this.storage);
 
       // Listen for messages updated
       this.subscribe(Events.MESSAGES_UPDATED, () => {
@@ -68,7 +71,12 @@ class ContentFoldingModule extends BaseModule {
 
       this.log(`📊 Scanning ${messages.length} messages...`);
 
-      // Scan each message
+      // Scan for message-level folding (before content scanning)
+      if (this.getSetting('messages.enabled')) {
+        this.messageFolder.scanMessages(messages);
+      }
+
+      // Scan each message for headings and code blocks
       messages.forEach((message, index) => {
         // Skip user messages (only assistant messages have headings/code)
         if (message.querySelector('[data-testid="user-message"]')) {
@@ -134,6 +142,9 @@ class ContentFoldingModule extends BaseModule {
     }
     if (this.codeBlockFolder) {
       this.codeBlockFolder.cleanup();
+    }
+    if (this.messageFolder) {
+      this.messageFolder.cleanup();
     }
     this.lastMessageCount = 0;
   }

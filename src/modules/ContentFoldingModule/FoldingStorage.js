@@ -43,6 +43,7 @@ class FoldingStorage {
     return {
       headings: {},     // { headingId: isCollapsed }
       codeBlocks: {},   // { blockId: isCollapsed }
+      messages: {},     // { messageId: isCollapsed }
     };
   }
 
@@ -98,6 +99,33 @@ class FoldingStorage {
    */
   setCodeBlockState(blockId, isCollapsed) {
     this.state.codeBlocks[blockId] = isCollapsed;
+    this.saveState();
+  }
+
+  /**
+   * Get message state
+   */
+  getMessageState(messageId) {
+    // Ensure messages object exists (backward compatibility)
+    if (!this.state.messages) {
+      this.state.messages = {};
+    }
+
+    return this.state.messages[messageId] !== undefined
+      ? this.state.messages[messageId]
+      : null;
+  }
+
+  /**
+   * Set message state
+   */
+  setMessageState(messageId, isCollapsed) {
+    // Ensure messages object exists (backward compatibility)
+    if (!this.state.messages) {
+      this.state.messages = {};
+    }
+
+    this.state.messages[messageId] = isCollapsed;
     this.saveState();
   }
 

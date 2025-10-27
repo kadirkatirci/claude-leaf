@@ -116,6 +116,12 @@ function getDefaultSettings() {
         previewLines: 5,
         autoCollapse: false,
       },
+      messages: {
+        enabled: true,
+        previewLines: 3,
+        autoCollapse: false,
+        autoCollapseThreshold: 5,
+      },
       rememberState: true,
     },
     export: {
@@ -186,6 +192,10 @@ function updateUI() {
   document.getElementById('contentFolding-minLines').value = contentFolding.codeBlocks?.minLines || 15;
   document.getElementById('contentFolding-previewLines').value = contentFolding.codeBlocks?.previewLines || 5;
   document.getElementById('contentFolding-autoCollapse').checked = contentFolding.codeBlocks?.autoCollapse || false;
+  document.getElementById('contentFolding-messages-enabled').checked = contentFolding.messages?.enabled !== undefined ? contentFolding.messages.enabled : true;
+  document.getElementById('contentFolding-messages-previewLines').value = contentFolding.messages?.previewLines || 3;
+  document.getElementById('contentFolding-messages-autoCollapse').checked = contentFolding.messages?.autoCollapse || false;
+  document.getElementById('contentFolding-messages-autoCollapseThreshold').value = contentFolding.messages?.autoCollapseThreshold || 5;
   document.getElementById('contentFolding-rememberState').checked = contentFolding.rememberState !== undefined ? contentFolding.rememberState : true;
 
   // Navigation settings
@@ -368,6 +378,34 @@ function setupEventListeners() {
     if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
     if (!currentSettings.contentFolding.codeBlocks) currentSettings.contentFolding.codeBlocks = {};
     currentSettings.contentFolding.codeBlocks.autoCollapse = e.target.checked;
+  });
+
+  // Content Folding messages enabled
+  document.getElementById('contentFolding-messages-enabled').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.messages) currentSettings.contentFolding.messages = {};
+    currentSettings.contentFolding.messages.enabled = e.target.checked;
+  });
+
+  // Content Folding messages preview lines
+  document.getElementById('contentFolding-messages-previewLines').addEventListener('input', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.messages) currentSettings.contentFolding.messages = {};
+    currentSettings.contentFolding.messages.previewLines = parseInt(e.target.value);
+  });
+
+  // Content Folding messages auto collapse
+  document.getElementById('contentFolding-messages-autoCollapse').addEventListener('change', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.messages) currentSettings.contentFolding.messages = {};
+    currentSettings.contentFolding.messages.autoCollapse = e.target.checked;
+  });
+
+  // Content Folding messages auto collapse threshold
+  document.getElementById('contentFolding-messages-autoCollapseThreshold').addEventListener('input', (e) => {
+    if (!currentSettings.contentFolding) currentSettings.contentFolding = {};
+    if (!currentSettings.contentFolding.messages) currentSettings.contentFolding.messages = {};
+    currentSettings.contentFolding.messages.autoCollapseThreshold = parseInt(e.target.value);
   });
 
   // Content Folding remember state

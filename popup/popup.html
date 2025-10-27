@@ -444,6 +444,37 @@
           </div>
         </div>
 
+        <!-- Messages Section -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">💬 Message Folding</h3>
+
+          <div class="setting-item">
+            <label for="contentFolding-messages-enabled">Enable Message Folding</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-messages-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-messages-previewLines">Preview Lines (Lines shown when collapsed)</label>
+            <input type="number" id="contentFolding-messages-previewLines" min="1" max="10" step="1" value="3">
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-messages-autoCollapse">Auto-Collapse Messages</label>
+            <label class="toggle">
+              <input type="checkbox" id="contentFolding-messages-autoCollapse">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label for="contentFolding-messages-autoCollapseThreshold">Keep Last N Messages Expanded</label>
+            <input type="number" id="contentFolding-messages-autoCollapseThreshold" min="1" max="20" step="1" value="5">
+          </div>
+        </div>
+
         <!-- General Settings -->
         <div class="settings-group" style="margin-top: 20px;">
           <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">⚙️ General</h3>
@@ -460,6 +491,9 @@
         <div class="info-box" style="margin-top: 16px;">
           <h3>ℹ️ Nasıl Çalışır?</h3>
           <ul style="font-size: 13px; color: #666; list-style-position: inside;">
+            <li><strong>Message Folding:</strong> Hem user hem Claude mesajlarına chevron (▶/▼) ikonu ekler (sol üst köşe)</li>
+            <li>Mesajları katlamak için chevron'a tıklayın - ilk N satır + "Show full message" görünür</li>
+            <li>Auto-collapse ile eski mesajları otomatik katlayabilirsiniz (son N mesaj açık kalır)</li>
             <li><strong>Heading Folding:</strong> Claude response'lardaki başlıklara (h1-h6) chevron (▶/▼) ikonu ekler</li>
             <li>Başlığa tıklayarak altındaki içeriği gizleyip gösterebilirsiniz (Obsidian tarzı)</li>
             <li>Hiyerarşik folding: Üst seviye başlık kapatılınca alt başlıklar da kapanır</li>

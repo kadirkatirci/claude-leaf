@@ -195,6 +195,7 @@ src/modules/
 └── ContentFoldingModule/         # Sub-components
     ├── HeadingFolder.js
     ├── CodeBlockFolder.js
+    ├── MessageFolder.js
     └── FoldingStorage.js
 ```
 
@@ -300,13 +301,17 @@ src/modules/
    - No fixed button needed (operates within Claude's native sidebar)
    - Enabled by default to provide cleaner sidebar organization
 
-7. **ContentFoldingModule** - Obsidian/VSCode style folding for headings and code blocks
-   - Solves UX problem: Long Claude responses with many sections/code blocks are hard to navigate
+7. **ContentFoldingModule** - Obsidian/VSCode style folding for messages, headings, and code blocks
+   - Solves UX problem: Long conversations with many messages, sections, and code blocks are hard to navigate
+   - **Message Folding**: Adds chevrons (▶/▼) to message headers (top-left corner) for message-level collapse
    - **Heading Folding**: Adds chevrons (▶/▼) to headings (h1-h6) for hierarchical collapse
    - **Code Block Folding**: Adds collapse buttons to long code blocks (15+ lines configurable)
    - **Hover-based UI**: Chevrons and buttons only visible on hover (cleaner interface)
    - **Exception**: Collapsed items always show their toggle (so user knows how to expand)
    - Features:
+     - **Message preview**: Shows first N lines (default 3) + fade gradient + "Show full message" button
+     - **Auto-collapse messages**: Optionally auto-collapse messages, keeping last N expanded (default 5)
+     - Works on both user and Claude messages
      - Hierarchical heading collapse: Parent heading collapse hides all children until next same/higher level heading OR `<hr>` separator
      - **HR separator support**: `---` (horizontal rule) acts as manual section boundary - collapse stops at HR tags
      - **Smart HR detection**: HR only separates top-level content - HR inside child headings are ignored (prevents premature collapse stops)
@@ -314,21 +319,24 @@ src/modules/
      - Conversation-based state persistence via localStorage
      - Auto-collapse option for long code blocks
      - Theme-aware styling (dark/light mode)
-     - Smooth animations (slideUp/slideDown for headings, height transition for code)
+     - Smooth animations (slideUp/slideDown for headings, height transition for code and messages)
    - **Key patterns**:
      - WeakMap for element caching (memory efficient)
      - Content-based ID generation (message index + element index + hash)
      - Hierarchical content detection: `getHeadingContent()` walks DOM until next same/higher level heading or HR separator
      - Observer-based: Listens to MESSAGES_UPDATED event for new content
-     - Clean separation: HeadingFolder, CodeBlockFolder, FoldingStorage sub-components
+     - Clean separation: MessageFolder, HeadingFolder, CodeBlockFolder, FoldingStorage sub-components
    - Sub-components:
+     - **MessageFolder**: Manages message chevrons, click handlers, preview mode with fade gradients, auto-collapse logic
      - **HeadingFolder**: Manages heading chevrons, click handlers, hierarchical collapse logic
      - **CodeBlockFolder**: Manages code collapse buttons, preview mode, fade gradients, expand footers
-     - **FoldingStorage**: localStorage persistence per conversation, load/save state
+     - **FoldingStorage**: localStorage persistence per conversation, load/save state for messages, headings, and code blocks
    - Settings:
-     - Enable/disable headings and code blocks independently
-     - Min lines threshold (5-50, default 15)
-     - Preview lines (1-10, default 5)
+     - Enable/disable messages, headings, and code blocks independently
+     - Message preview lines (1-10, default 3)
+     - Message auto-collapse (keep last N expanded, default 5)
+     - Code min lines threshold (5-50, default 15)
+     - Code preview lines (1-10, default 5)
      - Auto-collapse long code blocks
      - Remember fold states (per conversation)
    - Enabled by default to bring Obsidian-style organization to Claude responses
