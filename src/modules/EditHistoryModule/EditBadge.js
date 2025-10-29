@@ -19,7 +19,7 @@ class EditBadge {
     }
 
     const currentElements = new Set(editedPrompts.map(e => e.element));
-    
+
     // Eski badge'leri temizle
     document.querySelectorAll('.claude-edit-badge').forEach(badge => {
       const parent = badge.parentElement;
@@ -27,7 +27,7 @@ class EditBadge {
         badge.remove();
       }
     });
-    
+
     // Yeni badge'leri ekle
     editedPrompts.forEach(editInfo => {
       this.add(editInfo.element, editInfo.versionInfo);
@@ -56,7 +56,7 @@ class EditBadge {
       innerHTML: `✏️ ${versionInfo}`,
       style: {
         position: 'absolute',
-        top: '8px',
+        top: '-35px',
         right: '8px',
         background: theme.gradient,
         color: 'white',
