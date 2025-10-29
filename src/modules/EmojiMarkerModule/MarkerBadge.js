@@ -61,11 +61,11 @@ export class MarkerBadge {
     if (markerBtn) {
       // Marker button var: onun üstünde göster
       badgeRight = '-36px'; // Sabit pozisyon, marker button ile aynı
-      badgeTop = '-25px'; // Button'un üstünde (çakışmayı önle)
+      badgeTop = '10px'; // Button'un üstünde (çakışmayı önle)
     } else {
       // Marker button yok: container'ın dışında göster
       badgeRight = '-36px'; // Sabit pozisyon
-      badgeTop = '8px'; // Normal top pozisyonu
+      badgeTop = '10px'; // Normal top pozisyonu
     }
 
     const badge = DOMUtils.createElement('div', {
@@ -80,7 +80,7 @@ export class MarkerBadge {
         height: '28px',
         borderRadius: '50%',
         background: theme.gradient,
-        border: `2px solid ${theme.isDark ? '#1d1d1d' : 'white'}`,
+        // border: `2px solid ${theme.isDark ? '#1d1d1d' : 'white'}`,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -172,7 +172,7 @@ export class MarkerBadge {
         right: '0',
         marginTop: '8px',
         background: theme.isDark ? '#2d2d2d' : 'white',
-        border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
+        // border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         padding: '8px',
