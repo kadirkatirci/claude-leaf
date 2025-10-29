@@ -91,6 +91,25 @@ function createBookmarkCard(bookmark) {
     minute: '2-digit'
   });
 
+  // Get conversation name from URL
+  let conversationName = 'Unknown';
+  if (bookmark.conversationUrl) {
+    if (bookmark.conversationUrl.startsWith('/')) {
+      // Pathname format - extract conversation ID
+      const parts = bookmark.conversationUrl.split('/');
+      conversationName = parts[parts.length - 1] || 'Unknown';
+    } else if (bookmark.conversationUrl.startsWith('http')) {
+      // Full URL format
+      try {
+        const url = new URL(bookmark.conversationUrl);
+        const parts = url.pathname.split('/');
+        conversationName = parts[parts.length - 1] || 'Unknown';
+      } catch (e) {
+        conversationName = 'Unknown';
+      }
+    }
+  }
+
   card.innerHTML = `
     <div class="bookmark-preview">${escapeHtml(bookmark.previewText)}</div>
     ${bookmark.note ? `<div class="bookmark-note">📝 ${escapeHtml(bookmark.note)}</div>` : ''}
@@ -98,6 +117,7 @@ function createBookmarkCard(bookmark) {
       <div class="bookmark-date">
         <span>🕒</span>
         <span>${dateStr}</span>
+        <span style="margin-left: 10px; opacity: 0.7; font-size: 11px;">📍 ${conversationName.substring(0, 8)}...</span>
       </div>
       <button class="delete-btn" data-id="${bookmark.id}">🗑️ Delete</button>
     </div>
@@ -126,9 +146,23 @@ function createBookmarkCard(bookmark) {
 function navigateToBookmark(bookmark) {
   // Open Claude.ai with the conversation URL and bookmark ID as parameter
   if (bookmark.conversationUrl) {
-    const url = new URL(bookmark.conversationUrl);
-    url.searchParams.set('bookmark', bookmark.id);
-    window.location.href = url.toString();
+    let targetUrl;
+
+    // Handle different URL formats
+    if (bookmark.conversationUrl.startsWith('http')) {
+      // Old format: full URL
+      const url = new URL(bookmark.conversationUrl);
+      url.searchParams.set('bookmark', bookmark.id);
+      targetUrl = url.toString();
+    } else if (bookmark.conversationUrl.startsWith('/')) {
+      // New format: pathname only
+      targetUrl = `https://claude.ai${bookmark.conversationUrl}?bookmark=${bookmark.id}`;
+    } else {
+      // Fallback: assume it's a path without leading slash
+      targetUrl = `https://claude.ai/${bookmark.conversationUrl}?bookmark=${bookmark.id}`;
+    }
+
+    window.location.href = targetUrl;
   }
 }
 

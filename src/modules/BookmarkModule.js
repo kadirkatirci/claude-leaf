@@ -188,17 +188,33 @@ class BookmarkModule extends BaseModule {
       }
 
       // Check if we're already on the correct conversation page
-      const currentUrl = window.location.href.split('?')[0]; // Remove query params
-      const bookmarkUrl = bookmark.conversationUrl.split('?')[0];
+      const currentPath = window.location.pathname;
 
-      if (currentUrl === bookmarkUrl) {
+      // Handle both old and new bookmark formats
+      let bookmarkPath = bookmark.conversationUrl;
+      if (bookmark.conversationUrl && bookmark.conversationUrl.startsWith('http')) {
+        try {
+          const url = new URL(bookmark.conversationUrl);
+          bookmarkPath = url.pathname;
+        } catch (e) {
+          bookmarkPath = bookmark.conversationUrl;
+        }
+      }
+
+      if (currentPath === bookmarkPath) {
         // Same page, just wait for messages and navigate
         this.log('Already on correct page, waiting for messages...');
         this.waitForMessagesAndNavigate(bookmark, 0);
       } else {
         // Different page, redirect first (the URL param will be preserved)
-        this.log('Redirecting to conversation:', bookmark.conversationUrl);
-        // URL already has ?bookmark=X, so navigation will continue after redirect
+        this.log('Redirecting to conversation from:', currentPath, 'to:', bookmarkPath);
+
+        // Redirect to the correct conversation with bookmark parameter
+        if (bookmarkPath.startsWith('/')) {
+          window.location.href = bookmarkPath + '?bookmark=' + bookmarkId;
+        } else if (bookmarkPath.startsWith('http')) {
+          window.location.href = bookmarkPath + '?bookmark=' + bookmarkId;
+        }
         return; // Let the page redirect happen
       }
     }
