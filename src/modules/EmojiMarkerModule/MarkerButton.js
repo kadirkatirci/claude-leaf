@@ -115,7 +115,7 @@ export class MarkerButton {
       }
     });
 
-    // Hover effects
+    // Hover effects for button scaling
     button.addEventListener('mouseenter', () => {
       button.style.transform = 'scale(1.1)';
       button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';

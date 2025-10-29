@@ -44,6 +44,7 @@ export class BookmarkButton {
     const button = this.dom.createElement('button', {
       className: 'claude-bookmark-btn',
       innerHTML: isBookmarked ? this.getBookmarkSVG(true, '#ffffff') : this.getBookmarkSVG(false, '#333'),
+      'data-bookmarked': isBookmarked ? 'true' : 'false',
       style: {
         position: 'absolute',
         top: '8px',
@@ -56,7 +57,7 @@ export class BookmarkButton {
         cursor: 'pointer',
         fontSize: '14px',
         zIndex: '10',
-        opacity: '0',
+        opacity: isBookmarked ? '1' : '0', // Bookmarked ise her zaman görünür
         transition: 'all 0.2s ease',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       }
@@ -67,12 +68,22 @@ export class BookmarkButton {
       messageElement.style.position = 'relative';
     }
 
+    // Track hover state
+    let isHovering = false;
+
     // Show button on message hover
     const showButton = () => {
+      isHovering = true;
       button.style.opacity = '1';
     };
+
     const hideButton = () => {
-      button.style.opacity = '0';
+      isHovering = false;
+      // Only hide if not bookmarked (check current state from data attribute)
+      const currentlyBookmarked = button.getAttribute('data-bookmarked') === 'true';
+      if (!currentlyBookmarked) {
+        button.style.opacity = '0';
+      }
     };
 
     messageElement.addEventListener('mouseenter', showButton);
@@ -104,9 +115,23 @@ export class BookmarkButton {
     if (!button) return;
 
     const theme = this.getTheme();
+
+    // Update visual appearance
     button.innerHTML = isBookmarked ? this.getBookmarkSVG(true, '#ffffff') : this.getBookmarkSVG(false, '#333');
     button.style.background = isBookmarked ? theme.gradient : '#f0f0f0';
     button.style.color = isBookmarked ? 'white' : '#333';
+
+    // Update data attribute first
+    button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
+
+    // Update opacity - bookmarked always visible, otherwise check hover
+    if (isBookmarked) {
+      button.style.opacity = '1';
+    } else {
+      // Check if we're currently hovering
+      const isHovering = messageElement.matches(':hover') || button.matches(':hover');
+      button.style.opacity = isHovering ? '1' : '0';
+    }
   }
 
   /**
