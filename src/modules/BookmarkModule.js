@@ -38,6 +38,9 @@ class BookmarkModule extends BaseModule {
     // Load bookmarks
     this.bookmarks = await this.storage.load();
 
+    // Migrate existing bookmarks to use normalized URLs
+    await this.migrateBookmarkUrls();
+
     // Create UI
     this.panel.create(() => this.togglePanel());
 
@@ -311,7 +314,7 @@ class BookmarkModule extends BaseModule {
    * Toggle bookmark by index
    */
   async toggleBookmarkByIndex(messageElement, index) {
-    const existing = this.findBookmarkByIndex(index, messageElement);
+    const existing = this.findBookmarkByIndex(index);
 
     if (existing) {
       // Remove bookmark
@@ -331,31 +334,26 @@ class BookmarkModule extends BaseModule {
     const messages = this.dom.findMessages();
     if (index >= messages.length) return false;
 
-    const messageElement = messages[index];
-    return this.findBookmarkByIndex(index, messageElement) !== null;
+    return this.findBookmarkByIndex(index) !== null;
   }
 
   /**
-   * Find bookmark by index and verify content (current conversation only)
+   * Find bookmark by index (current conversation only)
+   * Simplified like emoji marker - no content verification for stability
    */
-  findBookmarkByIndex(index, messageElement) {
-    const cleanText = this.getCleanMessageText(messageElement);
-    const contentSignature = this.hashText(cleanText.substring(0, 1000));
-    const currentUrl = window.location.href;
+  findBookmarkByIndex(index) {
+    // Use pathname like emoji markers for better stability
+    const currentPath = window.location.pathname;
 
-    // Find bookmarks at this index in current conversation
-    const candidateBookmarks = this.bookmarks.filter(b =>
-      b.messageIndex === index && b.conversationUrl === currentUrl
+    // Find bookmark at this index in current conversation
+    const bookmark = this.bookmarks.find(b =>
+      b.messageIndex === index &&
+      (b.conversationUrl === currentPath || // New format
+       b.conversationUrl === window.location.href.split('?')[0].split('#')[0] || // Migrated format
+       b.conversationUrl.includes(currentPath)) // Old format compatibility
     );
 
-    // Verify content signature matches
-    for (const bookmark of candidateBookmarks) {
-      if (bookmark.contentSignature === contentSignature) {
-        return bookmark;
-      }
-    }
-
-    return null;
+    return bookmark || null;
   }
 
   /**
@@ -382,6 +380,22 @@ class BookmarkModule extends BaseModule {
     const previewText = fullText.substring(0, 200);
     const contentSignature = this.hashText(fullText.substring(0, 1000));
 
+    // Use pathname like emoji markers for better stability
+    const conversationPath = window.location.pathname;
+
+    // Check for duplicate bookmark before adding
+    const existingBookmark = this.bookmarks.find(b =>
+      b.messageIndex === messageIndex &&
+      (b.conversationUrl === conversationPath || // Check pathname
+       b.conversationUrl === window.location.href.split('?')[0].split('#')[0] || // Check old normalized URL
+       b.conversationUrl.includes(conversationPath)) // Check if old URL contains path
+    );
+
+    if (existingBookmark) {
+      this.log('⚠️ Bookmark already exists for this message');
+      return; // Don't add duplicate
+    }
+
     const bookmark = {
       id: `bookmark-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       messageIndex: messageIndex, // Array index of the message
@@ -389,7 +403,7 @@ class BookmarkModule extends BaseModule {
       previewText: previewText,
       note: '',
       timestamp: Date.now(),
-      conversationUrl: window.location.href,
+      conversationUrl: conversationPath, // Use pathname like emoji markers
     };
 
     this.bookmarks.push(bookmark);
@@ -404,6 +418,38 @@ class BookmarkModule extends BaseModule {
     // Update UI
     this.updateUI();
     this.addBookmarkButtons(); // Refresh buttons
+  }
+
+  /**
+   * Migrate existing bookmarks to use pathname format
+   */
+  async migrateBookmarkUrls() {
+    let migrationNeeded = false;
+
+    this.bookmarks = this.bookmarks.map(bookmark => {
+      // Check if URL is full URL (not just pathname)
+      if (bookmark.conversationUrl && bookmark.conversationUrl.startsWith('http')) {
+        // Extract pathname from full URL
+        try {
+          const url = new URL(bookmark.conversationUrl);
+          migrationNeeded = true;
+          return {
+            ...bookmark,
+            conversationUrl: url.pathname
+          };
+        } catch (e) {
+          // If URL parsing fails, keep original
+          return bookmark;
+        }
+      }
+      return bookmark;
+    });
+
+    // Save if any bookmarks were migrated
+    if (migrationNeeded) {
+      await this.storage.save(this.bookmarks);
+      this.log('✅ Migrated bookmark URLs to pathname format');
+    }
   }
 
   /**
@@ -424,9 +470,27 @@ class BookmarkModule extends BaseModule {
    * Get bookmarks for current conversation
    */
   getCurrentConversationBookmarks() {
-    const currentUrl = window.location.href;
-    // Match bookmarks for this specific conversation
-    return this.bookmarks.filter(b => b.conversationUrl === currentUrl);
+    const currentPath = window.location.pathname;
+    // Match bookmarks for this specific conversation (support both old and new formats)
+    return this.bookmarks.filter(b => {
+      if (!b.conversationUrl) return false;
+
+      // New format: pathname
+      if (b.conversationUrl === currentPath) return true;
+
+      // Old format: full URL - extract pathname and compare
+      if (b.conversationUrl.startsWith('http')) {
+        try {
+          const url = new URL(b.conversationUrl);
+          return url.pathname === currentPath;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // Fallback: check if old format contains current path
+      return b.conversationUrl.includes(currentPath);
+    });
   }
 
   /**
@@ -469,13 +533,30 @@ class BookmarkModule extends BaseModule {
    */
   navigateToBookmark(bookmark, fromUrlNavigation = false) {
     // First check if we're on the correct conversation page
-    const currentUrl = window.location.href.split('?')[0];
-    const bookmarkUrl = bookmark.conversationUrl.split('?')[0];
+    const currentPath = window.location.pathname;
 
-    if (currentUrl !== bookmarkUrl) {
-      this.warn('❌ Wrong conversation! Current:', currentUrl, 'Bookmark:', bookmarkUrl);
+    // Handle both old and new bookmark formats
+    let bookmarkPath = bookmark.conversationUrl;
+    if (bookmark.conversationUrl && bookmark.conversationUrl.startsWith('http')) {
+      try {
+        const url = new URL(bookmark.conversationUrl);
+        bookmarkPath = url.pathname;
+      } catch (e) {
+        bookmarkPath = bookmark.conversationUrl;
+      }
+    }
+
+    if (currentPath !== bookmarkPath) {
+      this.warn('❌ Wrong conversation! Current:', currentPath, 'Bookmark:', bookmarkPath);
+
+      // If navigating from bookmarks page, open the correct conversation
+      if (fromUrlNavigation && bookmarkPath) {
+        window.location.href = bookmarkPath + '?bookmark=' + bookmark.id;
+        return;
+      }
+
       this.warn('This bookmark belongs to a different conversation.');
-      return; // Don't show error dialog, this is expected
+      return;
     }
 
     const messages = this.dom.findMessages();
