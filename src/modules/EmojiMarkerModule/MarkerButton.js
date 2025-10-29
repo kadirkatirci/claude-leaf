@@ -41,14 +41,42 @@ export class MarkerButton {
    * Called only once when button is first created
    */
   attachHoverListeners(messageEl, button) {
-    messageEl.addEventListener('mouseenter', () => {
+    let hoverTimeout;
+
+    const showButton = () => {
+      clearTimeout(hoverTimeout);
       button.style.opacity = '1';
       button.style.pointerEvents = 'auto';
-    });
+    };
 
-    messageEl.addEventListener('mouseleave', () => {
-      button.style.opacity = '0';
-      button.style.pointerEvents = 'none';
+    const hideButton = () => {
+      clearTimeout(hoverTimeout);
+      // Small delay to allow moving to button
+      hoverTimeout = setTimeout(() => {
+        button.style.opacity = '0';
+        button.style.pointerEvents = 'none';
+      }, 100);
+    };
+
+    // Show on message hover
+    messageEl.addEventListener('mouseenter', showButton);
+
+    // Hide on message leave (with delay)
+    messageEl.addEventListener('mouseleave', hideButton);
+
+    // Keep visible when hovering on button itself
+    button.addEventListener('mouseenter', showButton);
+
+    // Hide when leaving button
+    button.addEventListener('mouseleave', (e) => {
+      // Check if we're going back to the message
+      const rect = messageEl.getBoundingClientRect();
+      if (e.clientX >= rect.left && e.clientX <= rect.right &&
+          e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        showButton();
+      } else {
+        hideButton();
+      }
     });
   }
 
@@ -59,10 +87,8 @@ export class MarkerButton {
     const theme = this.getTheme();
     const existingMarker = markers.find(m => m.messageIndex === messageIndex);
 
-    // Container'ın DIŞINDA göster (sağ tarafın dışında)
-    // Bookmark varsa, bookmark'tan önce (daha solda)
-    const bookmarkBtn = messageEl.querySelector('.claude-bookmark-btn');
-    const buttonRight = bookmarkBtn ? '36px' : '-30px'; // Bookmark varsa yanında, yoksa container dışında
+    // Container'ın DIŞINDA sabit pozisyon
+    const buttonRight = '-36px'; // Sabit pozisyon, bookmark varlığından bağımsız
 
     const button = DOMUtils.createElement('button', {
       className: 'emoji-marker-btn',
@@ -71,7 +97,7 @@ export class MarkerButton {
       style: {
         position: 'absolute',
         top: '8px',
-        right: buttonRight, // Container'ın dışında
+        right: buttonRight, // Container'ın dışında sabit pozisyon
         width: '32px',
         height: '32px',
         borderRadius: '6px',
@@ -128,7 +154,7 @@ export class MarkerButton {
       button.innerHTML = emoji;
       button.title = `Marked with ${emoji}`;
       button.style.background = this.getTheme().gradient;
-      // Position stays the same (dynamically set in createButton)
+      // Position stays the same (fixed at -36px)
     });
   }
 
@@ -211,7 +237,7 @@ export class MarkerButton {
       button.innerHTML = '🏷️';
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      // Position stays the same (set in createButton)
+      // Position stays the same (fixed at -36px)
     });
 
     menu.appendChild(changeBtn);
@@ -251,7 +277,7 @@ export class MarkerButton {
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
     }
-    // Position stays the same (set in createButton)
+    // Position stays the same (fixed at -36px)
   }
 
   /**

@@ -52,20 +52,19 @@ export class MarkerBadge {
 
     const theme = this.getTheme();
 
-    // Container'ın DIŞINDA göster
-    // Marker button varsa üstünde, yoksa container'ın dışında
+    // Container'ın DIŞINDA sabit pozisyon
+    // Marker button ile aynı yatay hizada, üstünde
     const markerBtn = messageEl.querySelector('.emoji-marker-btn');
-    const bookmarkBtn = messageEl.querySelector('.claude-bookmark-btn');
 
     let badgeRight, badgeTop;
 
     if (markerBtn) {
       // Marker button var: onun üstünde göster
-      badgeRight = bookmarkBtn ? '36px' : '-30px'; // Marker button ile aynı hizada
+      badgeRight = '-36px'; // Sabit pozisyon, marker button ile aynı
       badgeTop = '-25px'; // Button'un üstünde (çakışmayı önle)
     } else {
       // Marker button yok: container'ın dışında göster
-      badgeRight = '-30px'; // Container dışında
+      badgeRight = '-36px'; // Sabit pozisyon
       badgeTop = '8px'; // Normal top pozisyonu
     }
 
