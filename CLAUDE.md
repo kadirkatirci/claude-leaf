@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Chrome extension that enhances the Claude.ai web interface with productivity features including message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse (Starred/Recents), content folding (headings/code blocks), and compact view for managing long conversations.
 
+### Recent Architectural Improvements (December 2024)
+
+1. **Centralized Visibility Management**: Implemented VisibilityManager to prevent infinite loops and ensure consistent UI behavior across page changes
+2. **Method Naming Standardization**: All modules now use consistent `removeAll()` method with backward compatibility
+3. **Defensive Programming**: Added method existence checks before all cleanup operations
+4. **Fixed Button Visibility**: Resolved issues with buttons remaining visible on non-conversation pages
+5. **Performance Optimizations**: Replaced DOM mutations with visibility/opacity changes to prevent observer cascades
+
 ## Development Commands
 
 ### Build & Development
@@ -44,6 +52,7 @@ The extension uses a **modular architecture** where each feature is a self-conta
 - Manages global CSS injection based on theme settings
 - Exposes `window.claudeProductivity` for debugging
 - Handles application lifecycle (init, restart, destroy)
+- Initializes VisibilityManager for centralized page detection
 
 **BaseModule** (`src/modules/BaseModule.js`)
 - Base class all feature modules extend
@@ -62,12 +71,64 @@ The extension uses a **modular architecture** where each feature is a self-conta
 - Automatically merges user settings with defaults
 - Emits `SETTINGS_CHANGED` event on updates
 
+**VisibilityManager** (`src/utils/VisibilityManager.js`) - NEW
+- Centralized visibility management for all UI elements
+- Prevents infinite loops and cascading mutations
+- Monitors URL changes and notifies modules
+- Uses `visibility` and `opacity` instead of `display` to avoid DOM mutations
+- Singleton pattern with state caching
+- Key methods: `isOnConversationPage()`, `onVisibilityChange()`, `setElementVisibility()`
+
 **DOMUtils** (`src/utils/DOMUtils.js`)
 - Helper utilities for DOM manipulation specific to Claude's UI
 - Key methods: `findMessages()`, `scrollToElement()`, `observeDOM()`, `flashClass()`
 - Handles Claude-specific selectors and DOM structure
+- `isOnConversationPage()` now uses VisibilityManager for centralized checking
+- `findActualMessages()` filters out sidebar and UI elements
 
 ### Key Patterns
+
+#### Visibility Management Pattern
+
+**Core Principle**: All modules use centralized VisibilityManager to prevent infinite loops and ensure consistent behavior across page changes.
+
+**Implementation**:
+```javascript
+// In module init()
+this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+  this.handleVisibilityChange(isConversationPage);
+});
+
+// Handle visibility change
+handleVisibilityChange(isConversationPage) {
+  if (this.lastConversationState === isConversationPage) return;
+  this.lastConversationState = isConversationPage;
+
+  // Update fixed button visibility
+  if (this.elements.fixedButton) {
+    VisibilityManager.setElementVisibility(this.elements.fixedButton, isConversationPage);
+  }
+
+  if (!isConversationPage) {
+    // Clean up UI elements
+    this.clearUIElements();
+  } else {
+    // Re-initialize UI elements
+    this.updateUI();
+  }
+}
+
+// In destroy()
+if (this.visibilityUnsubscribe) {
+  this.visibilityUnsubscribe();
+}
+```
+
+**Key Benefits**:
+- Prevents observer cascade loops
+- Centralized page detection
+- State caching prevents redundant updates
+- Uses `visibility/opacity` instead of `display` to avoid DOM mutations
 
 #### Fixed Button Pattern
 
@@ -582,6 +643,63 @@ All modules implement performance optimizations to minimize unnecessary DOM mani
 
 ## Common Issues & Solutions
 
+### Method Naming Inconsistencies
+
+**Symptom:** `TypeError: this.buttonManager.removeAll is not a function`
+
+**Root Cause:** Inconsistent method naming across modules (some use `clear()`, others use `removeAll()`)
+
+**Solution Pattern:**
+```javascript
+// ✅ GOOD: Consistent naming with backward compatibility
+class ButtonManager {
+  removeAll() {
+    // Main implementation
+    this.buttons.forEach(button => button.remove());
+    this.buttons.clear();
+  }
+
+  // Backward compatibility alias
+  clear() {
+    this.removeAll();
+  }
+}
+
+// Defensive check before calling
+if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+  this.buttonManager.removeAll();
+}
+```
+
+**Real Example:** BookmarkModule called `removeAll()` but BookmarkButton only had `clear()`. Fixed by adding `removeAll()` as primary method with `clear()` as alias.
+
+### Fixed Button Visibility Issues
+
+**Symptom:** Fixed buttons remain visible on non-conversation pages
+
+**Root Cause:** Element property name mismatch in visibility handlers
+
+**Solution Pattern:**
+```javascript
+// ❌ BAD: Wrong property name
+if (this.elements.button) { // But button is stored as bookmarkBtn!
+  VisibilityManager.setElementVisibility(this.elements.button, isConversationPage);
+}
+
+// ✅ GOOD: Correct property name
+if (this.elements.bookmarkBtn) { // Matches actual storage
+  VisibilityManager.setElementVisibility(this.elements.bookmarkBtn, isConversationPage);
+}
+
+// Also set initial visibility when creating button
+const isConversationPage = this.dom.isOnConversationPage();
+if (!isConversationPage) {
+  VisibilityManager.setElementVisibility(button, false);
+}
+```
+
+**Real Example:** BookmarkModule stored button as `elements.bookmarkBtn` but checked `elements.button`. EditHistoryModule had similar issue with `editBtn`.
+
 ### Infinite Loop / Performance Issues
 
 **Symptom:** Console floods with repeated messages (e.g., "Messages updated, scanning..."), CPU usage high
@@ -590,33 +708,39 @@ All modules implement performance optimizations to minimize unnecessary DOM mani
 
 **Solution Pattern (CRITICAL):**
 ```javascript
-// ❌ BAD: Emits event on every DOM mutation
-observeMessages() {
-  this.observer = this.dom.observeDOM(() => {
-    this.findMessages();
-    this.emit(Events.MESSAGES_UPDATED); // Triggers other modules → DOM change → loop!
-  });
+// ❌ BAD: Removes DOM elements causing new mutations
+processMessages() {
+  if (!this.dom.isOnConversationPage()) {
+    document.querySelectorAll('.button').forEach(btn => {
+      btn.remove(); // Causes DOM mutation → triggers observer → infinite loop!
+    });
+  }
 }
 
-// ✅ GOOD: Only emit when meaningful change occurs
-observeMessages() {
-  this.observer = this.dom.observeDOM(() => {
-    clearTimeout(this.observerTimeout);
-    this.observerTimeout = setTimeout(() => {
-      const oldLength = this.messages.length;
-      this.messages = this.dom.findMessages();
+// ✅ GOOD: Hide elements without DOM mutations
+processMessages() {
+  if (!this.dom.isOnConversationPage()) {
+    document.querySelectorAll('.button').forEach(btn => {
+      btn.style.visibility = 'hidden';
+      btn.style.opacity = '0';
+      btn.style.pointerEvents = 'none'; // No DOM mutation, no loop!
+    });
+  }
+}
 
-      // ONLY emit if count changed
-      if (this.messages.length !== oldLength) {
-        this.updateCounter();
-        this.emit(Events.MESSAGES_UPDATED, this.messages);
-      }
-    }, 500);
-  });
+// ✅ BETTER: Use centralized VisibilityManager
+handleVisibilityChange(isConversationPage) {
+  if (this.lastConversationState === isConversationPage) return; // State caching
+  this.lastConversationState = isConversationPage;
+
+  VisibilityManager.setElementVisibility(this.elements.button, isConversationPage);
 }
 ```
 
-**Real Example:** NavigationModule was emitting MESSAGES_UPDATED on every mutation → EditHistoryModule scans → Badge DOM change → New mutation → Loop. Fixed by only emitting when message count changes.
+**Real Example:** CompactViewModule was removing buttons on non-conversation pages → triggered DOM mutations → observer fired again → infinite loop. Fixed by:
+1. Using visibility/opacity instead of removing elements
+2. Implementing centralized VisibilityManager
+3. Adding state caching to prevent redundant updates
 
 ### Duplicate UI Elements
 
