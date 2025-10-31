@@ -17,22 +17,14 @@ class SettingsManager {
         highlightDuration: 2000,
         keyboardShortcuts: true,
       },
-      
-      // Table of Contents (future)
-      toc: {
-        enabled: false,
-        position: 'right', // 'left' | 'right'
-        autoCollapse: false,
-        showOnHover: false,
-      },
-      
+
       // Edit History
       editHistory: {
         enabled: false,
         showBadges: true,
         highlightEdited: true,
       },
-      
+
       // Compact View
       compactView: {
         enabled: false,
@@ -88,25 +80,12 @@ class SettingsManager {
         rememberState: true,      // Remember fold states
       },
 
-      // Export (future)
-      export: {
-        enabled: false,
-        defaultFormat: 'markdown', // 'markdown' | 'pdf' | 'json'
-        includeTimestamps: true,
-      },
-      
-      // Search (future)
-      search: {
-        enabled: false,
-        caseSensitive: false,
-        regexSupport: false,
-      },
-      
       // General
       general: {
         opacity: 0.7,
         colorTheme: 'purple',
         customColor: '#667eea',
+        debugMode: false,        // Enable debug logging
       }
     };
   }

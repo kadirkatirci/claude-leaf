@@ -1,205 +1,78 @@
 /**
- * DOMUtils - Claude web arayüzü için DOM yardımcı fonksiyonları
+ * DOMUtils - Unified DOM utilities for Claude interface
+ * This file imports and re-exports all split modules for backward compatibility
  */
 
-// Import VisibilityManager for centralized page checking
-let visibilityManager = null;
+import DOMUtilsCore from './DOMUtils-Core.js';
+import DOMUtilsHelpers from './DOMUtils-Helpers.js';
+import DOMUtilsParsing from './DOMUtils-Parsing.js';
+import ObserverManager from '../managers/ObserverManager.js';
 
+// Combine all utilities into a single object for backward compatibility
 const DOMUtils = {
-  /**
-   * Initialize with VisibilityManager
-   */
+  // Initialize function
   init() {
-    // Lazy load to avoid circular dependency
-    if (!visibilityManager) {
-      import('./VisibilityManager.js').then(module => {
-        visibilityManager = module.default;
-      });
-    }
+    DOMUtilsCore.init();
   },
 
-  /**
-   * Konuşma sayfasında olup olmadığımızı kontrol et
-   * Uses VisibilityManager for centralized checking
-   * @returns {boolean}
-   */
-  isOnConversationPage() {
-    // Use VisibilityManager if available, otherwise fallback to direct check
-    if (visibilityManager) {
-      return visibilityManager.isOnConversationPage();
-    }
+  // From DOMUtils-Core
+  isOnConversationPage: DOMUtilsCore.isOnConversationPage.bind(DOMUtilsCore),
+  findActualMessages: DOMUtilsCore.findActualMessages.bind(DOMUtilsCore),
+  findMessages: DOMUtilsCore.findMessages.bind(DOMUtilsCore),
+  getChatContainer: DOMUtilsCore.getChatContainer.bind(DOMUtilsCore),
+  isUserMessage: DOMUtilsCore.isUserMessage.bind(DOMUtilsCore),
+  isElementVisible: DOMUtilsCore.isElementVisible.bind(DOMUtilsCore),
+  isElementPartiallyVisible: DOMUtilsCore.isElementPartiallyVisible.bind(DOMUtilsCore),
+  scrollToElement: DOMUtilsCore.scrollToElement.bind(DOMUtilsCore),
+  getCurrentVisibleMessageIndex: DOMUtilsCore.getCurrentVisibleMessageIndex.bind(DOMUtilsCore),
 
-    // Fallback to direct check
-    const path = window.location.pathname;
-    return (path.includes('/chat/') || path.includes('/project/')) && !path.includes('/new');
-  },
+  // From DOMUtils-Helpers
+  debounce: DOMUtilsHelpers.debounce.bind(DOMUtilsHelpers),
+  throttle: DOMUtilsHelpers.throttle.bind(DOMUtilsHelpers),
+  flashClass: DOMUtilsHelpers.flashClass.bind(DOMUtilsHelpers),
+  injectCSS: DOMUtilsHelpers.injectCSS.bind(DOMUtilsHelpers),
+  createElement: DOMUtilsHelpers.createElement.bind(DOMUtilsHelpers),
+  waitForElement: DOMUtilsHelpers.waitForElement.bind(DOMUtilsHelpers),
+  copyToClipboard: DOMUtilsHelpers.copyToClipboard.bind(DOMUtilsHelpers),
+  generateId: DOMUtilsHelpers.generateId.bind(DOMUtilsHelpers),
+  parseSize: DOMUtilsHelpers.parseSize.bind(DOMUtilsHelpers),
+  getStyle: DOMUtilsHelpers.getStyle.bind(DOMUtilsHelpers),
+  setStyles: DOMUtilsHelpers.setStyles.bind(DOMUtilsHelpers),
+  clearElement: DOMUtilsHelpers.clearElement.bind(DOMUtilsHelpers),
 
-  /**
-   * Gerçek mesajları bul (sidebar ve diğer UI elementleri hariç)
-   * @returns {HTMLElement[]} Gerçek mesaj elementleri
-   */
-  findActualMessages() {
-    // Önce konuşma sayfasında olduğumuzu doğrula
-    if (!this.isOnConversationPage()) {
-      return [];
-    }
+  // From DOMUtils-Parsing
+  getEditedPrompts: DOMUtilsParsing.getEditedPrompts.bind(DOMUtilsParsing),
+  parseMarkdownHeadings: DOMUtilsParsing.parseMarkdownHeadings.bind(DOMUtilsParsing),
+  extractTextContent: DOMUtilsParsing.extractTextContent.bind(DOMUtilsParsing),
+  parseCodeBlocks: DOMUtilsParsing.parseCodeBlocks.bind(DOMUtilsParsing),
+  parseLinks: DOMUtilsParsing.parseLinks.bind(DOMUtilsParsing),
+  getContentStats: DOMUtilsParsing.getContentStats.bind(DOMUtilsParsing),
+  generateContentSignature: DOMUtilsParsing.generateContentSignature.bind(DOMUtilsParsing),
+  findByTextContent: DOMUtilsParsing.findByTextContent.bind(DOMUtilsParsing),
+  analyzeContentPatterns: DOMUtilsParsing.analyzeContentPatterns.bind(DOMUtilsParsing),
 
-    // Main content area'yı bul (sidebar hariç)
-    const mainContent = document.querySelector('main') ||
-                       document.querySelector('[role="main"]') ||
-                       document.querySelector('.flex-1.overflow-hidden');
-
-    if (!mainContent) return [];
-
-    // Sadece main content içindeki mesajları bul
-    const messages = mainContent.querySelectorAll('[data-test-render-count]');
-
-    // Filtreleme: Gerçek mesajları ayıkla
-    return Array.from(messages).filter(msg => {
-      // Sidebar kontrolü - nav veya sidebar içinde değilse
-      if (msg.closest('nav')) return false;
-      if (msg.closest('[aria-label="Sidebar"]')) return false;
-      if (msg.closest('.sidebar')) return false;
-      if (msg.closest('[data-testid="sidebar"]')) return false;
-      if (msg.closest('[data-testid="pin-sidebar-toggle"]')) return false;
-
-      // Input alanı kontrolü - chat input değilse
-      if (msg.closest('[data-testid="chat-input"]')) return false;
-      if (msg.closest('[aria-label="Write your prompt to Claude"]')) return false;
-
-      // Gerçek mesaj kontrolü - user veya assistant mesajı mı?
-      const hasUserMessage = msg.querySelector('[data-testid="user-message"]');
-      const hasAssistantMessage = msg.querySelector('[data-is-streaming]');
-      const hasClaudeResponse = msg.querySelector('.font-claude-response');
-
-      return hasUserMessage || hasAssistantMessage || hasClaudeResponse;
-    });
-  },
-
-  /**
-   * Claude mesajlarını bul (backward compatibility için)
-   * @returns {HTMLElement[]} Mesaj elementleri
-   */
-  findMessages() {
-    // Yeni fonksiyonu kullan - geriye dönük uyumluluk sağlanıyor
-    return this.findActualMessages();
-  },
-
-  /**
-   * Ana chat container'ı bul
-   * @returns {HTMLElement|null}
-   */
-  getChatContainer() {
-    return document.querySelector('main') || 
-           document.querySelector('[role="main"]') ||
-           document.querySelector('#chat-container') ||
-           document.body;
-  },
-
-  /**
-   * Kullanıcı mesajlarını bul
-   * @returns {HTMLElement[]}
-   */
+  // Deprecated methods - kept for backward compatibility but not used
   getUserMessages() {
+    console.warn('[DOMUtils] getUserMessages() is deprecated and unreliable');
     const allMessages = this.findMessages();
-    // TODO: Kullanıcı ve Claude mesajlarını ayırt et
-    // Bu, Claude'un DOM yapısına göre güncellenmeli
+    // This logic is flawed but kept for compatibility
     return allMessages.filter((_, index) => index % 2 === 0);
   },
 
-  /**
-   * Claude cevaplarını bul
-   * @returns {HTMLElement[]}
-   */
   getClaudeMessages() {
+    console.warn('[DOMUtils] getClaudeMessages() is deprecated and unreliable');
     const allMessages = this.findMessages();
-    // TODO: Kullanıcı ve Claude mesajlarını ayırt et
+    // This logic is flawed but kept for compatibility
     return allMessages.filter((_, index) => index % 2 === 1);
   },
 
-  /**
-   * Edit edilmiş promptları bul
-   * Claude'un edit ikonlarına sahip mesajları tespit eder
-   * @returns {Array<{element: HTMLElement, editButton: HTMLElement, versionInfo: string}>}
-   */
-  getEditedPrompts() {
-    const edited = [];
-
-    // Önce konuşma sayfasında olduğumuzu kontrol et
-    if (!this.isOnConversationPage()) {
-      return edited;
-    }
-
-    // Sadece gerçek mesajları al (sidebar hariç)
-    const messageContainers = this.findActualMessages();
-    
-    messageContainers.forEach(container => {
-      // Bu container içinde kullanıcı mesajı var mı?
-      const userMessage = container.querySelector('[data-testid="user-message"]');
-      if (!userMessage) return;
-
-      // Version counter'ı ara ("örn: 3 / 3")
-      // Container içindeki tüm span'leri kontrol et
-      const allSpans = container.querySelectorAll('span');
-      let versionSpan = null;
-      
-      for (const span of allSpans) {
-        const text = span.textContent.trim();
-        if (/^\d+\s*\/\s*\d+$/.test(text)) {
-          versionSpan = span;
-          break;
-        }
-      }
-
-      if (versionSpan) {
-        const versionText = versionSpan.textContent.trim();
-        const parts = versionText.split('/');
-        
-        if (parts.length === 2) {
-          const current = parseInt(parts[0].trim());
-          const total = parseInt(parts[1].trim());
-
-          // Sadece toplam > 1 ise edit yapılmış demektir
-          if (total > 1 && !isNaN(current) && !isNaN(total)) {
-            // Edit butonunu bul (retry button - circular arrow icon)
-            const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
-            
-            edited.push({
-              element: container,
-              editButton: retryButton,
-              versionInfo: versionText,
-              currentVersion: current,
-              totalVersions: total,
-              hasEditHistory: true,
-              // Debug bilgisi
-              containerId: container.getAttribute('data-test-render-count')
-            });
-          }
-        }
-      }
-    });
-    
-    return edited;
-  },
-
-  /**
-   * Bir mesajın edit history'sini bul
-   * @param {HTMLElement} messageElement
-   * @returns {Object|null} Edit history bilgisi
-   */
   getEditHistory(messageElement) {
+    console.warn('[DOMUtils] getEditHistory() is deprecated, use getEditedPrompts() instead');
     if (!messageElement) return null;
 
-    // Claude'un edit sisteminde, edit yapılmış mesajlarda
-    // genelde version bilgisi veya edit badge'i bulunur
-    
-    // 1. Edit badge'i ara
+    // Legacy implementation for compatibility
     const editBadge = messageElement.querySelector('[class*="edit" i][class*="badge" i]');
-    
-    // 2. Version indicator ara
     const versionText = messageElement.querySelector('[class*="version" i]');
-    
-    // 3. Timestamp ara (edited at...)
     const timestamp = messageElement.querySelector('[class*="edited" i][class*="time" i]');
 
     return {
@@ -211,249 +84,18 @@ const DOMUtils = {
     };
   },
 
-  /**
-   * Bir mesajın kullanıcı mesajı olup olmadığını kontrol et
-   * @param {HTMLElement} element
-   * @returns {boolean}
-   */
-  isUserMessage(element) {
-    if (!element) return false;
-    
-    // Claude'un kullanıcı mesajları genelde belirli class'lara sahip
-    const indicators = [
-      element.querySelector('[class*="user" i]'),
-      element.querySelector('[class*="human" i]'),
-      element.getAttribute('data-message-author') === 'user',
-      // Genelde sağda hizalı olur
-      window.getComputedStyle(element).textAlign === 'right'
-    ];
-    
-    return indicators.some(indicator => indicator);
-  },
-
-  /**
-   * Markdown başlıklarını parse et
-   * @param {HTMLElement} element - Parse edilecek element
-   * @returns {Object[]} Başlık listesi {level, text, element}
-   */
-  parseMarkdownHeadings(element) {
-    const headings = [];
-    const headingSelectors = 'h1, h2, h3, h4, h5, h6';
-    const foundHeadings = element.querySelectorAll(headingSelectors);
-
-    foundHeadings.forEach(heading => {
-      headings.push({
-        level: parseInt(heading.tagName.charAt(1)),
-        text: heading.textContent.trim(),
-        element: heading,
-      });
-    });
-
-    return headings;
-  },
-
-  /**
-   * Element'in görünür olup olmadığını kontrol et
-   * @param {HTMLElement} element
-   * @returns {boolean}
-   */
-  isElementVisible(element) {
-    if (!element) return false;
-    
-    const rect = element.getBoundingClientRect();
-    return (
-      rect.top >= 0 &&
-      rect.left >= 0 &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-    );
-  },
-
-  /**
-   * Element'in kısmen görünür olup olmadığını kontrol et
-   * @param {HTMLElement} element
-   * @returns {boolean}
-   */
-  isElementPartiallyVisible(element) {
-    if (!element) return false;
-    
-    const rect = element.getBoundingClientRect();
-    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
-
-    const verticalVisible = rect.top < windowHeight && rect.bottom > 0;
-    const horizontalVisible = rect.left < windowWidth && rect.right > 0;
-
-    return verticalVisible && horizontalVisible;
-  },
-
-  /**
-   * Element'e smooth scroll
-   * @param {HTMLElement} element
-   * @param {string} block - 'start' | 'center' | 'end'
-   */
-  scrollToElement(element, block = 'center') {
-    if (!element) return;
-
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: block,
-      inline: 'nearest'
-    });
-  },
-
-  /**
-   * Şu anda viewport'ta hangi mesaj var?
-   * @returns {number} Mesaj index'i
-   */
-  getCurrentVisibleMessageIndex() {
-    const messages = this.findMessages();
-    const scrollPosition = window.scrollY + window.innerHeight / 2;
-
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
-      const rect = msg.getBoundingClientRect();
-      const elementTop = rect.top + window.scrollY;
-      const elementBottom = elementTop + rect.height;
-
-      if (scrollPosition >= elementTop && scrollPosition <= elementBottom) {
-        return i;
-      }
-    }
-
-    // En yakın mesajı bul
-    let closest = 0;
-    let minDistance = Infinity;
-
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
-      const rect = msg.getBoundingClientRect();
-      const elementTop = rect.top + window.scrollY;
-      const distance = Math.abs(scrollPosition - elementTop);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = i;
-      }
-    }
-
-    return closest;
-  },
-
-  /**
-   * MutationObserver ile DOM değişikliklerini izle
-   * @param {Function} callback - Değişiklik olduğunda çağrılacak
-   * @param {HTMLElement} target - İzlenecek element (default: main)
-   * @returns {MutationObserver} Observer instance
-   */
+  // Use ObserverManager for better performance
   observeDOM(callback, target = null) {
     const targetNode = target || this.getChatContainer();
+    const id = `dom-observer-${Date.now()}`;
 
-    const config = {
+    return ObserverManager.observe(id, targetNode, callback, {
       childList: true,
       subtree: true,
       attributes: false,
-    };
-
-    const observer = new MutationObserver((mutations) => {
-      callback(mutations);
+      throttle: 100 // Add throttling for better performance
     });
-
-    observer.observe(targetNode, config);
-    return observer;
-  },
-
-  /**
-   * Debounce fonksiyonu
-   * @param {Function} func - Debounce edilecek fonksiyon
-   * @param {number} wait - Bekleme süresi (ms)
-   * @returns {Function}
-   */
-  debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  },
-
-  /**
-   * Throttle fonksiyonu
-   * @param {Function} func - Throttle edilecek fonksiyon
-   * @param {number} limit - Limit süresi (ms)
-   * @returns {Function}
-   */
-  throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-      if (!inThrottle) {
-        func.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
-      }
-    };
-  },
-
-  /**
-   * Element'e CSS class ekle/çıkar (animasyon ile)
-   * @param {HTMLElement} element
-   * @param {string} className
-   * @param {number} duration - Class'ın kalma süresi (ms)
-   */
-  flashClass(element, className, duration = 2000) {
-    if (!element) return;
-
-    element.classList.add(className);
-    setTimeout(() => {
-      element.classList.remove(className);
-    }, duration);
-  },
-
-  /**
-   * CSS inject et
-   * @param {string} css - CSS string
-   * @param {string} id - Style element ID (optional)
-   */
-  injectCSS(css, id = null) {
-    const style = document.createElement('style');
-    if (id) style.id = id;
-    style.textContent = css;
-    document.head.appendChild(style);
-    return style;
-  },
-
-  /**
-   * Element oluştur (helper)
-   * @param {string} tag - HTML tag
-   * @param {Object} attrs - Attribute'ler
-   * @param {string} content - İçerik
-   * @returns {HTMLElement}
-   */
-  createElement(tag, attrs = {}, content = '') {
-    const element = document.createElement(tag);
-    
-    Object.entries(attrs).forEach(([key, value]) => {
-      if (key === 'className') {
-        element.className = value;
-      } else if (key === 'style' && typeof value === 'object') {
-        Object.assign(element.style, value);
-      } else if (key.startsWith('data-')) {
-        element.setAttribute(key, value);
-      } else {
-        element[key] = value;
-      }
-    });
-
-    if (content) {
-      element.innerHTML = content;
-    }
-
-    return element;
-  },
+  }
 };
 
 export default DOMUtils;

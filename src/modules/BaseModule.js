@@ -17,11 +17,9 @@ class BaseModule {
     this.options = options;
     this.enabled = false;
     this.initialized = false;
-    this.elements = {}; // DOM elementleri sakla
-    this.unsubscribers = []; // Event listener'ları temizlemek için
+    this.elements = {}; // DOM elements storage
+    this.unsubscribers = []; // Event cleanup functions
     this.settings = {}; // Global settings cache
-    this.currentUrl = ''; // Track current URL for SPA navigation detection
-    this.urlCheckInterval = null; // URL monitoring interval
   }
 
   /**
@@ -277,96 +275,6 @@ class BaseModule {
     this.log('⚠️ Module should override reinitializeUI() for robust SPA support');
   }
 
-  /**
-   * Wait for an element to appear in DOM using MutationObserver
-   * More robust than polling - triggers immediately when element appears
-   */
-  waitForElement(selector, timeout = 10000) {
-    return new Promise((resolve, reject) => {
-      // Check if element already exists
-      const existing = document.querySelector(selector);
-      if (existing) {
-        resolve(existing);
-        return;
-      }
-
-      // Set up MutationObserver to watch for element
-      const observer = new MutationObserver((mutations, obs) => {
-        const element = document.querySelector(selector);
-        if (element) {
-          obs.disconnect();
-          resolve(element);
-        }
-      });
-
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-
-      // Timeout fallback
-      setTimeout(() => {
-        observer.disconnect();
-        reject(new Error(`Timeout waiting for ${selector}`));
-      }, timeout);
-    });
-  }
-
-  /**
-   * Helper to ensure a UI element exists (creates if missing)
-   * Centralized pattern to avoid duplication across modules
-   */
-  ensureElement(selector, createFn, retryCount = 0, maxRetries = 10) {
-    const existing = document.querySelector(selector);
-
-    // IMPORTANT: Check if element is in DOM AND has valid parent chain
-    // During SPA navigation, old elements might still be in body but in stale/hidden DOM
-    const isProperlyAttached = existing &&
-                               document.body.contains(existing) &&
-                               this.isElementVisible(existing);
-
-    if (isProperlyAttached) {
-      this.log(`✅ Element ${selector} already exists and is properly attached`);
-      return existing;
-    }
-
-    if (existing) {
-      const inBody = document.body.contains(existing);
-      const isVisible = this.isElementVisible(existing);
-
-      this.log(`🔍 Found ${selector}: inBody=${inBody}, isVisible=${isVisible}, offsetParent=${existing.offsetParent ? 'exists' : 'null'}`);
-
-      if (!inBody) {
-        this.log(`⚠️ Found ${selector} but it's detached, recreating...`);
-      } else if (!isVisible) {
-        this.log(`⚠️ Found ${selector} but it's in stale DOM tree, removing and recreating...`);
-        existing.remove(); // Remove stale element
-      }
-    } else {
-      this.log(`🔨 Creating ${selector} (attempt ${retryCount + 1}/${maxRetries})...`);
-    }
-
-    try {
-      const created = createFn();
-      if (created && document.body.contains(created)) {
-        this.log(`✅ Successfully created ${selector}`);
-        return created;
-      }
-    } catch (e) {
-      this.error(`❌ Error creating ${selector}:`, e);
-    }
-
-    // Retry if creation failed and we haven't exceeded max retries
-    if (retryCount < maxRetries) {
-      setTimeout(() => {
-        this.ensureElement(selector, createFn, retryCount + 1, maxRetries);
-      }, 1000);
-    } else {
-      this.warn(`❌ Failed to ensure element ${selector} after 10 retries`);
-    }
-
-    return null;
-  }
 
   /**
    * Check if element is visible (has offsetParent or is body/html)

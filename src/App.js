@@ -1,11 +1,17 @@
 /**
- * ClaudeProductivityApp - Ana uygulama yöneticisi
- * Tüm modülleri koordine eder
+ * ClaudeProductivityApp - Main application manager
+ * Coordinates all modules and manages lifecycle
  */
+
 import settingsManager from './utils/SettingsManager.js';
 import { eventBus, Events } from './utils/EventBus.js';
 import VisibilityManager from './utils/VisibilityManager.js';
 import DOMUtils from './utils/DOMUtils.js';
+import ThemeManager from './managers/ThemeManager.js';
+import KeyboardManager from './managers/KeyboardManager.js';
+import ObserverManager from './managers/ObserverManager.js';
+
+// Import feature modules
 import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
 import CompactViewModule from './modules/CompactViewModule.js';
@@ -18,95 +24,129 @@ class ClaudeProductivityApp {
   constructor() {
     this.modules = new Map();
     this.initialized = false;
-    this.visibilityManager = null;
+    this.managers = {
+      visibility: null,
+      theme: null,
+      keyboard: null,
+      observer: null
+    };
   }
 
   /**
-   * Uygulamayı başlat
+   * Initialize the application
    */
   async init() {
     if (this.initialized) {
-      console.warn('⚠️ Uygulama zaten başlatılmış');
+      console.warn('⚠️ Application already initialized');
       return;
     }
 
-    console.log('🚀 Claude Productivity Extension başlatılıyor...');
+    console.log('🚀 Claude Productivity Extension starting...');
 
-    // Initialize DOMUtils with VisibilityManager support
+    // Initialize core utilities
     DOMUtils.init();
 
-    // Initialize VisibilityManager (singleton will be created)
-    this.visibilityManager = VisibilityManager;
+    // Initialize managers
+    this.initializeManagers();
 
-    // Settings'i yükle
+    // Load settings
     await settingsManager.load();
+    const settings = await settingsManager.getAll();
 
-    // Modülleri kaydet
+    // Apply settings to managers
+    this.applySettingsToManagers(settings);
+
+    // Register feature modules
     this.registerModules();
 
-    // Modülleri başlat
+    // Initialize all modules
     await this.initializeModules();
 
-    // Global event listener'lar
+    // Setup global event listeners
     this.setupGlobalListeners();
-
-    // Global CSS inject et
-    this.injectGlobalStyles();
 
     this.initialized = true;
 
-    console.log('✅ Claude Productivity Extension hazır!');
-    console.log('📦 Aktif modüller:', Array.from(this.modules.keys()));
+    console.log('✅ Claude Productivity Extension ready!');
+    console.log('📦 Active modules:', Array.from(this.modules.keys()));
+
+    // Enable debug mode if configured
+    if (settings.general?.debugMode) {
+      this.enableDebugMode();
+    }
   }
 
   /**
-   * Modülleri kaydet
+   * Initialize singleton managers
+   */
+  initializeManagers() {
+    this.managers.visibility = VisibilityManager;
+    this.managers.theme = ThemeManager;
+    this.managers.keyboard = KeyboardManager;
+    this.managers.observer = ObserverManager;
+
+    // Initialize keyboard manager
+    KeyboardManager.init();
+  }
+
+  /**
+   * Apply settings to managers
+   */
+  applySettingsToManagers(settings) {
+    // Initialize theme with settings
+    ThemeManager.init(settings);
+
+    // Set debug mode if enabled
+    const debugMode = settings.general?.debugMode || false;
+    if (debugMode) {
+      VisibilityManager.setDebugMode(true);
+      KeyboardManager.setDebugMode(true);
+      ObserverManager.setDebugMode(true);
+    }
+  }
+
+  /**
+   * Register all feature modules
    */
   registerModules() {
-    // Navigation
+    // Core navigation
     this.registerModule('navigation', new NavigationModule());
 
-    // Edit History
+    // Content enhancement
     this.registerModule('editHistory', new EditHistoryModule());
-
-    // Compact View
     this.registerModule('compactView', new CompactViewModule());
 
-    // Bookmarks
+    // Organization features
     this.registerModule('bookmarks', new BookmarkModule());
-
-    // Emoji Markers
     this.registerModule('emojiMarkers', new EmojiMarkerModule());
 
-    // Sidebar Collapse
+    // UI improvements
     this.registerModule('sidebarCollapse', new SidebarCollapseModule());
-
-    // Content Folding
     this.registerModule('contentFolding', new ContentFoldingModule());
   }
 
   /**
-   * Tek bir modül kaydet
-   * @param {string} name - Modül adı
-   * @param {BaseModule} module - Modül instance
+   * Register a single module
+   * @param {string} name - Module name
+   * @param {BaseModule} module - Module instance
    */
   registerModule(name, module) {
     if (this.modules.has(name)) {
-      console.warn(`⚠️ ${name} modülü zaten kayıtlı`);
+      console.warn(`⚠️ Module ${name} already registered`);
       return;
     }
 
     this.modules.set(name, module);
-    console.log(`📦 ${name} modülü kaydedildi`);
+    console.log(`📦 Module ${name} registered`);
   }
 
   /**
-   * Tüm modülleri başlat
+   * Initialize all registered modules
    */
   async initializeModules() {
-    const promises = Array.from(this.modules.values()).map(module => 
+    const promises = Array.from(this.modules.entries()).map(([name, module]) =>
       module.init().catch(err => {
-        console.error(`❌ ${module.name} modülü başlatılamadı:`, err);
+        console.error(`❌ Failed to initialize ${name} module:`, err);
       })
     );
 
@@ -114,8 +154,8 @@ class ClaudeProductivityApp {
   }
 
   /**
-   * Belirli bir modülü getir
-   * @param {string} name - Modül adı
+   * Get a specific module
+   * @param {string} name - Module name
    * @returns {BaseModule|undefined}
    */
   getModule(name) {
@@ -123,340 +163,139 @@ class ClaudeProductivityApp {
   }
 
   /**
-   * Global event listener'lar
+   * Get all modules
+   * @returns {Map<string, BaseModule>}
+   */
+  getAllModules() {
+    return new Map(this.modules);
+  }
+
+  /**
+   * Setup global event listeners
    */
   setupGlobalListeners() {
     console.log('🔧 Setting up global listeners...');
 
-    // Sayfa yeniden yüklendiğinde
+    // Clean up before page unload
     window.addEventListener('beforeunload', () => {
       this.destroy();
     });
 
-    // Settings değişikliklerini logla
+    // Handle settings changes
     eventBus.on(Events.SETTINGS_CHANGED, async (settings) => {
-      console.log('⚙️ Settings güncellendi:', settings);
+      console.log('⚙️ Settings updated');
 
-      // Eğer tema değiştiyse, CSS'i yeniden inject et
+      // Update managers with new settings
+      this.applySettingsToManagers(settings);
+
+      // Re-apply theme if changed
       if (settings.general) {
-        await this.reinjectStyles();
+        ThemeManager.setTheme(
+          settings.general.colorTheme,
+          settings.general.customColor
+        );
+        ThemeManager.setOpacity(settings.general.opacity);
       }
     });
 
-    // Feature toggle'ları logla
+    // Log feature toggles
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
-      console.log(`🔄 ${feature} özelliği ${enabled ? 'açıldı' : 'kapatıldı'}`);
+      console.log(`🔄 Feature ${feature} ${enabled ? 'enabled' : 'disabled'}`);
+    });
+
+    // Handle navigation updates
+    eventBus.on(Events.MESSAGES_UPDATED, () => {
+      const count = DOMUtils.findMessages().length;
+      console.log(`📬 Messages updated: ${count} messages found`);
     });
   }
 
   /**
-   * Setup SPA navigation detection (CENTRALIZED)
-   * SIMPLE APPROACH: Restart entire app on navigation (like page refresh)
+   * Enable debug mode for all components
    */
-  setupSPANavigationDetection() {
-    this.currentUrl = window.location.href;
-    this.isNavigating = false;
+  enableDebugMode() {
+    console.log('🐛 Debug mode enabled');
 
-    console.log('🔗 Setting up SPA navigation detection...');
-    console.log('📍 Current URL:', this.currentUrl);
+    // Enable debug in managers
+    VisibilityManager.setDebugMode(true);
+    KeyboardManager.setDebugMode(true);
+    ObserverManager.setDebugMode(true);
 
-    const handleNavigation = () => {
-      const newUrl = window.location.href;
-      console.log('🔍 Navigation check:', { current: this.currentUrl, new: newUrl, isNavigating: this.isNavigating });
+    // Log keyboard shortcuts
+    const shortcuts = KeyboardManager.getShortcuts();
+    console.table(shortcuts);
 
-      if (newUrl !== this.currentUrl && !this.isNavigating) {
-        this.isNavigating = true;
-        console.log(`🔄 SPA navigation detected: ${this.currentUrl} → ${newUrl}`);
-        console.log('🔄 Restarting app (simulating page refresh)...');
-        this.currentUrl = newUrl;
-
-        // Wait a bit for DOM to settle, then restart everything (like refresh)
-        setTimeout(async () => {
-          console.log('⏰ Executing restart now...');
-          await this.restart();
-          console.log('✅ App restarted after navigation');
-          this.isNavigating = false;
-        }, 1000);
-      }
-    };
-
-    // Listen to navigation events
-    window.addEventListener('popstate', (e) => {
-      console.log('🔙 popstate event triggered', e);
-      handleNavigation();
-    });
-
-    // Intercept pushState/replaceState (this is the key!)
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-
-    history.pushState = function(...args) {
-      console.log('🔀 pushState intercepted', args);
-      originalPushState.apply(this, args);
-      handleNavigation();
-    };
-
-    history.replaceState = function(...args) {
-      console.log('🔀 replaceState intercepted', args);
-      originalReplaceState.apply(this, args);
-      handleNavigation();
-    };
-
-    console.log('✅ SPA navigation detection active');
-    console.log('✅ History API intercepted');
+    // Log observer status
+    const observers = ObserverManager.getAllStatuses();
+    console.log('Active observers:', observers);
   }
 
   /**
-   * Wait for page content to stabilize before executing callback
+   * Disable debug mode
    */
-  waitForPageStabilization(callback, retryCount = 0, previousCount = 0, stableCount = 0) {
-    const maxRetries = 40; // 20 seconds max
-    const retryDelay = 500;
-    const requiredStableChecks = 3; // Must be stable for 1.5 seconds
+  disableDebugMode() {
+    console.log('🐛 Debug mode disabled');
 
-    // Simple message count check
-    const messages = document.querySelectorAll('[data-is-streaming="false"]');
-    const currentCount = messages.length;
-
-    // Check if message count has stabilized
-    if (currentCount > 0 && currentCount === previousCount) {
-      const newStableCount = stableCount + 1;
-
-      if (newStableCount >= requiredStableChecks) {
-        // Page is stable!
-        console.log(`✅ Page stabilized at ${currentCount} messages`);
-        callback();
-        return;
-      } else {
-        // Keep checking for stability
-        setTimeout(() => {
-          this.waitForPageStabilization(callback, retryCount + 1, currentCount, newStableCount);
-        }, retryDelay);
-      }
-    } else if (retryCount < maxRetries) {
-      // Message count changed or still at 0, reset stability counter
-      setTimeout(() => {
-        this.waitForPageStabilization(callback, retryCount + 1, currentCount, 0);
-      }, retryDelay);
-    } else {
-      // Give up after max retries, execute anyway
-      console.warn('⚠️ Page stabilization timeout, notifying modules anyway...');
-      callback();
-    }
+    VisibilityManager.setDebugMode(false);
+    KeyboardManager.setDebugMode(false);
+    ObserverManager.setDebugMode(false);
   }
 
   /**
-   * Global CSS stilleri inject et
-   */
-  async injectGlobalStyles() {
-    // Tema renklerini al
-    const settings = await settingsManager.getAll();
-    const general = settings.general || {};
-    const themeName = general.colorTheme || 'purple';
-    const customColor = general.customColor || '#667eea';
-    
-    // Tema renklerini hesapla
-    let primary, secondary;
-    if (themeName === 'native') {
-      primary = '#CC785C';
-      secondary = '#8B7355';
-    } else if (themeName === 'purple') {
-      primary = '#667eea';
-      secondary = '#764ba2';
-    } else if (themeName === 'custom') {
-      primary = customColor;
-      // Biraz koyulaştır
-      const hex = customColor.replace('#', '');
-      const r = Math.max(0, parseInt(hex.substr(0, 2), 16) - 30);
-      const g = Math.max(0, parseInt(hex.substr(2, 2), 16) - 30);
-      const b = Math.max(0, parseInt(hex.substr(4, 2), 16) - 30);
-      secondary = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    }
-
-    const css = `
-      /* Navigation highlight animasyonu */
-      .claude-nav-highlight {
-        animation: claude-highlight-pulse 0.5s ease-in-out;
-        outline: 3px solid ${primary} !important;
-        outline-offset: 4px;
-        border-radius: 8px;
-      }
-      
-      @keyframes claude-highlight-pulse {
-        0%, 100% { outline-color: ${primary}; }
-        50% { outline-color: ${secondary}; }
-      }
-
-      /* Edit History highlight */
-      .claude-edit-highlighted {
-        outline: 2px dashed ${primary} !important;
-        outline-offset: 2px;
-        border-radius: 8px;
-      }
-
-      /* Tooltip stilleri */
-      .claude-nav-btn::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        right: 60px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-      }
-
-      .claude-nav-btn:hover::after {
-        opacity: 1;
-      }
-
-      /* Disabled button stilleri */
-      .claude-nav-btn:disabled {
-        opacity: 0.3 !important;
-        cursor: not-allowed !important;
-        transform: none !important;
-      }
-
-      .claude-nav-btn:disabled:hover {
-        transform: none !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-      }
-
-      /* Edit History Styles */
-      .claude-edit-highlighted {
-        position: relative;
-      }
-
-      .claude-edit-highlighted::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -4px;
-        right: -4px;
-        bottom: -4px;
-        border: 2px dashed #667eea;
-        border-radius: 8px;
-        pointer-events: none;
-        opacity: 0.4;
-      }
-
-      /* Modal Animations */
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-
-      @keyframes fadeOut {
-        from {
-          opacity: 1;
-        }
-        to {
-          opacity: 0;
-        }
-      }
-
-      @keyframes slideUp {
-        from {
-          transform: translateY(20px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-
-      /* Scrollbar for modal */
-      .claude-edit-modal-content::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .claude-edit-modal-content::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-      }
-
-      .claude-edit-modal-content::-webkit-scrollbar-thumb {
-        background: #667eea;
-        border-radius: 4px;
-      }
-
-      .claude-edit-modal-content::-webkit-scrollbar-thumb:hover {
-        background: #764ba2;
-      }
-
-      /* Future: TOC stilleri */
-      .claude-toc {
-        /* TODO: Gelecekte eklenecek */
-      }
-    `;
-
-    const style = document.createElement('style');
-    style.id = 'claude-productivity-global-styles';
-    style.textContent = css;
-    document.head.appendChild(style);
-  }
-
-  /**
-   * CSS'i yeniden inject et (tema değişikliğinde)
-   */
-  async reinjectStyles() {
-    const oldStyle = document.getElementById('claude-productivity-global-styles');
-    if (oldStyle) {
-      oldStyle.remove();
-    }
-    await this.injectGlobalStyles();
-    console.log('🎨 Global CSS tema ile güncellendi');
-  }
-
-  /**
-   * Uygulamayı durdur
+   * Stop the application
    */
   destroy() {
-    console.log('🗑️ Claude Productivity Extension durduruluyor...');
+    if (!this.initialized) return;
 
-    // Tüm modülleri durdur
-    this.modules.forEach(module => {
-      module.destroy();
+    console.log('🗑️ Stopping Claude Productivity Extension...');
+
+    // Destroy all modules
+    this.modules.forEach((module, name) => {
+      try {
+        module.destroy();
+        console.log(`✅ Module ${name} destroyed`);
+      } catch (err) {
+        console.error(`❌ Error destroying ${name}:`, err);
+      }
     });
 
-    // Clean up VisibilityManager
-    if (this.visibilityManager) {
-      this.visibilityManager.destroy();
-      this.visibilityManager = null;
+    // Clear modules
+    this.modules.clear();
+
+    // Clean up managers
+    if (this.managers.visibility) {
+      this.managers.visibility.destroy();
+    }
+    if (this.managers.theme) {
+      this.managers.theme.destroy();
+    }
+    if (this.managers.keyboard) {
+      this.managers.keyboard.destroy();
+    }
+    if (this.managers.observer) {
+      this.managers.observer.destroy();
     }
 
-    // Event bus'ı temizle
+    // Clear event bus
     eventBus.clear();
 
-    // Global stilleri kaldır
-    const globalStyles = document.getElementById('claude-productivity-global-styles');
-    if (globalStyles) {
-      globalStyles.remove();
-    }
-
     this.initialized = false;
-    console.log('✅ Claude Productivity Extension durduruldu');
+    console.log('✅ Claude Productivity Extension stopped');
   }
 
   /**
-   * Uygulamayı yeniden başlat
+   * Restart the application
    */
   async restart() {
+    console.log('🔄 Restarting application...');
     this.destroy();
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay
     await this.init();
+    console.log('✅ Application restarted');
   }
 
   /**
-   * Debug bilgisi
+   * Get debug information
    */
   getDebugInfo() {
     return {
@@ -464,16 +303,32 @@ class ClaudeProductivityApp {
       modules: Array.from(this.modules.keys()),
       activeModules: Array.from(this.modules.values())
         .filter(m => m.enabled)
-        .map(m => m.name),
+        .map(m => m.name || m.constructor.name),
+      managers: {
+        visibility: this.managers.visibility ? 'active' : 'inactive',
+        theme: this.managers.theme ? 'active' : 'inactive',
+        keyboard: this.managers.keyboard ? 'active' : 'inactive',
+        observer: this.managers.observer ? 'active' : 'inactive'
+      },
       settings: settingsManager.settings,
+      observers: ObserverManager.getAllStatuses(),
+      shortcuts: KeyboardManager.getShortcuts()
     };
+  }
+
+  /**
+   * Get application version
+   */
+  getVersion() {
+    return '2.0.0'; // Refactored version
   }
 }
 
-// Singleton instance
+// Create singleton instance
 const app = new ClaudeProductivityApp();
 
-// Global scope'a ekle (debugging için)
+// Add to global scope for debugging
 window.claudeProductivity = app;
 
+// Export singleton
 export default app;

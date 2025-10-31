@@ -8,8 +8,8 @@ class VisibilityManager {
     this.isConversationPage = false;
     this.lastPath = null;
     this.listeners = new Set();
-    this.checkInterval = null;
     this.isChecking = false;
+    this.debugMode = false;
 
     // Start monitoring URL changes
     this.startMonitoring();
@@ -17,22 +17,13 @@ class VisibilityManager {
 
   /**
    * Start monitoring URL changes
+   * OPTIMIZED: Use single primary mechanism (History API) with popstate as fallback
    */
   startMonitoring() {
     // Initial check
     this.checkPageType();
 
-    // Monitor URL changes with popstate
-    window.addEventListener('popstate', () => this.checkPageType());
-
-    // Also monitor with interval as Claude is SPA
-    this.checkInterval = setInterval(() => {
-      if (window.location.pathname !== this.lastPath) {
-        this.checkPageType();
-      }
-    }, 500);
-
-    // Monitor pushState/replaceState
+    // Primary mechanism: Monitor History API changes
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
@@ -45,6 +36,11 @@ class VisibilityManager {
       originalReplaceState.apply(history, args);
       setTimeout(() => VisibilityManager.getInstance().checkPageType(), 0);
     };
+
+    // Fallback: Monitor popstate for browser back/forward
+    window.addEventListener('popstate', () => this.checkPageType());
+
+    // Note: Removed interval checking - History API + popstate covers all navigation
   }
 
   /**
@@ -63,7 +59,9 @@ class VisibilityManager {
 
     // Only notify if state changed or first check
     if (this.lastPath === null || wasConversationPage !== this.isConversationPage || path !== this.lastPath) {
-      console.log(`[VisibilityManager] Page type changed: ${this.isConversationPage ? 'CONVERSATION' : 'NON-CONVERSATION'} (${path})`);
+      if (this.debugMode) {
+        console.log(`[VisibilityManager] Page type changed: ${this.isConversationPage ? 'CONVERSATION' : 'NON-CONVERSATION'} (${path})`);
+      }
       this.lastPath = path;
       this.notifyListeners();
     }
@@ -149,13 +147,16 @@ class VisibilityManager {
   }
 
   /**
+   * Set debug mode
+   */
+  setDebugMode(enabled) {
+    this.debugMode = enabled;
+  }
+
+  /**
    * Cleanup
    */
   destroy() {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
     this.listeners.clear();
   }
 
