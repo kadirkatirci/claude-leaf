@@ -5,6 +5,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import VisibilityManager from '../utils/VisibilityManager.js';
 
 // Alt bileşenler
 import EditScanner from './EditHistoryModule/EditScanner.js';
@@ -16,8 +17,10 @@ import EditUI from './EditHistoryModule/EditUI.js';
 class EditHistoryModule extends BaseModule {
   constructor() {
     super('editHistory');
-    
+
     this.editedMessages = [];
+    this.visibilityUnsubscribe = null;
+    this.lastConversationState = null;
     
     // Alt bileşenler
     this.scanner = new EditScanner((edits) => this.handleEditsFound(edits));
@@ -42,6 +45,11 @@ class EditHistoryModule extends BaseModule {
 
     this.panel.create();
 
+    // Subscribe to visibility changes
+    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+      this.handleVisibilityChange(isConversationPage);
+    });
+
     // Taramayı başlat
     this.scanner.start();
 
@@ -52,6 +60,44 @@ class EditHistoryModule extends BaseModule {
     });
 
     this.log('✅ Edit History aktif');
+  }
+
+  /**
+   * Handle visibility change from VisibilityManager
+   */
+  handleVisibilityChange(isConversationPage) {
+    // Only update if state actually changed
+    if (this.lastConversationState === isConversationPage) return;
+
+    this.lastConversationState = isConversationPage;
+
+    // Fixed button is stored as editBtn, not button
+    if (this.elements.editBtn) {
+      VisibilityManager.setElementVisibility(this.elements.editBtn, isConversationPage);
+    }
+    if (this.elements.collapseBtn) {
+      VisibilityManager.setElementVisibility(this.elements.collapseBtn, isConversationPage);
+    }
+
+    if (!isConversationPage) {
+      this.log('Page changed to non-conversation, hiding edit history UI');
+      // Clear UI elements with defensive checks
+      if (this.badge && typeof this.badge.removeAll === 'function') {
+        this.badge.removeAll();
+      }
+      if (this.ui && typeof this.ui.updateHighlights === 'function') {
+        this.ui.updateHighlights([], false);
+      }
+      this.editedMessages = [];
+      if (this.elements.counter) {
+        this.elements.counter.textContent = '0';
+      }
+      this.panel.updateContent([]);
+    } else {
+      this.log('Page changed to conversation, showing edit history UI');
+      // Re-scan on conversation page
+      this.scanner.scan();
+    }
   }
 
   /**
@@ -130,6 +176,12 @@ class EditHistoryModule extends BaseModule {
     this.elements.editBtn = editBtn;
     this.elements.counter = counter;
 
+    // Set initial visibility based on current page
+    const isConversationPage = this.dom.isOnConversationPage();
+    if (!isConversationPage) {
+      VisibilityManager.setElementVisibility(editBtn, false);
+    }
+
     // Collapse All button (only if CompactView is enabled)
     const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
     if (compactViewEnabled) {
@@ -201,31 +253,8 @@ class EditHistoryModule extends BaseModule {
    * Edit'ler bulunduğunda
    */
   handleEditsFound(editedPrompts) {
-    // Check if we're on a conversation page
-    if (!this.dom.isOnConversationPage()) {
-      this.log('❌ Not on conversation page, clearing edit UI');
-
-      // Clear all badges and highlights
-      this.badge.removeAll();
-      this.ui.updateHighlights([], false);
-
-      // Reset state
-      this.editedMessages = [];
-
-      // Update counter to 0
-      if (this.elements.counter) {
-        this.elements.counter.textContent = '0';
-      }
-
-      // Hide collapse button
-      if (this.elements.collapseBtn) {
-        this.elements.collapseBtn.style.display = 'none';
-      }
-
-      // Clear panel
-      this.panel.updateContent([]);
-      return;
-    }
+    // Don't process if not on conversation page
+    if (!this.lastConversationState) return;
 
     const oldCount = this.editedMessages.length;
 
@@ -367,6 +396,12 @@ class EditHistoryModule extends BaseModule {
    */
   destroy() {
     this.log('🛑 Edit History durduruluyor...');
+
+    // Unsubscribe from visibility changes
+    if (this.visibilityUnsubscribe) {
+      this.visibilityUnsubscribe();
+      this.visibilityUnsubscribe = null;
+    }
 
     // Remove collapse button
     if (this.elements.collapseBtn) {

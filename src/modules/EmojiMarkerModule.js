@@ -4,6 +4,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import VisibilityManager from '../utils/VisibilityManager.js';
 import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
@@ -16,6 +17,8 @@ class EmojiMarkerModule extends BaseModule {
 
     this.markers = [];
     this.storage = new MarkerStorage();
+    this.visibilityUnsubscribe = null;
+    this.lastConversationState = null;
     this.emojiPicker = new EmojiPicker();
     this.badge = new MarkerBadge(
       () => this.getTheme(),
@@ -60,6 +63,11 @@ class EmojiMarkerModule extends BaseModule {
       // Create panel
       this.panel.create();
 
+      // Subscribe to visibility changes
+      this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+        this.handleVisibilityChange(isConversationPage);
+      });
+
       // Initial UI update
       this.updateUI();
 
@@ -75,6 +83,39 @@ class EmojiMarkerModule extends BaseModule {
     } catch (error) {
       this.error('❌ Emoji Markers init failed:', error);
       throw error; // Re-throw to see in console
+    }
+  }
+
+  /**
+   * Handle visibility change from VisibilityManager
+   */
+  handleVisibilityChange(isConversationPage) {
+    // Only update if state actually changed
+    if (this.lastConversationState === isConversationPage) return;
+
+    this.lastConversationState = isConversationPage;
+
+    if (this.elements.button) {
+      VisibilityManager.setElementVisibility(this.elements.button, isConversationPage);
+    }
+
+    if (!isConversationPage) {
+      this.log('Page changed to non-conversation, hiding marker UI');
+      // Clear UI elements with defensive checks
+      if (this.button && typeof this.button.removeAll === 'function') {
+        this.button.removeAll();
+      }
+      if (this.badge && typeof this.badge.removeAll === 'function') {
+        this.badge.removeAll();
+      }
+      if (this.elements.counter) {
+        this.elements.counter.textContent = '0';
+      }
+      this.panel.updateContent([]);
+    } else {
+      this.log('Page changed to conversation, showing marker UI');
+      // Re-update UI on conversation page
+      this.updateUI();
     }
   }
 
@@ -182,23 +223,8 @@ class EmojiMarkerModule extends BaseModule {
    * Update all UI components
    */
   updateUI() {
-    // Check if we're on a conversation page
-    if (!this.dom.isOnConversationPage()) {
-      this.log('❌ Not on conversation page, skipping marker UI update');
-
-      // Clear any existing buttons/badges
-      this.button.removeAll();
-      this.badge.removeAll();
-
-      // Update counter to 0
-      if (this.elements.counter) {
-        this.elements.counter.textContent = '0';
-      }
-
-      // Clear panel
-      this.panel.updateContent([]);
-      return;
-    }
+    // Don't update if not on conversation page
+    if (!this.lastConversationState) return;
 
     const allMessages = this.dom.findMessages();
 
@@ -418,6 +444,12 @@ class EmojiMarkerModule extends BaseModule {
    */
   destroy() {
     this.log('🛑 Emoji Markers durduruluyor...');
+
+    // Unsubscribe from visibility changes
+    if (this.visibilityUnsubscribe) {
+      this.visibilityUnsubscribe();
+      this.visibilityUnsubscribe = null;
+    }
 
     // Remove button
     if (this.elements.button) {

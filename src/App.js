@@ -4,6 +4,8 @@
  */
 import settingsManager from './utils/SettingsManager.js';
 import { eventBus, Events } from './utils/EventBus.js';
+import VisibilityManager from './utils/VisibilityManager.js';
+import DOMUtils from './utils/DOMUtils.js';
 import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
 import CompactViewModule from './modules/CompactViewModule.js';
@@ -16,6 +18,7 @@ class ClaudeProductivityApp {
   constructor() {
     this.modules = new Map();
     this.initialized = false;
+    this.visibilityManager = null;
   }
 
   /**
@@ -28,6 +31,12 @@ class ClaudeProductivityApp {
     }
 
     console.log('🚀 Claude Productivity Extension başlatılıyor...');
+
+    // Initialize DOMUtils with VisibilityManager support
+    DOMUtils.init();
+
+    // Initialize VisibilityManager (singleton will be created)
+    this.visibilityManager = VisibilityManager;
 
     // Settings'i yükle
     await settingsManager.load();
@@ -418,6 +427,12 @@ class ClaudeProductivityApp {
     this.modules.forEach(module => {
       module.destroy();
     });
+
+    // Clean up VisibilityManager
+    if (this.visibilityManager) {
+      this.visibilityManager.destroy();
+      this.visibilityManager = null;
+    }
 
     // Event bus'ı temizle
     eventBus.clear();

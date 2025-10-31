@@ -2,15 +2,35 @@
  * DOMUtils - Claude web arayüzü için DOM yardımcı fonksiyonları
  */
 
+// Import VisibilityManager for centralized page checking
+let visibilityManager = null;
+
 const DOMUtils = {
   /**
+   * Initialize with VisibilityManager
+   */
+  init() {
+    // Lazy load to avoid circular dependency
+    if (!visibilityManager) {
+      import('./VisibilityManager.js').then(module => {
+        visibilityManager = module.default;
+      });
+    }
+  },
+
+  /**
    * Konuşma sayfasında olup olmadığımızı kontrol et
+   * Uses VisibilityManager for centralized checking
    * @returns {boolean}
    */
   isOnConversationPage() {
+    // Use VisibilityManager if available, otherwise fallback to direct check
+    if (visibilityManager) {
+      return visibilityManager.isOnConversationPage();
+    }
+
+    // Fallback to direct check
     const path = window.location.pathname;
-    // /chat/xxx-xxx-xxx veya /project/xxx-xxx-xxx formatında mı?
-    // New chat sayfası /new veya / olabilir
     return (path.includes('/chat/') || path.includes('/project/')) && !path.includes('/new');
   },
 

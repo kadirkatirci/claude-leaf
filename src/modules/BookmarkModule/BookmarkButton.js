@@ -136,11 +136,20 @@ export class BookmarkButton {
 
   /**
    * Remove all buttons
+   * Named removeAll() for consistency with other modules
    */
-  clear() {
+  removeAll() {
     this.buttons.forEach(button => button.remove());
     this.buttons.clear();
     this.buttonStates.clear();
+  }
+
+  /**
+   * Alias for backward compatibility
+   * @deprecated Use removeAll() instead
+   */
+  clear() {
+    this.removeAll();
   }
 
   /**

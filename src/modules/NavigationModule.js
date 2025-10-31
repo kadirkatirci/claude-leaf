@@ -4,6 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
+import VisibilityManager from '../utils/VisibilityManager.js';
 
 class NavigationModule extends BaseModule {
   constructor() {
@@ -16,17 +17,24 @@ class NavigationModule extends BaseModule {
     this.lastCounterText = ''; // Track counter to avoid unnecessary updates
     this.lastButtonStates = { prev: null, next: null, top: null }; // Track button states
     this.lastMessageCount = 0; // Track message count for performance
+    this.lastConversationState = null; // Track conversation page state
+    this.visibilityUnsubscribe = null; // Store unsubscribe function
   }
 
   async init() {
     await super.init();
-    
+
     if (!this.enabled) return;
 
     this.log('Navigation başlatılıyor...');
 
     // UI oluştur
     this.createUI();
+
+    // Subscribe to visibility changes
+    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+      this.handleVisibilityChange(isConversationPage);
+    });
 
     // Mesajları bul
     this.findMessages();
@@ -45,7 +53,37 @@ class NavigationModule extends BaseModule {
     this.log(`✅ ${this.messages.length} mesaj bulundu`);
   }
 
+  /**
+   * Handle visibility change from VisibilityManager
+   */
+  handleVisibilityChange(isConversationPage) {
+    // Only update if state actually changed
+    if (this.lastConversationState === isConversationPage) return;
+
+    this.lastConversationState = isConversationPage;
+
+    if (this.elements.container) {
+      VisibilityManager.setElementVisibility(this.elements.container, isConversationPage);
+    }
+
+    if (!isConversationPage) {
+      this.log('Page changed to non-conversation, hiding navigation');
+      this.messages = [];
+      this.lastMessageCount = 0;
+    } else {
+      this.log('Page changed to conversation, showing navigation');
+      // Re-find messages on conversation page
+      this.findMessages();
+    }
+  }
+
   destroy() {
+    // Unsubscribe from visibility changes
+    if (this.visibilityUnsubscribe) {
+      this.visibilityUnsubscribe();
+      this.visibilityUnsubscribe = null;
+    }
+
     // Observer'ı durdur
     if (this.observer) {
       this.observer.disconnect();
@@ -198,6 +236,9 @@ class NavigationModule extends BaseModule {
 
   observeMessages() {
     this.observer = this.dom.observeDOM(() => {
+      // Don't process if not on conversation page
+      if (!this.lastConversationState) return;
+
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => {
         const oldLength = this.messages.length;

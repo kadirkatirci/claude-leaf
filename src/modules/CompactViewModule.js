@@ -64,16 +64,43 @@ class CompactViewModule extends BaseModule {
    * Mesajları işle
    */
   processMessages() {
+    // Check if we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      // Don't log repeatedly to avoid console spam
+      if (!this.lastNonConversationLog || Date.now() - this.lastNonConversationLog > 5000) {
+        this.log('Not on conversation page, hiding collapse buttons');
+        this.lastNonConversationLog = Date.now();
+      }
+
+      // Hide buttons instead of removing to avoid DOM mutations that trigger observers
+      document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
+        btn.style.visibility = 'hidden';
+        btn.style.opacity = '0';
+        btn.style.pointerEvents = 'none';
+      });
+      return;
+    }
+
+    // Reset non-conversation log timer
+    this.lastNonConversationLog = null;
+
+    // Show any hidden buttons
+    document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
+      btn.style.visibility = 'visible';
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    });
+
     // Claude yanıtlarını bul (assistant messages)
     const messages = document.querySelectorAll('[data-is-streaming="false"]');
-    
+
     messages.forEach(message => {
       // Zaten işlendiyse atla
       if (this.processedMessages.has(message)) return;
-      
+
       // User mesajlarını atla, sadece Claude yanıtları
       if (message.querySelector('[data-testid="user-message"]')) return;
-      
+
       this.processMessage(message);
       this.processedMessages.add(message);
     });
@@ -160,6 +187,12 @@ class CompactViewModule extends BaseModule {
    * Tüm mesajları daralt
    */
   collapseAllMessages() {
+    // Check if we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.log('Not on conversation page, skipping collapse all');
+      return 0;
+    }
+
     const messages = document.querySelectorAll('[data-is-streaming="false"]');
     let collapsedCount = 0;
 
@@ -187,6 +220,12 @@ class CompactViewModule extends BaseModule {
    * Tüm mesajları genişlet
    */
   expandAllMessages() {
+    // Check if we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.log('Not on conversation page, skipping expand all');
+      return 0;
+    }
+
     const messages = document.querySelectorAll('[data-is-streaming="false"]');
     let expandedCount = 0;
 

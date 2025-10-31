@@ -4,6 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
+import VisibilityManager from '../utils/VisibilityManager.js';
 import { BookmarkStorage } from './BookmarkModule/BookmarkStorage.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
@@ -16,6 +17,8 @@ class BookmarkModule extends BaseModule {
     this.bookmarks = [];
     this.observerTimeout = null;
     this.observer = null;
+    this.visibilityUnsubscribe = null;
+    this.lastConversationState = null;
 
     // Initialize sub-modules
     this.storage = new BookmarkStorage();
@@ -81,6 +84,11 @@ class BookmarkModule extends BaseModule {
     // Create fixed position button (like NavigationModule)
     this.createFixedButton();
 
+    // Subscribe to visibility changes
+    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+      this.handleVisibilityChange(isConversationPage);
+    });
+
     // Initial UI update
     this.updateUI();
 
@@ -88,6 +96,39 @@ class BookmarkModule extends BaseModule {
     this.checkBookmarkNavigation();
 
     this.log(`✅ ${this.bookmarks.length} bookmarks loaded`);
+  }
+
+  /**
+   * Handle visibility change from VisibilityManager
+   */
+  handleVisibilityChange(isConversationPage) {
+    // Only update if state actually changed
+    if (this.lastConversationState === isConversationPage) return;
+
+    this.lastConversationState = isConversationPage;
+
+    // Fixed button is stored as bookmarkBtn, not button
+    if (this.elements.bookmarkBtn) {
+      VisibilityManager.setElementVisibility(this.elements.bookmarkBtn, isConversationPage);
+    }
+
+    if (!isConversationPage) {
+      this.log('Page changed to non-conversation, hiding bookmark UI');
+      // Clear UI elements using removeAll() method
+      if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+        this.buttonManager.removeAll();
+      }
+      if (this.elements.counter) {
+        this.elements.counter.textContent = '0';
+      }
+      this.panel.updateContent([]);
+      this.sidebar.update([]);
+    } else {
+      this.log('Page changed to conversation, showing bookmark UI');
+      // Re-update UI on conversation page
+      this.updateUI();
+      this.addBookmarkButtons();
+    }
   }
 
   /**
@@ -165,6 +206,12 @@ class BookmarkModule extends BaseModule {
     document.body.appendChild(bookmarkBtn);
     this.elements.bookmarkBtn = bookmarkBtn;
     this.elements.counter = counter;
+
+    // Set initial visibility based on current page
+    const isConversationPage = this.dom.isOnConversationPage();
+    if (!isConversationPage) {
+      VisibilityManager.setElementVisibility(bookmarkBtn, false);
+    }
   }
 
   /**
@@ -514,6 +561,9 @@ class BookmarkModule extends BaseModule {
    * Update all UI components
    */
   updateUI() {
+    // Don't update if not on conversation page
+    if (!this.lastConversationState) return;
+
     // Only show bookmarks for current conversation
     const currentBookmarks = this.getCurrentConversationBookmarks();
 
@@ -767,7 +817,9 @@ class BookmarkModule extends BaseModule {
 
     // Destroy old UI
     this.panel.destroy();
-    this.buttonManager.clear();
+    if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+      this.buttonManager.removeAll();
+    }
 
     // Recreate UI
     this.panel.create(() => this.togglePanel());
@@ -782,6 +834,12 @@ class BookmarkModule extends BaseModule {
   async destroy() {
     this.log('Destroying BookmarkModule...');
 
+    // Unsubscribe from visibility changes
+    if (this.visibilityUnsubscribe) {
+      this.visibilityUnsubscribe();
+      this.visibilityUnsubscribe = null;
+    }
+
     // Stop observing
     if (this.observer) {
       this.observer.disconnect();
@@ -789,7 +847,9 @@ class BookmarkModule extends BaseModule {
     }
 
     // Clean up UI
-    this.buttonManager.clear();
+    if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+      this.buttonManager.removeAll();
+    }
     this.panel.destroy();
     this.sidebar.destroy();
 
