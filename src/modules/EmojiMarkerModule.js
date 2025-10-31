@@ -182,6 +182,24 @@ class EmojiMarkerModule extends BaseModule {
    * Update all UI components
    */
   updateUI() {
+    // Check if we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.log('❌ Not on conversation page, skipping marker UI update');
+
+      // Clear any existing buttons/badges
+      this.button.removeAll();
+      this.badge.removeAll();
+
+      // Update counter to 0
+      if (this.elements.counter) {
+        this.elements.counter.textContent = '0';
+      }
+
+      // Clear panel
+      this.panel.updateContent([]);
+      return;
+    }
+
     const allMessages = this.dom.findMessages();
 
     // Filter: Sadece gerçek mesaj container'larını kullan
@@ -224,6 +242,12 @@ class EmojiMarkerModule extends BaseModule {
    * Add a new marker
    */
   async addMarker(messageEl, messageIndex, emoji) {
+    // Validate we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.warn('Cannot add marker - not on conversation page');
+      return;
+    }
+
     const conversationUrl = window.location.pathname;
 
     // Get message preview

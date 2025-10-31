@@ -303,20 +303,21 @@ class BookmarkModule extends BaseModule {
    * Add bookmark buttons to all messages
    */
   addBookmarkButtons() {
-    const allMessages = this.dom.findMessages();
+    // Check if we're on conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.log('❌ Not on conversation page, skipping bookmark buttons');
+      return;
+    }
 
-    // Filter out sidebar elements and only keep actual chat messages
-    const messages = allMessages.filter(msg => {
-      // Exclude elements inside sidebar
-      const isInSidebar = msg.closest('.flex.flex-col.overflow-y-auto.overflow-x-hidden') !== null ||
-                          msg.closest('[data-testid="sidebar"]') !== null ||
-                          msg.closest('nav') !== null;
+    // findMessages now automatically uses findActualMessages
+    const messages = this.dom.findMessages();
 
-      // Exclude our own bookmark sidebar section
-      const isBookmarkSidebar = msg.closest('#claude-bookmarks-sidebar-list') !== null;
+    if (messages.length === 0) {
+      this.log('❌ No actual messages found');
+      return;
+    }
 
-      return !isInSidebar && !isBookmarkSidebar;
-    });
+    this.log(`✅ Adding bookmark buttons to ${messages.length} messages`);
 
     this.buttonManager.addToMessages(
       messages,

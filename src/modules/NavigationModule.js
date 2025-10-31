@@ -15,6 +15,7 @@ class NavigationModule extends BaseModule {
     this.scrollTimeout = null;
     this.lastCounterText = ''; // Track counter to avoid unnecessary updates
     this.lastButtonStates = { prev: null, next: null, top: null }; // Track button states
+    this.lastMessageCount = 0; // Track message count for performance
   }
 
   async init() {
@@ -181,9 +182,18 @@ class NavigationModule extends BaseModule {
   }
 
   findMessages() {
+    // Yeni findActualMessages kullanılıyor (DOMUtils otomatik olarak yönlendiriyor)
     this.messages = this.dom.findMessages();
-    this.updateCounter();
-    this.emit(Events.MESSAGES_UPDATED, this.messages);
+
+    // İlk başlatmada her zaman emit et
+    if (this.lastMessageCount === 0) {
+      this.lastMessageCount = this.messages.length;
+      this.updateCounter();
+      this.emit(Events.MESSAGES_UPDATED, this.messages);
+    } else {
+      // Sadece counter'ı güncelle
+      this.updateCounter();
+    }
   }
 
   observeMessages() {

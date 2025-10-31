@@ -61,6 +61,25 @@ class ContentFoldingModule extends BaseModule {
    */
   scanContent() {
     try {
+      // Check if we're on a conversation page
+      if (!this.dom.isOnConversationPage()) {
+        this.log('❌ Not on conversation page, skipping content scan');
+
+        // Clean up any existing fold controls
+        if (this.headingFolder) {
+          this.headingFolder.cleanup();
+        }
+        if (this.codeBlockFolder) {
+          this.codeBlockFolder.cleanup();
+        }
+        if (this.messageFolder) {
+          this.messageFolder.cleanup();
+        }
+
+        this.lastMessageCount = 0;
+        return;
+      }
+
       const messages = this.dom.findMessages();
 
       if (messages.length === this.lastMessageCount) {

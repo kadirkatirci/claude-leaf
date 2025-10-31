@@ -201,19 +201,45 @@ class EditHistoryModule extends BaseModule {
    * Edit'ler bulunduğunda
    */
   handleEditsFound(editedPrompts) {
+    // Check if we're on a conversation page
+    if (!this.dom.isOnConversationPage()) {
+      this.log('❌ Not on conversation page, clearing edit UI');
+
+      // Clear all badges and highlights
+      this.badge.removeAll();
+      this.ui.updateHighlights([], false);
+
+      // Reset state
+      this.editedMessages = [];
+
+      // Update counter to 0
+      if (this.elements.counter) {
+        this.elements.counter.textContent = '0';
+      }
+
+      // Hide collapse button
+      if (this.elements.collapseBtn) {
+        this.elements.collapseBtn.style.display = 'none';
+      }
+
+      // Clear panel
+      this.panel.updateContent([]);
+      return;
+    }
+
     const oldCount = this.editedMessages.length;
-    
+
     // Değişiklikleri logla
     const currentIds = new Set(editedPrompts.map(e => e.containerId));
     const previousIds = new Set(this.editedMessages.map(e => e.containerId));
-    
+
     const newEdits = editedPrompts.filter(e => !previousIds.has(e.containerId));
     const removed = this.editedMessages.filter(e => !currentIds.has(e.containerId));
-    
+
     if (newEdits.length > 0) {
       this.log(`➕ ${newEdits.length} yeni edit`);
     }
-    
+
     if (removed.length > 0) {
       this.log(`➖ ${removed.length} edit kaldırıldı`);
     }
@@ -221,7 +247,7 @@ class EditHistoryModule extends BaseModule {
     // UI güncelle
     this.badge.updateAll(editedPrompts, this.getSetting('showBadges'));
     this.ui.updateHighlights(editedPrompts, this.getSetting('highlightEdited'));
-    
+
     // State güncelle
     this.editedMessages = editedPrompts.map((editInfo, index) => ({
       element: editInfo.element,

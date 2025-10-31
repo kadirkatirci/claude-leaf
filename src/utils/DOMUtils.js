@@ -4,35 +4,65 @@
 
 const DOMUtils = {
   /**
-   * Claude mesajlarını bul
+   * Konuşma sayfasında olup olmadığımızı kontrol et
+   * @returns {boolean}
+   */
+  isOnConversationPage() {
+    const path = window.location.pathname;
+    // /chat/xxx-xxx-xxx veya /project/xxx-xxx-xxx formatında mı?
+    // New chat sayfası /new veya / olabilir
+    return (path.includes('/chat/') || path.includes('/project/')) && !path.includes('/new');
+  },
+
+  /**
+   * Gerçek mesajları bul (sidebar ve diğer UI elementleri hariç)
+   * @returns {HTMLElement[]} Gerçek mesaj elementleri
+   */
+  findActualMessages() {
+    // Önce konuşma sayfasında olduğumuzu doğrula
+    if (!this.isOnConversationPage()) {
+      return [];
+    }
+
+    // Main content area'yı bul (sidebar hariç)
+    const mainContent = document.querySelector('main') ||
+                       document.querySelector('[role="main"]') ||
+                       document.querySelector('.flex-1.overflow-hidden');
+
+    if (!mainContent) return [];
+
+    // Sadece main content içindeki mesajları bul
+    const messages = mainContent.querySelectorAll('[data-test-render-count]');
+
+    // Filtreleme: Gerçek mesajları ayıkla
+    return Array.from(messages).filter(msg => {
+      // Sidebar kontrolü - nav veya sidebar içinde değilse
+      if (msg.closest('nav')) return false;
+      if (msg.closest('[aria-label="Sidebar"]')) return false;
+      if (msg.closest('.sidebar')) return false;
+      if (msg.closest('[data-testid="sidebar"]')) return false;
+      if (msg.closest('[data-testid="pin-sidebar-toggle"]')) return false;
+
+      // Input alanı kontrolü - chat input değilse
+      if (msg.closest('[data-testid="chat-input"]')) return false;
+      if (msg.closest('[aria-label="Write your prompt to Claude"]')) return false;
+
+      // Gerçek mesaj kontrolü - user veya assistant mesajı mı?
+      const hasUserMessage = msg.querySelector('[data-testid="user-message"]');
+      const hasAssistantMessage = msg.querySelector('[data-is-streaming]');
+      const hasClaudeResponse = msg.querySelector('.font-claude-response');
+
+      return hasUserMessage || hasAssistantMessage || hasClaudeResponse;
+    });
+  },
+
+  /**
+   * Claude mesajlarını bul (backward compatibility için)
    * @returns {HTMLElement[]} Mesaj elementleri
    */
   findMessages() {
-    // Claude'un mesaj yapısı için multiple selector dene
-    const selectors = [
-      '[data-test-render-count]', // Claude'un ana mesaj container'ı
-      '.font-claude-message',
-      '[class*="Message"]',
-      '[role="article"]',
-    ];
-
-    for (const selector of selectors) {
-      const elements = document.querySelectorAll(selector);
-      if (elements.length > 0) {
-        return Array.from(elements);
-      }
-    }
-
-    // Fallback: Ana container'daki büyük blokları bul
-    const chatContainer = this.getChatContainer();
-    if (chatContainer) {
-      const allDivs = chatContainer.querySelectorAll('div');
-      return Array.from(allDivs).filter(div => {
-        return div.offsetHeight > 100 && div.textContent.trim().length > 50;
-      });
-    }
-
-    return [];
+    // Yeni fonksiyonu kullan - geriye dönük uyumluluk sağlanıyor
+    return this.findActualMessages();
   },
 
   /**
@@ -74,9 +104,14 @@ const DOMUtils = {
    */
   getEditedPrompts() {
     const edited = [];
-    
-    // Tüm render-count elementlerini bul (her biri bir mesaj grubu)
-    const messageContainers = document.querySelectorAll('[data-test-render-count]');
+
+    // Önce konuşma sayfasında olduğumuzu kontrol et
+    if (!this.isOnConversationPage()) {
+      return edited;
+    }
+
+    // Sadece gerçek mesajları al (sidebar hariç)
+    const messageContainers = this.findActualMessages();
     
     messageContainers.forEach(container => {
       // Bu container içinde kullanıcı mesajı var mı?
