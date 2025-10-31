@@ -22,6 +22,7 @@ export default class FixedButtonMixin {
     module.updateButtonCounter = this.createCounterUpdater(module);
     module.setupVisibilityListener = this.createVisibilitySetup(module);
     module.destroyFixedButton = this.createButtonDestroyer(module);
+    module.ensureButtonVisibility = this.createVisibilityEnsurer(module);
   }
 
   /**
@@ -29,13 +30,28 @@ export default class FixedButtonMixin {
    */
   static createVisibilityHandler(module) {
     return function(isConversationPage) {
-      // Prevent redundant updates
-      if (this.lastConversationState === isConversationPage) return;
+      // Always process visibility changes for robustness
+      module.log(`Visibility change: conversation=${isConversationPage}, button exists=${!!this.fixedButton}`);
+
+      // Store state
       this.lastConversationState = isConversationPage;
 
-      // Update button visibility
+      // Update button visibility with multiple methods for stability
       if (this.fixedButton) {
-        VisibilityManager.setElementVisibility(this.fixedButton, isConversationPage);
+        if (isConversationPage) {
+          // Make visible - use multiple properties for robustness
+          this.fixedButton.style.display = 'flex';
+          this.fixedButton.style.visibility = 'visible';
+          this.fixedButton.style.opacity = '0.9';
+          this.fixedButton.style.pointerEvents = 'auto';
+        } else {
+          // Hide completely - use display:none for guaranteed hiding
+          this.fixedButton.style.display = 'none';
+          this.fixedButton.style.visibility = 'hidden';
+          this.fixedButton.style.opacity = '0';
+          this.fixedButton.style.pointerEvents = 'none';
+        }
+        module.log(`Button visibility set to: ${isConversationPage ? 'visible' : 'hidden'}`);
       }
 
       // Handle page-specific logic
@@ -141,15 +157,34 @@ export default class FixedButtonMixin {
         this.buttonCounter = counter;
       }
 
-      // Set initial visibility
+      // Set initial visibility based on page type
       const isConversationPage = VisibilityManager.isOnConversationPage();
       if (!isConversationPage) {
-        VisibilityManager.setElementVisibility(button, false);
+        // Start hidden on non-conversation pages
+        button.style.display = 'none';
+        button.style.visibility = 'hidden';
+        button.style.opacity = '0';
+        button.style.pointerEvents = 'none';
+        module.log(`Button created hidden (not on conversation page)`);
+      } else {
+        // Start visible on conversation pages
+        button.style.display = 'flex';
+        button.style.visibility = 'visible';
+        button.style.opacity = '0.9';
+        button.style.pointerEvents = 'auto';
+        module.log(`Button created visible (on conversation page)`);
       }
 
       // Append to body for persistence
       document.body.appendChild(button);
       this.fixedButton = button;
+
+      // Double-check visibility after DOM insertion
+      setTimeout(() => {
+        if (this.fixedButton) {
+          this.handleVisibilityChange(VisibilityManager.isOnConversationPage());
+        }
+      }, 100);
 
       return button;
     }.bind(module);
@@ -192,6 +227,21 @@ export default class FixedButtonMixin {
       this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange(
         this.handleVisibilityChange
       );
+
+      // Initial visibility check
+      const isConversationPage = VisibilityManager.isOnConversationPage();
+      this.handleVisibilityChange(isConversationPage);
+
+      // Set up periodic visibility check for extra stability
+      if (this.visibilityCheckInterval) {
+        clearInterval(this.visibilityCheckInterval);
+      }
+
+      this.visibilityCheckInterval = setInterval(() => {
+        this.ensureButtonVisibility();
+      }, 2000); // Check every 2 seconds
+
+      module.log('Visibility listener setup complete');
     }.bind(module);
   }
 
@@ -200,10 +250,60 @@ export default class FixedButtonMixin {
    */
   static createButtonDestroyer(module) {
     return function() {
+      // Clean up button
       if (this.fixedButton) {
         this.fixedButton.remove();
         this.fixedButton = null;
         this.buttonCounter = null;
+      }
+
+      // Clean up visibility listener
+      if (this.visibilityUnsubscribe) {
+        this.visibilityUnsubscribe();
+        this.visibilityUnsubscribe = null;
+      }
+
+      // Clean up visibility check interval
+      if (this.visibilityCheckInterval) {
+        clearInterval(this.visibilityCheckInterval);
+        this.visibilityCheckInterval = null;
+      }
+
+      module.log('Fixed button and listeners destroyed');
+    }.bind(module);
+  }
+
+  /**
+   * Create visibility ensurer - periodically checks and fixes visibility state
+   */
+  static createVisibilityEnsurer(module) {
+    return function() {
+      if (!this.fixedButton) return;
+
+      const isConversationPage = VisibilityManager.isOnConversationPage();
+      const shouldBeVisible = isConversationPage;
+
+      // Check current visibility state
+      const isCurrentlyVisible = (
+        this.fixedButton.style.display !== 'none' &&
+        this.fixedButton.style.visibility !== 'hidden'
+      );
+
+      // Fix if there's a mismatch
+      if (shouldBeVisible !== isCurrentlyVisible) {
+        module.log(`Fixing button visibility mismatch: should be ${shouldBeVisible}, is ${isCurrentlyVisible}`);
+
+        if (shouldBeVisible) {
+          this.fixedButton.style.display = 'flex';
+          this.fixedButton.style.visibility = 'visible';
+          this.fixedButton.style.opacity = '0.9';
+          this.fixedButton.style.pointerEvents = 'auto';
+        } else {
+          this.fixedButton.style.display = 'none';
+          this.fixedButton.style.visibility = 'hidden';
+          this.fixedButton.style.opacity = '0';
+          this.fixedButton.style.pointerEvents = 'none';
+        }
       }
     }.bind(module);
   }
