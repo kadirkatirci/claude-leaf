@@ -153,7 +153,8 @@ export class MarkerButton {
       // Update button
       button.innerHTML = emoji;
       button.title = `Marked with ${emoji}`;
-      button.style.background = this.getTheme().gradient;
+      const theme = this.getTheme();
+      button.style.background = theme.primary || theme.accentColor || '#CC785C';
       // Position stays the same (fixed at -36px)
     });
   }

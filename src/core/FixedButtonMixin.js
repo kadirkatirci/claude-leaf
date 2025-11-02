@@ -89,7 +89,7 @@ export default class FixedButtonMixin {
         this.destroyFixedButton();
       }
 
-      const theme = this.getTheme ? this.getTheme() : { gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' };
+      const theme = this.getTheme ? this.getTheme() : { primary: '#CC785C' };
 
       // Create button element
       const button = document.createElement('button');
@@ -97,39 +97,59 @@ export default class FixedButtonMixin {
       button.innerHTML = icon;
       button.title = tooltip || '';
 
-      // Apply standardized styling
-      Object.assign(button.style, {
-        position: 'fixed',
-        right: position.right,
-        top: '50%',
-        transform: position.transform,
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        background: theme.gradient,
-        border: 'none',
-        cursor: 'pointer',
-        zIndex: '9999',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '20px',
-        color: 'white',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.3s ease',
-        opacity: '0.9'
-      });
+      // Apply Claude native classes or custom styling based on theme
+      if (theme.useNativeClasses) {
+        // Use Claude's native classes (includes bg-bg-000/80 for neutral background)
+        button.className = theme.buttonClasses || '';
+
+        // Apply positioning and other necessary inline styles
+        // DON'T override background - let buttonClasses handle it
+        button.style.position = 'fixed';
+        button.style.right = position.right;
+        button.style.top = '50%';
+        button.style.transform = position.transform;
+        button.style.cursor = 'pointer';
+        button.style.zIndex = '9999';
+        button.style.color = 'white';
+      } else {
+        // Custom theme - use inline styles (solid color, no gradient)
+        Object.assign(button.style, {
+          position: 'fixed',
+          right: position.right,
+          top: '50%',
+          transform: position.transform,
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          background: theme.primary || '#CC785C',
+          border: 'none',
+          cursor: 'pointer',
+          zIndex: '9999',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '20px',
+          color: 'white',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          transition: 'all 0.3s ease',
+          opacity: '0.9'
+        });
+      }
 
       // Add hover effect
-      button.addEventListener('mouseenter', () => {
-        button.style.opacity = '1';
-        button.style.transform = `${position.transform} scale(1.05)`;
-      });
+      if (!theme.useNativeClasses) {
+        // Custom theme hover effects
+        button.addEventListener('mouseenter', () => {
+          button.style.opacity = '1';
+          button.style.transform = `${position.transform} scale(1.05)`;
+        });
 
-      button.addEventListener('mouseleave', () => {
-        button.style.opacity = '0.9';
-        button.style.transform = position.transform;
-      });
+        button.addEventListener('mouseleave', () => {
+          button.style.opacity = '0.9';
+          button.style.transform = position.transform;
+        });
+      }
+      // Native classes already have hover effects defined in buttonClasses
 
       // Add click handler
       if (onClick) {
@@ -138,12 +158,17 @@ export default class FixedButtonMixin {
 
       // Add counter badge if needed
       if (showCounter) {
+        // Use accent color (turuncu) for native theme counters
+        const badgeColor = theme.useNativeClasses
+          ? (theme.accentColor || 'var(--claude-productivity-accent)')
+          : counterColor;
+
         const counter = document.createElement('div');
         counter.style.cssText = `
           position: absolute;
           top: -5px;
           right: -5px;
-          background: ${counterColor};
+          background: ${badgeColor};
           color: white;
           fontSize: 11px;
           fontWeight: bold;

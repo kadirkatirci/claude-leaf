@@ -172,6 +172,11 @@ class NavigationModule extends BaseModule {
     // Tema renklerini al
     const theme = this.getTheme();
 
+    // Use neutral background for native theme
+    const buttonBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const btn = this.dom.createElement('button', {
       className: 'claude-nav-btn',
       innerHTML: icon,
@@ -180,7 +185,7 @@ class NavigationModule extends BaseModule {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: theme.gradient,
+        background: buttonBg,
         border: 'none',
         cursor: 'pointer',
         display: 'flex',

@@ -83,7 +83,7 @@ class SettingsManager {
       // General
       general: {
         opacity: 0.7,
-        colorTheme: 'purple',
+        colorTheme: 'native',
         customColor: '#667eea',
         debugMode: false,        // Enable debug logging
       }

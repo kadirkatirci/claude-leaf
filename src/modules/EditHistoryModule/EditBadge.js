@@ -58,7 +58,7 @@ class EditBadge {
         position: 'absolute',
         top: '-35px',
         right: '8px',
-        background: theme.gradient,
+        background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
         color: 'white',
         padding: '4px 10px',
         borderRadius: '12px',

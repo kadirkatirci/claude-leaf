@@ -4,26 +4,30 @@
  */
 
 export const THEMES = {
-  // Claude Native Renkler (Claude.ai'den alındı)
+  // Claude Native - Claude'un gerçek class'larını kullanır
   native: {
     name: 'Claude Native',
-    primary: '#CC785C', // Claude'un ana turuncu/kahverengi tonu
-    primaryHover: '#B86B4F',
-    primaryLight: 'rgba(204, 120, 92, 0.1)',
-    secondary: '#8B7355',
-    gradient: 'linear-gradient(135deg, #CC785C 0%, #8B7355 100%)',
+    useNativeClasses: true, // Claude'un gerçek CSS class'larını kullan
+    // Button classes from Claude.ai (bg-bg-000/80 = neutral background)
+    buttonClasses: 'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 shadow-md hover:shadow-lg bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto',
+    // Neutral background (for panels, badges) - will use CSS variable
+    neutralBg: '', // Handled by ThemeManager CSS variable
+    // Accent color (turuncu) - for counters and action buttons
+    accentColor: 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))',
+    // Primary is neutral (for compatibility)
+    primary: '', // Use CSS variable --claude-productivity-neutral
     text: '#2D2D2D',
     textLight: '#6B6B6B',
   },
-  
-  // Mor Tema (Mevcut)
-  purple: {
-    name: 'Purple',
-    primary: '#667eea',
-    primaryHover: '#764ba2',
-    primaryLight: 'rgba(102, 126, 234, 0.1)',
-    secondary: '#764ba2',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+
+  // Turuncu Tema - Basit solid renk
+  orange: {
+    name: 'Orange',
+    useNativeClasses: true, // Claude class'ları kullan ama basit
+    simpleStyle: true, // Fancy efektler olmadan
+    buttonClasses: 'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto bg-bg-000 hover:bg-bg-000',
+    accentColor: 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))',
+    primary: 'hsl(var(--accent-main-000))', // Claude'un turuncu rengi
     text: '#333333',
     textLight: '#666666',
   },
@@ -35,7 +39,6 @@ export const THEMES = {
     primaryHover: '#5568d3',
     primaryLight: 'rgba(102, 126, 234, 0.1)',
     secondary: '#5568d3',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #5568d3 100%)',
     text: '#333333',
     textLight: '#666666',
   },
@@ -54,7 +57,7 @@ export function hexToRgb(hex) {
 }
 
 /**
- * Custom renk için tema oluştur
+ * Custom renk için tema oluştur (gradient kaldırıldı - solid color)
  */
 export function createCustomTheme(primaryColor) {
   const rgb = hexToRgb(primaryColor);
@@ -70,7 +73,6 @@ export function createCustomTheme(primaryColor) {
     primaryHover: hoverColor,
     primaryLight: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`,
     secondary: hoverColor,
-    gradient: `linear-gradient(135deg, ${primaryColor} 0%, ${hoverColor} 100%)`,
     text: '#333333',
     textLight: '#666666',
   };
@@ -83,8 +85,8 @@ export function getThemeColors(themeName, customColor = null) {
   if (themeName === 'custom' && customColor) {
     return createCustomTheme(customColor);
   }
-  
-  return THEMES[themeName] || THEMES.purple;
+
+  return THEMES[themeName] || THEMES.native;
 }
 
 export default THEMES;

@@ -17,7 +17,7 @@ class ThemeManager {
    */
   init(settings = {}) {
     const generalSettings = settings.general || {};
-    const colorTheme = generalSettings.colorTheme || 'purple';
+    const colorTheme = generalSettings.colorTheme || 'native';
     const customColor = generalSettings.customColor || '#8B5CF6';
     const opacity = generalSettings.opacity || 0.9;
 
@@ -33,7 +33,7 @@ class ThemeManager {
     if (themeName === 'custom' && customColor) {
       this.currentTheme = this.createCustomTheme(customColor);
     } else {
-      this.currentTheme = themes[themeName] || themes.purple;
+      this.currentTheme = themes[themeName] || themes.native;
     }
 
     this.updateCSSProperties();
@@ -41,13 +41,12 @@ class ThemeManager {
   }
 
   /**
-   * Create custom theme from color
+   * Create custom theme from color (gradient kaldırıldı - solid color)
    */
   createCustomTheme(color) {
     return {
       name: 'custom',
       primary: color,
-      gradient: `linear-gradient(135deg, ${color} 0%, ${this.darkenColor(color, 20)} 100%)`,
       hover: this.lightenColor(color, 10),
       active: this.darkenColor(color, 10)
     };
@@ -57,7 +56,7 @@ class ThemeManager {
    * Get the current theme
    */
   getTheme() {
-    return this.currentTheme || themes.purple;
+    return this.currentTheme || themes.native;
   }
 
   /**
@@ -94,11 +93,22 @@ class ThemeManager {
     return `
       /* CSS Custom Properties */
       :root {
-        --claude-productivity-primary: ${theme.primary};
-        --claude-productivity-gradient: ${theme.gradient};
-        --claude-productivity-hover: ${theme.hover};
-        --claude-productivity-active: ${theme.active};
+        --claude-productivity-primary: ${theme.primary || theme.accentColor || '#CC785C'};
+        --claude-productivity-hover: ${theme.hover || theme.primary || '#CC785C'};
+        --claude-productivity-active: ${theme.active || theme.primary || '#CC785C'};
         --claude-productivity-opacity: ${this.customProperties.get('--claude-productivity-opacity') || 0.9};
+
+        /* Neutral background (for panels, badges) */
+        --claude-productivity-neutral: rgba(0, 0, 0, 0.08);
+        /* Accent color (for counters, action buttons) */
+        --claude-productivity-accent: ${theme.accentColor || 'hsl(var(--accent-main-000))'};
+      }
+
+      /* Dark mode neutral background */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --claude-productivity-neutral: rgba(255, 255, 255, 0.12);
+        }
       }
 
       /* Base Styles */
@@ -163,9 +173,9 @@ class ThemeManager {
         scroll-margin-top: 100px;
       }
 
-      /* Button Styles */
+      /* Button Styles (solid color, no gradient) */
       .claude-productivity-button {
-        background: var(--claude-productivity-gradient);
+        background: var(--claude-productivity-primary);
         opacity: var(--claude-productivity-opacity);
         transition: all 0.3s ease;
       }
@@ -173,6 +183,7 @@ class ThemeManager {
       .claude-productivity-button:hover {
         opacity: 1;
         transform: scale(1.05);
+        background: var(--claude-productivity-hover);
       }
 
       /* Panel Styles */
@@ -183,7 +194,7 @@ class ThemeManager {
       }
 
       .claude-productivity-panel-header {
-        background: var(--claude-productivity-gradient);
+        background: var(--claude-productivity-primary);
         color: white;
         border-radius: 12px 12px 0 0;
       }
@@ -243,7 +254,7 @@ class ThemeManager {
   }
 
   /**
-   * Update CSS custom properties
+   * Update CSS custom properties (gradient kaldırıldı)
    */
   updateCSSProperties() {
     if (!this.styleElement) {
@@ -254,10 +265,9 @@ class ThemeManager {
 
     // Update CSS variables
     const root = document.documentElement;
-    root.style.setProperty('--claude-productivity-primary', theme.primary);
-    root.style.setProperty('--claude-productivity-gradient', theme.gradient);
-    root.style.setProperty('--claude-productivity-hover', theme.hover);
-    root.style.setProperty('--claude-productivity-active', theme.active);
+    root.style.setProperty('--claude-productivity-primary', theme.primary || theme.accentColor || '#CC785C');
+    root.style.setProperty('--claude-productivity-hover', theme.hover || theme.primary || '#CC785C');
+    root.style.setProperty('--claude-productivity-active', theme.active || theme.primary || '#CC785C');
 
     // Update opacity if set
     const opacity = this.customProperties.get('--claude-productivity-opacity');
@@ -297,7 +307,7 @@ class ThemeManager {
   }
 
   /**
-   * Apply theme to element
+   * Apply theme to element (solid color, no gradient)
    */
   applyToElement(element, properties = {}) {
     if (!element) return;
@@ -306,15 +316,15 @@ class ThemeManager {
 
     // Apply theme-based styles
     if (properties.background) {
-      element.style.background = theme.gradient;
+      element.style.background = theme.primary || theme.accentColor || '#CC785C';
     }
 
     if (properties.color) {
-      element.style.color = theme.primary;
+      element.style.color = theme.primary || theme.accentColor || '#CC785C';
     }
 
     if (properties.borderColor) {
-      element.style.borderColor = theme.primary;
+      element.style.borderColor = theme.primary || theme.accentColor || '#CC785C';
     }
 
     // Apply opacity if specified

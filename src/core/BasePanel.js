@@ -81,16 +81,21 @@ export default class BasePanel {
   }
 
   /**
-   * Create panel header
+   * Create panel header (solid color, no gradient)
    */
   createHeader(theme) {
     const header = document.createElement('div');
     header.className = 'panel-header';
 
+    // Use neutral background for native theme, accent for others
+    const headerBg = theme?.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme?.primary || theme?.accentColor || 'hsl(var(--accent-main-000))');
+
     Object.assign(header.style, {
       padding: '16px 20px',
       borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
-      background: theme?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: headerBg,
       borderRadius: '12px 12px 0 0',
       display: 'flex',
       alignItems: 'center',

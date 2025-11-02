@@ -37,11 +37,15 @@ class EditPanel {
       }
     });
 
-    // Header
+    // Header - use neutral background for native theme
+    const headerBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const header = DOMUtils.createElement('div', {
       style: {
         padding: '12px 16px',
-        background: theme.gradient,
+        background: headerBg,
         color: 'white',
         fontWeight: '600',
         fontSize: '14px',

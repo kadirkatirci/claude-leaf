@@ -52,7 +52,7 @@ export class BookmarkButton {
         padding: '6px 10px',
         borderRadius: '6px',
         border: 'none',
-        background: isBookmarked ? theme.gradient : '#f0f0f0',
+        background: isBookmarked ? (theme.primary || theme.accentColor || '#CC785C') : '#f0f0f0',
         color: isBookmarked ? 'white' : '#333',
         cursor: 'pointer',
         fontSize: '14px',
@@ -118,7 +118,7 @@ export class BookmarkButton {
 
     // Update visual appearance
     button.innerHTML = isBookmarked ? this.getBookmarkSVG(true, '#ffffff') : this.getBookmarkSVG(false, '#333');
-    button.style.background = isBookmarked ? theme.gradient : '#f0f0f0';
+    button.style.background = isBookmarked ? (theme.primary || theme.accentColor || '#CC785C') : '#f0f0f0';
     button.style.color = isBookmarked ? 'white' : '#333';
 
     // Update data attribute first

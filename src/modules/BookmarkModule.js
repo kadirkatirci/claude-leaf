@@ -149,7 +149,7 @@ class BookmarkModule extends BaseModule {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: theme.gradient,
+        background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
         border: 'none',
         cursor: 'pointer',
         display: 'flex',
@@ -164,7 +164,11 @@ class BookmarkModule extends BaseModule {
       }
     });
 
-    // Counter badge
+    // Counter badge - use accent color (turuncu) for native theme
+    const counterBg = theme.useNativeClasses
+      ? (theme.accentColor || 'var(--claude-productivity-accent)')
+      : '#ff4757';
+
     const counter = this.dom.createElement('div', {
       id: 'claude-bookmarks-counter',
       textContent: '0',
@@ -172,7 +176,7 @@ class BookmarkModule extends BaseModule {
         position: 'absolute',
         top: '-8px',
         right: '-8px',
-        background: '#ff4757',
+        background: counterBg,
         color: 'white',
         borderRadius: '12px',
         padding: '2px 6px',

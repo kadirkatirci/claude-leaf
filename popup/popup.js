@@ -134,7 +134,7 @@ function getDefaultSettings() {
     },
     general: {
       opacity: 0.7,
-      colorTheme: 'purple',
+      colorTheme: 'native',
       customColor: '#667eea',
     }
   };
@@ -204,7 +204,7 @@ function updateUI() {
   document.getElementById('nav-opacity-value').textContent = currentSettings.general.opacity;
   
   // General color theme
-  const colorTheme = currentSettings.general.colorTheme || 'purple';
+  const colorTheme = currentSettings.general.colorTheme || 'native';
   const customColor = currentSettings.general.customColor || '#667eea';
   document.getElementById('general-color-theme').value = colorTheme;
   document.getElementById('general-custom-color').value = customColor;
@@ -566,28 +566,20 @@ function updateThemePreview(theme, customColor) {
   const preview = document.getElementById('general-theme-preview');
   if (!preview) return;
 
-  let gradient;
+  let background;
 
   if (theme === 'native') {
-    // Claude Native
-    gradient = 'linear-gradient(135deg, #CC785C 0%, #8B7355 100%)';
-  } else if (theme === 'purple') {
-    // Purple
-    gradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    // Claude Native - uses Claude's turuncu color (solid, no gradient)
+    background = 'hsl(var(--accent-main-000))';
+  } else if (theme === 'orange') {
+    // Orange - basit turuncu (solid, no gradient)
+    background = 'hsl(var(--accent-main-000))';
   } else if (theme === 'custom' && customColor) {
-    // Custom - rengi biraz koyulaştır
-    const darkenColor = (hex) => {
-      const r = parseInt(hex.substr(1, 2), 16);
-      const g = parseInt(hex.substr(3, 2), 16);
-      const b = parseInt(hex.substr(5, 2), 16);
-      const darken = (val) => Math.max(0, val - 30);
-      return `#${darken(r).toString(16).padStart(2, '0')}${darken(g).toString(16).padStart(2, '0')}${darken(b).toString(16).padStart(2, '0')}`;
-    };
-    const darker = darkenColor(customColor);
-    gradient = `linear-gradient(135deg, ${customColor} 0%, ${darker} 100%)`;
+    // Custom - solid color (no gradient)
+    background = customColor;
   }
 
-  preview.style.background = gradient;
+  preview.style.background = background;
 }
 
 /**

@@ -14,7 +14,12 @@ class ExpandButton {
    */
   create(messageElement, isCollapsed) {
     const theme = this.getTheme();
-    
+
+    // Use neutral background for native theme
+    const buttonBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     // Buton container (edit butonunun yanına eklenecek)
     const container = DOMUtils.createElement('div', {
       className: 'claude-expand-button-container',
@@ -31,7 +36,7 @@ class ExpandButton {
       style: {
         padding: '4px 12px',
         borderRadius: '6px',
-        background: theme.gradient,
+        background: buttonBg,
         color: 'white',
         border: 'none',
         fontSize: '12px',

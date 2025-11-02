@@ -38,12 +38,16 @@ export class BookmarkPanel {
       }
     });
 
-    // Header
+    // Header - neutral background for native theme
+    const headerBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const header = this.dom.createElement('div', {
       className: 'claude-bookmarks-header',
       style: {
         padding: '12px 16px',
-        background: theme.gradient,
+        background: headerBg,
         color: 'white',
         fontWeight: '600',
         fontSize: '14px',
@@ -118,6 +122,10 @@ export class BookmarkPanel {
    * Matches the style of collapse button exactly
    */
   createToggleButton(theme, onToggle) {
+    const buttonBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const toggleBtn = this.dom.createElement('button', {
       id: 'claude-bookmarks-toggle',
       type: 'button',
@@ -126,7 +134,7 @@ export class BookmarkPanel {
         marginLeft: '8px',
         padding: '4px 12px',
         borderRadius: '8px',
-        background: theme.gradient,
+        background: buttonBg,
         color: 'white',
         border: 'none',
         cursor: 'pointer',

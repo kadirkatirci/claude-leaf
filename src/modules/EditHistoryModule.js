@@ -106,7 +106,11 @@ class EditHistoryModule extends BaseModule {
   createFixedButtons() {
     const theme = this.getTheme();
 
-    // Edit History button
+    // Edit History button - use neutral background for native theme
+    const buttonBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const editBtn = this.dom.createElement('button', {
       id: 'claude-edit-fixed-btn',
       innerHTML: '✏️',
@@ -118,7 +122,7 @@ class EditHistoryModule extends BaseModule {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: theme.gradient,
+        background: buttonBg,
         border: 'none',
         cursor: 'pointer',
         display: 'flex',
@@ -133,7 +137,11 @@ class EditHistoryModule extends BaseModule {
       }
     });
 
-    // Counter badge
+    // Counter badge - use accent color (turuncu) for native theme
+    const counterBg = theme.useNativeClasses
+      ? (theme.accentColor || 'var(--claude-productivity-accent)')
+      : '#ff4757';
+
     const counter = this.dom.createElement('div', {
       id: 'claude-edit-counter',
       textContent: '0',
@@ -141,7 +149,7 @@ class EditHistoryModule extends BaseModule {
         position: 'absolute',
         top: '-8px',
         right: '-8px',
-        background: '#ff4757',
+        background: counterBg,
         color: 'white',
         borderRadius: '12px',
         padding: '2px 6px',
@@ -202,6 +210,11 @@ class EditHistoryModule extends BaseModule {
       return;
     }
 
+    // Use same background as navigation buttons (neutral for native theme)
+    const collapseBg = theme.useNativeClasses
+      ? 'var(--claude-productivity-neutral)'
+      : (theme.primary || theme.accentColor || '#CC785C');
+
     const collapseBtn = this.dom.createElement('button', {
       id: 'claude-collapse-btn',
       className: 'claude-nav-btn', // Same class as navigation buttons
@@ -211,7 +224,7 @@ class EditHistoryModule extends BaseModule {
         width: '48px',
         height: '48px',
         borderRadius: '50%',
-        background: theme.gradient,
+        background: collapseBg,
         border: 'none',
         cursor: 'pointer',
         display: this.editedMessages.length > 0 ? 'flex' : 'none', // Hide if no edits

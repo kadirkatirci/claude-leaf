@@ -201,7 +201,7 @@ export class MarkerBadge {
           height: '32px',
           border: 'none',
           borderRadius: '4px',
-          background: emoji === marker.emoji ? theme.gradient : (theme.isDark ? '#3d3d3d' : '#f5f5f5'),
+          background: emoji === marker.emoji ? (theme.primary || theme.accentColor || '#CC785C') : (theme.isDark ? '#3d3d3d' : '#f5f5f5'),
           cursor: 'pointer',
           fontSize: '18px',
           display: 'flex',
