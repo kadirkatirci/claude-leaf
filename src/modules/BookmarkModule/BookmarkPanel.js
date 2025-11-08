@@ -5,6 +5,7 @@
 import BasePanel from '../../core/BasePanel.js';
 import Button from '../../components/primitives/Button.js';
 import Badge from '../../components/primitives/Badge.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import tokens from '../../components/theme/tokens.js';
 
 export class BookmarkPanel extends BasePanel {
@@ -56,7 +57,7 @@ export class BookmarkPanel extends BasePanel {
       id: 'claude-bookmarks-toggle',
       variant: 'primary',
       size: 'sm',
-      icon: this.getBookmarkSVG(false),
+      icon: IconLibrary.bookmark(false),
       text: '',
       style: {
         display: 'none', // Initially hidden
@@ -84,21 +85,6 @@ export class BookmarkPanel extends BasePanel {
     toggleBtn.appendChild(counter);
 
     return toggleBtn;
-  }
-
-  /**
-   * Get bookmark SVG icon
-   */
-  getBookmarkSVG(filled = false, color = '#ffffff') {
-    if (filled) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M4 4.75C4 3.23122 5.23122 2 6.75 2H17.75C19.2688 2 20.5 3.23122 20.5 4.75V21.75C20.5 22.0135 20.3618 22.2576 20.1359 22.3931C19.91 22.5287 19.6295 22.5357 19.3971 22.4118L12.25 18.6L5.10294 22.4118C4.87049 22.5357 4.59003 22.5287 4.36413 22.3931C4.13822 22.2576 4 22.0135 4 21.75V4.75Z" fill="${color}"/>
-      </svg>`;
-    } else {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
-        <path d="M12 17.5L19.5 21.5V4.5C19.5 3.39543 18.6046 2.5 17.5 2.5H6.5C5.39543 2.5 4.5 3.39543 4.5 4.5V21.5L12 17.5Z" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
-    }
   }
 
   /**

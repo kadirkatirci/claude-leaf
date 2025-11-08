@@ -1,152 +1,67 @@
 /**
- * EditPanel - Floating panel yönetimi
+ * EditPanel - Floating panel for edit history
+ * Extends BasePanel for common panel functionality
  */
+import BasePanel from '../../core/BasePanel.js';
 import DOMUtils from '../../utils/DOMUtils.js';
 
-class EditPanel {
+class EditPanel extends BasePanel {
   constructor(getTheme, onItemClick) {
+    super({
+      id: 'claude-edit-panel',
+      title: '✏️ Edit Points',
+      width: '280px',
+      height: '500px',
+      position: { right: '20px', top: '60px' }
+    });
+
     this.getTheme = getTheme;
     this.onItemClick = onItemClick;
-    this.panel = null;
-    this.isOpen = false;
     this.lastEditIds = []; // Track edit container IDs to detect changes
   }
 
   /**
-   * Panel'i oluştur
+   * Override: Create panel UI
    */
   create() {
     const theme = this.getTheme();
 
-    this.panel = DOMUtils.createElement('div', {
-      id: 'claude-edit-panel',
-    });
+    // Call parent create with theme
+    super.create(theme);
 
-    // Native classes için panel styling
+    // Adjust panel styling for edit history specific needs
     if (theme.useNativeClasses) {
-      this.panel.className = 'fixed flex flex-col rounded-xl bg-bg-000 shadow-xl';
       Object.assign(this.panel.style, {
-        top: '60px',
-        right: '20px',
-        width: '280px',
         maxHeight: '500px',
-        zIndex: '9999',
-        display: 'none',
         overflow: 'hidden',
       });
     } else {
-      // Custom theme styling
       Object.assign(this.panel.style, {
-        position: 'fixed',
-        top: '60px',
-        right: '20px',
-        width: '280px',
         maxHeight: '500px',
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        border: '1px solid rgba(0, 0, 0, 0.1)',
-        zIndex: '9999',
-        display: 'none',
-        flexDirection: 'column',
         overflow: 'hidden',
       });
     }
 
-    // Header
-    const header = DOMUtils.createElement('div');
-
-    if (theme.useNativeClasses) {
-      header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-300 bg-bg-100';
-    } else {
-      // Custom theme için header
-      const headerBg = theme.primary || theme.accentColor || '#CC785C';
-      Object.assign(header.style, {
-        padding: '12px 16px',
-        background: headerBg,
-        color: 'white',
-        fontWeight: '600',
-        fontSize: '14px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      });
+    // Adjust content padding for edit history (more compact)
+    if (this.content) {
+      if (theme.useNativeClasses) {
+        this.content.className = 'p-2 overflow-y-auto flex-1 bg-bg-000';
+      } else {
+        Object.assign(this.content.style, {
+          padding: '8px',
+        });
+      }
     }
-
-    const title = DOMUtils.createElement('span', {
-      textContent: '✏️ Edit Points',
-    });
-
-    if (theme.useNativeClasses) {
-      title.className = 'text-text-000 font-semibold text-sm';
-    }
-
-    const closeBtn = DOMUtils.createElement('button', {
-      innerHTML: '✕',
-    });
-
-    if (theme.useNativeClasses) {
-      closeBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full hover:bg-bg-200 text-text-400 hover:text-text-000 transition-colors';
-      closeBtn.style.cssText = 'border: none; background: none; cursor: pointer; font-size: 16px;';
-    } else {
-      Object.assign(closeBtn.style, {
-        background: 'none',
-        border: 'none',
-        color: 'white',
-        cursor: 'pointer',
-        fontSize: '16px',
-        padding: '0',
-        width: '24px',
-        height: '24px',
-        borderRadius: '50%',
-        transition: 'background 0.2s',
-      });
-
-      closeBtn.addEventListener('mouseenter', () => {
-        closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-      });
-
-      closeBtn.addEventListener('mouseleave', () => {
-        closeBtn.style.background = 'none';
-      });
-    }
-
-    closeBtn.addEventListener('click', () => this.toggle());
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // Content
-    const content = DOMUtils.createElement('div', {
-      id: 'claude-edit-panel-content',
-    });
-
-    if (theme.useNativeClasses) {
-      content.className = 'p-2 overflow-y-auto flex-1 bg-bg-000';
-    } else {
-      Object.assign(content.style, {
-        padding: '8px',
-        overflowY: 'auto',
-        flex: '1',
-      });
-    }
-
-    this.panel.appendChild(header);
-    this.panel.appendChild(content);
-    document.body.appendChild(this.panel);
 
     return this.panel;
   }
 
   /**
-   * Panel içeriğini güncelle
+   * Update panel content
    * Only updates DOM if edits actually changed
    */
   updateContent(editedMessages) {
-    if (!this.panel) return;
-
-    const content = this.panel.querySelector('#claude-edit-panel-content');
-    if (!content) return;
+    if (!this.panel || !this.content) return;
 
     // Check if edits changed
     const currentIds = editedMessages.map(e => e.containerId).join(',');
@@ -158,26 +73,12 @@ class EditPanel {
 
     this.lastEditIds = editedMessages.map(e => e.containerId);
 
-    content.innerHTML = '';
+    // Clear content
+    this.content.innerHTML = '';
 
+    // Show empty state if no edits
     if (editedMessages.length === 0) {
-      const theme = this.getTheme();
-      const emptyMsg = DOMUtils.createElement('div', {
-        textContent: 'Henüz edit yok',
-      });
-
-      if (theme.useNativeClasses) {
-        emptyMsg.className = 'py-5 text-center text-text-400 text-sm';
-      } else {
-        Object.assign(emptyMsg.style, {
-          padding: '20px',
-          textAlign: 'center',
-          color: '#999',
-          fontSize: '13px',
-        });
-      }
-
-      content.appendChild(emptyMsg);
+      this.showEmptyState();
       return;
     }
 
@@ -185,7 +86,7 @@ class EditPanel {
 
     editedMessages.forEach((editMsg, index) => {
       const item = this.createPanelItem(editMsg, index, theme);
-      content.appendChild(item);
+      this.content.appendChild(item);
     });
   }
 
@@ -297,23 +198,35 @@ class EditPanel {
   }
 
   /**
-   * Panel'i aç/kapat
+   * Override: Panel toggle - use BasePanel's implementation
    */
   toggle() {
-    this.isOpen = !this.isOpen;
-    if (this.panel) {
-      this.panel.style.display = this.isOpen ? 'flex' : 'none';
-    }
+    super.toggle();
   }
 
   /**
-   * Panel'i kaldır
+   * Override: Panel remove - use destroy instead
    */
   remove() {
-    if (this.panel) {
-      this.panel.remove();
-      this.panel = null;
-    }
+    this.destroy();
+  }
+
+  /**
+   * Override: Get empty state message
+   */
+  getEmptyStateMessage() {
+    return 'Henüz edit yok';
+  }
+
+  /**
+   * Override: Get isOpen state (for compatibility)
+   */
+  get isOpen() {
+    return this.isVisible;
+  }
+
+  set isOpen(value) {
+    this.isVisible = value;
   }
 }
 
