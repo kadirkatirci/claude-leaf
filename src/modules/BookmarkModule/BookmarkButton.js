@@ -2,12 +2,14 @@
  * BookmarkButton - Manages bookmark buttons on messages
  */
 import IconLibrary from '../../components/primitives/IconLibrary.js';
+import HoverButtonManager from '../../utils/HoverButtonManager.js';
 
 export class BookmarkButton {
   constructor(domUtils, getTheme) {
     this.dom = domUtils;
     this.getTheme = getTheme;
     this.buttons = new Map(); // messageElement -> button
+    this.hoverCleanups = new Map(); // messageElement -> cleanup function
     this.buttonStates = new Map(); // messageElement -> isBookmarked state
   }
 
@@ -85,26 +87,15 @@ export class BookmarkButton {
       messageElement.style.position = 'relative';
     }
 
-    // Track hover state
-    let isHovering = false;
+    // Attach hover listeners using HoverButtonManager
+    const cleanup = HoverButtonManager.attachPersistentHover(
+      messageElement,
+      button,
+      () => button.getAttribute('data-bookmarked') === 'true' // Persist when bookmarked
+    );
 
-    // Show button on message hover
-    const showButton = () => {
-      isHovering = true;
-      button.style.opacity = '1';
-    };
-
-    const hideButton = () => {
-      isHovering = false;
-      // Only hide if not bookmarked (check current state from data attribute)
-      const currentlyBookmarked = button.getAttribute('data-bookmarked') === 'true';
-      if (!currentlyBookmarked) {
-        button.style.opacity = '0';
-      }
-    };
-
-    messageElement.addEventListener('mouseenter', showButton);
-    messageElement.addEventListener('mouseleave', hideButton);
+    // Store cleanup function
+    this.hoverCleanups.set(messageElement, cleanup);
 
     // Button click handler
     button.addEventListener('click', (e) => {
@@ -165,6 +156,11 @@ export class BookmarkButton {
    * Named removeAll() for consistency with other modules
    */
   removeAll() {
+    // Clean up hover listeners
+    this.hoverCleanups.forEach(cleanup => cleanup());
+    this.hoverCleanups.clear();
+
+    // Remove buttons
     this.buttons.forEach(button => button.remove());
     this.buttons.clear();
     this.buttonStates.clear();

@@ -2,6 +2,7 @@
  * MarkerButton - Manages marker buttons on messages (hover-triggered)
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import HoverButtonManager from '../../utils/HoverButtonManager.js';
 
 export class MarkerButton {
   constructor(getTheme, getFavoriteEmojis, emojiPicker, onMarkerAdd, onMarkerRemove, onMarkerUpdate) {
@@ -12,6 +13,7 @@ export class MarkerButton {
     this.onMarkerRemove = onMarkerRemove;
     this.onMarkerUpdate = onMarkerUpdate;
     this.buttonCache = new WeakMap(); // Track buttons by message element
+    this.hoverCleanups = new WeakMap(); // Track cleanup functions by message element
   }
 
   /**
@@ -41,43 +43,11 @@ export class MarkerButton {
    * Called only once when button is first created
    */
   attachHoverListeners(messageEl, button) {
-    let hoverTimeout;
+    // Use HoverButtonManager for delayed hover with bounds checking
+    const cleanup = HoverButtonManager.attachDelayedHover(messageEl, button, 100);
 
-    const showButton = () => {
-      clearTimeout(hoverTimeout);
-      button.style.opacity = '1';
-      button.style.pointerEvents = 'auto';
-    };
-
-    const hideButton = () => {
-      clearTimeout(hoverTimeout);
-      // Small delay to allow moving to button
-      hoverTimeout = setTimeout(() => {
-        button.style.opacity = '0';
-        button.style.pointerEvents = 'none';
-      }, 100);
-    };
-
-    // Show on message hover
-    messageEl.addEventListener('mouseenter', showButton);
-
-    // Hide on message leave (with delay)
-    messageEl.addEventListener('mouseleave', hideButton);
-
-    // Keep visible when hovering on button itself
-    button.addEventListener('mouseenter', showButton);
-
-    // Hide when leaving button
-    button.addEventListener('mouseleave', (e) => {
-      // Check if we're going back to the message
-      const rect = messageEl.getBoundingClientRect();
-      if (e.clientX >= rect.left && e.clientX <= rect.right &&
-          e.clientY >= rect.top && e.clientY <= rect.bottom) {
-        showButton();
-      } else {
-        hideButton();
-      }
-    });
+    // Store cleanup function
+    this.hoverCleanups.set(messageEl, cleanup);
   }
 
   /**
