@@ -143,6 +143,23 @@ export const generateComponentCSS = () => {
       color: ${tokens.colors.text.primary};
     }
 
+    /* Icon content inside buttons - mode adaptive */
+    .cp-btn-icon-content {
+      /* Let Claude's native text-text-200 class handle the color */
+      font-weight: 600; /* Make it bolder for better visibility */
+    }
+
+    /* Fallback for non-native themes */
+    .cp-btn-icon-content:not(.text-text-200) {
+      color: rgba(0, 0, 0, 0.7); /* Dark gray for light mode */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .cp-btn-icon-content:not(.text-text-200) {
+        color: rgba(255, 255, 255, 0.9); /* Light gray for dark mode */
+      }
+    }
+
     /* Chevron Button */
     .cp-btn-chevron {
       width: 20px;

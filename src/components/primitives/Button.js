@@ -162,7 +162,8 @@ export class Button {
 
     if (icon) {
       const iconSpan = document.createElement('span');
-      iconSpan.className = 'cp-btn-icon-content';
+      // Add Claude's native text class for proper color adaptation
+      iconSpan.className = 'cp-btn-icon-content text-text-200';
       iconSpan.textContent = icon;
       contentParts.push(iconSpan);
     }
