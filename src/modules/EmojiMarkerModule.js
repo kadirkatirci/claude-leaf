@@ -4,8 +4,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
-import VisibilityManager from '../utils/VisibilityManager.js';
-import CounterBadge from '../components/primitives/CounterBadge.js';
+import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import { hashString } from '../utils/HashUtils.js';
 import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
@@ -19,8 +18,6 @@ class EmojiMarkerModule extends BaseModule {
 
     this.markers = [];
     this.storage = new MarkerStorage();
-    this.visibilityUnsubscribe = null;
-    this.lastConversationState = null;
     this.emojiPicker = new EmojiPicker();
     this.badge = new MarkerBadge(
       () => this.getTheme(),
@@ -59,16 +56,24 @@ class EmojiMarkerModule extends BaseModule {
       this.markers = await this.storage.load();
       this.log(`${this.markers.length} marker yüklendi`);
 
+      // Enhance with FixedButtonMixin
+      FixedButtonMixin.enhance(this);
+
       // Create fixed button
-      this.createFixedButton();
+      this.createFixedButton({
+        id: 'claude-marker-fixed-btn',
+        icon: '📍',
+        tooltip: 'Emoji Markers',
+        position: { right: '30px', transform: 'translateY(-160px)' },
+        onClick: () => this.panel.toggle(),
+        showCounter: true
+      });
+
+      // Setup visibility listener (from mixin)
+      this.setupVisibilityListener();
 
       // Create panel
       this.panel.create();
-
-      // Subscribe to visibility changes
-      this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
-        this.handleVisibilityChange(isConversationPage);
-      });
 
       // Initial UI update
       this.updateUI();
@@ -89,102 +94,25 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   /**
-   * Handle visibility change from VisibilityManager
+   * Clear UI elements on page change (required for FixedButtonMixin)
    */
-  handleVisibilityChange(isConversationPage) {
-    // Only update if state actually changed
-    if (this.lastConversationState === isConversationPage) return;
+  clearUIElements() {
+    this.log('Clearing marker UI elements');
 
-    this.lastConversationState = isConversationPage;
-
-    if (this.elements.button) {
-      VisibilityManager.setElementVisibility(this.elements.button, isConversationPage);
+    // Clear hover buttons
+    if (this.button && typeof this.button.removeAll === 'function') {
+      this.button.removeAll();
     }
 
-    if (!isConversationPage) {
-      this.log('Page changed to non-conversation, hiding marker UI');
-      // Clear UI elements with defensive checks
-      if (this.button && typeof this.button.removeAll === 'function') {
-        this.button.removeAll();
-      }
-      if (this.badge && typeof this.badge.removeAll === 'function') {
-        this.badge.removeAll();
-      }
-      CounterBadge.updateById('claude-marker-counter', '0');
-      this.panel.updateContent([]);
-    } else {
-      this.log('Page changed to conversation, showing marker UI');
-      // Re-update UI on conversation page
-      this.updateUI();
+    // Clear badges
+    if (this.badge && typeof this.badge.removeAll === 'function') {
+      this.badge.removeAll();
     }
+
+    // Clear panel
+    this.panel.updateContent([]);
   }
 
-  /**
-   * Create fixed position button
-   */
-  createFixedButton() {
-    const theme = this.getTheme();
-
-    // Pin button
-    const button = this.dom.createElement('button', {
-      id: 'claude-marker-fixed-btn',
-      innerHTML: '📍',
-      style: {
-        position: 'fixed',
-        right: '30px',
-        top: '50%',
-        transform: 'translateY(-160px)', // Collapse button'un eski yeri
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-        color: 'white',
-        fontSize: '20px',
-        zIndex: '9998',
-        opacity: this.getSetting('opacity') || 0.7,
-      }
-    });
-
-    // Counter badge using CounterBadge component
-    CounterBadge.attachTo(button, {
-      id: 'claude-marker-counter',
-      content: '0',
-      theme: theme,
-      position: { top: -8, right: -8 },
-      style: {
-        fontSize: '10px',
-        minWidth: '20px'
-      }
-    });
-
-    // Click handler
-    button.addEventListener('click', () => {
-      this.panel.toggle();
-    });
-
-    // Hover effects
-    button.addEventListener('mouseenter', () => {
-      button.style.transform = 'translateY(-160px) scale(1.1)';
-      button.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
-      button.style.opacity = '1';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.transform = 'translateY(-160px) scale(1)';
-      button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      button.style.opacity = this.getSetting('opacity') || 0.7;
-    });
-
-    document.body.appendChild(button);
-    this.elements.button = button;
-  }
 
   /**
    * Observe DOM changes
@@ -235,8 +163,8 @@ class EmojiMarkerModule extends BaseModule {
     const currentConversationUrl = window.location.pathname;
     const conversationMarkers = this.storage.getByConversation(currentConversationUrl, this.markers);
 
-    // Update counter
-    CounterBadge.updateById('claude-marker-counter', conversationMarkers.length.toString());
+    // Update counter using mixin method
+    this.updateButtonCounter(conversationMarkers.length);
 
     // Update badges
     if (this.getSetting('showBadges')) {
@@ -396,13 +324,17 @@ class EmojiMarkerModule extends BaseModule {
    * UI'ı yeniden oluştur
    */
   recreateUI() {
-    // Remove old button
-    if (this.elements.button) {
-      this.elements.button.remove();
-    }
-
-    // Recreate button
-    this.createFixedButton();
+    // Destroy and recreate fixed button
+    this.destroyFixedButton();
+    this.createFixedButton({
+      id: 'claude-marker-fixed-btn',
+      icon: '📍',
+      tooltip: 'Emoji Markers',
+      position: { right: '30px', transform: 'translateY(-160px)' },
+      onClick: () => this.panel.toggle(),
+      showCounter: true
+    });
+    this.setupVisibilityListener();
 
     // Remove and recreate panel
     this.panel.remove();
@@ -420,16 +352,8 @@ class EmojiMarkerModule extends BaseModule {
   destroy() {
     this.log('🛑 Emoji Markers durduruluyor...');
 
-    // Unsubscribe from visibility changes
-    if (this.visibilityUnsubscribe) {
-      this.visibilityUnsubscribe();
-      this.visibilityUnsubscribe = null;
-    }
-
-    // Remove button
-    if (this.elements.button) {
-      this.elements.button.remove();
-    }
+    // Destroy fixed button (includes visibility listener cleanup)
+    this.destroyFixedButton();
 
     // Remove components
     this.button.removeAll();

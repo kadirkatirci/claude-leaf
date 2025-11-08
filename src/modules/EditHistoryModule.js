@@ -5,7 +5,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
-import VisibilityManager from '../utils/VisibilityManager.js';
+import FixedButtonMixin from '../core/FixedButtonMixin.js';
 
 // Alt bileşenler
 import EditScanner from './EditHistoryModule/EditScanner.js';
@@ -19,9 +19,7 @@ class EditHistoryModule extends BaseModule {
     super('editHistory');
 
     this.editedMessages = [];
-    this.visibilityUnsubscribe = null;
-    this.lastConversationState = null;
-    
+
     // Alt bileşenler
     this.scanner = new EditScanner((edits) => this.handleEditsFound(edits));
     this.badge = new EditBadge(() => this.getTheme(), (el, ver) => this.modal.show(el, ver));
@@ -40,15 +38,23 @@ class EditHistoryModule extends BaseModule {
 
     this.log('Edit History başlatılıyor...');
 
-    // Create fixed position buttons (like NavigationModule)
-    this.createFixedButtons();
+    // Enhance with FixedButtonMixin
+    FixedButtonMixin.enhance(this);
+
+    // Create fixed button
+    this.createFixedButton({
+      id: 'claude-edit-fixed-btn',
+      icon: '✏️',
+      tooltip: 'Edit History',
+      position: { right: '30px', transform: 'translateY(-100px)' },
+      onClick: () => this.panel.toggle(),
+      showCounter: true
+    });
+
+    // Setup visibility listener (from mixin)
+    this.setupVisibilityListener();
 
     this.panel.create();
-
-    // Subscribe to visibility changes
-    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
-      this.handleVisibilityChange(isConversationPage);
-    });
 
     // Taramayı başlat
     this.scanner.start();
@@ -59,143 +65,50 @@ class EditHistoryModule extends BaseModule {
       this.scanner.scan();
     });
 
+    // Create collapse button (only if CompactView is enabled)
+    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    if (compactViewEnabled) {
+      this.createCollapseButton(this.getTheme());
+    }
+
     this.log('✅ Edit History aktif');
   }
 
   /**
-   * Handle visibility change from VisibilityManager
+   * Clear UI elements on page change (required for FixedButtonMixin)
    */
-  handleVisibilityChange(isConversationPage) {
-    // Only update if state actually changed
-    if (this.lastConversationState === isConversationPage) return;
+  clearUIElements() {
+    this.log('Clearing edit history UI elements');
 
-    this.lastConversationState = isConversationPage;
-
-    // Fixed button is stored as editBtn, not button
-    if (this.elements.editBtn) {
-      VisibilityManager.setElementVisibility(this.elements.editBtn, isConversationPage);
+    // Clear badges
+    if (this.badge && typeof this.badge.removeAll === 'function') {
+      this.badge.removeAll();
     }
+
+    // Clear highlights
+    if (this.ui && typeof this.ui.updateHighlights === 'function') {
+      this.ui.updateHighlights([], false);
+    }
+
+    // Clear state
+    this.editedMessages = [];
+
+    // Clear panel and collapse button visibility
+    this.panel.updateContent([]);
     if (this.elements.collapseBtn) {
-      VisibilityManager.setElementVisibility(this.elements.collapseBtn, isConversationPage);
-    }
-
-    if (!isConversationPage) {
-      this.log('Page changed to non-conversation, hiding edit history UI');
-      // Clear UI elements with defensive checks
-      if (this.badge && typeof this.badge.removeAll === 'function') {
-        this.badge.removeAll();
-      }
-      if (this.ui && typeof this.ui.updateHighlights === 'function') {
-        this.ui.updateHighlights([], false);
-      }
-      this.editedMessages = [];
-      if (this.elements.counter) {
-        this.elements.counter.textContent = '0';
-      }
-      this.panel.updateContent([]);
-    } else {
-      this.log('Page changed to conversation, showing edit history UI');
-      // Re-scan on conversation page
-      this.scanner.scan();
+      this.elements.collapseBtn.style.display = 'none';
     }
   }
 
   /**
-   * Create fixed position buttons (same pattern as NavigationModule)
+   * Update UI when on conversation page (called by mixin)
    */
-  createFixedButtons() {
-    const theme = this.getTheme();
-
-    // Edit History button - use neutral background for native theme
-    const buttonBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
-
-    const editBtn = this.dom.createElement('button', {
-      id: 'claude-edit-fixed-btn',
-      innerHTML: '✏️',
-      style: {
-        position: 'fixed',
-        right: '30px',
-        top: '50%',
-        transform: 'translateY(-100px)', // Above center
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        background: buttonBg,
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-        color: 'white',
-        fontSize: '20px',
-        zIndex: '9998',
-        opacity: this.getSetting('opacity') || 0.7,
-      }
-    });
-
-    // Counter badge - use accent color (turuncu) for native theme
-    const counterBg = theme.useNativeClasses
-      ? (theme.accentColor || 'var(--claude-productivity-accent)')
-      : '#ff4757';
-
-    const counter = this.dom.createElement('div', {
-      id: 'claude-edit-counter',
-      textContent: '0',
-      style: {
-        position: 'absolute',
-        top: '-8px',
-        right: '-8px',
-        background: counterBg,
-        color: 'white',
-        borderRadius: '12px',
-        padding: '2px 6px',
-        fontSize: '10px',
-        fontWeight: 'bold',
-        minWidth: '20px',
-        textAlign: 'center',
-      }
-    });
-
-    editBtn.appendChild(counter);
-
-    // Click handler
-    editBtn.addEventListener('click', () => {
-      this.panel.toggle();
-    });
-
-    // Hover effects
-    editBtn.addEventListener('mouseenter', () => {
-      editBtn.style.transform = 'translateY(-100px) scale(1.1)';
-      editBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
-      editBtn.style.opacity = '1';
-    });
-
-    editBtn.addEventListener('mouseleave', () => {
-      editBtn.style.transform = 'translateY(-100px) scale(1)';
-      editBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      editBtn.style.opacity = this.getSetting('opacity') || 0.7;
-    });
-
-    document.body.appendChild(editBtn);
-    this.elements.editBtn = editBtn;
-    this.elements.counter = counter;
-
-    // Set initial visibility based on current page
-    const isConversationPage = this.dom.isOnConversationPage();
-    if (!isConversationPage) {
-      VisibilityManager.setElementVisibility(editBtn, false);
-    }
-
-    // Collapse All button (only if CompactView is enabled)
-    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
-    if (compactViewEnabled) {
-      this.createCollapseButton(theme);
-    }
+  updateUI() {
+    this.log('Updating edit history UI');
+    // Re-scan on conversation page
+    this.scanner.scan();
   }
+
 
   /**
    * Create Collapse/Expand All button in navigation container
@@ -300,10 +213,8 @@ class EditHistoryModule extends BaseModule {
       containerId: editInfo.containerId,
     }));
 
-    // Update counter
-    if (this.elements.counter) {
-      this.elements.counter.textContent = this.editedMessages.length.toString();
-    }
+    // Update counter using mixin method
+    this.updateButtonCounter(this.editedMessages.length);
 
     // Show/hide collapse button based on edit count
     if (this.elements.collapseBtn) {
@@ -410,11 +321,8 @@ class EditHistoryModule extends BaseModule {
   destroy() {
     this.log('🛑 Edit History durduruluyor...');
 
-    // Unsubscribe from visibility changes
-    if (this.visibilityUnsubscribe) {
-      this.visibilityUnsubscribe();
-      this.visibilityUnsubscribe = null;
-    }
+    // Destroy fixed button (includes visibility listener cleanup)
+    this.destroyFixedButton();
 
     // Remove collapse button
     if (this.elements.collapseBtn) {
