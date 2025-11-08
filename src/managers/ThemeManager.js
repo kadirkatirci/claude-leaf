@@ -246,7 +246,8 @@ class ThemeManager {
         background: var(--claude-productivity-hover);
       }
 
-      /* Panel Styles */
+      /* Panel Styles - Removed to prevent conflicts with native classes */
+      /* Legacy panel styles kept commented for reference
       .claude-productivity-panel {
         background: white;
         border-radius: 12px;
@@ -258,8 +259,10 @@ class ThemeManager {
         color: white;
         border-radius: 12px 12px 0 0;
       }
+      */
 
-      /* Dark Mode Support */
+      /* Dark Mode Support - Disabled to use native classes */
+      /*
       @media (prefers-color-scheme: dark) {
         .claude-productivity-panel {
           background: #1a1a1a;
@@ -271,6 +274,7 @@ class ThemeManager {
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
       }
+      */
 
       /* Utility Classes */
       .claude-productivity-hidden {

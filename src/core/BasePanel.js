@@ -42,7 +42,7 @@ export default class BasePanel {
     // Use Claude native classes for automatic dark/light mode adaptation
     if (theme?.useNativeClasses) {
       // Claude's native panel classes - automatically adapts to dark/light mode
-      this.panel.className = 'claude-productivity-panel fixed flex flex-col rounded-xl border border-border-300 bg-bg-000 shadow-xl';
+      this.panel.className = 'claude-productivity-panel fixed flex flex-col rounded-xl bg-bg-000 shadow-xl';
 
       // Only apply positioning and size styles
       Object.assign(this.panel.style, {

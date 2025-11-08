@@ -24,7 +24,7 @@ class EditPanel {
 
     // Native classes için panel styling
     if (theme.useNativeClasses) {
-      this.panel.className = 'fixed flex flex-col rounded-xl border border-border-300 bg-bg-000 shadow-xl';
+      this.panel.className = 'fixed flex flex-col rounded-xl bg-bg-000 shadow-xl';
       Object.assign(this.panel.style, {
         top: '60px',
         right: '20px',
