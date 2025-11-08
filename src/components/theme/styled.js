@@ -147,6 +147,13 @@ export const generateComponentCSS = () => {
     .cp-btn-icon-content {
       /* Let Claude's native text-text-200 class handle the color */
       font-weight: 600; /* Make it bolder for better visibility */
+      transition: color 0.2s ease; /* Smooth color transition */
+    }
+
+    /* Darker/stronger color on hover for better feedback */
+    .cp-btn:hover .cp-btn-icon-content.text-text-200 {
+      /* Use darker color on hover - text-000 is the darkest */
+      color: var(--text-000) !important;
     }
 
     /* Fallback for non-native themes */
@@ -154,9 +161,17 @@ export const generateComponentCSS = () => {
       color: rgba(0, 0, 0, 0.7); /* Dark gray for light mode */
     }
 
+    .cp-btn:hover .cp-btn-icon-content:not(.text-text-200) {
+      color: rgba(0, 0, 0, 0.9); /* Darker on hover */
+    }
+
     @media (prefers-color-scheme: dark) {
       .cp-btn-icon-content:not(.text-text-200) {
         color: rgba(255, 255, 255, 0.9); /* Light gray for dark mode */
+      }
+
+      .cp-btn:hover .cp-btn-icon-content:not(.text-text-200) {
+        color: rgba(255, 255, 255, 1); /* Full white on hover */
       }
     }
 
