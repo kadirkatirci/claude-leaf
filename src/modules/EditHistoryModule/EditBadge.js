@@ -1,12 +1,17 @@
 /**
  * EditBadge - Edit badge yönetimi
  */
-import DOMUtils from '../../utils/DOMUtils.js';
+import MessageBadge from '../../components/primitives/MessageBadge.js';
 
 class EditBadge {
   constructor(getTheme, onBadgeClick) {
     this.getTheme = getTheme;
     this.onBadgeClick = onBadgeClick;
+
+    // Use MessageBadge base class
+    this.badge = new MessageBadge(getTheme, (badge, element, data) => {
+      this.onBadgeClick(element, data);
+    });
   }
 
   /**
@@ -18,93 +23,56 @@ class EditBadge {
       return;
     }
 
-    const currentElements = new Set(editedPrompts.map(e => e.element));
+    // Use MessageBadge's updateAll
+    const elementsSet = new Set(editedPrompts.map(e => e.element));
+    const editMap = new Map(editedPrompts.map(e => [e.element, e.versionInfo]));
 
-    // Eski badge'leri temizle
-    document.querySelectorAll('.claude-edit-badge').forEach(badge => {
-      const parent = badge.parentElement;
-      if (parent && !currentElements.has(parent)) {
-        badge.remove();
-      }
-    });
-
-    // Yeni badge'leri ekle
-    editedPrompts.forEach(editInfo => {
-      this.add(editInfo.element, editInfo.versionInfo);
-    });
+    this.badge.updateAll(
+      editedPrompts.map(e => e.element),
+      (element) => this.getBadgeOptions(element, editMap.get(element)),
+      (element) => elementsSet.has(element)
+    );
   }
 
   /**
-   * Tek bir badge ekle veya güncelle
+   * Get badge options for an element
    */
-  add(messageElement, versionInfo = '') {
-    // Check if badge already exists
-    const existingBadge = messageElement.querySelector('.claude-edit-badge');
-    if (existingBadge) {
-      // Only update if text changed
-      const newText = `✏️ ${versionInfo}`;
-      if (existingBadge.innerHTML !== newText) {
-        existingBadge.innerHTML = newText;
-      }
-      return;
-    }
-
+  getBadgeOptions(element, versionInfo) {
     const theme = this.getTheme();
 
-    const badge = DOMUtils.createElement('div', {
+    return {
       className: 'claude-edit-badge',
-      innerHTML: `✏️ ${versionInfo}`,
+      content: `✏️ ${versionInfo}`,
+      title: 'Click to see edit history',
+      position: { top: '-35px', right: '8px' },
       style: {
-        position: 'absolute',
-        top: '-35px',
-        right: '8px',
         background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
         color: 'white',
         padding: '4px 10px',
         borderRadius: '12px',
         fontSize: '11px',
         fontWeight: '600',
-        cursor: 'pointer',
-        zIndex: '100',
-        display: 'flex',
-        alignItems: 'center',
         gap: '4px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-      }
-    });
+      },
+      data: versionInfo,
+      setParentPosition: true
+    };
+  }
 
-    // Hover effects
-    badge.addEventListener('mouseenter', () => {
-      badge.style.transform = 'scale(1.05)';
-      badge.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
-    });
-
-    badge.addEventListener('mouseleave', () => {
-      badge.style.transform = 'scale(1)';
-      badge.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-    });
-
-    // Click handler
-    badge.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.onBadgeClick(messageElement, versionInfo);
-    });
-
-    // Parent position ayarla
-    const position = window.getComputedStyle(messageElement).position;
-    if (position === 'static') {
-      messageElement.style.position = 'relative';
-    }
-
-    messageElement.appendChild(badge);
+  /**
+   * Tek bir badge ekle veya güncelle
+   */
+  add(messageElement, versionInfo = '') {
+    const options = this.getBadgeOptions(messageElement, versionInfo);
+    this.badge.create(messageElement, options);
   }
 
   /**
    * Tüm badge'leri kaldır
    */
   removeAll() {
-    document.querySelectorAll('.claude-edit-badge').forEach(b => b.remove());
+    this.badge.removeAll('.claude-edit-badge');
   }
 }
 
