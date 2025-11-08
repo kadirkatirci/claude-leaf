@@ -52,7 +52,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Tooltip */
+/* Tooltip - Removed because using title attribute instead */
+/*
 .claude-nav-btn::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -71,6 +72,7 @@
 .claude-nav-btn:hover::after {
   opacity: 1;
 }
+*/
 
 /* Message counter badge */
 .claude-nav-counter {
