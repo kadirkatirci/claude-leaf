@@ -131,15 +131,22 @@ class NavigationModule extends BaseModule {
 
     // Counter badge using Badge component
     if (showCounter) {
+      const theme = this.getTheme();
+      // Counter badge - use accent color (turuncu) for native theme (same as EmojiMarkerModule)
+      const counterBg = theme.useNativeClasses
+        ? (theme.accentColor || 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))')
+        : '#CC785C';
+
       const counter = Badge.create({
         id: 'claude-nav-counter',
         content: '0/0',
-        variant: 'error',
+        variant: 'primary',
         size: 'sm',
         position: { top: -8, right: -8 },
         style: {
           fontSize: '10px',
-          minWidth: '20px'
+          minWidth: '20px',
+          background: counterBg  // Set background based on theme
         }
       });
       prevBtn.appendChild(counter);
