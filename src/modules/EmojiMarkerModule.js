@@ -5,6 +5,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { hashString } from '../utils/HashUtils.js';
 import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
@@ -56,8 +57,9 @@ class EmojiMarkerModule extends BaseModule {
       this.markers = await this.storage.load();
       this.log(`${this.markers.length} marker yüklendi`);
 
-      // Enhance with FixedButtonMixin
+      // Enhance with mixins
       FixedButtonMixin.enhance(this);
+      MessageObserverMixin.enhance(this);
 
       // Create fixed button
       this.createFixedButton({
@@ -83,8 +85,14 @@ class EmojiMarkerModule extends BaseModule {
         this.updateUI();
       });
 
-      // Observe DOM changes
-      this.observeMessages();
+      // Setup message observer
+      this.setupMessageObserver(() => {
+        this.updateUI();
+      }, {
+        throttleDelay: 500,
+        trackMessageCount: true,
+        checkConversationPage: true
+      });
 
       this.log('✅ Emoji Markers aktif');
     } catch (error) {
@@ -114,28 +122,6 @@ class EmojiMarkerModule extends BaseModule {
   }
 
 
-  /**
-   * Observe DOM changes
-   * Pattern: BookmarkModule (only update when message count changes)
-   */
-  observeMessages() {
-    let lastMessageCount = 0;
-
-    this.observer = this.dom.observeDOM(() => {
-      clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => {
-        // Only update UI if message count changed
-        const messages = this.dom.findMessages();
-        const currentCount = messages.length;
-
-        if (currentCount !== lastMessageCount) {
-          this.log(`Mesaj sayısı güncellendi: ${lastMessageCount} → ${currentCount}`);
-          lastMessageCount = currentCount;
-          this.updateUI();
-        }
-      }, 500);
-    });
-  }
 
   /**
    * Update all UI components
@@ -361,10 +347,8 @@ class EmojiMarkerModule extends BaseModule {
     this.panel.remove();
     this.emojiPicker.removePicker();
 
-    // Disconnect observer
-    if (this.observer) {
-      this.observer.disconnect();
-    }
+    // Destroy message observer
+    this.destroyMessageObserver();
 
     super.destroy();
   }

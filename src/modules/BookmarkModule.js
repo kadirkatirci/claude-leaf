@@ -5,6 +5,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { hashString } from '../utils/HashUtils.js';
 import { BookmarkStorage } from './BookmarkModule/BookmarkStorage.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
@@ -35,8 +36,9 @@ class BookmarkModule extends BaseModule {
 
     this.log('Bookmarks başlatılıyor...');
 
-    // Enhance with FixedButtonMixin
+    // Enhance with mixins
     FixedButtonMixin.enhance(this);
+    MessageObserverMixin.enhance(this);
 
     // Load storage settings
     const storageType = this.getSetting('storageType') || 'local';
@@ -57,8 +59,14 @@ class BookmarkModule extends BaseModule {
     // Add bookmark buttons to messages
     this.addBookmarkButtons();
 
-    // Observe DOM changes
-    this.observeMessages();
+    // Setup message observer
+    this.setupMessageObserver(() => {
+      this.addBookmarkButtons();
+    }, {
+      throttleDelay: 500,
+      trackMessageCount: true,
+      checkConversationPage: true
+    });
 
     // Setup keyboard shortcuts
     if (this.getSetting('keyboardShortcuts')) {
@@ -623,26 +631,6 @@ class BookmarkModule extends BaseModule {
     }
   }
 
-  /**
-   * Observe DOM changes
-   */
-  observeMessages() {
-    let lastMessageCount = 0;
-
-    this.observer = this.dom.observeDOM(() => {
-      clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => {
-        // Only add buttons if message count changed
-        const messages = this.dom.findMessages();
-        const currentCount = messages.length;
-
-        if (currentCount !== lastMessageCount) {
-          lastMessageCount = currentCount;
-          this.addBookmarkButtons();
-        }
-      }, 500);
-    });
-  }
 
   /**
    * Setup keyboard shortcuts
@@ -735,11 +723,8 @@ class BookmarkModule extends BaseModule {
       this.visibilityUnsubscribe = null;
     }
 
-    // Stop observing
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
+    // Destroy message observer
+    this.destroyMessageObserver();
 
     // Clean up UI
     if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {

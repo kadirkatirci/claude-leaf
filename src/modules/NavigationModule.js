@@ -4,6 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
@@ -31,6 +32,9 @@ class NavigationModule extends BaseModule {
 
     this.log('Navigation başlatılıyor...');
 
+    // Enhance with MessageObserverMixin
+    MessageObserverMixin.enhance(this);
+
     // UI oluştur
     this.createUI();
 
@@ -42,8 +46,21 @@ class NavigationModule extends BaseModule {
     // Mesajları bul
     this.findMessages();
 
-    // DOM değişikliklerini izle
-    this.observeMessages();
+    // Setup message observer
+    this.setupMessageObserver(() => {
+      const oldLength = this.messages.length;
+      this.messages = this.dom.findMessages();
+
+      // Only emit and update if message count changed
+      if (this.messages.length !== oldLength) {
+        this.updateCounter();
+        this.emit(Events.MESSAGES_UPDATED, this.messages);
+      }
+    }, {
+      throttleDelay: 500,
+      trackMessageCount: false, // We handle this manually
+      checkConversationPage: true
+    });
 
     // Klavye kısayolları
     if (this.getSetting('keyboardShortcuts')) {
@@ -87,11 +104,8 @@ class NavigationModule extends BaseModule {
       this.visibilityUnsubscribe = null;
     }
 
-    // Observer'ı durdur
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
+    // Destroy message observer
+    this.destroyMessageObserver();
 
     super.destroy();
   }
@@ -197,25 +211,6 @@ class NavigationModule extends BaseModule {
     }
   }
 
-  observeMessages() {
-    this.observer = this.dom.observeDOM(() => {
-      // Don't process if not on conversation page
-      if (!this.lastConversationState) return;
-
-      clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => {
-        const oldLength = this.messages.length;
-        this.messages = this.dom.findMessages();
-
-        // SADECE mesaj sayısı değiştiğinde emit et ve UI güncelle
-        if (this.messages.length !== oldLength) {
-          this.log(`Mesaj sayısı güncellendi: ${oldLength} → ${this.messages.length}`);
-          this.updateCounter();
-          this.emit(Events.MESSAGES_UPDATED, this.messages);
-        }
-      }, 500);
-    });
-  }
 
   navigatePrevious() {
     if (this.messages.length === 0) return;

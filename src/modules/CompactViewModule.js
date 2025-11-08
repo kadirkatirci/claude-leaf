@@ -4,6 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
 
 // Alt bileşenler
@@ -35,6 +36,9 @@ class CompactViewModule extends BaseModule {
 
     this.log('Compact View başlatılıyor...');
 
+    // Enhance with MessageObserverMixin
+    MessageObserverMixin.enhance(this);
+
     // Mevcut mesajları işle
     this.processMessages();
 
@@ -49,8 +53,14 @@ class CompactViewModule extends BaseModule {
       }, 500);
     }
 
-    // Yeni mesajları izle
-    this.observeMessages();
+    // Setup message observer
+    this.setupMessageObserver(() => {
+      this.processMessages();
+    }, {
+      throttleDelay: 500,
+      trackMessageCount: false, // Process on any change
+      checkConversationPage: false
+    });
 
     // Klavye kısayolu
     if (this.getSetting('keyboardShortcuts')) {
@@ -127,14 +137,6 @@ class CompactViewModule extends BaseModule {
     this.expandButton.insertNextToEditButton(messageElement, button);
   }
 
-  /**
-   * Yeni mesajları izle
-   */
-  observeMessages() {
-    this.observer = DOMUtils.observeDOM(() => {
-      this.processMessages();
-    });
-  }
 
   /**
    * Mesaj state değiştiğinde
@@ -335,9 +337,8 @@ class CompactViewModule extends BaseModule {
   destroy() {
     this.log('🛑 Compact View durduruluyor...');
 
-    if (this.observer) {
-      this.observer.disconnect();
-    }
+    // Destroy message observer
+    this.destroyMessageObserver();
 
     this.collapse.clear();
 

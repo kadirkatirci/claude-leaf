@@ -4,6 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { Events } from '../utils/EventBus.js';
 import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';
@@ -29,6 +30,9 @@ class ContentFoldingModule extends BaseModule {
 
       this.log('Content Folding başlatılıyor...');
 
+      // Enhance with MessageObserverMixin
+      MessageObserverMixin.enhance(this);
+
       // Initialize storage
       this.storage = new FoldingStorage(this);
 
@@ -46,8 +50,14 @@ class ContentFoldingModule extends BaseModule {
       // Initial scan
       setTimeout(() => this.scanContent(), 1000);
 
-      // Observe DOM for new content
-      this.observeContent();
+      // Setup message observer
+      this.setupMessageObserver(() => {
+        this.scanContent();
+      }, {
+        throttleDelay: 500,
+        trackMessageCount: true,
+        checkConversationPage: false
+      });
 
       this.log('✅ Content Folding aktif');
     } catch (error) {
@@ -116,21 +126,6 @@ class ContentFoldingModule extends BaseModule {
     }
   }
 
-  /**
-   * Observe DOM for new content
-   */
-  observeContent() {
-    this.observer = this.dom.observeDOM(() => {
-      clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => {
-        const messages = this.dom.findMessages();
-
-        if (messages.length !== this.lastMessageCount) {
-          this.scanContent();
-        }
-      }, 500);
-    });
-  }
 
   /**
    * Settings changed
@@ -171,10 +166,8 @@ class ContentFoldingModule extends BaseModule {
   destroy() {
     this.log('🛑 Content Folding durduruluyor...');
 
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
+    // Destroy message observer
+    this.destroyMessageObserver();
 
     this.cleanup();
 
