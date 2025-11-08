@@ -4,6 +4,7 @@
  */
 
 import VisibilityManager from '../utils/VisibilityManager.js';
+import CounterBadge from '../components/primitives/CounterBadge.js';
 
 export default class FixedButtonMixin {
   /**
@@ -81,7 +82,8 @@ export default class FixedButtonMixin {
         position = { right: '30px', transform: 'translateY(0)' },
         onClick,
         showCounter = false,
-        counterColor = '#ef4444'
+        counterColor = '#ef4444',
+        opacity = null // Allow custom opacity, defaults to module setting or 0.9
       } = options;
 
       // Remove existing button if present
@@ -90,6 +92,11 @@ export default class FixedButtonMixin {
       }
 
       const theme = this.getTheme ? this.getTheme() : { primary: '#CC785C' };
+
+      // Determine opacity: use provided, then setting, then default
+      const buttonOpacity = opacity !== null
+        ? opacity
+        : (this.getSetting ? (this.getSetting('opacity') || 0.9) : 0.9);
 
       // Create button element
       const button = document.createElement('button');
@@ -111,6 +118,7 @@ export default class FixedButtonMixin {
         button.style.cursor = 'pointer';
         button.style.zIndex = '9999';
         button.style.color = 'white';
+        button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
       } else {
         // Custom theme - use inline styles (solid color, no gradient)
         Object.assign(button.style, {
@@ -132,7 +140,8 @@ export default class FixedButtonMixin {
           color: 'white',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
           transition: 'all 0.3s ease',
-          opacity: '0.9'
+          opacity: buttonOpacity.toString(),
+          overflow: 'visible' // Allow counter badge to overflow
         });
       }
 
@@ -145,7 +154,7 @@ export default class FixedButtonMixin {
         });
 
         button.addEventListener('mouseleave', () => {
-          button.style.opacity = '0.9';
+          button.style.opacity = buttonOpacity.toString();
           button.style.transform = position.transform;
         });
       }
@@ -156,30 +165,20 @@ export default class FixedButtonMixin {
         button.addEventListener('click', onClick.bind(this));
       }
 
-      // Add counter badge if needed
+      // Add counter badge if needed using CounterBadge component
       if (showCounter) {
-        // Use accent color (turuncu) for native theme counters
-        const badgeColor = theme.useNativeClasses
-          ? (theme.accentColor || 'var(--claude-productivity-accent)')
-          : counterColor;
+        // Generate unique counter ID based on button ID
+        const counterId = `${id}-counter`;
 
-        const counter = document.createElement('div');
-        counter.style.cssText = `
-          position: absolute;
-          top: -5px;
-          right: -5px;
-          background: ${badgeColor};
-          color: white;
-          fontSize: 11px;
-          fontWeight: bold;
-          padding: 2px 6px;
-          borderRadius: 10px;
-          minWidth: 18px;
-          textAlign: center;
-          display: none;
-        `;
-        button.appendChild(counter);
-        this.buttonCounter = counter;
+        this.buttonCounter = CounterBadge.attachTo(button, {
+          id: counterId,
+          content: '0',
+          theme: theme,
+          position: { top: -8, right: -8 },
+          style: {
+            display: 'none' // Start hidden, will show when count > 0
+          }
+        });
       }
 
       // Set initial visibility based on page type
@@ -195,7 +194,7 @@ export default class FixedButtonMixin {
         // Start visible on conversation pages
         button.style.display = 'flex';
         button.style.visibility = 'visible';
-        button.style.opacity = '0.9';
+        button.style.opacity = buttonOpacity.toString();
         button.style.pointerEvents = 'auto';
         module.log(`Button created visible (on conversation page)`);
       }
@@ -216,26 +215,14 @@ export default class FixedButtonMixin {
   }
 
   /**
-   * Create counter update function
+   * Create counter update function using CounterBadge component
    */
   static createCounterUpdater(module) {
     return function(count) {
       if (!this.buttonCounter) return;
 
-      const shouldShow = count > 0;
-      const currentText = this.buttonCounter.textContent;
-      const newText = count.toString();
-
-      // Only update if changed
-      if (currentText !== newText) {
-        this.buttonCounter.textContent = newText;
-      }
-
-      // Only update visibility if changed
-      const isVisible = this.buttonCounter.style.display !== 'none';
-      if (shouldShow !== isVisible) {
-        this.buttonCounter.style.display = shouldShow ? 'block' : 'none';
-      }
+      // Use CounterBadge.update which handles visibility automatically
+      CounterBadge.update(this.buttonCounter, count);
     }.bind(module);
   }
 

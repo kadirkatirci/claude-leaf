@@ -4,7 +4,7 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
-import VisibilityManager from '../utils/VisibilityManager.js';
+import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import { hashString } from '../utils/HashUtils.js';
 import { BookmarkStorage } from './BookmarkModule/BookmarkStorage.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
@@ -34,6 +34,9 @@ class BookmarkModule extends BaseModule {
     if (!this.enabled) return;
 
     this.log('Bookmarks başlatılıyor...');
+
+    // Enhance with FixedButtonMixin
+    FixedButtonMixin.enhance(this);
 
     // Load storage settings
     const storageType = this.getSetting('storageType') || 'local';
@@ -82,13 +85,21 @@ class BookmarkModule extends BaseModule {
       }
     });
 
-    // Create fixed position button (like NavigationModule)
-    this.createFixedButton();
-
-    // Subscribe to visibility changes
-    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
-      this.handleVisibilityChange(isConversationPage);
+    // Create fixed position button using FixedButtonMixin
+    this.createFixedButton({
+      id: 'claude-bookmarks-fixed-btn',
+      icon: '🔖',
+      tooltip: 'Bookmarks',
+      position: { right: '30px', transform: 'translateY(-40px)' },
+      onClick: () => this.togglePanel(),
+      showCounter: true
     });
+
+    // Setup visibility listener from mixin
+    this.setupVisibilityListener();
+
+    // Mixin handles visibility changes, but we keep this for backward compatibility
+    // The mixin will call clearUIElements() and updateUI() automatically
 
     // Initial UI update
     this.updateUI();
@@ -100,123 +111,17 @@ class BookmarkModule extends BaseModule {
   }
 
   /**
-   * Handle visibility change from VisibilityManager
+   * Clear UI elements (called by FixedButtonMixin on page change)
    */
-  handleVisibilityChange(isConversationPage) {
-    // Only update if state actually changed
-    if (this.lastConversationState === isConversationPage) return;
-
-    this.lastConversationState = isConversationPage;
-
-    // Fixed button is stored as bookmarkBtn, not button
-    if (this.elements.bookmarkBtn) {
-      VisibilityManager.setElementVisibility(this.elements.bookmarkBtn, isConversationPage);
+  clearUIElements() {
+    this.log('Clearing bookmark UI elements');
+    // Clear bookmark buttons from messages
+    if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+      this.buttonManager.removeAll();
     }
-
-    if (!isConversationPage) {
-      this.log('Page changed to non-conversation, hiding bookmark UI');
-      // Clear UI elements using removeAll() method
-      if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
-        this.buttonManager.removeAll();
-      }
-      if (this.elements.counter) {
-        this.elements.counter.textContent = '0';
-      }
-      this.panel.updateContent([]);
-      this.sidebar.update([]);
-    } else {
-      this.log('Page changed to conversation, showing bookmark UI');
-      // Re-update UI on conversation page
-      this.updateUI();
-      this.addBookmarkButtons();
-    }
-  }
-
-  /**
-   * Create fixed position button (same pattern as NavigationModule)
-   */
-  createFixedButton() {
-    const theme = this.getTheme();
-
-    // Bookmark button
-    const bookmarkBtn = this.dom.createElement('button', {
-      id: 'claude-bookmarks-fixed-btn',
-      innerHTML: '🔖',
-      style: {
-        position: 'fixed',
-        right: '30px',
-        top: '50%',
-        transform: 'translateY(-40px)', // Slightly above center
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-        color: 'white',
-        fontSize: '20px',
-        zIndex: '9998',
-        opacity: this.getSetting('opacity') || 0.7,
-      }
-    });
-
-    // Counter badge - use accent color (turuncu) for native theme
-    const counterBg = theme.useNativeClasses
-      ? (theme.accentColor || 'var(--claude-productivity-accent)')
-      : '#ff4757';
-
-    const counter = this.dom.createElement('div', {
-      id: 'claude-bookmarks-counter',
-      textContent: '0',
-      style: {
-        position: 'absolute',
-        top: '-8px',
-        right: '-8px',
-        background: counterBg,
-        color: 'white',
-        borderRadius: '12px',
-        padding: '2px 6px',
-        fontSize: '10px',
-        fontWeight: 'bold',
-        minWidth: '20px',
-        textAlign: 'center',
-      }
-    });
-
-    bookmarkBtn.appendChild(counter);
-
-    // Click handler
-    bookmarkBtn.addEventListener('click', () => {
-      this.togglePanel();
-    });
-
-    // Hover effects
-    bookmarkBtn.addEventListener('mouseenter', () => {
-      bookmarkBtn.style.transform = 'translateY(-40px) scale(1.1)';
-      bookmarkBtn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
-      bookmarkBtn.style.opacity = '1';
-    });
-
-    bookmarkBtn.addEventListener('mouseleave', () => {
-      bookmarkBtn.style.transform = 'translateY(-40px) scale(1)';
-      bookmarkBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      bookmarkBtn.style.opacity = this.getSetting('opacity') || 0.7;
-    });
-
-    document.body.appendChild(bookmarkBtn);
-    this.elements.bookmarkBtn = bookmarkBtn;
-    this.elements.counter = counter;
-
-    // Set initial visibility based on current page
-    const isConversationPage = this.dom.isOnConversationPage();
-    if (!isConversationPage) {
-      VisibilityManager.setElementVisibility(bookmarkBtn, false);
-    }
+    // Clear panel and sidebar
+    this.panel.updateContent([]);
+    this.sidebar.update([]);
   }
 
   /**
@@ -572,10 +477,8 @@ class BookmarkModule extends BaseModule {
     // Only show bookmarks for current conversation
     const currentBookmarks = this.getCurrentConversationBookmarks();
 
-    // Update counter
-    if (this.elements.counter) {
-      this.elements.counter.textContent = currentBookmarks.length.toString();
-    }
+    // Update counter using mixin method
+    this.updateButtonCounter(currentBookmarks.length);
 
     this.panel.updateContent(
       currentBookmarks,
