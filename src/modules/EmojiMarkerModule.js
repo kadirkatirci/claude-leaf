@@ -5,6 +5,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
+import CounterBadge from '../components/primitives/CounterBadge.js';
 import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
@@ -108,9 +109,7 @@ class EmojiMarkerModule extends BaseModule {
       if (this.badge && typeof this.badge.removeAll === 'function') {
         this.badge.removeAll();
       }
-      if (this.elements.counter) {
-        this.elements.counter.textContent = '0';
-      }
+      CounterBadge.updateById('claude-marker-counter', '0');
       this.panel.updateContent([]);
     } else {
       this.log('Page changed to conversation, showing marker UI');
@@ -152,30 +151,17 @@ class EmojiMarkerModule extends BaseModule {
       }
     });
 
-    // Counter badge - use accent color (turuncu) for native theme
-    const counterBg = theme.useNativeClasses
-      ? (theme.accentColor || 'var(--claude-productivity-accent)')
-      : '#ff4757';
-
-    const counter = this.dom.createElement('div', {
+    // Counter badge using CounterBadge component
+    CounterBadge.attachTo(button, {
       id: 'claude-marker-counter',
-      textContent: '0',
+      content: '0',
+      theme: theme,
+      position: { top: -8, right: -8 },
       style: {
-        position: 'absolute',
-        top: '-8px',
-        right: '-8px',
-        background: counterBg,
-        color: 'white',
-        borderRadius: '12px',
-        padding: '2px 6px',
         fontSize: '10px',
-        fontWeight: 'bold',
-        minWidth: '20px',
-        textAlign: 'center',
+        minWidth: '20px'
       }
     });
-
-    button.appendChild(counter);
 
     // Click handler
     button.addEventListener('click', () => {
@@ -197,7 +183,6 @@ class EmojiMarkerModule extends BaseModule {
 
     document.body.appendChild(button);
     this.elements.button = button;
-    this.elements.counter = counter;
   }
 
   /**
@@ -250,9 +235,7 @@ class EmojiMarkerModule extends BaseModule {
     const conversationMarkers = this.storage.getByConversation(currentConversationUrl, this.markers);
 
     // Update counter
-    if (this.elements.counter) {
-      this.elements.counter.textContent = conversationMarkers.length.toString();
-    }
+    CounterBadge.updateById('claude-marker-counter', conversationMarkers.length.toString());
 
     // Update badges
     if (this.getSetting('showBadges')) {

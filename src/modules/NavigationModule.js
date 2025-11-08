@@ -6,7 +6,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
-import Badge from '../components/primitives/Badge.js';
+import CounterBadge from '../components/primitives/CounterBadge.js';
 import tokens from '../components/theme/tokens.js';
 
 class NavigationModule extends BaseModule {
@@ -129,27 +129,18 @@ class NavigationModule extends BaseModule {
     const nextBtn = this.createButton('↓', 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
     nextBtn.id = 'claude-nav-next';
 
-    // Counter badge using Badge component
+    // Counter badge using CounterBadge component
     if (showCounter) {
-      const theme = this.getTheme();
-      // Counter badge - use accent color (turuncu) for native theme (same as EmojiMarkerModule)
-      const counterBg = theme.useNativeClasses
-        ? (theme.accentColor || 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))')
-        : '#CC785C';
-
-      const counter = Badge.create({
+      CounterBadge.attachTo(prevBtn, {
         id: 'claude-nav-counter',
         content: '0/0',
-        variant: 'primary',
-        size: 'sm',
+        theme: this.getTheme(),
         position: { top: -8, right: -8 },
         style: {
           fontSize: '10px',
-          minWidth: '20px',
-          background: counterBg  // Set background based on theme
+          minWidth: '20px'
         }
       });
-      prevBtn.appendChild(counter);
     }
 
     container.appendChild(topBtn);
@@ -282,9 +273,6 @@ class NavigationModule extends BaseModule {
   }
 
   updateCounter() {
-    const counter = document.getElementById('claude-nav-counter');
-    if (!counter) return;
-
     let newText;
     if (this.messages.length > 0) {
       const current = this.dom.getCurrentVisibleMessageIndex() + 1;
@@ -295,8 +283,8 @@ class NavigationModule extends BaseModule {
 
     // Only update if text changed
     if (this.lastCounterText !== newText) {
-      // Use Badge.update for consistency
-      Badge.update(counter, newText);
+      // Use CounterBadge.update for consistency
+      CounterBadge.updateById('claude-nav-counter', newText);
       this.lastCounterText = newText;
     }
 
