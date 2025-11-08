@@ -12,18 +12,55 @@ export default class BaseStorage {
   }
 
   /**
-   * Get the Chrome storage API
+   * Get the Chrome storage API with proper fallback
    */
   getStorageAPI() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-      // Fallback to localStorage for testing
-      return {
-        get: (key) => Promise.resolve({ [key]: JSON.parse(localStorage.getItem(key) || '{}') }),
-        set: (data) => Promise.resolve(localStorage.setItem(Object.keys(data)[0], JSON.stringify(Object.values(data)[0]))),
-        remove: (key) => Promise.resolve(localStorage.removeItem(key))
-      };
+      console.warn('[BaseStorage] Chrome storage API unavailable, using localStorage fallback');
+      return this.createLocalStorageFallback();
     }
     return chrome.storage[this.storageType];
+  }
+
+  /**
+   * Create localStorage fallback with proper error handling
+   */
+  createLocalStorageFallback() {
+    return {
+      get: (key) => {
+        try {
+          const data = localStorage.getItem(key);
+          return Promise.resolve({ [key]: data ? JSON.parse(data) : {} });
+        } catch (error) {
+          console.error('[BaseStorage] localStorage.getItem failed:', error);
+          return Promise.reject(new Error(`Failed to read from localStorage: ${error.message}`));
+        }
+      },
+      set: (data) => {
+        try {
+          const key = Object.keys(data)[0];
+          const value = Object.values(data)[0];
+          localStorage.setItem(key, JSON.stringify(value));
+          return Promise.resolve();
+        } catch (error) {
+          console.error('[BaseStorage] localStorage.setItem failed:', error);
+          // Check for quota exceeded error
+          if (error.name === 'QuotaExceededError') {
+            return Promise.reject(new Error('Storage quota exceeded. Please free up space.'));
+          }
+          return Promise.reject(new Error(`Failed to write to localStorage: ${error.message}`));
+        }
+      },
+      remove: (key) => {
+        try {
+          localStorage.removeItem(key);
+          return Promise.resolve();
+        } catch (error) {
+          console.error('[BaseStorage] localStorage.removeItem failed:', error);
+          return Promise.reject(new Error(`Failed to remove from localStorage: ${error.message}`));
+        }
+      }
+    };
   }
 
   /**
@@ -37,13 +74,20 @@ export default class BaseStorage {
   }
 
   /**
-   * Load data from storage
+   * Load data from storage with proper error handling
    */
   async load() {
     try {
       const storage = this.getStorageAPI();
-      const result = await new Promise((resolve) => {
-        storage.get(this.storageKey, resolve);
+      const result = await new Promise((resolve, reject) => {
+        storage.get(this.storageKey, (result) => {
+          // Check for Chrome runtime errors
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          resolve(result);
+        });
       });
 
       const data = result[this.storageKey] || this.defaultData;
@@ -51,25 +95,35 @@ export default class BaseStorage {
       return data;
     } catch (error) {
       console.error(`[BaseStorage] Failed to load ${this.storageKey}:`, error);
+      // Return default data as fallback, but log the error
+      this.notifyError('load', error);
       return this.defaultData;
     }
   }
 
   /**
-   * Save data to storage
+   * Save data to storage with proper error handling
    */
   async save(data) {
     try {
       const storage = this.getStorageAPI();
-      await new Promise((resolve) => {
-        storage.set({ [this.storageKey]: data }, resolve);
+      await new Promise((resolve, reject) => {
+        storage.set({ [this.storageKey]: data }, () => {
+          // Check for Chrome runtime errors
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          resolve();
+        });
       });
 
       this.cache = data;
-      return true;
+      return { success: true };
     } catch (error) {
       console.error(`[BaseStorage] Failed to save ${this.storageKey}:`, error);
-      return false;
+      this.notifyError('save', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -231,5 +285,18 @@ export default class BaseStorage {
   migrateData(data, version) {
     // Default implementation - override for version migration
     return data;
+  }
+
+  /**
+   * Notify error to user/system
+   * Override this method to implement custom error notifications
+   */
+  notifyError(operation, error) {
+    // Default implementation - just log
+    // Subclasses can override to show user notifications
+    console.error(`[BaseStorage] ${operation} operation failed:`, error.message);
+
+    // In the future, could emit event for UI notification:
+    // EventBus.emit('storage:error', { operation, error: error.message, storageKey: this.storageKey });
   }
 }

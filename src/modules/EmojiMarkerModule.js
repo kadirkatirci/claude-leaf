@@ -6,6 +6,7 @@ import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
+import { hashString } from '../utils/HashUtils.js';
 import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
@@ -274,7 +275,7 @@ class EmojiMarkerModule extends BaseModule {
       messageIndex,
       emoji,
       timestamp: Date.now(),
-      contentSignature: this.hashString(messageText.substring(0, 1000)),
+      contentSignature: hashString(messageText.substring(0, 1000)),
       messagePreview,
     };
 
@@ -332,19 +333,6 @@ class EmojiMarkerModule extends BaseModule {
    */
   getFavoriteEmojis() {
     return this.getSetting('favoriteEmojis') || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
-  }
-
-  /**
-   * Simple string hash
-   */
-  hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash.toString(36);
   }
 
   /**

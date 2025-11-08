@@ -5,6 +5,7 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
+import { hashString } from '../utils/HashUtils.js';
 import { BookmarkStorage } from './BookmarkModule/BookmarkStorage.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
@@ -446,7 +447,7 @@ class BookmarkModule extends BaseModule {
   async addBookmark(messageElement, messageIndex) {
     const fullText = this.getCleanMessageText(messageElement);
     const previewText = fullText.substring(0, 200);
-    const contentSignature = this.hashText(fullText.substring(0, 1000));
+    const contentSignature = hashString(fullText.substring(0, 1000));
 
     // Use pathname like emoji markers for better stability
     const conversationPath = window.location.pathname;
@@ -717,19 +718,6 @@ class BookmarkModule extends BaseModule {
     if (!fromUrlNavigation && confirm('Bookmarked message not found on this page. Delete bookmark?')) {
       this.deleteBookmark(bookmark.id);
     }
-  }
-
-  /**
-   * Hash text for identification
-   */
-  hashText(text) {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
   }
 
   /**
