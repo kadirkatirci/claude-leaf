@@ -4,6 +4,7 @@
  */
 
 import themes from '../config/themes.js';
+import { generateComponentCSS } from '../components/theme/styled.js';
 
 class ThemeManager {
   constructor() {
@@ -94,24 +95,83 @@ class ThemeManager {
       /* CSS Custom Properties */
       :root {
         --claude-productivity-primary: ${theme.primary || theme.accentColor || '#CC785C'};
+        --claude-productivity-primary-hover: ${theme.hover || theme.primary || '#CC785C'};
+        --claude-productivity-primary-active: ${theme.active || theme.primary || '#CC785C'};
         --claude-productivity-hover: ${theme.hover || theme.primary || '#CC785C'};
         --claude-productivity-active: ${theme.active || theme.primary || '#CC785C'};
         --claude-productivity-opacity: ${this.customProperties.get('--claude-productivity-opacity') || 0.9};
 
-        /* Neutral background (for panels, badges) */
+        /* Semantic colors */
+        --claude-productivity-success: #10b981;
+        --claude-productivity-warning: #f59e0b;
+        --claude-productivity-error: #ef4444;
+        --claude-productivity-info: #3b82f6;
+
+        /* Neutral colors */
         --claude-productivity-neutral: rgba(0, 0, 0, 0.08);
-        /* Accent color (for counters, action buttons) */
+        --claude-productivity-neutral-50: #fafafa;
+        --claude-productivity-neutral-100: #f5f5f5;
+        --claude-productivity-neutral-200: #e5e5e5;
+        --claude-productivity-neutral-300: #d4d4d4;
+        --claude-productivity-neutral-400: #a3a3a3;
+        --claude-productivity-neutral-500: #737373;
+        --claude-productivity-neutral-600: #525252;
+        --claude-productivity-neutral-700: #404040;
+        --claude-productivity-neutral-800: #262626;
+        --claude-productivity-neutral-900: #171717;
+
+        /* Background colors */
+        --claude-productivity-bg-primary: #ffffff;
+        --claude-productivity-bg-secondary: #f8f9fa;
+        --claude-productivity-bg-tertiary: #e9ecef;
+        --claude-productivity-bg-overlay: rgba(0, 0, 0, 0.5);
+        --claude-productivity-bg-panel: #ffffff;
+        --claude-productivity-bg-light: #fafafa;
+        --claude-productivity-bg-dark: #1a1a1a;
+
+        /* Text colors */
+        --claude-productivity-text-primary: #171717;
+        --claude-productivity-text-secondary: #525252;
+        --claude-productivity-text-tertiary: #737373;
+        --claude-productivity-text-inverse: #ffffff;
+        --claude-productivity-text-link: #3b82f6;
+        --claude-productivity-text-light: #ffffff;
+        --claude-productivity-text-dark: #333333;
+
+        /* Border colors */
+        --claude-productivity-border-light: #e5e5e5;
+        --claude-productivity-border-default: #d4d4d4;
+        --claude-productivity-border-dark: #a3a3a3;
+
+        /* Accent colors (previously hardcoded) */
         --claude-productivity-accent: ${theme.accentColor || 'hsl(var(--accent-main-000))'};
+        --claude-productivity-accent-purple: #667eea;
+        --claude-productivity-accent-red: #ff4757;
+        --claude-productivity-accent-orange: #CC785C;
+        --claude-productivity-accent-blue: #3b82f6;
       }
 
-      /* Dark mode neutral background */
+      /* Dark mode adjustments */
       @media (prefers-color-scheme: dark) {
         :root {
           --claude-productivity-neutral: rgba(255, 255, 255, 0.12);
+          --claude-productivity-bg-primary: #1a1a1a;
+          --claude-productivity-bg-secondary: #262626;
+          --claude-productivity-bg-tertiary: #404040;
+          --claude-productivity-bg-panel: #262626;
+          --claude-productivity-text-primary: #e5e5e5;
+          --claude-productivity-text-secondary: #a3a3a3;
+          --claude-productivity-text-tertiary: #737373;
+          --claude-productivity-border-light: #404040;
+          --claude-productivity-border-default: #525252;
+          --claude-productivity-border-dark: #737373;
         }
       }
 
-      /* Base Styles */
+      /* Import Component CSS Classes */
+      ${generateComponentCSS()}
+
+      /* Legacy Base Styles (for backward compatibility) */
       .claude-productivity-panel {
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       }
@@ -266,6 +326,10 @@ class ThemeManager {
     // Update CSS variables
     const root = document.documentElement;
     root.style.setProperty('--claude-productivity-primary', theme.primary || theme.accentColor || '#CC785C');
+    root.style.setProperty('--claude-productivity-primary-hover', theme.hover || theme.primary || '#CC785C');
+    root.style.setProperty('--claude-productivity-primary-active', theme.active || theme.primary || '#CC785C');
+
+    // Legacy support
     root.style.setProperty('--claude-productivity-hover', theme.hover || theme.primary || '#CC785C');
     root.style.setProperty('--claude-productivity-active', theme.active || theme.primary || '#CC785C');
 

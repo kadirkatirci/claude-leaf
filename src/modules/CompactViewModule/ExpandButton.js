@@ -15,25 +15,31 @@ class ExpandButton {
   create(messageElement, isCollapsed) {
     const theme = this.getTheme();
 
-    // Use neutral background for native theme
-    const buttonBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
-
     // Buton container (edit butonunun yanına eklenecek)
-    const container = DOMUtils.createElement('div', {
-      className: 'claude-expand-button-container',
-      style: {
+    const container = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      container.className = 'claude-expand-button-container inline-flex gap-2';
+    } else {
+      container.className = 'claude-expand-button-container';
+      Object.assign(container.style, {
         display: 'inline-flex',
         gap: '8px',
-        // marginLeft kaldırıldı - parent'ta gap var
-      }
-    });
+      });
+    }
 
-    const button = DOMUtils.createElement('button', {
-      className: 'claude-expand-btn',
-      innerHTML: isCollapsed ? '+ Daha fazla göster' : '− Daralt',
-      style: {
+    const button = DOMUtils.createElement('button');
+    button.innerHTML = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+
+    if (theme.useNativeClasses) {
+      // Claude's native button classes
+      button.className = 'claude-expand-btn px-3 py-1 rounded-md bg-accent-main-100 hover:bg-accent-main-200 text-white text-xs font-semibold cursor-pointer transition-all shadow-sm hover:shadow-md hover:scale-105';
+    } else {
+      button.className = 'claude-expand-btn';
+
+      const buttonBg = theme.primary || theme.accentColor || '#CC785C';
+
+      Object.assign(button.style, {
         padding: '4px 12px',
         borderRadius: '6px',
         background: buttonBg,
@@ -44,19 +50,21 @@ class ExpandButton {
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      }
-    });
+      });
+    }
 
-    // Hover effect
-    button.addEventListener('mouseenter', () => {
-      button.style.transform = 'scale(1.05)';
-      button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
-    });
+    // Hover effect (only for custom theme)
+    if (!theme.useNativeClasses) {
+      button.addEventListener('mouseenter', () => {
+        button.style.transform = 'scale(1.05)';
+        button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+      });
 
-    button.addEventListener('mouseleave', () => {
-      button.style.transform = 'scale(1)';
-      button.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-    });
+      button.addEventListener('mouseleave', () => {
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+      });
+    }
 
     // Click handler
     button.addEventListener('click', (e) => {

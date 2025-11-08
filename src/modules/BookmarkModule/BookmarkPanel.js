@@ -1,181 +1,93 @@
 /**
- * BookmarkPanel - Manages the floating bookmark panel
+ * BookmarkPanel - Floating panel for bookmarks
+ * Now extends BasePanel for consistent UI and reduced code
  */
-export class BookmarkPanel {
+import BasePanel from '../../core/BasePanel.js';
+import Button from '../../components/primitives/Button.js';
+import Badge from '../../components/primitives/Badge.js';
+import tokens from '../../components/theme/tokens.js';
+
+export class BookmarkPanel extends BasePanel {
   constructor(domUtils, getTheme, getSetting) {
+    super({
+      id: 'claude-bookmarks-panel',
+      title: '🔖 Bookmarks',
+      width: '280px',
+      height: '500px',
+      position: { right: '20px', top: '60px' }
+    });
+
     this.dom = domUtils;
     this.getTheme = getTheme;
     this.getSetting = getSetting;
+    this.lastCount = -1;
+    this.lastBookmarkIds = [];
+    this.onNavigateCallback = null;
+    this.onDeleteCallback = null;
+
+    // For backward compatibility
     this.elements = {};
-    this.lastCount = -1; // Track last counter value to avoid unnecessary updates
-    this.lastBookmarkIds = []; // Track bookmark IDs to detect actual changes
   }
 
   /**
-   * Create the panel UI
+   * Override create to pass theme and setup elements reference
    */
   create(onClose) {
-    const theme = this.getTheme();
+    const panel = super.create(this.getTheme());
 
-    // Panel container (matches EditPanel design)
-    const panel = this.dom.createElement('div', {
-      id: 'claude-bookmarks-panel',
-      className: 'claude-bookmarks-panel',
-      style: {
-        position: 'fixed',
-        top: '60px',
-        right: '20px',
-        width: '280px',
-        maxHeight: '500px',
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        border: '1px solid rgba(0, 0, 0, 0.1)',
-        zIndex: '9999',
-        display: 'none',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }
-    });
+    // Create toggle button separately (maintains existing functionality)
+    const toggleBtn = this.createToggleButton(this.getTheme(), onClose);
 
-    // Header - neutral background for native theme
-    const headerBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
+    // Setup elements reference for backward compatibility
+    this.elements = {
+      panel: this.panel,
+      content: this.content,
+      toggleBtn
+    };
 
-    const header = this.dom.createElement('div', {
-      className: 'claude-bookmarks-header',
-      style: {
-        padding: '12px 16px',
-        background: headerBg,
-        color: 'white',
-        fontWeight: '600',
-        fontSize: '14px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }
-    });
-
-    const title = this.dom.createElement('span', {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-      }
-    });
-    title.innerHTML = `${this.getBookmarkSVG(false, '#ffffff')} <span>Bookmarks</span>`;
-
-    const closeBtn = this.dom.createElement('button', {
-      innerHTML: '✕',
-      style: {
-        background: 'none',
-        border: 'none',
-        color: 'white',
-        cursor: 'pointer',
-        fontSize: '16px',
-        padding: '0',
-        width: '24px',
-        height: '24px',
-        borderRadius: '50%',
-        transition: 'background 0.2s',
-      }
-    });
-
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-    });
-
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.background = 'none';
-    });
-
-    closeBtn.addEventListener('click', onClose);
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // Content area
-    const content = this.dom.createElement('div', {
-      id: 'claude-bookmarks-content',
-      className: 'claude-bookmarks-content',
-      style: {
-        padding: '8px',
-        overflowY: 'auto',
-        flex: '1',
-      }
-    });
-
-    panel.appendChild(header);
-    panel.appendChild(content);
-    document.body.appendChild(panel);
-
-    // Toggle button (inline, positioned before collapse button)
-    const toggleBtn = this.createToggleButton(theme, onClose);
-
-    this.elements = { panel, content, toggleBtn };
     return this.elements;
   }
 
   /**
-   * Create toggle button (inline, positioned before collapse button)
-   * Matches the style of collapse button exactly
+   * Create toggle button (kept separate as it's positioned differently)
    */
   createToggleButton(theme, onToggle) {
-    const buttonBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
-
-    const toggleBtn = this.dom.createElement('button', {
+    const toggleBtn = Button.create({
       id: 'claude-bookmarks-toggle',
-      type: 'button',
+      variant: 'primary',
+      size: 'sm',
+      icon: this.getBookmarkSVG(false),
+      text: '',
       style: {
-        display: 'none', // Initially hidden, will be shown when bookmarks exist
+        display: 'none', // Initially hidden
         marginLeft: '8px',
-        padding: '4px 12px',
-        borderRadius: '8px',
-        background: buttonBg,
-        color: 'white',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '12px',
-        fontWeight: '600',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+        position: 'relative'
+      },
+      onClick: onToggle,
+      useNativeClasses: theme.useNativeClasses
+    });
+
+    // Add counter badge as a child element
+    const counter = Badge.create({
+      id: 'claude-bookmarks-counter',
+      content: '0',
+      variant: 'error',
+      size: 'sm',
+      position: { top: -6, right: -6 },
+      style: {
+        fontSize: tokens.typography.fontSize.xs,
+        fontWeight: tokens.typography.fontWeight.bold
       }
     });
 
-    // Get SVG icon based on theme (stroked version for button)
-    const svgIcon = this.getBookmarkSVG(false); // false = stroked version
-
-    // Button content: SVG icon + counter badge
-    toggleBtn.innerHTML = `${svgIcon} <span id="claude-bookmarks-counter" style="margin-left: 4px; font-size: 11px; font-weight: bold;">0</span>`;
-
-    // Click handler
-    toggleBtn.addEventListener('click', onToggle);
-
-    // Hover effects (same as collapse button)
-    toggleBtn.addEventListener('mouseenter', () => {
-      toggleBtn.style.transform = 'scale(1.05)';
-      toggleBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
-    });
-    toggleBtn.addEventListener('mouseleave', () => {
-      toggleBtn.style.transform = 'scale(1)';
-      toggleBtn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-    });
-
-    // Note: Toggle button is no longer inserted into header.
-    // It's kept as a floating panel-only button for now.
-    // Could be converted to fixed position sidebar button in the future.
+    toggleBtn.style.position = 'relative';
+    toggleBtn.appendChild(counter);
 
     return toggleBtn;
   }
 
   /**
    * Get bookmark SVG icon
-   * @param {boolean} filled - Whether to use filled or stroked version
-   * @param {string} color - Color for the icon (default: white for button)
-   * @returns {string} SVG markup
    */
   getBookmarkSVG(filled = false, color = '#ffffff') {
     if (filled) {
@@ -190,23 +102,13 @@ export class BookmarkPanel {
   }
 
   /**
-   * Toggle panel visibility
-   */
-  toggle() {
-    if (!this.elements.panel) return;
-
-    const isVisible = this.elements.panel.style.display === 'flex';
-    this.elements.panel.style.display = isVisible ? 'none' : 'flex';
-    return !isVisible;
-  }
-
-  /**
-   * Update panel content
-   * Only updates DOM if bookmarks actually changed
+   * Update panel content with bookmarks
+   * Uses BasePanel's smart diffing
    */
   updateContent(bookmarks, onNavigate, onDelete) {
-    const content = this.elements.content;
-    if (!content) return;
+    // Store callbacks for item creation
+    this.onNavigateCallback = onNavigate;
+    this.onDeleteCallback = onDelete;
 
     // Check if bookmarks actually changed
     const currentIds = bookmarks.map(b => b.id).sort().join(',');
@@ -222,34 +124,123 @@ export class BookmarkPanel {
 
     this.lastBookmarkIds = bookmarks.map(b => b.id).sort();
 
-    content.innerHTML = '';
-
-    if (bookmarks.length === 0) {
-      const empty = this.dom.createElement('div', {
-        textContent: 'Henüz bookmark yok',
-        style: {
-          padding: '20px',
-          textAlign: 'center',
-          color: '#999',
-          fontSize: '13px',
-        }
-      });
-      content.appendChild(empty);
-      return;
-    }
-
     // Sort by date (newest first)
     const sortedBookmarks = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
 
-    sortedBookmarks.forEach((bookmark) => {
-      const item = this.createBookmarkItem(bookmark, onNavigate, onDelete);
-      content.appendChild(item);
+    // Use BasePanel's updateContent with our custom renderer
+    super.updateContent(sortedBookmarks, (bookmark, index) => {
+      return this.createBookmarkItem(bookmark);
     });
   }
 
   /**
+   * Create a bookmark item
+   */
+  createBookmarkItem(bookmark) {
+    const theme = this.getTheme();
+
+    // Create item container
+    const item = document.createElement('div');
+
+    if (theme.useNativeClasses) {
+      // Claude's native card classes
+      item.className = 'p-3 mb-2 border-l-4 border-accent-main-100 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
+    } else {
+      // Fallback to styled components
+      item.className = 'cp-card';
+      item.style.marginBottom = tokens.space('xs');
+      item.style.borderLeft = `3px solid ${theme.primary || tokens.colors.primary}`;
+      item.style.cursor = 'pointer';
+    }
+
+    // Header container
+    const header = document.createElement('div');
+
+    if (theme.useNativeClasses) {
+      header.className = 'flex justify-between items-center mb-2';
+    } else {
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'center';
+      header.style.marginBottom = tokens.space('xs');
+    }
+
+    // Timestamp
+    const timestamp = document.createElement('span');
+    timestamp.textContent = new Date(bookmark.timestamp).toLocaleDateString();
+
+    if (theme.useNativeClasses) {
+      timestamp.className = 'text-accent-main-100 text-xs font-semibold';
+    } else {
+      timestamp.style.fontSize = tokens.typography.fontSize.xs;
+      timestamp.style.color = theme.primary || tokens.colors.primary;
+      timestamp.style.fontWeight = tokens.typography.fontWeight.semibold;
+    }
+
+    // Delete button
+    const deleteBtn = document.createElement('button');
+
+    if (theme.useNativeClasses) {
+      deleteBtn.className = 'size-4 text-text-400 hover:text-red-500 text-sm leading-none';
+      deleteBtn.textContent = '×';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.onDeleteCallback) {
+          this.onDeleteCallback(bookmark.id);
+        }
+      });
+    } else {
+      // Use Button component for non-native themes
+      const button = Button.createClose({
+        onClick: (e) => {
+          e.stopPropagation();
+          if (this.onDeleteCallback) {
+            this.onDeleteCallback(bookmark.id);
+          }
+        },
+        style: {
+          width: '16px',
+          height: '16px',
+          fontSize: '14px',
+          padding: '0'
+        }
+      });
+      header.appendChild(timestamp);
+      header.appendChild(button);
+    }
+
+    if (theme.useNativeClasses) {
+      header.appendChild(timestamp);
+      header.appendChild(deleteBtn);
+    }
+
+    // Preview text
+    const preview = document.createElement('div');
+    preview.textContent = bookmark.previewText.substring(0, 50) +
+      (bookmark.previewText.length > 50 ? '...' : '');
+
+    if (theme.useNativeClasses) {
+      preview.className = 'text-text-400 text-xs truncate';
+    } else {
+      preview.className = 'cp-card-description cp-truncate';
+    }
+
+    // Assemble item
+    item.appendChild(header);
+    item.appendChild(preview);
+
+    // Click to navigate
+    item.addEventListener('click', () => {
+      if (this.onNavigateCallback) {
+        this.onNavigateCallback(bookmark);
+      }
+    });
+
+    return item;
+  }
+
+  /**
    * Update counter badge on toggle button
-   * Only updates DOM if count actually changed
    */
   updateCounter(count) {
     // Skip if count hasn't changed
@@ -263,10 +254,10 @@ export class BookmarkPanel {
     const badge = document.querySelector('#claude-bookmarks-counter');
 
     if (badge) {
-      badge.textContent = count.toString();
+      Badge.update(badge, count);
     }
 
-    // Show/hide entire button based on count (like collapse button)
+    // Show/hide entire button based on count
     if (toggleBtn) {
       const shouldDisplay = count > 0;
       const currentDisplay = toggleBtn.style.display;
@@ -280,121 +271,45 @@ export class BookmarkPanel {
   }
 
   /**
-   * Create a bookmark item for the panel (matches EditPanel item style)
+   * Override empty state message
    */
-  createBookmarkItem(bookmark, onNavigate, onDelete) {
-    const theme = this.getTheme();
-
-    const item = this.dom.createElement('div', {
-      className: 'claude-bookmark-item',
-      style: {
-        padding: '10px 12px',
-        marginBottom: '4px',
-        background: '#f8f9fa',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        borderLeft: `3px solid ${theme.primary}`,
-      }
-    });
-
-    // Header with index and delete button
-    const header = this.dom.createElement('div', {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '4px',
-      }
-    });
-
-    const timestamp = this.dom.createElement('span', {
-      textContent: new Date(bookmark.timestamp).toLocaleDateString(),
-      style: {
-        fontSize: '11px',
-        color: theme.primary,
-        fontWeight: '600',
-      }
-    });
-
-    // Delete button
-    const deleteBtn = this.dom.createElement('button', {
-      innerHTML: '✕',
-      style: {
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '14px',
-        padding: '0',
-        width: '16px',
-        height: '16px',
-        opacity: '0.5',
-        transition: 'opacity 0.2s',
-        color: '#666',
-      }
-    });
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onDelete(bookmark.id);
-    });
-    deleteBtn.addEventListener('mouseenter', () => {
-      deleteBtn.style.opacity = '1';
-      deleteBtn.style.color = '#d32f2f';
-    });
-    deleteBtn.addEventListener('mouseleave', () => {
-      deleteBtn.style.opacity = '0.5';
-      deleteBtn.style.color = '#666';
-    });
-
-    header.appendChild(timestamp);
-    header.appendChild(deleteBtn);
-
-    // Preview text
-    const preview = this.dom.createElement('div', {
-      textContent: bookmark.previewText.substring(0, 50) + (bookmark.previewText.length > 50 ? '...' : ''),
-      style: {
-        fontSize: '12px',
-        color: '#666',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }
-    });
-
-    item.appendChild(header);
-    item.appendChild(preview);
-
-    // Hover effect (matches EditPanel)
-    item.addEventListener('mouseenter', () => {
-      item.style.background = '#e3f2fd';
-      item.style.transform = 'translateX(2px)';
-    });
-    item.addEventListener('mouseleave', () => {
-      item.style.background = '#f8f9fa';
-      item.style.transform = 'translateX(0)';
-    });
-
-    // Click to navigate
-    item.addEventListener('click', () => onNavigate(bookmark));
-
-    return item;
+  getEmptyStateMessage() {
+    return 'Henüz bookmark yok';
   }
 
   /**
-   * Update position - No longer needed, panel is always on the right
-   * Kept for backward compatibility
+   * Generate signature for change detection
+   */
+  generateSignature(items) {
+    if (!items || items.length === 0) return 'empty';
+    return items.map(b => `${b.id}-${b.timestamp}`).join('|');
+  }
+
+  /**
+   * Toggle panel visibility (override for backward compatibility)
+   */
+  toggle() {
+    super.toggle();
+    return this.isVisible;
+  }
+
+  /**
+   * Update position - No longer needed but kept for compatibility
    */
   updatePosition() {
-    // Position is now fixed to right side
-    // This method is kept for compatibility but does nothing
+    // Position is now fixed, this method does nothing
   }
 
   /**
-   * Destroy panel
+   * Destroy panel (override to include toggle button)
    */
   destroy() {
-    if (this.elements.panel) this.elements.panel.remove();
-    if (this.elements.toggleBtn) this.elements.toggleBtn.remove();
+    if (this.elements.toggleBtn) {
+      Button.destroy(this.elements.toggleBtn);
+    }
+    super.destroy();
     this.elements = {};
   }
 }
+
+export default BookmarkPanel;

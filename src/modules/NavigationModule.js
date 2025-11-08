@@ -5,6 +5,9 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
+import Button from '../components/primitives/Button.js';
+import Badge from '../components/primitives/Badge.js';
+import tokens from '../components/theme/tokens.js';
 
 class NavigationModule extends BaseModule {
   constructor() {
@@ -126,24 +129,17 @@ class NavigationModule extends BaseModule {
     const nextBtn = this.createButton('↓', 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
     nextBtn.id = 'claude-nav-next';
 
-    // Counter badge
+    // Counter badge using Badge component
     if (showCounter) {
-      const counter = this.dom.createElement('div', {
+      const counter = Badge.create({
         id: 'claude-nav-counter',
-        className: 'claude-nav-counter',
-        textContent: '0/0',
+        content: '0/0',
+        variant: 'error',
+        size: 'sm',
+        position: { top: -8, right: -8 },
         style: {
-          position: 'absolute',
-          top: '-8px',
-          right: '-8px',
-          background: '#ff4757',
-          color: 'white',
-          borderRadius: '12px',
-          padding: '2px 6px',
           fontSize: '10px',
-          fontWeight: 'bold',
-          minWidth: '20px',
-          textAlign: 'center',
+          minWidth: '20px'
         }
       });
       prevBtn.appendChild(counter);
@@ -169,59 +165,23 @@ class NavigationModule extends BaseModule {
   }
 
   createButton(icon, tooltip, onClick) {
-    // Tema renklerini al
     const theme = this.getTheme();
 
-    // Use neutral background for native theme
-    const buttonBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
-
-    const btn = this.dom.createElement('button', {
+    // Use Button component for consistent styling
+    return Button.create({
+      variant: 'fixed',
+      icon: icon,
+      title: tooltip,
+      onClick: onClick,
       className: 'claude-nav-btn',
-      innerHTML: icon,
-      'data-tooltip': tooltip,
       style: {
         width: '48px',
         height: '48px',
-        borderRadius: '50%',
-        background: buttonBg,
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-        color: 'white',
         fontSize: '20px',
-        fontWeight: 'bold',
-        position: 'relative',
-      }
+        position: 'relative'
+      },
+      useNativeClasses: theme.useNativeClasses
     });
-
-    btn.addEventListener('click', onClick);
-
-    // Hover effects
-    btn.addEventListener('mouseenter', () => {
-      btn.style.transform = 'scale(1.1)';
-      btn.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
-    });
-
-    btn.addEventListener('mouseleave', () => {
-      btn.style.transform = 'scale(1)';
-      btn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    });
-
-    btn.addEventListener('mousedown', () => {
-      btn.style.transform = 'scale(0.95)';
-    });
-
-    btn.addEventListener('mouseup', () => {
-      btn.style.transform = 'scale(1.1)';
-    });
-
-    return btn;
   }
 
   findMessages() {
@@ -328,7 +288,8 @@ class NavigationModule extends BaseModule {
 
     // Only update if text changed
     if (this.lastCounterText !== newText) {
-      counter.textContent = newText;
+      // Use Badge.update for consistency
+      Badge.update(counter, newText);
       this.lastCounterText = newText;
     }
 

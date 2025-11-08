@@ -20,7 +20,23 @@ class EditPanel {
 
     this.panel = DOMUtils.createElement('div', {
       id: 'claude-edit-panel',
-      style: {
+    });
+
+    // Native classes için panel styling
+    if (theme.useNativeClasses) {
+      this.panel.className = 'fixed flex flex-col rounded-xl border border-border-300 bg-bg-000 shadow-xl';
+      Object.assign(this.panel.style, {
+        top: '60px',
+        right: '20px',
+        width: '280px',
+        maxHeight: '500px',
+        zIndex: '9999',
+        display: 'none',
+        overflow: 'hidden',
+      });
+    } else {
+      // Custom theme styling
+      Object.assign(this.panel.style, {
         position: 'fixed',
         top: '60px',
         right: '20px',
@@ -34,16 +50,18 @@ class EditPanel {
         display: 'none',
         flexDirection: 'column',
         overflow: 'hidden',
-      }
-    });
+      });
+    }
 
-    // Header - use neutral background for native theme
-    const headerBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
+    // Header
+    const header = DOMUtils.createElement('div');
 
-    const header = DOMUtils.createElement('div', {
-      style: {
+    if (theme.useNativeClasses) {
+      header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-300 bg-bg-100';
+    } else {
+      // Custom theme için header
+      const headerBg = theme.primary || theme.accentColor || '#CC785C';
+      Object.assign(header.style, {
         padding: '12px 16px',
         background: headerBg,
         color: 'white',
@@ -52,16 +70,26 @@ class EditPanel {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-      }
-    });
+      });
+    }
 
     const title = DOMUtils.createElement('span', {
       textContent: '✏️ Edit Points',
     });
 
+    if (theme.useNativeClasses) {
+      title.className = 'text-text-000 font-semibold text-sm';
+    }
+
     const closeBtn = DOMUtils.createElement('button', {
       innerHTML: '✕',
-      style: {
+    });
+
+    if (theme.useNativeClasses) {
+      closeBtn.className = 'w-6 h-6 flex items-center justify-center rounded-full hover:bg-bg-200 text-text-400 hover:text-text-000 transition-colors';
+      closeBtn.style.cssText = 'border: none; background: none; cursor: pointer; font-size: 16px;';
+    } else {
+      Object.assign(closeBtn.style, {
         background: 'none',
         border: 'none',
         color: 'white',
@@ -72,16 +100,16 @@ class EditPanel {
         height: '24px',
         borderRadius: '50%',
         transition: 'background 0.2s',
-      }
-    });
+      });
 
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-    });
+      closeBtn.addEventListener('mouseenter', () => {
+        closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      });
 
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.background = 'none';
-    });
+      closeBtn.addEventListener('mouseleave', () => {
+        closeBtn.style.background = 'none';
+      });
+    }
 
     closeBtn.addEventListener('click', () => this.toggle());
 
@@ -91,12 +119,17 @@ class EditPanel {
     // Content
     const content = DOMUtils.createElement('div', {
       id: 'claude-edit-panel-content',
-      style: {
+    });
+
+    if (theme.useNativeClasses) {
+      content.className = 'p-2 overflow-y-auto flex-1 bg-bg-000';
+    } else {
+      Object.assign(content.style, {
         padding: '8px',
         overflowY: 'auto',
         flex: '1',
-      }
-    });
+      });
+    }
 
     this.panel.appendChild(header);
     this.panel.appendChild(content);
@@ -128,7 +161,23 @@ class EditPanel {
     content.innerHTML = '';
 
     if (editedMessages.length === 0) {
-      content.innerHTML = '<div style="padding: 20px; text-align: center; color: #999; font-size: 13px;">Henüz edit yok</div>';
+      const theme = this.getTheme();
+      const emptyMsg = DOMUtils.createElement('div', {
+        textContent: 'Henüz edit yok',
+      });
+
+      if (theme.useNativeClasses) {
+        emptyMsg.className = 'py-5 text-center text-text-400 text-sm';
+      } else {
+        Object.assign(emptyMsg.style, {
+          padding: '20px',
+          textAlign: 'center',
+          color: '#999',
+          fontSize: '13px',
+        });
+      }
+
+      content.appendChild(emptyMsg);
       return;
     }
 
@@ -144,45 +193,77 @@ class EditPanel {
    * Panel item oluştur
    */
   createPanelItem(editMsg, index, theme) {
-    const item = DOMUtils.createElement('div', {
-      style: {
+    const item = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      item.className = 'p-3 mb-1 border-l-4 border-accent-main-100 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
+    } else {
+      Object.assign(item.style, {
         padding: '10px 12px',
         marginBottom: '4px',
         background: '#f8f9fa',
         borderRadius: '8px',
         cursor: 'pointer',
         transition: 'all 0.2s',
-        borderLeft: `3px solid ${theme.primary}`,
-      }
-    });
+        borderLeft: `3px solid ${theme.primary || '#CC785C'}`,
+      });
+
+      // Hover effects for custom theme
+      item.addEventListener('mouseenter', () => {
+        item.style.background = '#e3f2fd';
+        item.style.transform = 'translateX(2px)';
+      });
+
+      item.addEventListener('mouseleave', () => {
+        item.style.background = '#f8f9fa';
+        item.style.transform = 'translateX(0)';
+      });
+    }
 
     // Header
-    const header = DOMUtils.createElement('div', {
-      style: {
+    const header = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      header.className = 'flex justify-between items-center mb-1';
+    } else {
+      Object.assign(header.style, {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: '4px',
-      }
-    });
+      });
+    }
 
     const label = DOMUtils.createElement('span', {
       textContent: `Edit ${index + 1}`,
-      style: {
+    });
+
+    if (theme.useNativeClasses) {
+      label.className = 'text-text-000 font-medium text-sm';
+    } else {
+      Object.assign(label.style, {
         fontWeight: '600',
         fontSize: '13px',
         color: '#333',
-      }
-    });
+      });
+    }
 
     const version = DOMUtils.createElement('span', {
       textContent: editMsg.versionInfo,
-      style: {
-        fontSize: '11px',
-        color: theme.primary,
-        fontWeight: '600',
-      }
     });
+
+    if (theme.useNativeClasses) {
+      version.className = 'px-2 py-0.5 bg-accent-main-100 text-white text-xs rounded font-mono';
+    } else {
+      Object.assign(version.style, {
+        fontSize: '11px',
+        color: 'white',
+        background: theme.primary || '#CC785C',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        fontWeight: '600',
+      });
+    }
 
     header.appendChild(label);
     header.appendChild(version);
@@ -192,28 +273,22 @@ class EditPanel {
     const messageText = userMessage ? userMessage.textContent : '';
     const preview = DOMUtils.createElement('div', {
       textContent: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
-      style: {
+    });
+
+    if (theme.useNativeClasses) {
+      preview.className = 'text-text-400 text-xs truncate';
+    } else {
+      Object.assign(preview.style, {
         fontSize: '12px',
         color: '#666',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
-      }
-    });
+      });
+    }
 
     item.appendChild(header);
     item.appendChild(preview);
-
-    // Hover
-    item.addEventListener('mouseenter', () => {
-      item.style.background = '#e3f2fd';
-      item.style.transform = 'translateX(2px)';
-    });
-
-    item.addEventListener('mouseleave', () => {
-      item.style.background = '#f8f9fa';
-      item.style.transform = 'translateX(0)';
-    });
 
     // Click
     item.addEventListener('click', () => this.onItemClick(index));

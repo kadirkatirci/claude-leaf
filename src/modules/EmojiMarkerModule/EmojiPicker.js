@@ -31,12 +31,17 @@ export class EmojiPicker {
 
     const theme = this.getTheme();
 
-    const picker = DOMUtils.createElement('div', {
-      id: 'emoji-quick-picker',
-      style: {
+    const picker = DOMUtils.createElement('div');
+    picker.id = 'emoji-quick-picker';
+
+    if (theme.useNativeClasses) {
+      // Claude's native dropdown classes
+      picker.className = 'absolute flex flex-col gap-2 p-3 bg-bg-000 border-2 border-accent-main-100 rounded-xl shadow-xl z-[10000] min-w-[280px]';
+    } else {
+      Object.assign(picker.style, {
         position: 'absolute',
         background: theme.isDark ? '#2d2d2d' : 'white',
-        border: `2px solid ${theme.primary}`,
+        border: `2px solid ${theme.primary || '#9333ea'}`,
         borderRadius: '12px',
         padding: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
@@ -45,17 +50,21 @@ export class EmojiPicker {
         flexDirection: 'column',
         gap: '8px',
         minWidth: '280px',
-      }
-    });
+      });
+    }
 
     // Quick select section
-    const quickSection = DOMUtils.createElement('div', {
-      style: {
+    const quickSection = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      quickSection.className = 'flex flex-wrap gap-1.5';
+    } else {
+      Object.assign(quickSection.style, {
         display: 'flex',
         flexWrap: 'wrap',
         gap: '6px',
-      }
-    });
+      });
+    }
 
     // Add favorite emoji buttons
     favoriteEmojis.forEach(emoji => {
@@ -64,10 +73,14 @@ export class EmojiPicker {
     });
 
     // Add "more" button for full picker
-    const moreBtn = DOMUtils.createElement('button', {
-      innerHTML: '⋯',
-      title: 'More emojis',
-      style: {
+    const moreBtn = DOMUtils.createElement('button');
+    moreBtn.innerHTML = '⋯';
+    moreBtn.title = 'More emojis';
+
+    if (theme.useNativeClasses) {
+      moreBtn.className = 'size-9 text-xl border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 cursor-pointer flex items-center justify-center transition-all hover:scale-110';
+    } else {
+      Object.assign(moreBtn.style, {
         width: '36px',
         height: '36px',
         fontSize: '20px',
@@ -79,18 +92,18 @@ export class EmojiPicker {
         alignItems: 'center',
         justifyContent: 'center',
         transition: 'all 0.2s',
-      }
-    });
+      });
 
-    moreBtn.addEventListener('mouseenter', () => {
-      moreBtn.style.background = theme.isDark ? '#4d4d4d' : '#e5e5e5';
-      moreBtn.style.transform = 'scale(1.1)';
-    });
+      moreBtn.addEventListener('mouseenter', () => {
+        moreBtn.style.background = theme.isDark ? '#4d4d4d' : '#e5e5e5';
+        moreBtn.style.transform = 'scale(1.1)';
+      });
 
-    moreBtn.addEventListener('mouseleave', () => {
-      moreBtn.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      moreBtn.style.transform = 'scale(1)';
-    });
+      moreBtn.addEventListener('mouseleave', () => {
+        moreBtn.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
+        moreBtn.style.transform = 'scale(1)';
+      });
+    }
 
     moreBtn.addEventListener('click', () => {
       this.showFullPicker(targetElement, favoriteEmojis, onSelect);
@@ -119,12 +132,17 @@ export class EmojiPicker {
 
     const theme = this.getTheme();
 
-    const picker = DOMUtils.createElement('div', {
-      id: 'emoji-full-picker',
-      style: {
+    const picker = DOMUtils.createElement('div');
+    picker.id = 'emoji-full-picker';
+
+    if (theme.useNativeClasses) {
+      // Claude's native panel classes
+      picker.className = 'absolute flex flex-col gap-2 p-3 bg-bg-000 border-2 border-accent-main-100 rounded-xl shadow-xl z-[10000] w-80 max-h-[400px] overflow-hidden';
+    } else {
+      Object.assign(picker.style, {
         position: 'absolute',
         background: theme.isDark ? '#2d2d2d' : 'white',
-        border: `2px solid ${theme.primary}`,
+        border: `2px solid ${theme.primary || '#9333ea'}`,
         borderRadius: '12px',
         padding: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
@@ -135,14 +153,18 @@ export class EmojiPicker {
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-      }
-    });
+      });
+    }
 
     // Search box
-    const searchBox = DOMUtils.createElement('input', {
-      type: 'text',
-      placeholder: 'Search emoji...',
-      style: {
+    const searchBox = DOMUtils.createElement('input');
+    searchBox.type = 'text';
+    searchBox.placeholder = 'Search emoji...';
+
+    if (theme.useNativeClasses) {
+      searchBox.className = 'px-3 py-2 border border-border-300 rounded-md bg-bg-100 text-text-000 text-sm outline-none focus:border-accent-main-100';
+    } else {
+      Object.assign(searchBox.style, {
         padding: '8px 12px',
         border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
         borderRadius: '6px',
@@ -150,19 +172,23 @@ export class EmojiPicker {
         color: theme.isDark ? 'white' : 'black',
         fontSize: '14px',
         outline: 'none',
-      }
-    });
+      });
+    }
 
     // Content area
-    const content = DOMUtils.createElement('div', {
-      style: {
+    const content = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      content.className = 'overflow-y-auto max-h-80 flex flex-col gap-3';
+    } else {
+      Object.assign(content.style, {
         overflowY: 'auto',
         maxHeight: '320px',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-      }
-    });
+      });
+    }
 
     // Add favorites at top
     const favSection = this.createCategorySection('⭐ Favorites', favoriteEmojis);
@@ -222,32 +248,46 @@ export class EmojiPicker {
    * Create category section
    */
   createCategorySection(name, emojis) {
-    const section = DOMUtils.createElement('div', {
-      className: 'emoji-category',
-      style: {
+    const theme = this.getTheme();
+
+    const section = DOMUtils.createElement('div');
+    section.className = 'emoji-category';
+
+    if (theme.useNativeClasses) {
+      section.className += ' flex flex-col gap-1.5';
+    } else {
+      Object.assign(section.style, {
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
-      }
-    });
+      });
+    }
 
-    const title = DOMUtils.createElement('div', {
-      textContent: name,
-      style: {
+    const title = DOMUtils.createElement('div');
+    title.textContent = name;
+
+    if (theme.useNativeClasses) {
+      title.className = 'text-xs font-bold text-text-400 mb-1';
+    } else {
+      Object.assign(title.style, {
         fontSize: '12px',
         fontWeight: 'bold',
         color: '#888',
         marginBottom: '4px',
-      }
-    });
+      });
+    }
 
-    const emojiGrid = DOMUtils.createElement('div', {
-      style: {
+    const emojiGrid = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      emojiGrid.className = 'flex flex-wrap gap-1';
+    } else {
+      Object.assign(emojiGrid.style, {
         display: 'flex',
         flexWrap: 'wrap',
         gap: '4px',
-      }
-    });
+      });
+    }
 
     emojis.forEach(emoji => {
       const btn = this.createEmojiButton(emoji, true);
@@ -264,13 +304,19 @@ export class EmojiPicker {
    */
   createEmojiButton(emoji, small = false) {
     const theme = this.getTheme();
-    const size = small ? '32px' : '36px';
-    const fontSize = small ? '18px' : '20px';
 
-    const btn = DOMUtils.createElement('button', {
-      innerHTML: emoji,
-      title: emoji,
-      style: {
+    const btn = DOMUtils.createElement('button');
+    btn.innerHTML = emoji;
+    btn.title = emoji;
+
+    if (theme.useNativeClasses) {
+      const sizeClass = small ? 'size-8 text-lg' : 'size-9 text-xl';
+      btn.className = `${sizeClass} border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 cursor-pointer flex items-center justify-center transition-all hover:scale-110 p-0`;
+    } else {
+      const size = small ? '32px' : '36px';
+      const fontSize = small ? '18px' : '20px';
+
+      Object.assign(btn.style, {
         width: size,
         height: size,
         fontSize: fontSize,
@@ -283,18 +329,18 @@ export class EmojiPicker {
         justifyContent: 'center',
         transition: 'all 0.2s',
         padding: '0',
-      }
-    });
+      });
 
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = theme.isDark ? '#4d4d4d' : '#e5e5e5';
-      btn.style.transform = 'scale(1.1)';
-    });
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = theme.isDark ? '#4d4d4d' : '#e5e5e5';
+        btn.style.transform = 'scale(1.1)';
+      });
 
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      btn.style.transform = 'scale(1)';
-    });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
+        btn.style.transform = 'scale(1)';
+      });
+    }
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -356,6 +402,18 @@ export class EmojiPicker {
    * Get theme (simplified)
    */
   getTheme() {
+    // Check if we're using native theme
+    const settings = JSON.parse(localStorage.getItem('claudeProductivitySettings') || '{}');
+    const themeName = settings.general?.colorTheme || 'native';
+
+    if (themeName === 'native') {
+      return {
+        useNativeClasses: true,
+        isDark: document.documentElement.classList.contains('dark')
+      };
+    }
+
+    // Fallback for custom themes
     const isDark = document.documentElement.classList.contains('dark');
     return {
       isDark,

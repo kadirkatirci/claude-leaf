@@ -38,31 +38,48 @@ export default class BasePanel {
     // Create main panel container
     this.panel = document.createElement('div');
     this.panel.id = this.id;
-    this.panel.className = 'claude-productivity-panel';
 
-    // Apply standardized panel styles
-    Object.assign(this.panel.style, {
-      position: 'fixed',
-      right: this.position.right,
-      top: this.position.top,
-      width: this.width,
-      height: this.height,
-      backgroundColor: 'white',
-      border: '1px solid rgba(0, 0, 0, 0.1)',
-      borderRadius: '12px',
-      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-      display: 'none',
-      flexDirection: 'column',
-      zIndex: '10000',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    });
+    // Use Claude native classes for automatic dark/light mode adaptation
+    if (theme?.useNativeClasses) {
+      // Claude's native panel classes - automatically adapts to dark/light mode
+      this.panel.className = 'claude-productivity-panel fixed flex flex-col rounded-xl border border-border-300 bg-bg-000 shadow-xl';
+
+      // Only apply positioning and size styles
+      Object.assign(this.panel.style, {
+        right: this.position.right,
+        top: this.position.top,
+        width: this.width,
+        height: this.height,
+        display: 'none',
+        zIndex: '10000',
+      });
+    } else {
+      // Fallback to custom theme styles
+      this.panel.className = 'claude-productivity-panel';
+
+      Object.assign(this.panel.style, {
+        position: 'fixed',
+        right: this.position.right,
+        top: this.position.top,
+        width: this.width,
+        height: this.height,
+        backgroundColor: 'white',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        borderRadius: '12px',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+        display: 'none',
+        flexDirection: 'column',
+        zIndex: '10000',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      });
+    }
 
     // Create header
     this.header = this.createHeader(theme);
     this.panel.appendChild(this.header);
 
     // Create content area
-    this.content = this.createContent();
+    this.content = this.createContent(theme);
     this.panel.appendChild(this.content);
 
     // Create footer if needed
@@ -85,59 +102,76 @@ export default class BasePanel {
    */
   createHeader(theme) {
     const header = document.createElement('div');
-    header.className = 'panel-header';
 
-    // Use neutral background for native theme, accent for others
-    const headerBg = theme?.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme?.primary || theme?.accentColor || 'hsl(var(--accent-main-000))');
+    if (theme?.useNativeClasses) {
+      // Claude's native header classes
+      header.className = 'panel-header flex items-center justify-between px-5 py-4 border-b border-border-300 rounded-t-xl bg-bg-100';
+    } else {
+      // Custom theme styles
+      header.className = 'panel-header';
 
-    Object.assign(header.style, {
-      padding: '16px 20px',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
-      background: headerBg,
-      borderRadius: '12px 12px 0 0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    });
+      // Use neutral background for native theme, accent for others
+      const headerBg = theme?.primary || theme?.accentColor || 'hsl(var(--accent-main-000))';
+
+      Object.assign(header.style, {
+        padding: '16px 20px',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+        background: headerBg,
+        borderRadius: '12px 12px 0 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      });
+    }
 
     // Title
     const title = document.createElement('h3');
     title.textContent = this.title;
-    title.style.cssText = `
-      margin: 0;
-      fontSize: 16px;
-      fontWeight: 600;
-      color: white;
-    `;
+
+    if (theme?.useNativeClasses) {
+      // Claude's native text classes
+      title.className = 'text-base font-semibold text-text-000';
+    } else {
+      title.style.cssText = `
+        margin: 0;
+        fontSize: 16px;
+        fontWeight: 600;
+        color: white;
+      `;
+    }
     header.appendChild(title);
 
     // Close button
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      fontSize: 24px;
-      width: 28px;
-      height: 28px;
-      borderRadius: 50%;
-      cursor: pointer;
-      display: flex;
-      alignItems: center;
-      justifyContent: center;
-      transition: background 0.2s;
-    `;
 
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
-    });
+    if (theme?.useNativeClasses) {
+      // Claude's native button classes
+      closeBtn.className = 'size-7 rounded-full bg-bg-200 hover:bg-bg-300 text-text-500 hover:text-text-000 flex items-center justify-center transition-colors';
+    } else {
+      closeBtn.style.cssText = `
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        fontSize: 24px;
+        width: 28px;
+        height: 28px;
+        borderRadius: 50%;
+        cursor: pointer;
+        display: flex;
+        alignItems: center;
+        justifyContent: center;
+        transition: background 0.2s;
+      `;
 
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-    });
+      closeBtn.addEventListener('mouseenter', () => {
+        closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+      });
+
+      closeBtn.addEventListener('mouseleave', () => {
+        closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      });
+    }
 
     closeBtn.addEventListener('click', () => this.hide());
     header.appendChild(closeBtn);
@@ -148,17 +182,24 @@ export default class BasePanel {
   /**
    * Create content area
    */
-  createContent() {
+  createContent(theme) {
     const content = document.createElement('div');
-    content.className = 'panel-content';
 
-    Object.assign(content.style, {
-      flex: '1',
-      padding: '16px',
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      position: 'relative'
-    });
+    if (theme?.useNativeClasses) {
+      // Claude's native content classes - bg-bg-000 ensures proper dark/light adaptation
+      content.className = 'panel-content flex-1 p-4 overflow-y-auto overflow-x-hidden relative bg-bg-000';
+    } else {
+      content.className = 'panel-content';
+
+      Object.assign(content.style, {
+        flex: '1',
+        padding: '16px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        position: 'relative',
+        backgroundColor: 'white'
+      });
+    }
 
     return content;
   }
@@ -168,13 +209,19 @@ export default class BasePanel {
    */
   createFooter(theme) {
     const footer = document.createElement('div');
-    footer.className = 'panel-footer';
 
-    Object.assign(footer.style, {
-      padding: '12px 20px',
-      borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-      backgroundColor: 'rgba(0, 0, 0, 0.02)'
-    });
+    if (theme?.useNativeClasses) {
+      // Claude's native footer classes
+      footer.className = 'panel-footer px-5 py-3 border-t border-border-300 bg-bg-100';
+    } else {
+      footer.className = 'panel-footer';
+
+      Object.assign(footer.style, {
+        padding: '12px 20px',
+        borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+        backgroundColor: 'rgba(0, 0, 0, 0.02)'
+      });
+    }
 
     return footer;
   }
@@ -224,13 +271,22 @@ export default class BasePanel {
    */
   showEmptyState() {
     const emptyState = document.createElement('div');
-    emptyState.className = 'empty-state';
-    emptyState.style.cssText = `
-      padding: 40px 20px;
-      textAlign: center;
-      color: #666;
-      fontSize: 14px;
-    `;
+
+    // Check if panel has native classes
+    const useNativeClasses = this.panel?.className?.includes('bg-bg-000');
+
+    if (useNativeClasses) {
+      emptyState.className = 'empty-state py-10 px-5 text-center text-text-400 text-sm';
+    } else {
+      emptyState.className = 'empty-state';
+      emptyState.style.cssText = `
+        padding: 40px 20px;
+        textAlign: center;
+        color: #666;
+        fontSize: 14px;
+      `;
+    }
+
     emptyState.textContent = this.getEmptyStateMessage();
     this.content.appendChild(emptyState);
   }

@@ -90,21 +90,32 @@ export class MarkerButton {
     // Container'ın DIŞINDA sabit pozisyon
     const buttonRight = '-36px'; // Sabit pozisyon, bookmark varlığından bağımsız
 
-    const button = DOMUtils.createElement('button', {
-      className: 'emoji-marker-btn',
-      innerHTML: '🏷️',
-      title: 'Add emoji marker',
-      style: {
+    const button = DOMUtils.createElement('button');
+
+    // Use native classes if theme.useNativeClasses is true
+    if (theme.useNativeClasses) {
+      // Claude's native button classes - automatically adapts to dark/light mode
+      button.className = 'emoji-marker-btn absolute size-8 rounded-md bg-bg-100 hover:bg-bg-200 border border-border-300 flex items-center justify-center text-lg opacity-0 pointer-events-none transition-all duration-200 hover:scale-110 hover:shadow-md';
+      button.style.cssText = `
+        top: 8px;
+        right: ${buttonRight};
+        display: ${existingMarker ? 'none' : 'flex'};
+        z-index: 100;
+      `;
+    } else {
+      // Fallback to custom theme styles
+      button.className = 'emoji-marker-btn';
+      Object.assign(button.style, {
         position: 'absolute',
         top: '8px',
-        right: buttonRight, // Container'ın dışında sabit pozisyon
+        right: buttonRight,
         width: '32px',
         height: '32px',
         borderRadius: '6px',
         background: theme.isDark ? '#3d3d3d' : '#f5f5f5',
         border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
         cursor: 'pointer',
-        display: existingMarker ? 'none' : 'flex', // Marker varsa gizle
+        display: existingMarker ? 'none' : 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: '18px',
@@ -112,19 +123,24 @@ export class MarkerButton {
         pointerEvents: 'none',
         transition: 'all 0.2s ease',
         zIndex: '100',
-      }
-    });
+      });
+    }
 
-    // Hover effects for button scaling
-    button.addEventListener('mouseenter', () => {
-      button.style.transform = 'scale(1.1)';
-      button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-    });
+    button.innerHTML = '🏷️';
+    button.title = 'Add emoji marker';
 
-    button.addEventListener('mouseleave', () => {
-      button.style.transform = 'scale(1)';
-      button.style.boxShadow = 'none';
-    });
+    // Hover effects for button scaling (only for custom theme)
+    if (!theme.useNativeClasses) {
+      button.addEventListener('mouseenter', () => {
+        button.style.transform = 'scale(1.1)';
+        button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+      });
+
+      button.addEventListener('mouseleave', () => {
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = 'none';
+      });
+    }
 
     // Click handler - sadece marker yoksa (add için)
     button.addEventListener('click', (e) => {
@@ -166,8 +182,14 @@ export class MarkerButton {
     const theme = this.getTheme();
 
     // Create options menu
-    const menu = DOMUtils.createElement('div', {
-      style: {
+    const menu = DOMUtils.createElement('div');
+
+    if (theme.useNativeClasses) {
+      // Claude's native dropdown menu classes
+      menu.className = 'emoji-marker-options absolute top-full right-0 mt-1 bg-bg-000 border border-border-300 rounded-lg shadow-lg p-2 flex flex-col gap-1 z-50 min-w-[120px]';
+    } else {
+      menu.className = 'emoji-marker-options';
+      Object.assign(menu.style, {
         position: 'absolute',
         top: '100%',
         right: '0',
@@ -182,13 +204,18 @@ export class MarkerButton {
         gap: '4px',
         zIndex: '101',
         minWidth: '120px',
-      }
-    });
+      });
+    }
 
     // Change emoji button
-    const changeBtn = DOMUtils.createElement('button', {
-      textContent: 'Change Emoji',
-      style: {
+    const changeBtn = DOMUtils.createElement('button');
+    changeBtn.textContent = 'Change Emoji';
+
+    if (theme.useNativeClasses) {
+      // Claude's native button classes for menu items
+      changeBtn.className = 'px-3 py-1.5 rounded bg-bg-100 hover:bg-bg-200 text-text-000 cursor-pointer text-sm text-left transition-colors';
+    } else {
+      Object.assign(changeBtn.style, {
         padding: '6px 12px',
         border: 'none',
         borderRadius: '4px',
@@ -197,8 +224,8 @@ export class MarkerButton {
         cursor: 'pointer',
         fontSize: '13px',
         textAlign: 'left',
-      }
-    });
+      });
+    }
 
     changeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -215,9 +242,14 @@ export class MarkerButton {
     });
 
     // Remove button
-    const removeBtn = DOMUtils.createElement('button', {
-      textContent: 'Remove Marker',
-      style: {
+    const removeBtn = DOMUtils.createElement('button');
+    removeBtn.textContent = 'Remove Marker';
+
+    if (theme.useNativeClasses) {
+      // Claude's native button classes with danger styling
+      removeBtn.className = 'px-3 py-1.5 rounded bg-red-500 hover:bg-red-600 text-white cursor-pointer text-sm text-left transition-colors';
+    } else {
+      Object.assign(removeBtn.style, {
         padding: '6px 12px',
         border: 'none',
         borderRadius: '4px',
@@ -226,8 +258,8 @@ export class MarkerButton {
         cursor: 'pointer',
         fontSize: '13px',
         textAlign: 'left',
-      }
-    });
+      });
+    }
 
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -276,7 +308,11 @@ export class MarkerButton {
       button.style.display = 'flex';
       button.innerHTML = '🏷️';
       button.title = 'Add emoji marker';
-      button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
+
+      // Only update background if not using native classes
+      if (!theme.useNativeClasses) {
+        button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
+      }
     }
     // Position stays the same (fixed at -36px)
   }
