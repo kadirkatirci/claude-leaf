@@ -620,8 +620,9 @@ async function exportBookmarks() {
     });
 
     let bookmarks = [];
-    if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
-      bookmarks = result.bookmarks.data.bookmarks;
+    // Store format: { bookmarks: { __meta: {...}, bookmarks: [...] } }
+    if (result.bookmarks && result.bookmarks.bookmarks) {
+      bookmarks = result.bookmarks.bookmarks;
     }
 
     if (bookmarks.length === 0) {
@@ -673,14 +674,15 @@ async function importBookmarks() {
             throw new Error('Invalid bookmark file format');
           }
 
-          // Load existing bookmarks (new format)
+          // Load existing bookmarks (Store format)
           const result = await new Promise((resolve) => {
             chrome.storage.local.get(['bookmarks'], resolve);
           });
 
           let existingBookmarks = [];
-          if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
-            existingBookmarks = result.bookmarks.data.bookmarks;
+          // Store format: { bookmarks: { __meta: {...}, bookmarks: [...] } }
+          if (result.bookmarks && result.bookmarks.bookmarks) {
+            existingBookmarks = result.bookmarks.bookmarks;
           }
 
           // Merge bookmarks (avoid duplicates)
@@ -694,13 +696,15 @@ async function importBookmarks() {
 
           const mergedBookmarks = [...existingBookmarks, ...newBookmarks];
 
-          // Save to Chrome storage (new format)
+          // Save to Chrome storage (Store format)
           const storeData = {
-            version: 2,
-            data: {
-              bookmarks: mergedBookmarks
-            }
+            __meta: result.bookmarks?.__meta || {
+              version: 2,
+              createdAt: new Date().toISOString()
+            },
+            bookmarks: mergedBookmarks
           };
+          storeData.__meta.updatedAt = new Date().toISOString();
 
           await new Promise((resolve) => {
             chrome.storage.local.set({ bookmarks: storeData }, resolve);
@@ -982,8 +986,9 @@ async function exportEmojiMarkers() {
     });
 
     let markers = [];
-    if (result.markers && result.markers.data && result.markers.data.markers) {
-      markers = result.markers.data.markers;
+    // Store format: { markers: { __meta: {...}, markers: [...] } }
+    if (result.markers && result.markers.markers) {
+      markers = result.markers.markers;
     }
 
     if (markers.length === 0) {
@@ -1039,14 +1044,15 @@ async function importEmojiMarkers() {
           const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
           const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
 
-          // Load existing markers (new format)
+          // Load existing markers (Store format)
           const result = await new Promise((resolve) => {
             storage.get(['markers'], resolve);
           });
 
           let existingMarkers = [];
-          if (result.markers && result.markers.data && result.markers.data.markers) {
-            existingMarkers = result.markers.data.markers;
+          // Store format: { markers: { __meta: {...}, markers: [...] } }
+          if (result.markers && result.markers.markers) {
+            existingMarkers = result.markers.markers;
           }
 
           // Merge markers (avoid duplicates)
@@ -1060,13 +1066,15 @@ async function importEmojiMarkers() {
 
           const mergedMarkers = [...existingMarkers, ...newMarkers];
 
-          // Save to Chrome storage (new format)
+          // Save to Chrome storage (Store format)
           const storeData = {
-            version: 2,
-            data: {
-              markers: mergedMarkers
-            }
+            __meta: result.markers?.__meta || {
+              version: 2,
+              createdAt: new Date().toISOString()
+            },
+            markers: mergedMarkers
           };
+          storeData.__meta.updatedAt = new Date().toISOString();
 
           await new Promise((resolve) => {
             storage.set({ markers: storeData }, resolve);

@@ -43,17 +43,17 @@ async function loadBookmarks() {
     chrome.storage.local.get(['bookmarks'], (result) => {
       console.log('[Bookmarks Page] Raw storage result:', result);
 
-      // NEW Store format: { version: 2, data: { bookmarks: [...] } }
-      if (result.bookmarks && result.bookmarks.data && Array.isArray(result.bookmarks.data.bookmarks)) {
-        allBookmarks = result.bookmarks.data.bookmarks;
+      // Store format: { bookmarks: { __meta: {...}, bookmarks: [...] } }
+      if (result.bookmarks && Array.isArray(result.bookmarks.bookmarks)) {
+        allBookmarks = result.bookmarks.bookmarks;
         console.log(`[Bookmarks Page] ✅ Loaded ${allBookmarks.length} bookmarks from Store format`);
         console.log('[Bookmarks Page] Sample bookmark:', allBookmarks[0]);
       }
       // Fallback: Empty array if no bookmarks
       else {
         allBookmarks = [];
-        console.log('[Bookmarks Page] ℹ️ No bookmarks found (storage might be empty or old format)');
-        console.log('[Bookmarks Page] Expected format: { bookmarks: { version: 2, data: { bookmarks: [...] } } }');
+        console.log('[Bookmarks Page] ℹ️ No bookmarks found (storage might be empty)');
+        console.log('[Bookmarks Page] Expected format: { bookmarks: { __meta: {...}, bookmarks: [...] } }');
       }
 
       console.log(`[Bookmarks Page] Total bookmarks: ${allBookmarks.length}`);
@@ -67,17 +67,22 @@ async function loadBookmarks() {
  */
 async function saveBookmarks() {
   return new Promise((resolve) => {
-    // Save in new store format
-    const storeData = {
-      version: 2,
-      data: {
+    // First, get existing data to preserve __meta
+    chrome.storage.local.get(['bookmarks'], (result) => {
+      // Save in Store format: { __meta: {...}, bookmarks: [...] }
+      const storeData = {
+        __meta: result.bookmarks?.__meta || {
+          version: 2,
+          createdAt: new Date().toISOString()
+        },
         bookmarks: allBookmarks
-      }
-    };
+      };
+      storeData.__meta.updatedAt = new Date().toISOString();
 
-    chrome.storage.local.set({ bookmarks: storeData }, () => {
-      console.log('Bookmarks saved');
-      resolve();
+      chrome.storage.local.set({ bookmarks: storeData }, () => {
+        console.log('Bookmarks saved');
+        resolve();
+      });
     });
   });
 }
