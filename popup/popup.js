@@ -485,11 +485,17 @@ function setupEventListeners() {
   // Bookmarks Import button
   document.getElementById('bookmarks-import-btn').addEventListener('click', importBookmarks);
 
+  // Bookmarks Clear button
+  document.getElementById('bookmarks-clear-btn').addEventListener('click', clearAllBookmarks);
+
   // Emoji Markers Export button
   document.getElementById('emojiMarkers-export-btn').addEventListener('click', exportEmojiMarkers);
 
   // Emoji Markers Import button
   document.getElementById('emojiMarkers-import-btn').addEventListener('click', importEmojiMarkers);
+
+  // Emoji Markers Clear button
+  document.getElementById('emojiMarkers-clear-btn').addEventListener('click', clearAllEmojiMarkers);
 }
 
 /**
@@ -1091,5 +1097,89 @@ async function importEmojiMarkers() {
   } catch (error) {
     console.error('Import error:', error);
     showToast('Import başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Clear all bookmarks
+ */
+async function clearAllBookmarks() {
+  const confirmed = confirm(
+    '⚠️ TÜM BOOKMARK\'LAR SİLİNECEK!\n\n' +
+    'Bu işlem geri alınamaz. Devam etmek istediğinizden emin misiniz?\n\n' +
+    'İpucu: Silmeden önce Export yaparak yedek alabilirsiniz.'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    // Clear from both local and sync storage (support both storage types)
+    await new Promise((resolve) => {
+      chrome.storage.local.remove(['bookmarks', 'claude-bookmarks'], resolve);
+    });
+
+    await new Promise((resolve) => {
+      chrome.storage.sync.remove(['bookmarks', 'claude-bookmarks'], resolve);
+    });
+
+    showToast('Tüm bookmark\'lar silindi! 🗑️', 'success');
+
+    // Notify content script to refresh
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'BOOKMARKS_UPDATED'
+        }).catch(() => {
+          console.log('Content script not ready');
+        });
+      }
+    });
+
+    console.log('All bookmarks cleared (including old keys)');
+  } catch (error) {
+    console.error('Clear bookmarks error:', error);
+    showToast('Silme işlemi başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Clear all emoji markers
+ */
+async function clearAllEmojiMarkers() {
+  const confirmed = confirm(
+    '⚠️ TÜM EMOJİ MARKER\'LAR SİLİNECEK!\n\n' +
+    'Bu işlem geri alınamaz. Devam etmek istediğinizden emin misiniz?\n\n' +
+    'İpucu: Silmeden önce Export yaparak yedek alabilirsiniz.'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    // Clear from both local and sync storage (support both storage types)
+    await new Promise((resolve) => {
+      chrome.storage.local.remove(['markers', 'claude-emoji-markers'], resolve);
+    });
+
+    await new Promise((resolve) => {
+      chrome.storage.sync.remove(['markers', 'claude-emoji-markers'], resolve);
+    });
+
+    showToast('Tüm emoji marker\'lar silindi! 🗑️', 'success');
+
+    // Notify content script to refresh
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'EMOJI_MARKERS_UPDATED'
+        }).catch(() => {
+          console.log('Content script not ready');
+        });
+      }
+    });
+
+    console.log('All emoji markers cleared (including old keys)');
+  } catch (error) {
+    console.error('Clear markers error:', error);
+    showToast('Silme işlemi başarısız! ❌', 'error');
   }
 }

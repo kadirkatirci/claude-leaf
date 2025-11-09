@@ -315,6 +315,18 @@ kbd {
   background: #f0f0f0;
 }
 
+.btn-danger {
+  background: #f44336;
+  color: white;
+  border: 2px solid #d32f2f;
+}
+
+.btn-danger:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
 /* Toast Notification */
 .toast {
   position: fixed;
