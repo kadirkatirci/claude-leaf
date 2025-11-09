@@ -47,9 +47,8 @@ class EmojiMarkerModule extends BaseModule {
 
       this.log('Emoji Markers başlatılıyor...');
 
-      // Set storage type from settings
-      const storageType = await this.getSetting('storageType') || 'sync';
-      await markerStore.setStorageType(storageType);
+      // Storage type is always 'local' (sync storage removed for simplicity)
+      await markerStore.setStorageType('local');
 
       // Load markers
       const markers = await markerStore.getAll();
@@ -332,13 +331,6 @@ class EmojiMarkerModule extends BaseModule {
    */
   async onSettingsChanged() {
     this.log('⚙️ Settings değişti');
-
-    // Storage type değiştiyse
-    const storageType = await this.getSetting('storageType') || 'sync';
-    if (markerStore.getStorageType() !== storageType) {
-      await markerStore.setStorageType(storageType);
-      await this.reloadMarkers();
-    }
 
     // UI yenile
     await this.updateUI();

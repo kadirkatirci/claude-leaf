@@ -38,9 +38,8 @@ class BookmarkModule extends BaseModule {
     FixedButtonMixin.enhance(this);
     MessageObserverMixin.enhance(this);
 
-    // Set storage type from settings
-    const storageType = await this.getSetting('storageType') || 'local';
-    await bookmarkStore.setStorageType(storageType);
+    // Storage type is always 'local' (sync storage removed for simplicity)
+    await bookmarkStore.setStorageType('local');
 
     // Bookmarks are loaded from store automatically, no migration needed
     // (Migration happens in store via version system)
