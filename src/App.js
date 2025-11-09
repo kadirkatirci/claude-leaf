@@ -3,7 +3,7 @@
  * Coordinates all modules and manages lifecycle
  */
 
-import settingsManager from './utils/SettingsManager.js';
+import { settingsStore } from './stores/index.js';
 import { eventBus, Events } from './utils/EventBus.js';
 import VisibilityManager from './utils/VisibilityManager.js';
 import DOMUtils from './utils/DOMUtils.js';
@@ -50,8 +50,8 @@ class ClaudeProductivityApp {
     this.initializeManagers();
 
     // Load settings
-    await settingsManager.load();
-    const settings = await settingsManager.getAll();
+    await settingsStore.load();
+    const settings = await settingsStore.getAll();
 
     // Apply settings to managers
     this.applySettingsToManagers(settings);
@@ -297,7 +297,7 @@ class ClaudeProductivityApp {
   /**
    * Get debug information
    */
-  getDebugInfo() {
+  async getDebugInfo() {
     return {
       initialized: this.initialized,
       modules: Array.from(this.modules.keys()),
@@ -310,7 +310,7 @@ class ClaudeProductivityApp {
         keyboard: this.managers.keyboard ? 'active' : 'inactive',
         observer: this.managers.observer ? 'active' : 'inactive'
       },
-      settings: settingsManager.settings,
+      settings: await settingsStore.getAll(),
       observers: ObserverManager.getAllStatuses(),
       shortcuts: KeyboardManager.getShortcuts()
     };

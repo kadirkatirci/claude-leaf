@@ -39,13 +39,16 @@ class CompactViewModule extends BaseModule {
     // Enhance with MessageObserverMixin
     MessageObserverMixin.enhance(this);
 
+    // Create collapse/expand all buttons in navigation container
+    this.createCollapseButtons();
+
     // Mevcut mesajları işle
     this.processMessages();
 
     // Auto collapse açıksa tüm mesajları daralt
-    const autoCollapseEnabled = this.getSetting('autoCollapseEnabled');
+    const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
     this.log(`[Auto Collapse] Durum: ${autoCollapseEnabled ? '✅ ACIK' : '❌ KAPALI'}`);
-    
+
     if (autoCollapseEnabled) {
       setTimeout(() => {
         const count = this.collapseAllMessages();
@@ -63,11 +66,124 @@ class CompactViewModule extends BaseModule {
     });
 
     // Klavye kısayolu
-    if (this.getSetting('keyboardShortcuts')) {
+    if (await this.getSetting('keyboardShortcuts')) {
       this.setupKeyboardShortcuts();
     }
 
     this.log('✅ Compact View aktif');
+  }
+
+  /**
+   * Collapse/Expand All butonlarını oluştur
+   */
+  createCollapseButtons() {
+    // Navigation container'ı bul (NavigationModule tarafından oluşturulur)
+    const waitForNavigation = setInterval(() => {
+      const navContainer = document.getElementById('claude-nav-container');
+      if (navContainer) {
+        clearInterval(waitForNavigation);
+        this.addButtonsToNavigation(navContainer);
+      }
+    }, 100);
+
+    // 5 saniye sonra timeout
+    setTimeout(() => clearInterval(waitForNavigation), 5000);
+  }
+
+  /**
+   * Navigation container'ına butonları ekle
+   */
+  addButtonsToNavigation(navContainer) {
+    // Toggle butonu - duruma göre collapse veya expand yapar
+    const toggleBtn = this.createNavButton('📦', 'Tümünü Daralt (Alt+←)', () => {
+      this.toggleAllMessages();
+    });
+    toggleBtn.id = 'claude-compact-toggle-all';
+
+    // Navigation container'ına ekle (navigation butonlarının altına)
+    navContainer.appendChild(toggleBtn);
+
+    this.elements = this.elements || {};
+    this.elements.toggleBtn = toggleBtn;
+    this.isAllCollapsed = false; // Track state
+
+    this.log('📦 Collapse/Expand All butonu oluşturuldu');
+  }
+
+  /**
+   * Tüm mesajları toggle et
+   */
+  toggleAllMessages() {
+    if (this.isAllCollapsed) {
+      // Expand all
+      const count = this.expandAllMessages();
+      this.isAllCollapsed = false;
+      this.updateToggleButton();
+      this.log(`📂 ${count} mesaj genişletildi`);
+    } else {
+      // Collapse all
+      const count = this.collapseAllMessages();
+      this.isAllCollapsed = true;
+      this.updateToggleButton();
+      this.log(`📦 ${count} mesaj daraltıldı`);
+    }
+  }
+
+  /**
+   * Toggle butonunu güncelle
+   */
+  updateToggleButton() {
+    if (this.elements && this.elements.toggleBtn) {
+      if (this.isAllCollapsed) {
+        this.elements.toggleBtn.innerHTML = '📂';
+        this.elements.toggleBtn.title = 'Tümünü Genişlet (Alt+→)';
+      } else {
+        this.elements.toggleBtn.innerHTML = '📦';
+        this.elements.toggleBtn.title = 'Tümünü Daralt (Alt+←)';
+      }
+    }
+  }
+
+  /**
+   * Navigation stili buton oluştur
+   */
+  createNavButton(icon, tooltip, onClick) {
+    const theme = this.getTheme();
+    const button = document.createElement('button');
+
+    button.innerHTML = icon;
+    button.title = tooltip;
+
+    if (theme.useNativeClasses) {
+      button.className = theme.buttonClasses || '';
+    } else {
+      Object.assign(button.style, {
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: theme.primary || '#CC785C',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '20px',
+        color: 'white',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'all 0.3s ease'
+      });
+
+      button.addEventListener('mouseenter', () => {
+        button.style.transform = 'scale(1.05)';
+      });
+
+      button.addEventListener('mouseleave', () => {
+        button.style.transform = 'scale(1)';
+      });
+    }
+
+    button.addEventListener('click', onClick);
+    return button;
   }
 
   /**
@@ -119,17 +235,14 @@ class CompactViewModule extends BaseModule {
   /**
    * Tek bir mesajı işle
    */
-  processMessage(messageElement) {
+  async processMessage(messageElement) {
     // Collapse edilmeli mi?
     if (!this.collapse.shouldCollapse(messageElement)) {
       return;
     }
 
-    // Auto-collapse açıksa otomatik collapse et (init sırasında değil, yeni mesajlar için)
-    // Init sırasında tüm mesajlar collapseAllMessages() ile daraltılır
-    if (this.getSetting('autoCollapse')) {
-      this.collapse.collapseMessage(messageElement);
-    }
+    // NOT: Auto-collapse removed - users should manually collapse using buttons
+    // Line 219 removed: if (await this.getSetting('autoCollapse'))
 
     // Expand butonu ekle
     const isCollapsed = this.collapse.isCollapsed(messageElement);
@@ -304,7 +417,7 @@ class CompactViewModule extends BaseModule {
   /**
    * Reinitialize UI on SPA navigation
    */
-  reinitializeUI() {
+  async reinitializeUI() {
     this.log('🔄 Reinitializing CompactView for new page...');
 
     // Clear processed messages cache
@@ -320,7 +433,7 @@ class CompactViewModule extends BaseModule {
     this.processMessages();
 
     // Auto collapse if enabled
-    const autoCollapseEnabled = this.getSetting('autoCollapseEnabled');
+    const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
     if (autoCollapseEnabled) {
       setTimeout(() => {
         const count = this.collapseAllMessages();
@@ -342,7 +455,12 @@ class CompactViewModule extends BaseModule {
 
     this.collapse.clear();
 
-    // Tüm butonları kaldır
+    // Collapse/Expand All butonunu kaldır
+    if (this.elements && this.elements.toggleBtn) {
+      this.elements.toggleBtn.remove();
+    }
+
+    // Tüm expand butonlarını kaldır
     document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
       btn.remove();
     });

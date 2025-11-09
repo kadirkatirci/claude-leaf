@@ -7,7 +7,7 @@ import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { hashString } from '../utils/HashUtils.js';
-import { MarkerStorage } from './EmojiMarkerModule/MarkerStorage.js';
+import { markerStore } from '../stores/index.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
 import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
@@ -17,8 +17,6 @@ class EmojiMarkerModule extends BaseModule {
   constructor() {
     super('emojiMarkers');
 
-    this.markers = [];
-    this.storage = new MarkerStorage();
     this.emojiPicker = new EmojiPicker();
     this.badge = new MarkerBadge(
       () => this.getTheme(),
@@ -50,19 +48,19 @@ class EmojiMarkerModule extends BaseModule {
       this.log('Emoji Markers başlatılıyor...');
 
       // Set storage type from settings
-      const storageType = this.getSetting('storageType') || 'local';
-      this.storage.setStorageType(storageType);
+      const storageType = await this.getSetting('storageType') || 'sync';
+      await markerStore.setStorageType(storageType);
 
       // Load markers
-      this.markers = await this.storage.load();
-      this.log(`${this.markers.length} marker yüklendi`);
+      const markers = await markerStore.getAll();
+      this.log(`${markers.length} marker yüklendi`);
 
       // Enhance with mixins
       FixedButtonMixin.enhance(this);
       MessageObserverMixin.enhance(this);
 
       // Create fixed button
-      this.createFixedButton({
+      await this.createFixedButton({
         id: 'claude-marker-fixed-btn',
         icon: '📍',
         tooltip: 'Emoji Markers',
@@ -78,16 +76,16 @@ class EmojiMarkerModule extends BaseModule {
       this.panel.create();
 
       // Initial UI update
-      this.updateUI();
+      await this.updateUI();
 
       // Listen for message updates
-      this.subscribe(Events.MESSAGES_UPDATED, () => {
-        this.updateUI();
+      this.subscribe(Events.MESSAGES_UPDATED, async () => {
+        await this.updateUI();
       });
 
       // Setup message observer
-      this.setupMessageObserver(() => {
-        this.updateUI();
+      this.setupMessageObserver(async () => {
+        await this.updateUI();
       }, {
         throttleDelay: 500,
         trackMessageCount: true,
@@ -126,7 +124,7 @@ class EmojiMarkerModule extends BaseModule {
   /**
    * Update all UI components
    */
-  updateUI() {
+  async updateUI() {
     // Don't update if not on conversation page
     if (!this.lastConversationState) return;
 
@@ -147,18 +145,20 @@ class EmojiMarkerModule extends BaseModule {
     this.log(`UI güncelleniyor: ${messages.length} mesaj bulundu (${allMessages.length} toplam)`);
 
     const currentConversationUrl = window.location.pathname;
-    const conversationMarkers = this.storage.getByConversation(currentConversationUrl, this.markers);
+    const conversationMarkers = await markerStore.getByConversation(currentConversationUrl);
 
     // Update counter using mixin method
     this.updateButtonCounter(conversationMarkers.length);
 
     // Update badges
-    if (this.getSetting('showBadges')) {
+    const showBadges = await this.getSetting('showBadges');
+    if (showBadges) {
       this.badge.updateAll(messages, conversationMarkers);
     }
 
     // Update hover buttons
-    if (this.getSetting('showOnHover')) {
+    const showOnHover = await this.getSetting('showOnHover');
+    if (showOnHover) {
       this.button.addToMessages(messages, conversationMarkers);
     }
 
@@ -184,46 +184,45 @@ class EmojiMarkerModule extends BaseModule {
 
     // Create marker object
     const marker = {
-      id: `marker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       conversationUrl,
-      messageIndex,
+      index: messageIndex,
       emoji,
       timestamp: Date.now(),
       contentSignature: hashString(messageText.substring(0, 1000)),
       messagePreview,
     };
 
-    // Add to storage
-    this.markers = await this.storage.add(marker, this.markers);
+    // Add to store (handles duplicate check internally)
+    await markerStore.add(marker);
 
     this.log(`Marker eklendi: ${emoji} at index ${messageIndex}`);
 
     // Update UI
-    this.updateUI();
+    await this.updateUI();
   }
 
   /**
    * Remove a marker
    */
   async removeMarker(markerId) {
-    this.markers = await this.storage.remove(markerId, this.markers);
+    await markerStore.remove(markerId);
 
     this.log(`Marker silindi: ${markerId}`);
 
     // Update UI
-    this.updateUI();
+    await this.updateUI();
   }
 
   /**
    * Update marker emoji
    */
   async updateMarker(markerId, newEmoji) {
-    this.markers = await this.storage.update(markerId, newEmoji, this.markers);
+    await markerStore.update(markerId, { emoji: newEmoji });
 
     this.log(`Marker güncellendi: ${markerId} -> ${newEmoji}`);
 
     // Update UI
-    this.updateUI();
+    await this.updateUI();
   }
 
   /**
@@ -231,7 +230,7 @@ class EmojiMarkerModule extends BaseModule {
    */
   scrollToMarker(marker) {
     const messages = this.dom.findMessages();
-    const messageEl = messages[marker.messageIndex];
+    const messageEl = messages[marker.index];
 
     if (messageEl) {
       DOMUtils.scrollToElement(messageEl, 'center');
@@ -245,17 +244,29 @@ class EmojiMarkerModule extends BaseModule {
   /**
    * Get favorite emojis from settings
    */
-  getFavoriteEmojis() {
-    return this.getSetting('favoriteEmojis') || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
+  async getFavoriteEmojis() {
+    return await this.getSetting('favoriteEmojis') || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
   }
 
   /**
    * Export markers
    */
   async exportMarkers() {
-    const count = await this.storage.export(this.markers);
-    this.log(`${count} markers exported`);
-    return count;
+    const exported = await markerStore.export();
+    // Create download
+    const dataBlob = new Blob([exported], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `claude-markers-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    const markers = await markerStore.getAll();
+    this.log(`${markers.length} markers exported`);
+    return markers.length;
   }
 
   /**
@@ -263,14 +274,44 @@ class EmojiMarkerModule extends BaseModule {
    */
   async importMarkers() {
     try {
-      const newMarkers = await this.storage.import(this.markers);
-      this.markers = [...this.markers, ...newMarkers];
-      await this.storage.save(this.markers);
+      // Open file picker
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
 
-      this.log(`${newMarkers.length} markers imported`);
-      this.updateUI();
+      return new Promise((resolve, reject) => {
+        input.onchange = async (e) => {
+          try {
+            const file = e.target.files[0];
+            if (!file) {
+              reject(new Error('No file selected'));
+              return;
+            }
 
-      return newMarkers.length;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+              try {
+                const jsonString = event.target.result;
+                const result = await markerStore.import(jsonString, true);
+
+                this.log(`${result.imported} markers imported`);
+                await this.updateUI();
+
+                resolve(result.imported);
+              } catch (error) {
+                this.error('Import failed:', error);
+                reject(error);
+              }
+            };
+
+            reader.readAsText(file);
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        input.click();
+      });
     } catch (error) {
       this.error('Import failed:', error);
       throw error;
@@ -281,38 +322,35 @@ class EmojiMarkerModule extends BaseModule {
    * Reload markers from storage
    */
   async reloadMarkers() {
-    this.markers = await this.storage.load();
-    this.updateUI();
+    const markers = await markerStore.getAll();
+    this.log(`Reloaded ${markers.length} markers`);
+    await this.updateUI();
   }
 
   /**
    * Settings değiştiğinde
    */
-  onSettingsChanged() {
+  async onSettingsChanged() {
     this.log('⚙️ Settings değişti');
 
     // Storage type değiştiyse
-    const storageType = this.getSetting('storageType') || 'local';
-    if (this.storage.getStorageType() !== storageType) {
-      this.storage.setStorageType(storageType);
-      this.reloadMarkers();
+    const storageType = await this.getSetting('storageType') || 'sync';
+    if (markerStore.getStorageType() !== storageType) {
+      await markerStore.setStorageType(storageType);
+      await this.reloadMarkers();
     }
 
-    // Tema değiştiyse UI yenile
-    if (this.settings && this.settings.general) {
-      this.recreateUI();
-    } else {
-      this.updateUI();
-    }
+    // UI yenile
+    await this.updateUI();
   }
 
   /**
    * UI'ı yeniden oluştur
    */
-  recreateUI() {
+  async recreateUI() {
     // Destroy and recreate fixed button
     this.destroyFixedButton();
-    this.createFixedButton({
+    await this.createFixedButton({
       id: 'claude-marker-fixed-btn',
       icon: '📍',
       tooltip: 'Emoji Markers',
@@ -327,7 +365,7 @@ class EmojiMarkerModule extends BaseModule {
     this.panel.create();
 
     // Update UI
-    this.updateUI();
+    await this.updateUI();
 
     this.log('🎨 UI tema ile yenilendi');
   }

@@ -21,15 +21,28 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadSettings() {
   return new Promise((resolve) => {
+    // Use new storage key format
     chrome.storage.sync.get(['settings'], (result) => {
-      const savedSettings = result.settings || {};
+      let savedSettings = {};
+
+      // Check if data exists in new format
+      if (result.settings) {
+        // New format: extract settings object
+        if (result.settings.data && result.settings.data.settings) {
+          savedSettings = result.settings.data.settings;
+        } else if (typeof result.settings === 'object' && !result.settings.data) {
+          // Old format compatibility
+          savedSettings = result.settings;
+        }
+      }
+
       const defaultSettings = getDefaultSettings();
-      
+
       // Deep merge: default settings + saved settings
       currentSettings = deepMerge(defaultSettings, savedSettings);
-      
+
       console.log('Settings yüklendi:', currentSettings);
-      
+
       // UI'ı güncelle
       updateUI();
       resolve();
@@ -510,12 +523,20 @@ function setupTabs() {
  */
 async function saveSettings() {
   return new Promise((resolve) => {
-    chrome.storage.sync.set({ settings: currentSettings }, () => {
+    // Save in new store format
+    const storeData = {
+      version: 1,
+      data: {
+        settings: currentSettings
+      }
+    };
+
+    chrome.storage.sync.set({ settings: storeData }, () => {
       console.log('Settings kaydedildi:', currentSettings);
-      
+
       // Toast göster
       showToast('Ayarlar kaydedildi! ✅', 'success');
-      
+
       // Content script'e mesaj gönder (sayfayı yenilemesi için)
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
@@ -528,7 +549,7 @@ async function saveSettings() {
           });
         }
       });
-      
+
       resolve();
     });
   });
@@ -587,12 +608,15 @@ function updateThemePreview(theme, customColor) {
  */
 async function exportBookmarks() {
   try {
-    // Load bookmarks from Chrome storage
+    // Load bookmarks from Chrome storage (new format)
     const result = await new Promise((resolve) => {
-      chrome.storage.local.get(['claude-bookmarks'], resolve);
+      chrome.storage.local.get(['bookmarks'], resolve);
     });
 
-    const bookmarks = result['claude-bookmarks'] || [];
+    let bookmarks = [];
+    if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
+      bookmarks = result.bookmarks.data.bookmarks;
+    }
 
     if (bookmarks.length === 0) {
       showToast('Henüz bookmark yok! ⚠️', 'warning');
@@ -643,12 +667,15 @@ async function importBookmarks() {
             throw new Error('Invalid bookmark file format');
           }
 
-          // Load existing bookmarks
+          // Load existing bookmarks (new format)
           const result = await new Promise((resolve) => {
-            chrome.storage.local.get(['claude-bookmarks'], resolve);
+            chrome.storage.local.get(['bookmarks'], resolve);
           });
 
-          const existingBookmarks = result['claude-bookmarks'] || [];
+          let existingBookmarks = [];
+          if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
+            existingBookmarks = result.bookmarks.data.bookmarks;
+          }
 
           // Merge bookmarks (avoid duplicates)
           const existingIds = new Set(existingBookmarks.map(b => b.id));
@@ -661,9 +688,16 @@ async function importBookmarks() {
 
           const mergedBookmarks = [...existingBookmarks, ...newBookmarks];
 
-          // Save to Chrome storage
+          // Save to Chrome storage (new format)
+          const storeData = {
+            version: 2,
+            data: {
+              bookmarks: mergedBookmarks
+            }
+          };
+
           await new Promise((resolve) => {
-            chrome.storage.local.set({ 'claude-bookmarks': mergedBookmarks }, resolve);
+            chrome.storage.local.set({ bookmarks: storeData }, resolve);
           });
 
           showToast(`${newBookmarks.length} bookmark import edildi! 📥`, 'success');
@@ -933,15 +967,18 @@ function addFavoriteEmoji(emoji) {
  */
 async function exportEmojiMarkers() {
   try {
-    // Load markers from Chrome storage (check both local and sync)
+    // Load markers from Chrome storage (new format)
     const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
     const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
 
     const result = await new Promise((resolve) => {
-      storage.get(['claude-emoji-markers'], resolve);
+      storage.get(['markers'], resolve);
     });
 
-    const markers = result['claude-emoji-markers'] || [];
+    let markers = [];
+    if (result.markers && result.markers.data && result.markers.data.markers) {
+      markers = result.markers.data.markers;
+    }
 
     if (markers.length === 0) {
       showToast('Henüz emoji marker yok! ⚠️', 'warning');
@@ -996,12 +1033,15 @@ async function importEmojiMarkers() {
           const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
           const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
 
-          // Load existing markers
+          // Load existing markers (new format)
           const result = await new Promise((resolve) => {
-            storage.get(['claude-emoji-markers'], resolve);
+            storage.get(['markers'], resolve);
           });
 
-          const existingMarkers = result['claude-emoji-markers'] || [];
+          let existingMarkers = [];
+          if (result.markers && result.markers.data && result.markers.data.markers) {
+            existingMarkers = result.markers.data.markers;
+          }
 
           // Merge markers (avoid duplicates)
           const existingIds = new Set(existingMarkers.map(m => m.id));
@@ -1014,9 +1054,16 @@ async function importEmojiMarkers() {
 
           const mergedMarkers = [...existingMarkers, ...newMarkers];
 
-          // Save to Chrome storage
+          // Save to Chrome storage (new format)
+          const storeData = {
+            version: 2,
+            data: {
+              markers: mergedMarkers
+            }
+          };
+
           await new Promise((resolve) => {
-            storage.set({ 'claude-emoji-markers': mergedMarkers }, resolve);
+            storage.set({ markers: storeData }, resolve);
           });
 
           showToast(`${newMarkers.length} emoji marker import edildi! 📥`, 'success');

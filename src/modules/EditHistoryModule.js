@@ -42,7 +42,7 @@ class EditHistoryModule extends BaseModule {
     FixedButtonMixin.enhance(this);
 
     // Create fixed button
-    this.createFixedButton({
+    await this.createFixedButton({
       id: 'claude-edit-fixed-btn',
       icon: '✏️',
       tooltip: 'Edit History',
@@ -178,7 +178,7 @@ class EditHistoryModule extends BaseModule {
   /**
    * Edit'ler bulunduğunda
    */
-  handleEditsFound(editedPrompts) {
+  async handleEditsFound(editedPrompts) {
     // Don't process if not on conversation page
     if (!this.lastConversationState) return;
 
@@ -200,8 +200,8 @@ class EditHistoryModule extends BaseModule {
     }
 
     // UI güncelle
-    this.badge.updateAll(editedPrompts, this.getSetting('showBadges'));
-    this.ui.updateHighlights(editedPrompts, this.getSetting('highlightEdited'));
+    this.badge.updateAll(editedPrompts, await this.getSetting('showBadges'));
+    this.ui.updateHighlights(editedPrompts, await this.getSetting('highlightEdited'));
 
     // State güncelle
     this.editedMessages = editedPrompts.map((editInfo, index) => ({
@@ -285,7 +285,7 @@ class EditHistoryModule extends BaseModule {
   /**
    * UI'ı yeniden oluştur (tema değişikliğinde)
    */
-  recreateUI() {
+  async recreateUI() {
     const theme = this.getTheme();
 
     // Remove old collapse button
@@ -306,7 +306,7 @@ class EditHistoryModule extends BaseModule {
 
     // Badge'leri yeniden oluştur
     this.badge.removeAll();
-    this.badge.updateAll(DOMUtils.getEditedPrompts(), this.getSetting('showBadges'));
+    this.badge.updateAll(DOMUtils.getEditedPrompts(), await this.getSetting('showBadges'));
 
     // Panel içeriği güncelle
     this.panel.updateContent(this.editedMessages);

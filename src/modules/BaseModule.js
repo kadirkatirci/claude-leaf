@@ -3,7 +3,7 @@
  * Her modül bu class'tan türetilir
  */
 import { eventBus, Events } from '../utils/EventBus.js';
-import settingsManager from '../utils/SettingsManager.js';
+import { settingsStore } from '../stores/index.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import { getThemeColors } from '../config/themes.js';
 
@@ -19,7 +19,7 @@ class BaseModule {
     this.initialized = false;
     this.elements = {}; // DOM elements storage
     this.unsubscribers = []; // Event cleanup functions
-    this.settings = {}; // Global settings cache
+    // ✅ Settings cache removed! Now using settingsStore directly
   }
 
   /**
@@ -37,7 +37,8 @@ class BaseModule {
     await this.loadSettings();
 
     // Eğer disabled ise başlatma
-    if (!this.isEnabled()) {
+    const enabled = await this.isEnabled();
+    if (!enabled) {
       console.log(`⏸️ ${this.name} modülü devre dışı`);
       return;
     }
@@ -86,24 +87,23 @@ class BaseModule {
    * Settings'i yükle
    */
   async loadSettings() {
-    await settingsManager.load();
-    // Tüm settings'i cache'le
-    this.settings = await settingsManager.getAll();
+    await settingsStore.load();
+    // No caching! settingsStore handles caching internally
   }
 
   /**
    * Modülün settings'ini getir
    */
-  getSettings() {
-    return settingsManager.get(this.name) || {};
+  async getSettings() {
+    return await settingsStore.get(this.name) || {};
   }
 
   /**
    * Belirli bir ayarı getir
    * @param {string} key - Ayar adı
    */
-  getSetting(key) {
-    return settingsManager.get(`${this.name}.${key}`);
+  async getSetting(key) {
+    return await settingsStore.get(`${this.name}.${key}`);
   }
 
   /**
@@ -112,14 +112,15 @@ class BaseModule {
    * @param {*} value - Yeni değer
    */
   async setSetting(key, value) {
-    await settingsManager.set(`${this.name}.${key}`, value);
+    await settingsStore.set(`${this.name}.${key}`, value);
   }
 
   /**
    * Modülün aktif olup olmadığını kontrol et
    */
-  isEnabled() {
-    return this.getSetting('enabled') === true;
+  async isEnabled() {
+    const enabled = await this.getSetting('enabled');
+    return enabled === true;
   }
 
   /**
@@ -142,18 +143,16 @@ class BaseModule {
    * Settings değişikliklerini dinle
    */
   subscribeToSettings() {
-    const unsub = eventBus.on('settings:changed', async (settings) => {
-      // Tüm settings'ı güncelle (general dahil)
-      this.settings = settings;
-      
+    // Subscribe to settingsStore changes
+    const storeUnsub = settingsStore.subscribe(async (settings) => {
       const moduleSettings = settings[this.name];
-      
+
       // Eğer sadece general değiştiyse (tema vb.)
       if (!moduleSettings && settings.general) {
         this.onSettingsChanged({});
         return;
       }
-      
+
       if (!moduleSettings) return;
 
       // Eğer modül disabled olduysa, yok et
@@ -161,7 +160,7 @@ class BaseModule {
         this.destroy();
         return;
       }
-      
+
       // Eğer modül enabled olduysa ve henüz başlamamışsa, başlat
       if (moduleSettings.enabled && !this.enabled) {
         await this.init();
@@ -172,7 +171,18 @@ class BaseModule {
       this.onSettingsChanged(moduleSettings);
     });
 
-    this.unsubscribers.push(unsub);
+    this.unsubscribers.push(storeUnsub);
+
+    // Also listen to EventBus for backward compatibility (App.js emits this)
+    const eventUnsub = eventBus.on('settings:changed', async (settings) => {
+      // Just call onSettingsChanged, settingsStore subscription handles the rest
+      const moduleSettings = settings[this.name];
+      if (moduleSettings) {
+        this.onSettingsChanged(moduleSettings);
+      }
+    });
+
+    this.unsubscribers.push(eventUnsub);
   }
 
   /**
@@ -215,11 +225,18 @@ class BaseModule {
    * @returns {Object} Tema renkleri
    */
   getTheme() {
-    // Tema artık general ayarlarında
-    const settings = this.settings || {};
-    const general = settings.general || {};
-    const themeName = general.colorTheme || 'purple';
-    const customColor = general.customColor;
+    // Get theme from settingsStore synchronously (using cache)
+    // This is safe because settingsStore caches the data
+    let themeName = 'purple';
+    let customColor = '#667eea';
+
+    // Try to get from store cache (synchronous access)
+    if (settingsStore.store.cache) {
+      const general = settingsStore.store.cache.general || {};
+      themeName = general.colorTheme || 'purple';
+      customColor = general.customColor || '#667eea';
+    }
+
     return getThemeColors(themeName, customColor);
   }
 

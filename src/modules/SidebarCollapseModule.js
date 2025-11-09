@@ -37,7 +37,7 @@ class SidebarCollapseModule extends BaseModule {
   /**
    * Inject into sidebar (with retry mechanism)
    */
-  injectIntoSidebar(retryCount = 0) {
+  async injectIntoSidebar(retryCount = 0) {
     const maxRetries = 10;
     const retryDelay = 1000;
 
@@ -57,13 +57,13 @@ class SidebarCollapseModule extends BaseModule {
     // Find Starred section
     const starredSection = this.findSectionByTitle(sidebar, 'Starred');
     if (starredSection) {
-      this.injectChevronToSection('starred', starredSection);
+      await this.injectChevronToSection('starred', starredSection);
     }
 
     // Find Recent section
     const recentSection = this.findSectionByTitle(sidebar, 'Recents');
     if (recentSection) {
-      this.injectChevronToSection('recent', recentSection);
+      await this.injectChevronToSection('recent', recentSection);
     }
 
     if (!starredSection && !recentSection) {
@@ -99,7 +99,7 @@ class SidebarCollapseModule extends BaseModule {
   /**
    * Inject chevron button into section header
    */
-  injectChevronToSection(sectionKey, sectionElement) {
+  async injectChevronToSection(sectionKey, sectionElement) {
     const header = sectionElement.querySelector('h3');
     if (!header) return;
 
@@ -113,8 +113,8 @@ class SidebarCollapseModule extends BaseModule {
     if (!list) return;
 
     // Get saved state or default to expanded
-    const defaultState = this.getSetting('defaultState') || 'expanded';
-    const rememberState = this.getSetting('rememberState');
+    const defaultState = await this.getSetting('defaultState') || 'expanded';
+    const rememberState = await this.getSetting('rememberState');
 
     let isCollapsed;
     if (rememberState && this.sectionStates[sectionKey] !== undefined) {
@@ -190,7 +190,7 @@ class SidebarCollapseModule extends BaseModule {
   /**
    * Toggle section collapse/expand
    */
-  toggleSection(sectionKey) {
+  async toggleSection(sectionKey) {
     const section = this.sections.get(sectionKey);
     if (!section) return;
 
@@ -205,7 +205,7 @@ class SidebarCollapseModule extends BaseModule {
     this.applyCollapseState(sectionKey);
 
     // Save state if remember is enabled
-    if (this.getSetting('rememberState')) {
+    if (await this.getSetting('rememberState')) {
       this.saveStates();
     }
 

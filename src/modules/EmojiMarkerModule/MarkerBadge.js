@@ -19,7 +19,7 @@ export class MarkerBadge {
    */
   updateAll(messages, markers) {
     messages.forEach((messageEl, index) => {
-      const marker = markers.find(m => m.messageIndex === index);
+      const marker = markers.find(m => m.index === index);
 
       if (marker) {
         // Badge should exist
@@ -152,7 +152,7 @@ export class MarkerBadge {
   /**
    * Show badge options: emoji picker + delete button
    */
-  showBadgeOptions(badge, marker) {
+  async showBadgeOptions(badge, marker) {
     // Önce mevcut options container'ı kapat (duplicate önleme)
     const existingContainer = badge.querySelector('.emoji-marker-options');
     if (existingContainer) {
@@ -161,7 +161,7 @@ export class MarkerBadge {
     }
 
     const theme = this.getTheme();
-    const favoriteEmojis = this.getFavoriteEmojis();
+    const favoriteEmojis = await this.getFavoriteEmojis();
 
     // Create options container
     const container = DOMUtils.createElement('div', {

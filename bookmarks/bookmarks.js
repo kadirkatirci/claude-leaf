@@ -2,8 +2,24 @@
 
 let allBookmarks = [];
 
+// Debug function to check all storage
+async function debugStorage() {
+  chrome.storage.local.get(null, (allData) => {
+    console.log('[DEBUG] All local storage:', allData);
+    console.log('[DEBUG] Storage keys:', Object.keys(allData));
+  });
+
+  chrome.storage.sync.get(null, (allData) => {
+    console.log('[DEBUG] All sync storage:', allData);
+    console.log('[DEBUG] Sync keys:', Object.keys(allData));
+  });
+}
+
 // Load bookmarks when page loads
 document.addEventListener('DOMContentLoaded', async () => {
+  // Debug storage first
+  await debugStorage();
+
   await loadBookmarks();
   renderBookmarks(allBookmarks);
 
@@ -23,9 +39,36 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadBookmarks() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['claude-bookmarks'], (result) => {
-      allBookmarks = result['claude-bookmarks'] || [];
-      console.log(`Loaded ${allBookmarks.length} bookmarks`);
+    // Try both old and new keys
+    chrome.storage.local.get(['bookmarks', 'claude-bookmarks'], (result) => {
+      console.log('[Bookmarks Page] Raw storage result:', result);
+
+      // Try new format first
+      if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
+        allBookmarks = result.bookmarks.data.bookmarks;
+        console.log('[Bookmarks Page] Loaded from NEW format (bookmarks key):', allBookmarks);
+      }
+      // Try old format with new key
+      else if (result.bookmarks && Array.isArray(result.bookmarks)) {
+        allBookmarks = result.bookmarks;
+        console.log('[Bookmarks Page] Loaded from OLD format array (bookmarks key):', allBookmarks);
+      }
+      // Try old key with new format
+      else if (result['claude-bookmarks'] && result['claude-bookmarks'].data && result['claude-bookmarks'].data.bookmarks) {
+        allBookmarks = result['claude-bookmarks'].data.bookmarks;
+        console.log('[Bookmarks Page] Loaded from NEW format (claude-bookmarks key):', allBookmarks);
+      }
+      // Try old key with old format
+      else if (result['claude-bookmarks'] && Array.isArray(result['claude-bookmarks'])) {
+        allBookmarks = result['claude-bookmarks'];
+        console.log('[Bookmarks Page] Loaded from OLD format array (claude-bookmarks key):', allBookmarks);
+      }
+      else {
+        allBookmarks = [];
+        console.log('[Bookmarks Page] No bookmarks found in any format');
+      }
+
+      console.log(`[Bookmarks Page] Total: ${allBookmarks.length} bookmarks`);
       resolve();
     });
   });
@@ -36,7 +79,15 @@ async function loadBookmarks() {
  */
 async function saveBookmarks() {
   return new Promise((resolve) => {
-    chrome.storage.local.set({ 'claude-bookmarks': allBookmarks }, () => {
+    // Save in new store format
+    const storeData = {
+      version: 2,
+      data: {
+        bookmarks: allBookmarks
+      }
+    };
+
+    chrome.storage.local.set({ bookmarks: storeData }, () => {
       console.log('Bookmarks saved');
       resolve();
     });

@@ -74,7 +74,7 @@ export default class FixedButtonMixin {
    * Create standardized fixed button factory
    */
   static createButtonFactory(module) {
-    return function(options = {}) {
+    return async function(options = {}) {
       const {
         id,
         icon,
@@ -96,7 +96,7 @@ export default class FixedButtonMixin {
       // Determine opacity: use provided, then setting, then default
       const buttonOpacity = opacity !== null
         ? opacity
-        : (this.getSetting ? (this.getSetting('opacity') || 0.9) : 0.9);
+        : (this.getSetting ? (await this.getSetting('opacity') || 0.9) : 0.9);
 
       // Create button element
       const button = document.createElement('button');

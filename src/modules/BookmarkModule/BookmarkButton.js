@@ -16,10 +16,10 @@ export class BookmarkButton {
   /**
    * Add bookmark buttons to all messages
    */
-  addToMessages(messages, getMessageId, isBookmarked, onToggle) {
-    messages.forEach((message, index) => {
+  async addToMessages(messages, getMessageId, isBookmarked, onToggle) {
+    for (const [index, message] of messages.entries()) {
       const messageId = getMessageId(message, index);
-      const bookmarked = isBookmarked(messageId);
+      const bookmarked = await isBookmarked(messageId);
 
       // Update existing button if it exists
       if (this.buttons.has(message)) {
@@ -29,14 +29,14 @@ export class BookmarkButton {
           this.updateButton(message, bookmarked);
           this.buttonStates.set(message, bookmarked);
         }
-        return;
+        continue;
       }
 
       // Create new button
       const button = this.createButton(message, messageId, bookmarked, onToggle);
       this.buttons.set(message, button);
       this.buttonStates.set(message, bookmarked);
-    });
+    }
   }
 
   /**

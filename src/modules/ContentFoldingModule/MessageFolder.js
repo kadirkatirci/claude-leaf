@@ -3,11 +3,11 @@
  * Collapses entire messages (both user and Claude) with preview mode
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { conversationStateStore } from '../../stores/index.js';
 
 class MessageFolder {
-  constructor(module, storage) {
+  constructor(module) {
     this.module = module;
-    this.storage = storage;
     this.messageCache = new WeakMap(); // message -> { chevron, isCollapsed, id }
     this.processedMessages = new WeakSet();
   }
@@ -15,7 +15,7 @@ class MessageFolder {
   /**
    * Scan all messages and add collapse functionality
    */
-  scanMessages(messages) {
+  async scanMessages(messages) {
     try {
       this.module.log(`📬 MessageFolder scanning ${messages.length} messages...`);
 
@@ -43,16 +43,16 @@ class MessageFolder {
 
       const totalValidMessages = validMessages.length;
 
-      validMessages.forEach((messageEl, index) => {
+      for (const [index, messageEl] of validMessages.entries()) {
         // Skip if already processed
         if (this.processedMessages.has(messageEl)) {
           this.module.log(`Message ${index} already processed, skipping`);
-          return;
+          continue;
         }
 
-        this.processMessage(messageEl, index, totalValidMessages);
+        await this.processMessage(messageEl, index, totalValidMessages);
         this.processedMessages.add(messageEl);
-      });
+      }
 
       this.module.log('✅ MessageFolder scan complete');
     } catch (error) {
@@ -63,15 +63,16 @@ class MessageFolder {
   /**
    * Process individual message
    */
-  processMessage(messageEl, messageIndex, totalMessages) {
+  async processMessage(messageEl, messageIndex, totalMessages) {
     this.module.log(`Processing message ${messageIndex} of ${totalMessages}`);
 
     // Generate unique ID
     const messageId = this.generateMessageId(messageIndex, messageEl);
 
     // Check saved state, default to expanded
-    const savedState = this.storage.getMessageState(messageId);
-    const shouldCollapse = savedState !== null ? savedState : false;
+    const foldingState = await conversationStateStore.getCurrentState('folding');
+    const savedState = foldingState.messages[messageId];
+    const shouldCollapse = savedState !== undefined ? savedState : false;
 
     // Find the message content container
     const contentContainer = this.findMessageContent(messageEl);
@@ -100,7 +101,7 @@ class MessageFolder {
 
     // Apply initial state
     if (shouldCollapse) {
-      this.collapseMessage(messageEl, false); // false = no animation
+      await this.collapseMessage(messageEl, false); // false = no animation
     }
 
     // Setup event listeners
@@ -234,26 +235,28 @@ class MessageFolder {
   /**
    * Toggle message collapse/expand
    */
-  toggleMessage(messageEl) {
+  async toggleMessage(messageEl) {
     const cached = this.messageCache.get(messageEl);
     if (!cached) return;
 
     if (cached.isCollapsed) {
       this.expandMessage(messageEl);
     } else {
-      this.collapseMessage(messageEl);
+      await this.collapseMessage(messageEl);
     }
 
     // Save state
-    if (this.module.getSetting('rememberState')) {
-      this.storage.setMessageState(cached.id, cached.isCollapsed);
+    if (await this.module.getSetting('rememberState')) {
+      const foldingState = await conversationStateStore.getCurrentState('folding');
+      foldingState.messages[cached.id] = cached.isCollapsed;
+      await conversationStateStore.setCurrentState('folding', foldingState);
     }
   }
 
   /**
    * Collapse message (show preview + expand footer)
    */
-  collapseMessage(messageEl, animate = true) {
+  async collapseMessage(messageEl, animate = true) {
     const cached = this.messageCache.get(messageEl);
     if (!cached) return;
 
@@ -263,7 +266,7 @@ class MessageFolder {
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = this.module.getSetting('messages.previewLines') || 3;
+    const previewLines = await this.module.getSetting('messages.previewLines') || 3;
     const lineHeight = parseInt(getComputedStyle(cached.contentContainer).lineHeight) || 24;
     const previewHeight = previewLines * lineHeight;
 

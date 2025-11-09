@@ -9,7 +9,7 @@ import { Events } from '../utils/EventBus.js';
 import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';
 import MessageFolder from './ContentFoldingModule/MessageFolder.js';
-import FoldingStorage from './ContentFoldingModule/FoldingStorage.js';
+import { conversationStateStore } from '../stores/index.js';
 
 class ContentFoldingModule extends BaseModule {
   constructor() {
@@ -18,7 +18,6 @@ class ContentFoldingModule extends BaseModule {
     this.headingFolder = null;
     this.codeBlockFolder = null;
     this.messageFolder = null;
-    this.storage = null;
     this.observer = null;
     this.lastMessageCount = 0;
   }
@@ -33,13 +32,13 @@ class ContentFoldingModule extends BaseModule {
       // Enhance with MessageObserverMixin
       MessageObserverMixin.enhance(this);
 
-      // Initialize storage
-      this.storage = new FoldingStorage(this);
+      // Set current conversation for state store
+      conversationStateStore.setCurrentConversation(window.location.pathname);
 
-      // Initialize sub-components
-      this.headingFolder = new HeadingFolder(this, this.storage);
-      this.codeBlockFolder = new CodeBlockFolder(this, this.storage);
-      this.messageFolder = new MessageFolder(this, this.storage);
+      // Initialize sub-components (they will use conversationStateStore directly)
+      this.headingFolder = new HeadingFolder(this);
+      this.codeBlockFolder = new CodeBlockFolder(this);
+      this.messageFolder = new MessageFolder(this);
 
       // Listen for messages updated
       this.subscribe(Events.MESSAGES_UPDATED, () => {
@@ -69,7 +68,7 @@ class ContentFoldingModule extends BaseModule {
   /**
    * Scan all messages for foldable content
    */
-  scanContent() {
+  async scanContent() {
     try {
       // Check if we're on a conversation page
       if (!this.dom.isOnConversationPage()) {
@@ -98,27 +97,27 @@ class ContentFoldingModule extends BaseModule {
       this.log(`📊 Scanning ${messages.length} messages...`);
 
       // Scan for message-level folding (before content scanning)
-      if (this.getSetting('messages.enabled')) {
-        this.messageFolder.scanMessages(messages);
+      if (await this.getSetting('messages.enabled')) {
+        await this.messageFolder.scanMessages(messages);
       }
 
       // Scan each message for headings and code blocks
-      messages.forEach((message, index) => {
+      for (const [index, message] of messages.entries()) {
         // Skip user messages (only assistant messages have headings/code)
         if (message.querySelector('[data-testid="user-message"]')) {
-          return;
+          continue;
         }
 
         // Scan for headings
-        if (this.getSetting('headings.enabled')) {
-          this.headingFolder.scanMessage(message, index);
+        if (await this.getSetting('headings.enabled')) {
+          await this.headingFolder.scanMessage(message, index);
         }
 
         // Scan for code blocks
-        if (this.getSetting('codeBlocks.enabled')) {
-          this.codeBlockFolder.scanMessage(message, index);
+        if (await this.getSetting('codeBlocks.enabled')) {
+          await this.codeBlockFolder.scanMessage(message, index);
         }
-      });
+      }
 
       this.log('✅ Content scan complete');
     } catch (error) {

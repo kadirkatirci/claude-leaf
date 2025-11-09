@@ -23,6 +23,7 @@ class NavigationModule extends BaseModule {
     this.lastMessageCount = 0; // Track message count for performance
     this.lastConversationState = null; // Track conversation page state
     this.visibilityUnsubscribe = null; // Store unsubscribe function
+    this.cachedOpacity = 0.7; // Cached opacity for better UX
   }
 
   async init() {
@@ -63,7 +64,7 @@ class NavigationModule extends BaseModule {
     });
 
     // Klavye kısayolları
-    if (this.getSetting('keyboardShortcuts')) {
+    if (await this.getSetting('keyboardShortcuts')) {
       this.setupKeyboardShortcuts();
     }
 
@@ -110,13 +111,14 @@ class NavigationModule extends BaseModule {
     super.destroy();
   }
 
-  createUI() {
+  async createUI() {
     // Container oluştur
-    const position = this.getSetting('position') || 'right';
-    const showCounter = this.getSetting('showCounter');
+    const position = await this.getSetting('position') || 'right';
+    const showCounter = await this.getSetting('showCounter');
+    this.cachedOpacity = await this.getSetting('opacity') || 0.7;
 
     const container = this.dom.createElement('div', {
-      id: 'claude-nav-buttons',
+      id: 'claude-nav-container',
       className: 'claude-nav-buttons',
       style: {
         position: 'fixed',
@@ -126,7 +128,7 @@ class NavigationModule extends BaseModule {
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        opacity: this.getSetting('opacity') || 0.7,
+        opacity: this.cachedOpacity,
         transition: 'opacity 0.2s ease',
       }
     });
@@ -166,7 +168,7 @@ class NavigationModule extends BaseModule {
       container.style.opacity = '1';
     });
     container.addEventListener('mouseleave', () => {
-      container.style.opacity = this.getSetting('opacity') || 0.7;
+      container.style.opacity = this.cachedOpacity;
     });
 
     document.body.appendChild(container);
@@ -200,15 +202,16 @@ class NavigationModule extends BaseModule {
     // Yeni findActualMessages kullanılıyor (DOMUtils otomatik olarak yönlendiriyor)
     this.messages = this.dom.findMessages();
 
-    // İlk başlatmada her zaman emit et
-    if (this.lastMessageCount === 0) {
+    // Her zaman counter'ı güncelle
+    this.updateCounter();
+
+    // İlk başlatmada veya mesaj sayısı değiştiyse emit et
+    if (this.lastMessageCount !== this.messages.length) {
       this.lastMessageCount = this.messages.length;
-      this.updateCounter();
       this.emit(Events.MESSAGES_UPDATED, this.messages);
-    } else {
-      // Sadece counter'ı güncelle
-      this.updateCounter();
     }
+
+    this.log(`${this.messages.length} mesaj bulundu (${this.lastMessageCount} toplam)`);
   }
 
 
@@ -244,13 +247,13 @@ class NavigationModule extends BaseModule {
     this.emit(Events.NAVIGATION_TOP, 0);
   }
 
-  scrollToMessage(index) {
+  async scrollToMessage(index) {
     if (index < 0 || index >= this.messages.length) return;
 
     const message = this.messages[index];
-    
+
     // Smooth scroll ayarı kontrol et
-    const smoothScroll = this.getSetting('smoothScroll');
+    const smoothScroll = await this.getSetting('smoothScroll');
     if (smoothScroll) {
       this.dom.scrollToElement(message, 'center');
     } else {
@@ -258,7 +261,7 @@ class NavigationModule extends BaseModule {
     }
 
     // Highlight
-    const duration = this.getSetting('highlightDuration') || 2000;
+    const duration = await this.getSetting('highlightDuration') || 2000;
     this.dom.flashClass(message, 'claude-nav-highlight', duration);
     
     this.updateCounter();
@@ -272,6 +275,7 @@ class NavigationModule extends BaseModule {
     if (this.messages.length > 0) {
       const current = this.dom.getCurrentVisibleMessageIndex() + 1;
       newText = `${current}/${this.messages.length}`;
+      this.log(`Counter güncelleniyor: ${newText} (current index: ${current - 1})`);
     } else {
       newText = '0/0';
     }
@@ -281,6 +285,7 @@ class NavigationModule extends BaseModule {
       // Use CounterBadge.update for consistency
       CounterBadge.updateById('claude-nav-counter', newText);
       this.lastCounterText = newText;
+      this.log(`Counter badge güncellendi: ${newText}`);
     }
 
     // Butonları enable/disable et
@@ -289,7 +294,10 @@ class NavigationModule extends BaseModule {
 
   updateButtonStates() {
     const { prevBtn, nextBtn, topBtn } = this.elements;
-    if (!prevBtn || !nextBtn || !topBtn) return;
+    if (!prevBtn || !nextBtn || !topBtn) {
+      this.log('❌ Butonlar bulunamadı, state güncellenemedi');
+      return;
+    }
 
     const currentIdx = this.dom.getCurrentVisibleMessageIndex();
 
@@ -299,12 +307,15 @@ class NavigationModule extends BaseModule {
       top: this.messages.length === 0
     };
 
+    this.log(`Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${currentIdx}, total: ${this.messages.length})`);
+
     // Only update if states changed
     if (newStates.prev !== this.lastButtonStates.prev) {
       prevBtn.disabled = newStates.prev;
       prevBtn.style.opacity = newStates.prev ? '0.3' : '1';
       prevBtn.style.cursor = newStates.prev ? 'not-allowed' : 'pointer';
       this.lastButtonStates.prev = newStates.prev;
+      this.log(`Prev button ${newStates.prev ? 'disabled' : 'enabled'}`);
     }
 
     if (newStates.next !== this.lastButtonStates.next) {
@@ -312,6 +323,7 @@ class NavigationModule extends BaseModule {
       nextBtn.style.opacity = newStates.next ? '0.3' : '1';
       nextBtn.style.cursor = newStates.next ? 'not-allowed' : 'pointer';
       this.lastButtonStates.next = newStates.next;
+      this.log(`Next button ${newStates.next ? 'disabled' : 'enabled'}`);
     }
 
     if (newStates.top !== this.lastButtonStates.top) {
@@ -319,6 +331,7 @@ class NavigationModule extends BaseModule {
       topBtn.style.opacity = newStates.top ? '0.3' : '1';
       topBtn.style.cursor = newStates.top ? 'not-allowed' : 'pointer';
       this.lastButtonStates.top = newStates.top;
+      this.log(`Top button ${newStates.top ? 'disabled' : 'enabled'}`);
     }
   }
 
@@ -367,7 +380,7 @@ class NavigationModule extends BaseModule {
     });
   }
 
-  onSettingsChanged(settings) {
+  async onSettingsChanged(settings) {
     this.log('Settings güncellendi:', settings);
 
     // Only update position if it actually changed
@@ -389,6 +402,7 @@ class NavigationModule extends BaseModule {
     if (this.elements.container && settings.general && settings.general.opacity !== undefined) {
       const newOpacity = settings.general.opacity.toString();
       if (this.elements.container.style.opacity !== newOpacity) {
+        this.cachedOpacity = settings.general.opacity; // Update cache
         this.elements.container.style.opacity = newOpacity;
       }
     }
@@ -406,7 +420,7 @@ class NavigationModule extends BaseModule {
     }
 
     // Klavye kısayolları değişti mi?
-    if (settings.navigation && settings.navigation.keyboardShortcuts !== this.getSetting('keyboardShortcuts')) {
+    if (settings.navigation && settings.navigation.keyboardShortcuts !== await this.getSetting('keyboardShortcuts')) {
       if (settings.navigation.keyboardShortcuts) {
         this.setupKeyboardShortcuts();
       } else if (this.keydownHandler) {

@@ -2,11 +2,11 @@
  * CodeBlockFolder - Handles code block collapse/expand for long code
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { conversationStateStore } from '../../stores/index.js';
 
 class CodeBlockFolder {
-  constructor(module, storage) {
+  constructor(module) {
     this.module = module;
-    this.storage = storage;
     this.codeBlockCache = new WeakMap(); // codeBlock -> { button, isCollapsed, id, lineCount }
     this.processedBlocks = new WeakSet();
   }
@@ -14,30 +14,30 @@ class CodeBlockFolder {
   /**
    * Scan message for code blocks
    */
-  scanMessage(messageEl, messageIndex) {
+  async scanMessage(messageEl, messageIndex) {
     try {
       // Find all code blocks (pre > code pattern)
       const codeBlocks = messageEl.querySelectorAll('pre');
 
-      codeBlocks.forEach((preEl, index) => {
+      for (const [index, preEl] of Array.from(codeBlocks).entries()) {
         // Skip if already processed
-        if (this.processedBlocks.has(preEl)) return;
+        if (this.processedBlocks.has(preEl)) continue;
 
         const codeEl = preEl.querySelector('code');
-        if (!codeEl) return;
+        if (!codeEl) continue;
 
         // Count lines
         const lineCount = this.countLines(codeEl);
 
         // Get min lines threshold
-        const minLines = this.module.getSetting('codeBlocks.minLines') || 15;
+        const minLines = await this.module.getSetting('codeBlocks.minLines') || 15;
 
         // Only process if longer than threshold
         if (lineCount >= minLines) {
-          this.processCodeBlock(preEl, codeEl, messageIndex, index, lineCount);
+          await this.processCodeBlock(preEl, codeEl, messageIndex, index, lineCount);
           this.processedBlocks.add(preEl);
         }
-      });
+      }
     } catch (error) {
       this.module.error('CodeBlockFolder scan error:', error);
     }
@@ -54,16 +54,17 @@ class CodeBlockFolder {
   /**
    * Process individual code block
    */
-  processCodeBlock(preEl, codeEl, messageIndex, blockIndex, lineCount) {
+  async processCodeBlock(preEl, codeEl, messageIndex, blockIndex, lineCount) {
     // Generate unique ID
     const blockId = this.generateBlockId(messageIndex, blockIndex, codeEl);
 
     // Check if should auto-collapse
-    const autoCollapse = this.module.getSetting('codeBlocks.autoCollapse') || false;
+    const autoCollapse = await this.module.getSetting('codeBlocks.autoCollapse') || false;
 
     // Check saved state or use auto-collapse setting
-    const savedState = this.storage.getCodeBlockState(blockId);
-    const isCollapsed = savedState !== null ? savedState : autoCollapse;
+    const foldingState = await conversationStateStore.getCurrentState('folding');
+    const savedState = foldingState.codeBlocks[blockId];
+    const isCollapsed = savedState !== undefined ? savedState : autoCollapse;
 
     // Ensure pre element is positioned for absolute button
     if (getComputedStyle(preEl).position === 'static') {
@@ -86,7 +87,7 @@ class CodeBlockFolder {
 
     // Apply initial state
     if (isCollapsed) {
-      this.collapseCodeBlock(preEl, false); // false = no animation
+      await this.collapseCodeBlock(preEl, false); // false = no animation
     }
 
     // Setup event listeners
@@ -204,26 +205,28 @@ class CodeBlockFolder {
   /**
    * Toggle code block collapse/expand
    */
-  toggleCodeBlock(preEl) {
+  async toggleCodeBlock(preEl) {
     const cached = this.codeBlockCache.get(preEl);
     if (!cached) return;
 
     if (cached.isCollapsed) {
       this.expandCodeBlock(preEl);
     } else {
-      this.collapseCodeBlock(preEl);
+      await this.collapseCodeBlock(preEl);
     }
 
     // Save state
-    if (this.module.getSetting('rememberState')) {
-      this.storage.setCodeBlockState(cached.id, cached.isCollapsed);
+    if (await this.module.getSetting('rememberState')) {
+      const foldingState = await conversationStateStore.getCurrentState('folding');
+      foldingState.codeBlocks[cached.id] = cached.isCollapsed;
+      await conversationStateStore.setCurrentState('folding', foldingState);
     }
   }
 
   /**
    * Collapse code block (show preview + expand button)
    */
-  collapseCodeBlock(preEl, animate = true) {
+  async collapseCodeBlock(preEl, animate = true) {
     const cached = this.codeBlockCache.get(preEl);
     if (!cached) return;
 
@@ -233,7 +236,7 @@ class CodeBlockFolder {
     cached.button.style.opacity = '0.8'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = this.module.getSetting('codeBlocks.previewLines') || 5;
+    const previewLines = await this.module.getSetting('codeBlocks.previewLines') || 5;
     const lineHeight = parseInt(getComputedStyle(cached.codeEl).lineHeight) || 20;
     const previewHeight = previewLines * lineHeight;
 

@@ -7,7 +7,7 @@ import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { hashString } from '../utils/HashUtils.js';
-import { BookmarkStorage } from './BookmarkModule/BookmarkStorage.js';
+import { bookmarkStore } from '../stores/index.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
 import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
@@ -16,14 +16,12 @@ class BookmarkModule extends BaseModule {
   constructor() {
     super('bookmarks');
 
-    this.bookmarks = [];
     this.observerTimeout = null;
     this.observer = null;
     this.visibilityUnsubscribe = null;
     this.lastConversationState = null;
 
     // Initialize sub-modules
-    this.storage = new BookmarkStorage();
     this.buttonManager = new BookmarkButton(this.dom, () => this.getTheme());
     this.panel = new BookmarkPanel(this.dom, () => this.getTheme(), (key) => this.getSetting(key));
     this.sidebar = new BookmarkSidebar(this.dom, () => this.getTheme());
@@ -40,15 +38,14 @@ class BookmarkModule extends BaseModule {
     FixedButtonMixin.enhance(this);
     MessageObserverMixin.enhance(this);
 
-    // Load storage settings
-    const storageType = this.getSetting('storageType') || 'local';
-    this.storage.setStorageType(storageType);
+    // Set storage type from settings
+    const storageType = await this.getSetting('storageType') || 'local';
+    await bookmarkStore.setStorageType(storageType);
 
-    // Load bookmarks
-    this.bookmarks = await this.storage.load();
-
-    // Migrate existing bookmarks to use normalized URLs
-    await this.migrateBookmarkUrls();
+    // Bookmarks are loaded from store automatically, no migration needed
+    // (Migration happens in store via version system)
+    const bookmarks = await bookmarkStore.getAll();
+    this.log(`Loaded ${bookmarks.length} bookmarks from store`);
 
     // Create UI
     this.panel.create(() => this.togglePanel());
@@ -57,11 +54,11 @@ class BookmarkModule extends BaseModule {
     this.sidebar.inject();
 
     // Add bookmark buttons to messages
-    this.addBookmarkButtons();
+    await this.addBookmarkButtons();
 
     // Setup message observer
-    this.setupMessageObserver(() => {
-      this.addBookmarkButtons();
+    this.setupMessageObserver(async () => {
+      await this.addBookmarkButtons();
     }, {
       throttleDelay: 500,
       trackMessageCount: true,
@@ -69,32 +66,32 @@ class BookmarkModule extends BaseModule {
     });
 
     // Setup keyboard shortcuts
-    if (this.getSetting('keyboardShortcuts')) {
+    if (await this.getSetting('keyboardShortcuts')) {
       this.setupKeyboardShortcuts();
     }
 
     // Listen for message updates
-    this.subscribe(Events.MESSAGES_UPDATED, () => {
-      this.addBookmarkButtons();
+    this.subscribe(Events.MESSAGES_UPDATED, async () => {
+      await this.addBookmarkButtons();
       // Only update counter, no need to update full UI on message updates
-      const currentBookmarks = this.getCurrentConversationBookmarks();
+      const currentBookmarks = await this.getCurrentConversationBookmarks();
       this.panel.updateCounter(currentBookmarks.length);
     });
 
     // Listen for bookmark updates from popup
-    chrome.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener(async (message) => {
       if (message.type === 'BOOKMARKS_UPDATED') {
         this.log('Bookmarks updated from popup (import)');
-        this.reloadBookmarks();
+        await this.reloadBookmarks();
       } else if (message.type === 'STORAGE_TYPE_CHANGED') {
         this.log('Storage type changed:', message.storageType);
-        this.storage.setStorageType(message.storageType);
-        this.reloadBookmarks();
+        await bookmarkStore.setStorageType(message.storageType);
+        await this.reloadBookmarks();
       }
     });
 
     // Create fixed position button using FixedButtonMixin
-    this.createFixedButton({
+    await this.createFixedButton({
       id: 'claude-bookmarks-fixed-btn',
       icon: '🔖',
       tooltip: 'Bookmarks',
@@ -115,7 +112,7 @@ class BookmarkModule extends BaseModule {
     // Check if navigating from bookmarks page
     this.checkBookmarkNavigation();
 
-    this.log(`✅ ${this.bookmarks.length} bookmarks loaded`);
+    this.log(`✅ ${bookmarks.length} bookmarks loaded`);
   }
 
   /**
@@ -135,14 +132,14 @@ class BookmarkModule extends BaseModule {
   /**
    * Check if we need to navigate to a specific bookmark from URL
    */
-  checkBookmarkNavigation() {
+  async checkBookmarkNavigation() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookmarkId = urlParams.get('bookmark');
 
     if (bookmarkId) {
       this.log('Navigating to bookmark from URL:', bookmarkId);
 
-      const bookmark = this.bookmarks.find(b => b.id === bookmarkId);
+      const bookmark = await bookmarkStore.getById(bookmarkId);
       if (!bookmark) {
         this.warn('Bookmark not found:', bookmarkId);
         // Clean up URL
@@ -253,21 +250,20 @@ class BookmarkModule extends BaseModule {
    * Reload bookmarks from storage
    */
   async reloadBookmarks() {
-    this.bookmarks = await this.storage.load();
-    this.log('📚 Reloaded bookmarks:', this.bookmarks.map(b => ({
+    const bookmarks = await bookmarkStore.getAll();
+    this.log('📚 Reloaded bookmarks:', bookmarks.map(b => ({
       id: b.id,
-      messageId: b.messageId,
-      renderCount: b.renderCount,
-      preview: b.previewText.substring(0, 50)
+      index: b.index,
+      preview: b.previewText?.substring(0, 50)
     })));
-    this.addBookmarkButtons();
-    this.updateUI();
+    await this.addBookmarkButtons();
+    await this.updateUI();
   }
 
   /**
    * Add bookmark buttons to all messages
    */
-  addBookmarkButtons() {
+  async addBookmarkButtons() {
     // Check if we're on conversation page
     if (!this.dom.isOnConversationPage()) {
       this.log('❌ Not on conversation page, skipping bookmark buttons');
@@ -287,8 +283,8 @@ class BookmarkModule extends BaseModule {
     this.buttonManager.addToMessages(
       messages,
       (msg, idx) => idx, // Use simple index as ID
-      (idx) => this.isMessageBookmarkedByIndex(idx),
-      (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
+      async (idx) => await this.isMessageBookmarkedByIndex(idx),
+      async (msgElement, idx) => await this.toggleBookmarkByIndex(msgElement, idx)
     );
   }
 
@@ -296,7 +292,7 @@ class BookmarkModule extends BaseModule {
    * Toggle bookmark by index
    */
   async toggleBookmarkByIndex(messageElement, index) {
-    const existing = this.findBookmarkByIndex(index);
+    const existing = await this.findBookmarkByIndex(index);
 
     if (existing) {
       // Remove bookmark
@@ -312,28 +308,24 @@ class BookmarkModule extends BaseModule {
   /**
    * Check if message at index is bookmarked
    */
-  isMessageBookmarkedByIndex(index) {
+  async isMessageBookmarkedByIndex(index) {
     const messages = this.dom.findMessages();
     if (index >= messages.length) return false;
 
-    return this.findBookmarkByIndex(index) !== null;
+    const bookmark = await this.findBookmarkByIndex(index);
+    return bookmark !== null;
   }
 
   /**
    * Find bookmark by index (current conversation only)
    * Simplified like emoji marker - no content verification for stability
    */
-  findBookmarkByIndex(index) {
-    // Use pathname like emoji markers for better stability
+  async findBookmarkByIndex(index) {
     const currentPath = window.location.pathname;
+    const bookmarks = await bookmarkStore.getByConversation(currentPath);
 
     // Find bookmark at this index in current conversation
-    const bookmark = this.bookmarks.find(b =>
-      b.messageIndex === index &&
-      (b.conversationUrl === currentPath || // New format
-       b.conversationUrl === window.location.href.split('?')[0].split('#')[0] || // Migrated format
-       b.conversationUrl.includes(currentPath)) // Old format compatibility
-    );
+    const bookmark = bookmarks.find(b => b.index === index);
 
     return bookmark || null;
   }
@@ -362,88 +354,40 @@ class BookmarkModule extends BaseModule {
     const previewText = fullText.substring(0, 200);
     const contentSignature = hashString(fullText.substring(0, 1000));
 
-    // Use pathname like emoji markers for better stability
+    // Use pathname for consistency
     const conversationPath = window.location.pathname;
 
-    // Check for duplicate bookmark before adding
-    const existingBookmark = this.bookmarks.find(b =>
-      b.messageIndex === messageIndex &&
-      (b.conversationUrl === conversationPath || // Check pathname
-       b.conversationUrl === window.location.href.split('?')[0].split('#')[0] || // Check old normalized URL
-       b.conversationUrl.includes(conversationPath)) // Check if old URL contains path
-    );
-
-    if (existingBookmark) {
-      this.log('⚠️ Bookmark already exists for this message');
-      return; // Don't add duplicate
-    }
-
     const bookmark = {
-      id: `bookmark-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-      messageIndex: messageIndex, // Array index of the message
+      index: messageIndex, // Array index of the message
       contentSignature: contentSignature, // Hash of content for verification
       previewText: previewText,
       note: '',
       timestamp: Date.now(),
-      conversationUrl: conversationPath, // Use pathname like emoji markers
+      conversationUrl: conversationPath,
     };
 
-    this.bookmarks.push(bookmark);
-    await this.storage.save(this.bookmarks);
+    // Add to store (handles duplicate check internally)
+    await bookmarkStore.add(bookmark);
 
     this.log('✅ Bookmark added:', {
-      id: bookmark.id,
-      messageIndex: bookmark.messageIndex,
+      index: bookmark.index,
       preview: previewText.substring(0, 50)
     });
 
     // Update UI
-    this.updateUI();
-    this.addBookmarkButtons(); // Refresh buttons
-  }
-
-  /**
-   * Migrate existing bookmarks to use pathname format
-   */
-  async migrateBookmarkUrls() {
-    let migrationNeeded = false;
-
-    this.bookmarks = this.bookmarks.map(bookmark => {
-      // Check if URL is full URL (not just pathname)
-      if (bookmark.conversationUrl && bookmark.conversationUrl.startsWith('http')) {
-        // Extract pathname from full URL
-        try {
-          const url = new URL(bookmark.conversationUrl);
-          migrationNeeded = true;
-          return {
-            ...bookmark,
-            conversationUrl: url.pathname
-          };
-        } catch (e) {
-          // If URL parsing fails, keep original
-          return bookmark;
-        }
-      }
-      return bookmark;
-    });
-
-    // Save if any bookmarks were migrated
-    if (migrationNeeded) {
-      await this.storage.save(this.bookmarks);
-      this.log('✅ Migrated bookmark URLs to pathname format');
-    }
+    await this.updateUI();
+    await this.addBookmarkButtons(); // Refresh buttons
   }
 
   /**
    * Delete a bookmark
    */
   async deleteBookmark(bookmarkId) {
-    this.bookmarks = this.bookmarks.filter(b => b.id !== bookmarkId);
-    await this.storage.save(this.bookmarks);
+    await bookmarkStore.remove(bookmarkId);
 
     // Update UI
-    this.updateUI();
-    this.addBookmarkButtons(); // Refresh buttons
+    await this.updateUI();
+    await this.addBookmarkButtons(); // Refresh buttons
 
     this.log('Bookmark deleted:', bookmarkId);
   }
@@ -451,39 +395,20 @@ class BookmarkModule extends BaseModule {
   /**
    * Get bookmarks for current conversation
    */
-  getCurrentConversationBookmarks() {
+  async getCurrentConversationBookmarks() {
     const currentPath = window.location.pathname;
-    // Match bookmarks for this specific conversation (support both old and new formats)
-    return this.bookmarks.filter(b => {
-      if (!b.conversationUrl) return false;
-
-      // New format: pathname
-      if (b.conversationUrl === currentPath) return true;
-
-      // Old format: full URL - extract pathname and compare
-      if (b.conversationUrl.startsWith('http')) {
-        try {
-          const url = new URL(b.conversationUrl);
-          return url.pathname === currentPath;
-        } catch (e) {
-          return false;
-        }
-      }
-
-      // Fallback: check if old format contains current path
-      return b.conversationUrl.includes(currentPath);
-    });
+    return await bookmarkStore.getByConversation(currentPath);
   }
 
   /**
    * Update all UI components
    */
-  updateUI() {
+  async updateUI() {
     // Don't update if not on conversation page
     if (!this.lastConversationState) return;
 
     // Only show bookmarks for current conversation
-    const currentBookmarks = this.getCurrentConversationBookmarks();
+    const currentBookmarks = await this.getCurrentConversationBookmarks();
 
     // Update counter using mixin method
     this.updateButtonCounter(currentBookmarks.length);
@@ -555,18 +480,18 @@ class BookmarkModule extends BaseModule {
     }
 
     this.log(`Searching for bookmark in ${messages.length} messages`);
-    this.log(`Looking for index ${bookmark.messageIndex} with preview: "${bookmark.previewText.substring(0, 50)}..."`);
+    this.log(`Looking for index ${bookmark.index} with preview: "${bookmark.previewText.substring(0, 50)}..."`);
 
     // Strategy 1: Direct index match with fuzzy text verification
-    if (bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
-      const candidateMessage = messages[bookmark.messageIndex];
+    if (bookmark.index !== undefined && bookmark.index < messages.length) {
+      const candidateMessage = messages[bookmark.index];
       const cleanText = this.getCleanMessageText(candidateMessage);
 
       // Use first 100 chars for fuzzy matching (more forgiving)
       const candidatePreview = cleanText.substring(0, 100).toLowerCase().trim();
       const bookmarkPreview = bookmark.previewText.substring(0, 100).toLowerCase().trim();
 
-      this.log(`Index ${bookmark.messageIndex} preview: "${candidatePreview.substring(0, 50)}..."`);
+      this.log(`Index ${bookmark.index} preview: "${candidatePreview.substring(0, 50)}..."`);
 
       // If first 50 chars match, it's the right message
       if (candidatePreview.substring(0, 50) === bookmarkPreview.substring(0, 50)) {
@@ -574,7 +499,7 @@ class BookmarkModule extends BaseModule {
         matchStrategy = 'index+preview';
         this.log('✅ Found by index with preview match');
       } else {
-        this.log(`Preview mismatch at index ${bookmark.messageIndex}`);
+        this.log(`Preview mismatch at index ${bookmark.index}`);
       }
     }
 
@@ -599,9 +524,9 @@ class BookmarkModule extends BaseModule {
     }
 
     // Strategy 3: Fallback - just use the index if it exists
-    if (!foundMessage && bookmark.messageIndex !== undefined && bookmark.messageIndex < messages.length) {
+    if (!foundMessage && bookmark.index !== undefined && bookmark.index < messages.length) {
       this.warn('⚠️ Using fallback: navigating to index without verification');
-      foundMessage = messages[bookmark.messageIndex];
+      foundMessage = messages[bookmark.index];
       matchStrategy = 'index-fallback';
     }
 
@@ -621,7 +546,7 @@ class BookmarkModule extends BaseModule {
     // Message not found
     this.warn('❌ Bookmarked message not found on this page');
     this.warn('Bookmark details:', {
-      index: bookmark.messageIndex,
+      index: bookmark.index,
       preview: bookmark.previewText.substring(0, 100)
     });
 
@@ -672,7 +597,7 @@ class BookmarkModule extends BaseModule {
   /**
    * Handle settings changes
    */
-  onSettingsChanged(settings) {
+  async onSettingsChanged(settings) {
     this.log('Settings updated:', settings);
 
     // Update position
@@ -681,14 +606,14 @@ class BookmarkModule extends BaseModule {
     }
 
     // Update storage type
-    if (settings.storageType && settings.storageType !== this.storage.getStorageType()) {
-      this.storage.setStorageType(settings.storageType);
-      this.reloadBookmarks();
+    if (settings.storageType && settings.storageType !== bookmarkStore.getStorageType()) {
+      await bookmarkStore.setStorageType(settings.storageType);
+      await this.reloadBookmarks();
     }
 
     // Handle theme changes
     if (this.settingsChanged(['colorTheme', 'customColor'], settings)) {
-      this.recreateUI();
+      await this.recreateUI();
     }
   }
 
@@ -706,8 +631,8 @@ class BookmarkModule extends BaseModule {
 
     // Recreate UI
     this.panel.create(() => this.togglePanel());
-    this.addBookmarkButtons();
-    this.updateUI();
+    await this.addBookmarkButtons();
+    await this.updateUI();
   }
 
 

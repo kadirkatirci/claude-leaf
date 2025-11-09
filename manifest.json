@@ -29,7 +29,13 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["bookmarks/bookmarks.html", "bookmarks/bookmarks.js"],
+      "resources": [
+        "bookmarks/bookmarks.html",
+        "bookmarks/bookmarks.js",
+        "migrate-storage.html",
+        "migrate-storage.js",
+        "debug-check.html"
+      ],
       "matches": ["https://claude.ai/*"]
     }
   ],

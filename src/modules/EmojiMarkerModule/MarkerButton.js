@@ -24,7 +24,7 @@ export class MarkerButton {
       // Skip if button already exists
       if (this.buttonCache.has(messageEl)) {
         // Update button state if marker changed
-        const existingMarker = markers.find(m => m.messageIndex === index);
+        const existingMarker = markers.find(m => m.index === index);
         this.updateButtonState(messageEl, existingMarker);
         return;
       }
@@ -55,7 +55,7 @@ export class MarkerButton {
    */
   createButton(messageEl, messageIndex, markers) {
     const theme = this.getTheme();
-    const existingMarker = markers.find(m => m.messageIndex === messageIndex);
+    const existingMarker = markers.find(m => m.index === messageIndex);
 
     // Container'ın DIŞINDA sabit pozisyon
     const buttonRight = '-36px'; // Sabit pozisyon, bookmark varlığından bağımsız
@@ -130,8 +130,8 @@ export class MarkerButton {
   /**
    * Show emoji picker to add marker
    */
-  showEmojiPickerForAdd(button, messageEl, messageIndex) {
-    const favoriteEmojis = this.getFavoriteEmojis();
+  async showEmojiPickerForAdd(button, messageEl, messageIndex) {
+    const favoriteEmojis = await this.getFavoriteEmojis();
 
     this.emojiPicker.showQuickSelect(button, favoriteEmojis, (emoji) => {
       this.onMarkerAdd(messageEl, messageIndex, emoji);
@@ -197,11 +197,11 @@ export class MarkerButton {
       });
     }
 
-    changeBtn.addEventListener('click', (e) => {
+    changeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       menu.remove();
 
-      const favoriteEmojis = this.getFavoriteEmojis();
+      const favoriteEmojis = await this.getFavoriteEmojis();
       this.emojiPicker.showQuickSelect(button, favoriteEmojis, (emoji) => {
         this.onMarkerUpdate(marker.id, emoji);
 

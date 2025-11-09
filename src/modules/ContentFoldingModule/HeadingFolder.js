@@ -2,11 +2,11 @@
  * HeadingFolder - Handles heading collapse/expand with hierarchical folding
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { conversationStateStore } from '../../stores/index.js';
 
 class HeadingFolder {
-  constructor(module, storage) {
+  constructor(module) {
     this.module = module;
-    this.storage = storage;
     this.headingCache = new WeakMap(); // heading -> { chevron, isCollapsed, id, level }
     this.processedHeadings = new WeakSet();
   }
@@ -14,22 +14,22 @@ class HeadingFolder {
   /**
    * Scan message for headings and add chevrons
    */
-  scanMessage(messageEl, messageIndex) {
+  async scanMessage(messageEl, messageIndex) {
     try {
       // Get enabled heading levels from settings
-      const enabledLevels = this.module.getSetting('headings.levels') || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+      const enabledLevels = await this.module.getSetting('headings.levels') || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
       const selector = enabledLevels.join(', ');
 
       // Find all headings
       const headings = messageEl.querySelectorAll(selector);
 
-      headings.forEach((heading, index) => {
+      for (const [index, heading] of Array.from(headings).entries()) {
         // Skip if already processed
-        if (this.processedHeadings.has(heading)) return;
+        if (this.processedHeadings.has(heading)) continue;
 
-        this.processHeading(heading, messageEl, messageIndex, index);
+        await this.processHeading(heading, messageEl, messageIndex, index);
         this.processedHeadings.add(heading);
-      });
+      }
     } catch (error) {
       this.module.error('HeadingFolder scan error:', error);
     }
@@ -38,7 +38,7 @@ class HeadingFolder {
   /**
    * Process individual heading
    */
-  processHeading(heading, messageEl, messageIndex, headingIndex) {
+  async processHeading(heading, messageEl, messageIndex, headingIndex) {
     // Generate unique ID
     const headingId = this.generateHeadingId(messageIndex, headingIndex, heading);
 
@@ -46,8 +46,9 @@ class HeadingFolder {
     const level = parseInt(heading.tagName.substring(1));
 
     // Check if this heading should be collapsed (from storage)
-    const savedState = this.storage.getHeadingState(headingId);
-    const isCollapsed = savedState !== null ? savedState : false;
+    const foldingState = await conversationStateStore.getCurrentState('folding');
+    const savedState = foldingState.headings[headingId];
+    const isCollapsed = savedState !== undefined ? savedState : false;
 
     // Create chevron
     const chevron = this.createChevron(heading, isCollapsed);
@@ -162,7 +163,7 @@ class HeadingFolder {
   /**
    * Toggle heading collapse/expand
    */
-  toggleHeading(heading) {
+  async toggleHeading(heading) {
     const cached = this.headingCache.get(heading);
     if (!cached) return;
 
@@ -173,8 +174,10 @@ class HeadingFolder {
     }
 
     // Save state
-    if (this.module.getSetting('rememberState')) {
-      this.storage.setHeadingState(cached.id, cached.isCollapsed);
+    if (await this.module.getSetting('rememberState')) {
+      const foldingState = await conversationStateStore.getCurrentState('folding');
+      foldingState.headings[cached.id] = cached.isCollapsed;
+      await conversationStateStore.setCurrentState('folding', foldingState);
     }
   }
 
