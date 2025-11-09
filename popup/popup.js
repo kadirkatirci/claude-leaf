@@ -174,14 +174,12 @@ function updateUI() {
   // Bookmarks settings
   const bookmarks = currentSettings.bookmarks || {};
   document.getElementById('bookmarks-enabled').checked = bookmarks.enabled !== undefined ? bookmarks.enabled : true;
-  document.getElementById('bookmarks-storageType').value = bookmarks.storageType || 'local';
   document.getElementById('bookmarks-keyboard').checked = bookmarks.keyboardShortcuts !== undefined ? bookmarks.keyboardShortcuts : true;
   document.getElementById('bookmarks-showOnHover').checked = bookmarks.showOnHover !== undefined ? bookmarks.showOnHover : true;
 
   // Emoji Markers settings
   const emojiMarkers = currentSettings.emojiMarkers || {};
   document.getElementById('emojiMarkers-enabled').checked = emojiMarkers.enabled !== undefined ? emojiMarkers.enabled : true;
-  document.getElementById('emojiMarkers-storageType').value = emojiMarkers.storageType || 'sync';
   document.getElementById('emojiMarkers-showBadges').checked = emojiMarkers.showBadges !== undefined ? emojiMarkers.showBadges : true;
   document.getElementById('emojiMarkers-showOnHover').checked = emojiMarkers.showOnHover !== undefined ? emojiMarkers.showOnHover : true;
 
@@ -488,12 +486,16 @@ function setupEventListeners() {
  * Tab switching
  */
 function setupTabs() {
-  const tabs = document.querySelectorAll('.tab:not(.disabled)');
+  const tabs = document.querySelectorAll('.tab');
   const tabContents = document.querySelectorAll('.tab-content');
+
+  console.log('[Tabs] Found tabs:', tabs.length);
+  console.log('[Tabs] Found tab contents:', tabContents.length);
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const tabName = tab.dataset.tab;
+      console.log('[Tabs] Clicked tab:', tabName);
 
       // Tüm tab'ları pasif yap
       tabs.forEach(t => t.classList.remove('active'));
@@ -502,9 +504,12 @@ function setupTabs() {
       // Seçili tab'ı aktif yap
       tab.classList.add('active');
       const targetContent = document.getElementById(`tab-${tabName}`);
-      
+
       if (targetContent) {
         targetContent.classList.remove('hidden');
+        console.log('[Tabs] Showing content for:', tabName);
+      } else {
+        console.error('[Tabs] Content not found for:', tabName);
       }
     });
   });
