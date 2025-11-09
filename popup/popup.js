@@ -977,24 +977,35 @@ function addFavoriteEmoji(emoji) {
  */
 async function exportEmojiMarkers() {
   try {
-    // Load markers from Chrome storage (new format)
-    const storageType = currentSettings.emojiMarkers?.storageType || 'sync';
-    const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+    // Check both storages to find markers (in case storage type changed)
+    const syncResult = await new Promise((resolve) => {
+      chrome.storage.sync.get(['markers'], resolve);
+    });
 
-    const result = await new Promise((resolve) => {
-      storage.get(['markers'], resolve);
+    const localResult = await new Promise((resolve) => {
+      chrome.storage.local.get(['markers'], resolve);
     });
 
     let markers = [];
-    // Store format: { markers: { __meta: {...}, markers: [...] } }
-    if (result.markers && result.markers.markers) {
-      markers = result.markers.markers;
+    let storageUsed = null;
+
+    // Try sync first (default for markers)
+    if (syncResult.markers && syncResult.markers.markers && syncResult.markers.markers.length > 0) {
+      markers = syncResult.markers.markers;
+      storageUsed = 'sync';
+    }
+    // Fallback to local
+    else if (localResult.markers && localResult.markers.markers && localResult.markers.markers.length > 0) {
+      markers = localResult.markers.markers;
+      storageUsed = 'local';
     }
 
     if (markers.length === 0) {
       showToast('Henüz emoji marker yok! ⚠️', 'warning');
       return;
     }
+
+    console.log(`[Export] Found ${markers.length} markers in ${storageUsed} storage`);
 
     // Create JSON file
     const dataStr = JSON.stringify(markers, null, 2);
