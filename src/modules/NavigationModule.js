@@ -24,6 +24,7 @@ class NavigationModule extends BaseModule {
     this.lastConversationState = null; // Track conversation page state
     this.visibilityUnsubscribe = null; // Store unsubscribe function
     this.cachedOpacity = 0.7; // Cached opacity for better UX
+    this.hasInitialLoadCompleted = false; // Track if first message load completed
   }
 
   async init() {
@@ -39,13 +40,13 @@ class NavigationModule extends BaseModule {
     // UI oluştur
     this.createUI();
 
-    // Subscribe to visibility changes
+    // Find messages FIRST with retry (before visibility subscription)
+    await this.findMessagesWithRetry();
+
+    // THEN subscribe to visibility changes (after initial messages found)
     this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
       this.handleVisibilityChange(isConversationPage);
     });
-
-    // Mesajları bul
-    this.findMessages();
 
     // Setup message observer
     this.setupMessageObserver(() => {
@@ -198,6 +199,32 @@ class NavigationModule extends BaseModule {
     });
   }
 
+  /**
+   * Find messages with retry mechanism for page load stability
+   */
+  async findMessagesWithRetry(maxRetries = 5, delay = 200) {
+    for (let i = 0; i < maxRetries; i++) {
+      this.messages = this.dom.findMessages();
+
+      if (this.messages.length > 0) {
+        this.updateCounter();
+        this.lastMessageCount = this.messages.length;
+        this.emit(Events.MESSAGES_UPDATED, this.messages);
+        this.log(`✅ ${this.messages.length} mesaj bulundu (deneme ${i + 1}/${maxRetries})`);
+        return;
+      }
+
+      if (i < maxRetries - 1) {
+        this.log(`⏳ Mesaj bulunamadı, tekrar deneniyor (${i + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    // No messages found after all retries
+    this.log(`⚠️ ${maxRetries} deneme sonrası mesaj bulunamadı`);
+    this.updateCounter(); // Update to show 0/0
+  }
+
   findMessages() {
     // Yeni findActualMessages kullanılıyor (DOMUtils otomatik olarak yönlendiriyor)
     this.messages = this.dom.findMessages();
@@ -297,6 +324,18 @@ class NavigationModule extends BaseModule {
     if (!prevBtn || !nextBtn || !topBtn) {
       this.log('❌ Butonlar bulunamadı, state güncellenemedi');
       return;
+    }
+
+    // Don't disable buttons prematurely during initial page load
+    // Wait until first successful message detection
+    if (this.messages.length === 0 && !this.hasInitialLoadCompleted) {
+      this.log('⏳ İlk mesajlar bekleniyor, buton state güncellenmedi');
+      return;
+    }
+
+    // Mark as completed after first update attempt with messages
+    if (this.messages.length > 0) {
+      this.hasInitialLoadCompleted = true;
     }
 
     const currentIdx = this.dom.getCurrentVisibleMessageIndex();
