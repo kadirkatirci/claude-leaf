@@ -35,40 +35,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Load bookmarks from Chrome storage
+ * Load bookmarks from Chrome storage (new Store format)
  */
 async function loadBookmarks() {
   return new Promise((resolve) => {
-    // Try both old and new keys
-    chrome.storage.local.get(['bookmarks', 'claude-bookmarks'], (result) => {
+    // Use NEW storage key 'bookmarks' with Store format
+    chrome.storage.local.get(['bookmarks'], (result) => {
       console.log('[Bookmarks Page] Raw storage result:', result);
 
-      // Try new format first
-      if (result.bookmarks && result.bookmarks.data && result.bookmarks.data.bookmarks) {
+      // NEW Store format: { version: 2, data: { bookmarks: [...] } }
+      if (result.bookmarks && result.bookmarks.data && Array.isArray(result.bookmarks.data.bookmarks)) {
         allBookmarks = result.bookmarks.data.bookmarks;
-        console.log('[Bookmarks Page] Loaded from NEW format (bookmarks key):', allBookmarks);
+        console.log(`[Bookmarks Page] ✅ Loaded ${allBookmarks.length} bookmarks from Store format`);
+        console.log('[Bookmarks Page] Sample bookmark:', allBookmarks[0]);
       }
-      // Try old format with new key
-      else if (result.bookmarks && Array.isArray(result.bookmarks)) {
-        allBookmarks = result.bookmarks;
-        console.log('[Bookmarks Page] Loaded from OLD format array (bookmarks key):', allBookmarks);
-      }
-      // Try old key with new format
-      else if (result['claude-bookmarks'] && result['claude-bookmarks'].data && result['claude-bookmarks'].data.bookmarks) {
-        allBookmarks = result['claude-bookmarks'].data.bookmarks;
-        console.log('[Bookmarks Page] Loaded from NEW format (claude-bookmarks key):', allBookmarks);
-      }
-      // Try old key with old format
-      else if (result['claude-bookmarks'] && Array.isArray(result['claude-bookmarks'])) {
-        allBookmarks = result['claude-bookmarks'];
-        console.log('[Bookmarks Page] Loaded from OLD format array (claude-bookmarks key):', allBookmarks);
-      }
+      // Fallback: Empty array if no bookmarks
       else {
         allBookmarks = [];
-        console.log('[Bookmarks Page] No bookmarks found in any format');
+        console.log('[Bookmarks Page] ℹ️ No bookmarks found (storage might be empty or old format)');
+        console.log('[Bookmarks Page] Expected format: { bookmarks: { version: 2, data: { bookmarks: [...] } } }');
       }
 
-      console.log(`[Bookmarks Page] Total: ${allBookmarks.length} bookmarks`);
+      console.log(`[Bookmarks Page] Total bookmarks: ${allBookmarks.length}`);
       resolve();
     });
   });
@@ -120,7 +108,11 @@ function renderBookmarks(bookmarks) {
   }
 
   // Sort by date (newest first)
-  const sorted = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
+  const sorted = [...bookmarks].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+    const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+    return timeB - timeA;
+  });
 
   // Render each bookmark
   sorted.forEach(bookmark => {
@@ -136,7 +128,9 @@ function createBookmarkCard(bookmark) {
   const card = document.createElement('div');
   card.className = 'bookmark-card';
 
-  const date = new Date(bookmark.timestamp);
+  // Support both createdAt (new format) and timestamp (old format)
+  const dateValue = bookmark.createdAt || bookmark.timestamp;
+  const date = new Date(dateValue);
   const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit'
