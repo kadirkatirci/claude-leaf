@@ -292,9 +292,17 @@ function setupEventListeners() {
   });
 
   // Bookmarks storage type
-  document.getElementById('bookmarks-storageType').addEventListener('change', (e) => {
+  document.getElementById('bookmarks-storageType').addEventListener('change', async (e) => {
     if (!currentSettings.bookmarks) currentSettings.bookmarks = {};
-    currentSettings.bookmarks.storageType = e.target.value;
+    const newStorageType = e.target.value;
+    const oldStorageType = currentSettings.bookmarks.storageType;
+
+    // Migrate bookmarks to new storage if type changed
+    if (oldStorageType !== newStorageType) {
+      await migrateBookmarksStorage(oldStorageType, newStorageType);
+    }
+
+    currentSettings.bookmarks.storageType = newStorageType;
   });
 
   // Bookmarks keyboard shortcuts
@@ -316,9 +324,17 @@ function setupEventListeners() {
   });
 
   // Emoji Markers storage type
-  document.getElementById('emojiMarkers-storageType').addEventListener('change', (e) => {
+  document.getElementById('emojiMarkers-storageType').addEventListener('change', async (e) => {
     if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
-    currentSettings.emojiMarkers.storageType = e.target.value;
+    const newStorageType = e.target.value;
+    const oldStorageType = currentSettings.emojiMarkers.storageType;
+
+    // Migrate markers to new storage if type changed
+    if (oldStorageType !== newStorageType) {
+      await migrateMarkersStorage(oldStorageType, newStorageType);
+    }
+
+    currentSettings.emojiMarkers.storageType = newStorageType;
   });
 
   // Emoji Markers show badges
@@ -1200,5 +1216,113 @@ async function clearAllEmojiMarkers() {
   } catch (error) {
     console.error('Clear markers error:', error);
     showToast('Silme işlemi başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Migrate bookmarks between storage types
+ */
+async function migrateBookmarksStorage(fromType, toType) {
+  try {
+    console.log(`[Migrate] Moving bookmarks from ${fromType} to ${toType}...`);
+
+    const fromStorage = fromType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+    const toStorage = toType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+
+    // Get bookmarks from old storage
+    const fromResult = await new Promise((resolve) => {
+      fromStorage.get(['bookmarks'], resolve);
+    });
+
+    if (!fromResult.bookmarks || !fromResult.bookmarks.bookmarks || fromResult.bookmarks.bookmarks.length === 0) {
+      console.log('[Migrate] No bookmarks to migrate');
+      showToast('Taşınacak bookmark bulunamadı', 'info');
+      return;
+    }
+
+    const bookmarks = fromResult.bookmarks;
+    const count = bookmarks.bookmarks.length;
+
+    // Write to new storage
+    await new Promise((resolve) => {
+      toStorage.set({ bookmarks }, resolve);
+    });
+
+    // Remove from old storage
+    await new Promise((resolve) => {
+      fromStorage.remove(['bookmarks'], resolve);
+    });
+
+    console.log(`[Migrate] ✅ ${count} bookmarks migrated from ${fromType} to ${toType}`);
+    showToast(`${count} bookmark ${toType} storage'a taşındı! 📦`, 'success');
+
+    // Notify content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'STORAGE_TYPE_CHANGED',
+          storageType: toType
+        }).catch(() => {
+          console.log('Content script not ready');
+        });
+      }
+    });
+  } catch (error) {
+    console.error('[Migrate] Error migrating bookmarks:', error);
+    showToast('Bookmark taşıma başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Migrate emoji markers between storage types
+ */
+async function migrateMarkersStorage(fromType, toType) {
+  try {
+    console.log(`[Migrate] Moving markers from ${fromType} to ${toType}...`);
+
+    const fromStorage = fromType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+    const toStorage = toType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+
+    // Get markers from old storage
+    const fromResult = await new Promise((resolve) => {
+      fromStorage.get(['markers'], resolve);
+    });
+
+    if (!fromResult.markers || !fromResult.markers.markers || fromResult.markers.markers.length === 0) {
+      console.log('[Migrate] No markers to migrate');
+      showToast('Taşınacak emoji marker bulunamadı', 'info');
+      return;
+    }
+
+    const markers = fromResult.markers;
+    const count = markers.markers.length;
+
+    // Write to new storage
+    await new Promise((resolve) => {
+      toStorage.set({ markers }, resolve);
+    });
+
+    // Remove from old storage
+    await new Promise((resolve) => {
+      fromStorage.remove(['markers'], resolve);
+    });
+
+    console.log(`[Migrate] ✅ ${count} markers migrated from ${fromType} to ${toType}`);
+    showToast(`${count} emoji marker ${toType} storage'a taşındı! 📦`, 'success');
+
+    // Notify content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'STORAGE_TYPE_CHANGED',
+          storageType: toType
+        }).catch(() => {
+          console.log('Content script not ready');
+        });
+      }
+    });
+  } catch (error) {
+    console.error('[Migrate] Error migrating markers:', error);
+    showToast('Emoji marker taşıma başarısız! ❌', 'error');
   }
 }
