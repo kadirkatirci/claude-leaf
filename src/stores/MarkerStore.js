@@ -1,15 +1,15 @@
 /**
  * MarkerStore - Emoji marker management with conversation-aware filtering
- * Uses chrome.storage.sync by default (markers are small, good for sync)
+ * Uses chrome.storage.local (larger quota, sync removed for simplicity)
  */
 
 import { stateManager } from '../core/StateManager.js';
 
 export class MarkerStore {
   constructor() {
-    // Create store with sync adapter (markers are small, good for device sync)
+    // Create store with local adapter (larger quota ~10MB vs sync 100KB)
     this.store = stateManager.createStore('markers', {
-      adapter: 'sync',
+      adapter: 'local',
       version: 2,
       defaultData: {
         markers: []
