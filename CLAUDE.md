@@ -16,10 +16,35 @@ A Chrome extension that enhances the Claude.ai web interface with productivity f
 5. **New Base Classes & Mixins**:
    - FixedButtonMixin (visibility & button management)
    - BasePanel (reusable panel UI)
-   - BaseStorage (abstract storage operations)
    - MessageObserverMixin (centralized observer pattern)
    - HoverButtonManager (hover button behavior)
    - MessageBadge (reusable badge component)
+
+#### State Management Refactoring (January 9, 2025)
+1. **Centralized State Management**:
+   - Replaced individual storage classes with unified Store pattern
+   - Created StateManager for store lifecycle management
+   - Implemented SettingsStore, BookmarkStore, MarkerStore, ConversationStateStore
+   - Net reduction: ~700 lines (1315 deleted, 615 added)
+
+2. **Storage Architecture**:
+   - BaseAdapter pattern for Chrome Local/Sync/IndexedDB
+   - Built-in caching with TTL support (30s default)
+   - Automatic data migration and versioning
+   - Event-driven updates via EventEmitter
+
+3. **Critical Fixes**:
+   - Fixed async/await bugs in FixedButtonMixin (opacity not applied)
+   - Fixed Navigation container ID mismatch
+   - Fixed counter updates and button state management
+   - Enabled EditHistory and CompactView modules by default
+   - Fixed field name consistency (messageIndex → index)
+
+4. **Module Improvements**:
+   - All modules now properly await getSetting() calls
+   - Removed auto-collapse on new messages (manual only)
+   - Added single toggle button for Collapse/Expand All
+   - Fixed bookmark display bug (Promise truthiness)
 
 #### Visibility System Enhancements
 1. **4-Layer Detection**: History API + Popstate + Interval + DOM Observer
@@ -53,28 +78,42 @@ src/
 ├── core/                         # Base classes and mixins
 │   ├── FixedButtonMixin.js       # Reusable fixed button logic
 │   ├── BasePanel.js              # Abstract panel component
-│   ├── BaseStorage.js            # Abstract storage operations
-│   └── MessageObserverMixin.js   # Centralized observer pattern (NEW)
+│   ├── EventEmitter.js           # Event emitter for reactive updates (NEW)
+│   ├── StateManager.js           # Centralized state/store management (NEW)
+│   ├── MessageObserverMixin.js   # Centralized observer pattern
+│   └── storage/                  # Storage layer (NEW)
+│       ├── Store.js              # Base Store class with caching
+│       └── adapters/             # Storage adapters
+│           ├── BaseAdapter.js    # Abstract adapter interface
+│           ├── ChromeLocalAdapter.js
+│           ├── ChromeSyncAdapter.js
+│           ├── IndexedDBAdapter.js
+│           └── index.js
+├── stores/                       # State stores (NEW)
+│   ├── SettingsStore.js          # Global settings management
+│   ├── BookmarkStore.js          # Bookmark data management
+│   ├── MarkerStore.js            # Emoji marker data management
+│   ├── ConversationStateStore.js # Per-conversation state
+│   └── index.js
 ├── managers/                     # Centralized services
 │   ├── KeyboardManager.js        # Global keyboard shortcuts
 │   ├── ThemeManager.js           # Theme and CSS management
 │   └── ObserverManager.js        # DOM observer lifecycle
-├── utils/                        # Utilities (REFACTORED)
+├── utils/                        # Utilities
 │   ├── DOMUtils.js               # Main wrapper for compatibility
 │   ├── DOMUtils-Core.js         # Core DOM operations
 │   ├── DOMUtils-Helpers.js      # Helper utilities
 │   ├── DOMUtils-Parsing.js      # Content parsing
 │   ├── EventBus.js              # Event system
-│   ├── SettingsManager.js       # Settings management
 │   ├── VisibilityManager.js     # Visibility control
-│   └── HoverButtonManager.js    # Hover button behavior (NEW)
+│   └── HoverButtonManager.js    # Hover button behavior
 ├── components/                   # Reusable UI components
 │   └── primitives/
 │       ├── Button.js
 │       ├── Badge.js
 │       ├── CounterBadge.js
 │       ├── FixedButton.js
-│       └── MessageBadge.js      # Reusable badge component (NEW)
+│       └── MessageBadge.js      # Reusable badge component
 ├── modules/                      # Feature modules
 │   ├── BaseModule.js             # Base class for all modules
 │   ├── NavigationModule.js
@@ -86,7 +125,7 @@ src/
 │   └── ContentFoldingModule.js
 ├── config/
 │   └── themes.js                 # Theme configurations
-└── App.js                        # Main application (REFACTORED)
+└── App.js                        # Main application
 ```
 
 ### Core Components
@@ -105,13 +144,25 @@ src/
 - Standard show/hide/toggle methods
 - Escape key handling
 
-**BaseStorage** - Abstract storage operations
-- Unified load/save/export/import operations
-- Chrome storage API abstraction
-- Support for both local and sync storage
-- Duplicate prevention and data migration
+**EventEmitter** - Reactive event system (NEW)
+- Pub/sub pattern for reactive updates
+- Used by stores to notify modules of changes
+- Supports wildcard listeners and namespaced events
+- Memory-safe with automatic cleanup
 
-**MessageObserverMixin** - Centralized observer pattern (NEW)
+**StateManager** - Centralized state management (NEW)
+- Factory for creating stores with standardized configuration
+- Manages store lifecycle and cleanup
+- Provides global access to stores via App instance
+- Supports multiple storage adapters (local, sync, IndexedDB)
+
+**Store** - Base store class (NEW)
+- Generic storage with built-in caching (30s TTL)
+- Automatic data validation and migration
+- Event-driven updates via EventEmitter
+- Adapter pattern for flexible storage backends
+
+**MessageObserverMixin** - Centralized observer pattern
 - Standardizes DOM observation across modules
 - Configurable throttling and message count tracking
 - Smart cleanup and memory management
