@@ -180,7 +180,12 @@ class EditHistoryModule extends BaseModule {
    */
   async handleEditsFound(editedPrompts) {
     // Don't process if not on conversation page
-    if (!this.lastConversationState) return;
+    // If lastConversationState is null (not initialized), check manually
+    const isConversationPage = this.lastConversationState !== null
+      ? this.lastConversationState
+      : this.dom.isOnConversationPage();
+
+    if (!isConversationPage) return;
 
     const oldCount = this.editedMessages.length;
 
