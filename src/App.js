@@ -603,11 +603,13 @@ class ClaudeProductivityApp {
    */
   async verifyArchitecture() {
     console.log('🔍 [ARCHITECTURE VERIFICATION] Starting system check...\n');
+    console.log('Timestamp:', new Date().toISOString());
 
     const { default: asyncManager } = await import('./managers/AsyncManager.js');
     const { default: domManager } = await import('./managers/DOMManager.js');
     const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
     const { default: settingsCache } = await import('./core/SettingsCache.js');
+    const { default: VisibilityManager } = await import('./utils/VisibilityManager.js');
 
     // 1. Check AsyncManager
     const asyncStats = asyncManager.getStats();
@@ -703,7 +705,61 @@ class ClaudeProductivityApp {
       console.log(`  ❌ Found ${intervalCount} legacy intervals`);
     }
 
-    // 6. Performance metrics
+    // 6. Visibility System Check
+    console.log('\n📊 Visibility System:');
+    const currentPath = window.location.pathname;
+    const isConversationPage = VisibilityManager.isOnConversationPage();
+    console.log(`  - Current path: ${currentPath}`);
+    console.log(`  - Is conversation page: ${isConversationPage}`);
+    console.log(`  - Buttons should be: ${isConversationPage ? 'VISIBLE' : 'HIDDEN'}`);
+
+    // Check module visibility consistency
+    console.log('\n  Module Visibility Handling:');
+    const visibilityStatus = {};
+
+    this.modules.forEach((module, name) => {
+      if (module && module.enabled) {
+        const hasFixedButton = module.fixedButton !== undefined;
+        const hasVisibilityListener = module.setupVisibilityListener !== undefined;
+        const hasHandleVisibility = module.handleVisibilityChange !== undefined;
+
+        visibilityStatus[name] = {
+          hasButton: hasFixedButton,
+          hasListener: hasVisibilityListener || hasHandleVisibility,
+          method: hasVisibilityListener ?
+            (hasHandleVisibility ? 'FixedButtonMixin' : 'Custom') :
+            'None'
+        };
+      }
+    });
+
+    console.table(visibilityStatus);
+
+    // Check actual button visibility
+    console.log('\n  Button Element States:');
+    const buttonIds = {
+      'Navigation': 'claude-nav-container',
+      'EditHistory': 'claude-edit-history-button',
+      'CompactView': 'claude-compact-toggle-all',
+      'Bookmarks': 'claude-bookmark-button',
+      'EmojiMarkers': 'claude-marker-button'
+    };
+
+    Object.entries(buttonIds).forEach(([name, id]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        const style = window.getComputedStyle(element);
+        const isVisible = style.display !== 'none' &&
+                         style.visibility !== 'hidden' &&
+                         style.opacity !== '0' &&
+                         style.pointerEvents !== 'none';
+        console.log(`    - ${name}: ${isVisible ? '✅ VISIBLE' : '⚠️ HIDDEN'} (display: ${style.display}, visibility: ${style.visibility}, opacity: ${style.opacity})`);
+      } else {
+        console.log(`    - ${name}: ❌ NOT FOUND`);
+      }
+    });
+
+    // 7. Performance metrics
     console.log('\n📊 Performance Metrics:');
     const memory = performance.memory;
     if (memory) {
@@ -713,12 +769,17 @@ class ClaudeProductivityApp {
     // Summary
     console.log('\n✅ [ARCHITECTURE VERIFICATION] Complete');
     console.log('Run this check with: window.claudeProductivity.verifyArchitecture()');
+    console.log('💡 Navigate between pages to test visibility consistency');
 
     return {
       asyncManager: asyncStats,
       domManager: domStats,
       buttonFactory: buttonStats,
       settingsCache: cacheLoaded,
+      visibilityManager: {
+        isConversationPage,
+        currentPath
+      },
       hasPolling: intervalCount > 0
     };
   }

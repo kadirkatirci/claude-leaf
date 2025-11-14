@@ -6,6 +6,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import VisibilityManager from '../utils/VisibilityManager.js';
 
 // Alt bileşenler
 import MessageCollapse from './CompactViewModule/MessageCollapse.js';
@@ -43,6 +44,9 @@ class CompactViewModule extends BaseModule {
 
       // Enhance with MessageObserverMixin
       MessageObserverMixin.enhance(this);
+
+      // Setup visibility listener for proper show/hide behavior
+      this.setupVisibilityListener();
 
       // Create collapse/expand all buttons in navigation container
       try {
@@ -109,6 +113,29 @@ class CompactViewModule extends BaseModule {
       this.error('Compact View initialization failed:', error);
       throw error; // Re-throw for App.js to track
     }
+  }
+
+  /**
+   * Setup visibility listener
+   */
+  setupVisibilityListener() {
+    // Use VisibilityManager for consistent visibility handling
+    this.unsubscribers.push(
+      VisibilityManager.onVisibilityChange((isConversationPage) => {
+        this.log(`📦 Visibility changed: ${isConversationPage ? 'SHOW' : 'HIDE'} (conversation: ${isConversationPage})`);
+
+        // Update button visibility using the same approach as other modules
+        if (this.elements && this.elements.toggleBtn) {
+          VisibilityManager.setElementVisibility(this.elements.toggleBtn, isConversationPage);
+        }
+
+        // Also update all expand button containers
+        const expandButtons = document.querySelectorAll('.claude-expand-button-container');
+        expandButtons.forEach(btn => {
+          VisibilityManager.setElementVisibility(btn, isConversationPage);
+        });
+      })
+    );
   }
 
   /**

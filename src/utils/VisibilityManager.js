@@ -128,25 +128,34 @@ class VisibilityManager {
   }
 
   /**
-   * Update UI element visibility without triggering mutations
-   * Uses visibility instead of display to avoid layout shifts
+   * Update UI element visibility with complete hiding
+   * Uses all 4 properties for robust visibility control
    * @param {HTMLElement} element
    * @param {boolean} visible
    */
   setElementVisibility(element, visible) {
     if (!element) return;
 
-    // Use visibility and opacity for smoother transitions
-    // This doesn't trigger layout recalculations like display does
+    // Use all 4 properties for complete and robust visibility control
+    // This matches FixedButtonMixin's approach for consistency
     if (visible) {
+      // Restore display based on element type or stored value
+      const displayValue = element.dataset.originalDisplay || 'flex';
+      element.style.display = displayValue;
       element.style.visibility = 'visible';
       element.style.opacity = element.dataset.originalOpacity || '1';
       element.style.pointerEvents = 'auto';
     } else {
-      // Store original opacity
+      // Store original values before hiding
       if (!element.dataset.originalOpacity) {
         element.dataset.originalOpacity = element.style.opacity || '1';
       }
+      if (!element.dataset.originalDisplay && element.style.display && element.style.display !== 'none') {
+        element.dataset.originalDisplay = element.style.display;
+      }
+
+      // Use all 4 properties for complete hiding (same as FixedButtonMixin)
+      element.style.display = 'none';
       element.style.visibility = 'hidden';
       element.style.opacity = '0';
       element.style.pointerEvents = 'none';
