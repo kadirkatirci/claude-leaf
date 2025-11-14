@@ -108,8 +108,8 @@ class ClaudeProductivityApp {
    * Main initialization sequence
    */
   async doInitialize() {
-    // Initialize core utilities
-    DOMUtils.init();
+    // Initialize core utilities (and wait for VisibilityManager to load)
+    await DOMUtils.init();
 
     // Initialize managers
     this.initializeManagers();

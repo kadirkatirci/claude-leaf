@@ -10,9 +10,9 @@ import ObserverManager from '../managers/ObserverManager.js';
 
 // Combine all utilities into a single object for backward compatibility
 const DOMUtils = {
-  // Initialize function
+  // Initialize function - now async to ensure VisibilityManager is loaded
   init() {
-    DOMUtilsCore.init();
+    return DOMUtilsCore.init();
   },
 
   // From DOMUtils-Core

@@ -9,13 +9,17 @@ let visibilityManager = null;
 const DOMUtilsCore = {
   /**
    * Initialize with VisibilityManager
+   * Returns a promise to ensure VisibilityManager is loaded before use
    */
-  init() {
+  async init() {
     // Lazy load to avoid circular dependency
     if (!visibilityManager) {
-      import('./VisibilityManager.js').then(module => {
+      try {
+        const module = await import('./VisibilityManager.js');
         visibilityManager = module.default;
-      });
+      } catch (error) {
+        console.error('Failed to load VisibilityManager:', error);
+      }
     }
   },
 
