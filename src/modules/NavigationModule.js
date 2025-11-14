@@ -106,8 +106,11 @@ class NavigationModule extends BaseModule {
    * Handle visibility change from VisibilityManager
    */
   handleVisibilityChange(isConversationPage) {
-    // Only update if state actually changed
-    if (this.lastConversationState === isConversationPage) return;
+    // ✅ FIXED: Always process visibility changes for robustness
+    // The old guard (if lastConversationState === isConversationPage) was too coarse
+    // It prevented updates when switching between different chats (both are conversation pages)
+    // Now we always update to ensure UI is correct for current context
+    // This matches FixedButtonMixin pattern used by other modules
 
     this.lastConversationState = isConversationPage;
 
@@ -121,7 +124,7 @@ class NavigationModule extends BaseModule {
       this.lastMessageCount = 0;
     } else {
       this.log('Page changed to conversation, showing navigation');
-      // Re-find messages on conversation page
+      // Always re-find messages on conversation page (handles chat switches correctly)
       this.findMessages();
     }
   }
