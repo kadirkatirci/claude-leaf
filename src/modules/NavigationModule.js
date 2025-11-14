@@ -145,33 +145,50 @@ class NavigationModule extends BaseModule {
     const showCounter = await this.getSetting('showCounter');
     this.cachedOpacity = await this.getSetting('opacity') || 0.7;
 
+    // Determine initial visibility state
+    const isConversationPage = VisibilityManager.isOnConversationPage();
+
     const container = this.dom.createElement('div', {
       id: 'claude-nav-container',
       className: 'claude-nav-buttons',
+      'data-nav-container': 'true', // Add data attribute for reliable finding by other modules
       style: {
         position: 'fixed',
         [position]: '30px',
         bottom: '100px',
         zIndex: '9999',
-        display: 'flex',
+        display: isConversationPage ? 'flex' : 'none', // Initialize visibility
         flexDirection: 'column',
         gap: '8px',
         opacity: this.cachedOpacity,
         transition: 'opacity 0.2s ease',
+        visibility: isConversationPage ? 'visible' : 'hidden', // Add visibility property
       }
     });
 
     // Top button
     const topBtn = this.createButton('⇈', 'En üste git (Alt+Home)', () => this.navigateToTop());
     topBtn.id = 'claude-nav-top';
+    // Initialize button as disabled (will be enabled when messages found)
+    topBtn.disabled = true;
+    topBtn.style.opacity = '0.3';
+    topBtn.style.cursor = 'not-allowed';
 
     // Previous button
     const prevBtn = this.createButton('↑', 'Önceki mesaj (Alt+↑)', () => this.navigatePrevious());
     prevBtn.id = 'claude-nav-prev';
+    // Initialize button as disabled (will be enabled when messages found)
+    prevBtn.disabled = true;
+    prevBtn.style.opacity = '0.3';
+    prevBtn.style.cursor = 'not-allowed';
 
     // Next button
     const nextBtn = this.createButton('↓', 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
     nextBtn.id = 'claude-nav-next';
+    // Initialize button as disabled (will be enabled when messages found)
+    nextBtn.disabled = true;
+    nextBtn.style.opacity = '0.3';
+    nextBtn.style.cursor = 'not-allowed';
 
     // Counter badge using CounterBadge component
     if (showCounter) {
@@ -336,10 +353,14 @@ class NavigationModule extends BaseModule {
 
     // Only update if text changed
     if (this.lastCounterText !== newText) {
-      // Use CounterBadge.update for consistency
-      CounterBadge.updateById('claude-nav-counter', newText);
-      this.lastCounterText = newText;
-      this.log(`Counter badge güncellendi: ${newText}`);
+      // ✅ FIXED: Check badge exists before updating (guard against DOM issues)
+      const badge = document.getElementById('claude-nav-counter');
+      if (badge) {
+        // Use CounterBadge.update for consistency
+        CounterBadge.updateById('claude-nav-counter', newText);
+        this.lastCounterText = newText;
+        this.log(`Counter badge güncellendi: ${newText}`);
+      }
     }
 
     // Butonları enable/disable et
@@ -353,18 +374,8 @@ class NavigationModule extends BaseModule {
       return;
     }
 
-    // Don't disable buttons prematurely during initial page load
-    // Wait until first successful message detection
-    if (this.messages.length === 0 && !this.hasInitialLoadCompleted) {
-      this.log('⏳ İlk mesajlar bekleniyor, buton state güncellenmedi');
-      return;
-    }
-
-    // Mark as completed after first update attempt with messages
-    if (this.messages.length > 0) {
-      this.hasInitialLoadCompleted = true;
-    }
-
+    // ✅ FIXED: Always update button states based on current message count
+    // Buttons are initialized disabled, enable them as messages are found
     const currentIdx = this.dom.getCurrentVisibleMessageIndex();
 
     const newStates = {

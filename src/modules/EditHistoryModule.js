@@ -152,8 +152,9 @@ class EditHistoryModule extends BaseModule {
   createCollapseButton(theme) {
     this.isAllCollapsed = false;
 
-    // Find navigation container
-    const navContainer = document.querySelector('#claude-nav-buttons');
+    // Find navigation container (use data attribute for reliability, fallback to ID)
+    const navContainer = document.querySelector('[data-nav-container="true"]')
+      || document.getElementById('claude-nav-container');
     if (!navContainer) {
       this.warn('Navigation container not found, collapse button will not be created');
       return;
