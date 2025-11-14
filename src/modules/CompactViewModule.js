@@ -14,63 +14,101 @@ import ExpandButton from './CompactViewModule/ExpandButton.js';
 class CompactViewModule extends BaseModule {
   constructor() {
     super('compactView');
-    
+
     // Alt bileşenler
     this.collapse = new MessageCollapse(
       () => this.getSettings(),
       (msg, collapsed) => this.onMessageStateChanged(msg, collapsed)
     );
-    
+
     this.expandButton = new ExpandButton(
       () => this.getTheme(),
       (msg) => this.collapse.toggleMessage(msg)
     );
-    
+
     this.processedMessages = new WeakSet();
     this.observer = null;
+
+    // Track intervals and timeouts for cleanup
+    this.intervals = [];
+    this.timeouts = [];
   }
 
   async init() {
     await super.init();
     if (!this.enabled) return;
 
-    this.log('Compact View başlatılıyor...');
+    try {
+      this.log('Compact View başlatılıyor...');
 
-    // Enhance with MessageObserverMixin
-    MessageObserverMixin.enhance(this);
+      // Enhance with MessageObserverMixin
+      MessageObserverMixin.enhance(this);
 
-    // Create collapse/expand all buttons in navigation container
-    this.createCollapseButtons();
+      // Create collapse/expand all buttons in navigation container
+      try {
+        this.createCollapseButtons();
+      } catch (error) {
+        this.error('Failed to create collapse buttons:', error);
+      }
 
-    // Mevcut mesajları işle
-    this.processMessages();
+      // Mevcut mesajları işle
+      try {
+        this.processMessages();
+      } catch (error) {
+        this.error('Failed to process messages:', error);
+      }
 
-    // Auto collapse açıksa tüm mesajları daralt
-    const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
-    this.log(`[Auto Collapse] Durum: ${autoCollapseEnabled ? '✅ ACIK' : '❌ KAPALI'}`);
+      // Auto collapse açıksa tüm mesajları daralt
+      try {
+        const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
+        this.log(`[Auto Collapse] Durum: ${autoCollapseEnabled ? '✅ ACIK' : '❌ KAPALI'}`);
 
-    if (autoCollapseEnabled) {
-      setTimeout(() => {
-        const count = this.collapseAllMessages();
-        this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
-      }, 500);
+        if (autoCollapseEnabled) {
+          const timeoutId = setTimeout(() => {
+            try {
+              const count = this.collapseAllMessages();
+              this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
+            } catch (error) {
+              this.error('Error in auto-collapse:', error);
+            }
+          }, 500);
+          this.timeouts.push(timeoutId);
+        }
+      } catch (error) {
+        this.error('Error setting up auto-collapse:', error);
+      }
+
+      // Setup message observer
+      try {
+        this.setupMessageObserver(() => {
+          try {
+            this.processMessages();
+          } catch (error) {
+            this.error('Error in message observer callback:', error);
+          }
+        }, {
+          throttleDelay: 500,
+          trackMessageCount: false, // Process on any change
+          checkConversationPage: false
+        });
+      } catch (error) {
+        this.error('Failed to setup message observer:', error);
+      }
+
+      // Klavye kısayolu
+      try {
+        if (await this.getSetting('keyboardShortcuts')) {
+          this.setupKeyboardShortcuts();
+        }
+      } catch (error) {
+        this.error('Failed to setup keyboard shortcuts:', error);
+      }
+
+      this.log('✅ Compact View aktif');
+    } catch (error) {
+      this.error('Compact View initialization failed:', error);
+      throw error; // Re-throw for App.js to track
     }
-
-    // Setup message observer
-    this.setupMessageObserver(() => {
-      this.processMessages();
-    }, {
-      throttleDelay: 500,
-      trackMessageCount: false, // Process on any change
-      checkConversationPage: false
-    });
-
-    // Klavye kısayolu
-    if (await this.getSetting('keyboardShortcuts')) {
-      this.setupKeyboardShortcuts();
-    }
-
-    this.log('✅ Compact View aktif');
   }
 
   /**
@@ -79,15 +117,28 @@ class CompactViewModule extends BaseModule {
   createCollapseButtons() {
     // Navigation container'ı bul (NavigationModule tarafından oluşturulur)
     const waitForNavigation = setInterval(() => {
-      const navContainer = document.getElementById('claude-nav-container');
-      if (navContainer) {
-        clearInterval(waitForNavigation);
-        this.addButtonsToNavigation(navContainer);
+      try {
+        const navContainer = document.getElementById('claude-nav-container');
+        if (navContainer) {
+          clearInterval(waitForNavigation);
+          this.intervals = this.intervals.filter(id => id !== waitForNavigation);
+          this.addButtonsToNavigation(navContainer);
+        }
+      } catch (error) {
+        this.error('Error in navigation container search:', error);
       }
     }, 100);
 
+    // Track interval for cleanup
+    this.intervals.push(waitForNavigation);
+
     // 5 saniye sonra timeout
-    setTimeout(() => clearInterval(waitForNavigation), 5000);
+    const timeoutId = setTimeout(() => {
+      clearInterval(waitForNavigation);
+      this.intervals = this.intervals.filter(id => id !== waitForNavigation);
+    }, 5000);
+
+    this.timeouts.push(timeoutId);
   }
 
   /**
@@ -450,22 +501,63 @@ class CompactViewModule extends BaseModule {
   destroy() {
     this.log('🛑 Compact View durduruluyor...');
 
-    // Destroy message observer
-    this.destroyMessageObserver();
+    try {
+      // Clean up all intervals
+      try {
+        this.intervals.forEach(intervalId => {
+          clearInterval(intervalId);
+        });
+        this.intervals = [];
+      } catch (error) {
+        this.error('Error clearing intervals:', error);
+      }
 
-    this.collapse.clear();
+      // Clean up all timeouts
+      try {
+        this.timeouts.forEach(timeoutId => {
+          clearTimeout(timeoutId);
+        });
+        this.timeouts = [];
+      } catch (error) {
+        this.error('Error clearing timeouts:', error);
+      }
 
-    // Collapse/Expand All butonunu kaldır
-    if (this.elements && this.elements.toggleBtn) {
-      this.elements.toggleBtn.remove();
+      // Destroy message observer
+      try {
+        this.destroyMessageObserver();
+      } catch (error) {
+        this.error('Error destroying message observer:', error);
+      }
+
+      // Collapse state cleanup
+      try {
+        this.collapse.clear();
+      } catch (error) {
+        this.error('Error clearing collapse state:', error);
+      }
+
+      // Collapse/Expand All butonunu kaldır
+      try {
+        if (this.elements && this.elements.toggleBtn) {
+          this.elements.toggleBtn.remove();
+        }
+      } catch (error) {
+        this.error('Error removing toggle button:', error);
+      }
+
+      // Tüm expand butonlarını kaldır
+      try {
+        document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
+          btn.remove();
+        });
+      } catch (error) {
+        this.error('Error removing expand buttons:', error);
+      }
+
+      super.destroy();
+    } catch (error) {
+      this.error('Error in destroy method:', error);
     }
-
-    // Tüm expand butonlarını kaldır
-    document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
-      btn.remove();
-    });
-
-    super.destroy();
   }
 }
 

@@ -33,24 +33,36 @@ class BaseModule {
 
     console.log(`🔧 ${this.name} modülü başlatılıyor...`);
 
-    // Settings'i yükle
-    await this.loadSettings();
+    try {
+      // Settings'i yükle (5 second timeout)
+      await Promise.race([
+        this.loadSettings(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Settings load timeout for ${this.name}`)), 5000)
+        )
+      ]);
 
-    // Eğer disabled ise başlatma
-    const enabled = await this.isEnabled();
-    if (!enabled) {
-      console.log(`⏸️ ${this.name} modülü devre dışı`);
-      return;
+      // Eğer disabled ise başlatma
+      const enabled = await this.isEnabled();
+      if (!enabled) {
+        console.log(`⏸️ ${this.name} modülü devre dışı`);
+        return;
+      }
+
+      this.initialized = true;
+      this.enabled = true;
+
+      // Settings değişikliklerini dinle
+      this.subscribeToSettings();
+
+      // Listen to centralized SPA navigation events
+      this.subscribeToURLChanges();
+    } catch (error) {
+      console.error(`❌ Failed to initialize ${this.name} module:`, error);
+      this.enabled = false;
+      this.initialized = false;
+      throw error; // Re-throw for App.js to track
     }
-
-    this.initialized = true;
-    this.enabled = true;
-
-    // Settings değişikliklerini dinle
-    this.subscribeToSettings();
-
-    // Listen to centralized SPA navigation events
-    this.subscribeToURLChanges();
   }
 
   /**
@@ -145,40 +157,52 @@ class BaseModule {
   subscribeToSettings() {
     // Subscribe to settingsStore changes
     const storeUnsub = settingsStore.subscribe(async (settings) => {
-      const moduleSettings = settings[this.name];
+      try {
+        const moduleSettings = settings[this.name];
 
-      // Eğer sadece general değiştiyse (tema vb.)
-      if (!moduleSettings && settings.general) {
-        this.onSettingsChanged({});
-        return;
+        // Eğer sadece general değiştiyse (tema vb.)
+        if (!moduleSettings && settings.general) {
+          this.onSettingsChanged({});
+          return;
+        }
+
+        if (!moduleSettings) return;
+
+        // Eğer modül disabled olduysa, yok et
+        if (!moduleSettings.enabled && this.enabled) {
+          this.destroy();
+          return;
+        }
+
+        // Eğer modül enabled olduysa ve henüz başlamamışsa, başlat
+        if (moduleSettings.enabled && !this.enabled) {
+          try {
+            await this.init();
+          } catch (error) {
+            console.error(`❌ Failed to re-enable ${this.name} module:`, error);
+          }
+          return;
+        }
+
+        // Settings güncellendiginde modüle bildir
+        this.onSettingsChanged(moduleSettings);
+      } catch (error) {
+        console.error(`❌ Error in settings subscription for ${this.name}:`, error);
       }
-
-      if (!moduleSettings) return;
-
-      // Eğer modül disabled olduysa, yok et
-      if (!moduleSettings.enabled && this.enabled) {
-        this.destroy();
-        return;
-      }
-
-      // Eğer modül enabled olduysa ve henüz başlamamışsa, başlat
-      if (moduleSettings.enabled && !this.enabled) {
-        await this.init();
-        return;
-      }
-
-      // Settings güncellendiginde modüle bildir
-      this.onSettingsChanged(moduleSettings);
     });
 
     this.unsubscribers.push(storeUnsub);
 
     // Also listen to EventBus for backward compatibility (App.js emits this)
     const eventUnsub = eventBus.on('settings:changed', async (settings) => {
-      // Just call onSettingsChanged, settingsStore subscription handles the rest
-      const moduleSettings = settings[this.name];
-      if (moduleSettings) {
-        this.onSettingsChanged(moduleSettings);
+      try {
+        // Just call onSettingsChanged, settingsStore subscription handles the rest
+        const moduleSettings = settings[this.name];
+        if (moduleSettings) {
+          this.onSettingsChanged(moduleSettings);
+        }
+      } catch (error) {
+        console.error(`❌ Error in EventBus settings handler for ${this.name}:`, error);
       }
     });
 

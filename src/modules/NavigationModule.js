@@ -32,47 +32,74 @@ class NavigationModule extends BaseModule {
 
     if (!this.enabled) return;
 
-    this.log('Navigation başlatılıyor...');
+    try {
+      this.log('Navigation başlatılıyor...');
 
-    // Enhance with MessageObserverMixin
-    MessageObserverMixin.enhance(this);
+      // Enhance with MessageObserverMixin
+      MessageObserverMixin.enhance(this);
 
-    // UI oluştur
-    this.createUI();
+      // UI oluştur
+      this.createUI();
 
-    // Find messages FIRST with retry (before visibility subscription)
-    await this.findMessagesWithRetry();
+      // Find messages FIRST with retry (before visibility subscription)
+      // Add timeout to prevent hanging
+      await Promise.race([
+        this.findMessagesWithRetry(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Find messages timeout')), 5000)
+        )
+      ]);
 
-    // THEN subscribe to visibility changes (after initial messages found)
-    this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
-      this.handleVisibilityChange(isConversationPage);
-    });
+      // THEN subscribe to visibility changes (after initial messages found)
+      this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
+        try {
+          this.handleVisibilityChange(isConversationPage);
+        } catch (error) {
+          console.error(`❌ Error in visibility change handler:`, error);
+        }
+      });
 
-    // Setup message observer
-    this.setupMessageObserver(() => {
-      const oldLength = this.messages.length;
-      this.messages = this.dom.findMessages();
+      // Setup message observer
+      this.setupMessageObserver(() => {
+        try {
+          const oldLength = this.messages.length;
+          this.messages = this.dom.findMessages();
 
-      // Only emit and update if message count changed
-      if (this.messages.length !== oldLength) {
-        this.updateCounter();
-        this.emit(Events.MESSAGES_UPDATED, this.messages);
+          // Only emit and update if message count changed
+          if (this.messages.length !== oldLength) {
+            this.updateCounter();
+            this.emit(Events.MESSAGES_UPDATED, this.messages);
+          }
+        } catch (error) {
+          console.error(`❌ Error in message observer callback:`, error);
+        }
+      }, {
+        throttleDelay: 500,
+        trackMessageCount: false, // We handle this manually
+        checkConversationPage: true
+      });
+
+      // Klavye kısayolları
+      try {
+        if (await this.getSetting('keyboardShortcuts')) {
+          this.setupKeyboardShortcuts();
+        }
+      } catch (error) {
+        this.error('Failed to setup keyboard shortcuts:', error);
       }
-    }, {
-      throttleDelay: 500,
-      trackMessageCount: false, // We handle this manually
-      checkConversationPage: true
-    });
 
-    // Klavye kısayolları
-    if (await this.getSetting('keyboardShortcuts')) {
-      this.setupKeyboardShortcuts();
+      // Scroll listener
+      try {
+        this.setupScrollListener();
+      } catch (error) {
+        this.error('Failed to setup scroll listener:', error);
+      }
+
+      this.log(`✅ ${this.messages.length} mesaj bulundu`);
+    } catch (error) {
+      this.error('Navigation initialization failed:', error);
+      throw error; // Re-throw for App.js to track
     }
-
-    // Scroll listener
-    this.setupScrollListener();
-
-    this.log(`✅ ${this.messages.length} mesaj bulundu`);
   }
 
   /**
@@ -420,56 +447,79 @@ class NavigationModule extends BaseModule {
   }
 
   async onSettingsChanged(settings) {
-    this.log('Settings güncellendi:', settings);
+    try {
+      this.log('Settings güncellendi:', settings);
 
-    // Only update position if it actually changed
-    if (this.elements.container && settings.navigation) {
-      const newPosition = settings.navigation.position || 'right';
-      const currentLeft = this.elements.container.style.left;
-      const currentRight = this.elements.container.style.right;
+      // Only update position if it actually changed
+      if (this.elements.container && settings.navigation) {
+        try {
+          const newPosition = settings.navigation.position || 'right';
+          const currentLeft = this.elements.container.style.left;
 
-      const shouldBeLeft = newPosition === 'left';
-      const isCurrentlyLeft = currentLeft === '30px';
+          const shouldBeLeft = newPosition === 'left';
+          const isCurrentlyLeft = currentLeft === '30px';
 
-      if (shouldBeLeft !== isCurrentlyLeft) {
-        this.elements.container.style.left = shouldBeLeft ? '30px' : 'auto';
-        this.elements.container.style.right = shouldBeLeft ? 'auto' : '30px';
+          if (shouldBeLeft !== isCurrentlyLeft) {
+            this.elements.container.style.left = shouldBeLeft ? '30px' : 'auto';
+            this.elements.container.style.right = shouldBeLeft ? 'auto' : '30px';
+          }
+        } catch (error) {
+          this.error('Failed to update position:', error);
+        }
       }
-    }
 
-    // Only update opacity if it actually changed
-    if (this.elements.container && settings.general && settings.general.opacity !== undefined) {
-      const newOpacity = settings.general.opacity.toString();
-      if (this.elements.container.style.opacity !== newOpacity) {
-        this.cachedOpacity = settings.general.opacity; // Update cache
-        this.elements.container.style.opacity = newOpacity;
+      // Only update opacity if it actually changed
+      if (this.elements.container && settings.general && settings.general.opacity !== undefined) {
+        try {
+          const newOpacity = settings.general.opacity.toString();
+          if (this.elements.container.style.opacity !== newOpacity) {
+            this.cachedOpacity = settings.general.opacity; // Update cache
+            this.elements.container.style.opacity = newOpacity;
+          }
+        } catch (error) {
+          this.error('Failed to update opacity:', error);
+        }
       }
-    }
 
-    // Counter göster/gizle - only if changed
-    const counter = document.getElementById('claude-nav-counter');
-    if (counter && settings.navigation) {
-      const shouldShow = settings.navigation.showCounter;
-      const currentDisplay = counter.style.display;
-      const targetDisplay = shouldShow ? 'block' : 'none';
+      // Counter göster/gizle - only if changed
+      const counter = document.getElementById('claude-nav-counter');
+      if (counter && settings.navigation) {
+        try {
+          const shouldShow = settings.navigation.showCounter;
+          const currentDisplay = counter.style.display;
+          const targetDisplay = shouldShow ? 'block' : 'none';
 
-      if (currentDisplay !== targetDisplay) {
-        counter.style.display = targetDisplay;
+          if (currentDisplay !== targetDisplay) {
+            counter.style.display = targetDisplay;
+          }
+        } catch (error) {
+          this.error('Failed to update counter visibility:', error);
+        }
       }
-    }
 
-    // Klavye kısayolları değişti mi?
-    if (settings.navigation && settings.navigation.keyboardShortcuts !== await this.getSetting('keyboardShortcuts')) {
-      if (settings.navigation.keyboardShortcuts) {
-        this.setupKeyboardShortcuts();
-      } else if (this.keydownHandler) {
-        document.removeEventListener('keydown', this.keydownHandler);
+      // Klavye kısayolları değişti mi?
+      try {
+        if (settings.navigation && settings.navigation.keyboardShortcuts !== await this.getSetting('keyboardShortcuts')) {
+          if (settings.navigation.keyboardShortcuts) {
+            this.setupKeyboardShortcuts();
+          } else if (this.keydownHandler) {
+            document.removeEventListener('keydown', this.keydownHandler);
+          }
+        }
+      } catch (error) {
+        this.error('Failed to update keyboard shortcuts:', error);
       }
-    }
 
-    // Tema değişti mi? (general ayarlarından kontrol et)
-    if (this.settings && this.settings.general) {
-      this.recreateUI();
+      // Tema değişti mi? (general ayarlarından kontrol et)
+      try {
+        if (this.settings && this.settings.general) {
+          this.recreateUI();
+        }
+      } catch (error) {
+        this.error('Failed to recreate UI:', error);
+      }
+    } catch (error) {
+      this.error('Error in onSettingsChanged:', error);
     }
   }
 

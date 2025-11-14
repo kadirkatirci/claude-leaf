@@ -20,6 +20,7 @@ class BookmarkModule extends BaseModule {
     this.observer = null;
     this.visibilityUnsubscribe = null;
     this.lastConversationState = null;
+    this.chromeMessageListener = null; // Store Chrome listener for cleanup
 
     // Initialize sub-modules
     this.buttonManager = new BookmarkButton(this.dom, () => this.getTheme());
@@ -32,86 +33,156 @@ class BookmarkModule extends BaseModule {
 
     if (!this.enabled) return;
 
-    this.log('Bookmarks başlatılıyor...');
+    try {
+      this.log('Bookmarks başlatılıyor...');
 
-    // Enhance with mixins
-    FixedButtonMixin.enhance(this);
-    MessageObserverMixin.enhance(this);
+      // Enhance with mixins
+      FixedButtonMixin.enhance(this);
+      MessageObserverMixin.enhance(this);
 
-    // Storage type is always 'local' (sync storage removed for simplicity)
-    await bookmarkStore.setStorageType('local');
-
-    // Bookmarks are loaded from store automatically, no migration needed
-    // (Migration happens in store via version system)
-    const bookmarks = await bookmarkStore.getAll();
-    this.log(`Loaded ${bookmarks.length} bookmarks from store`);
-
-    // Create UI
-    this.panel.create(() => this.togglePanel());
-
-    // Inject sidebar
-    this.sidebar.inject();
-
-    // Add bookmark buttons to messages
-    await this.addBookmarkButtons();
-
-    // Setup message observer
-    this.setupMessageObserver(async () => {
-      await this.addBookmarkButtons();
-    }, {
-      throttleDelay: 500,
-      trackMessageCount: true,
-      checkConversationPage: true
-    });
-
-    // Setup keyboard shortcuts
-    if (await this.getSetting('keyboardShortcuts')) {
-      this.setupKeyboardShortcuts();
-    }
-
-    // Listen for message updates
-    this.subscribe(Events.MESSAGES_UPDATED, async () => {
-      await this.addBookmarkButtons();
-      // Only update counter, no need to update full UI on message updates
-      const currentBookmarks = await this.getCurrentConversationBookmarks();
-      this.panel.updateCounter(currentBookmarks.length);
-    });
-
-    // Listen for bookmark updates from popup
-    chrome.runtime.onMessage.addListener(async (message) => {
-      if (message.type === 'BOOKMARKS_UPDATED') {
-        this.log('Bookmarks updated from popup (import)');
-        await this.reloadBookmarks();
-      } else if (message.type === 'STORAGE_TYPE_CHANGED') {
-        this.log('Storage type changed:', message.storageType);
-        await bookmarkStore.setStorageType(message.storageType);
-        await this.reloadBookmarks();
+      // Storage type is always 'local' (sync storage removed for simplicity)
+      try {
+        await bookmarkStore.setStorageType('local');
+      } catch (error) {
+        this.error('Failed to set storage type:', error);
       }
-    });
 
-    // Create fixed position button using FixedButtonMixin
-    await this.createFixedButton({
-      id: 'claude-bookmarks-fixed-btn',
-      icon: '🔖',
-      tooltip: 'Bookmarks',
-      position: { right: '30px', transform: 'translateY(-40px)' },
-      onClick: () => this.togglePanel(),
-      showCounter: true
-    });
+      // Bookmarks are loaded from store automatically, no migration needed
+      // (Migration happens in store via version system)
+      let bookmarks = [];
+      try {
+        bookmarks = await bookmarkStore.getAll();
+        this.log(`Loaded ${bookmarks.length} bookmarks from store`);
+      } catch (error) {
+        this.error('Failed to load bookmarks:', error);
+      }
 
-    // Setup visibility listener from mixin
-    this.setupVisibilityListener();
+      // Create UI
+      try {
+        this.panel.create(() => this.togglePanel());
+      } catch (error) {
+        this.error('Failed to create panel:', error);
+      }
 
-    // Mixin handles visibility changes, but we keep this for backward compatibility
-    // The mixin will call clearUIElements() and updateUI() automatically
+      // Inject sidebar
+      try {
+        this.sidebar.inject();
+      } catch (error) {
+        this.error('Failed to inject sidebar:', error);
+      }
 
-    // Initial UI update
-    this.updateUI();
+      // Add bookmark buttons to messages
+      try {
+        await this.addBookmarkButtons();
+      } catch (error) {
+        this.error('Failed to add bookmark buttons:', error);
+      }
 
-    // Check if navigating from bookmarks page
-    this.checkBookmarkNavigation();
+      // Setup message observer
+      try {
+        this.setupMessageObserver(async () => {
+          try {
+            await this.addBookmarkButtons();
+          } catch (error) {
+            this.error('Error in message observer callback:', error);
+          }
+        }, {
+          throttleDelay: 500,
+          trackMessageCount: true,
+          checkConversationPage: true
+        });
+      } catch (error) {
+        this.error('Failed to setup message observer:', error);
+      }
 
-    this.log(`✅ ${bookmarks.length} bookmarks loaded`);
+      // Setup keyboard shortcuts
+      try {
+        if (await this.getSetting('keyboardShortcuts')) {
+          this.setupKeyboardShortcuts();
+        }
+      } catch (error) {
+        this.error('Failed to setup keyboard shortcuts:', error);
+      }
+
+      // Listen for message updates
+      this.subscribe(Events.MESSAGES_UPDATED, async () => {
+        try {
+          await this.addBookmarkButtons();
+          // Only update counter, no need to update full UI on message updates
+          const currentBookmarks = await this.getCurrentConversationBookmarks();
+          this.panel.updateCounter(currentBookmarks.length);
+        } catch (error) {
+          this.error('Error in message update handler:', error);
+        }
+      });
+
+      // Listen for bookmark updates from popup
+      // Store the listener for cleanup in destroy()
+      try {
+        this.chromeMessageListener = async (message) => {
+          try {
+            if (message.type === 'BOOKMARKS_UPDATED') {
+              this.log('Bookmarks updated from popup (import)');
+              await this.reloadBookmarks();
+            } else if (message.type === 'STORAGE_TYPE_CHANGED') {
+              this.log('Storage type changed:', message.storageType);
+              await bookmarkStore.setStorageType(message.storageType);
+              await this.reloadBookmarks();
+            }
+          } catch (error) {
+            this.error('Error in Chrome message handler:', error);
+          }
+        };
+
+        chrome.runtime.onMessage.addListener(this.chromeMessageListener);
+      } catch (error) {
+        this.error('Failed to setup Chrome message listener:', error);
+      }
+
+      // Create fixed position button using FixedButtonMixin
+      try {
+        await this.createFixedButton({
+          id: 'claude-bookmarks-fixed-btn',
+          icon: '🔖',
+          tooltip: 'Bookmarks',
+          position: { right: '30px', transform: 'translateY(-40px)' },
+          onClick: () => this.togglePanel(),
+          showCounter: true
+        });
+      } catch (error) {
+        this.error('Failed to create fixed button:', error);
+        throw error;
+      }
+
+      // Setup visibility listener from mixin
+      try {
+        this.setupVisibilityListener();
+      } catch (error) {
+        this.error('Failed to setup visibility listener:', error);
+      }
+
+      // Mixin handles visibility changes, but we keep this for backward compatibility
+      // The mixin will call clearUIElements() and updateUI() automatically
+
+      // Initial UI update
+      try {
+        this.updateUI();
+      } catch (error) {
+        this.error('Error in initial UI update:', error);
+      }
+
+      // Check if navigating from bookmarks page
+      try {
+        this.checkBookmarkNavigation();
+      } catch (error) {
+        this.error('Error checking bookmark navigation:', error);
+      }
+
+      this.log(`✅ ${bookmarks.length} bookmarks loaded`);
+    } catch (error) {
+      this.error('BookmarkModule initialization failed:', error);
+      throw error; // Re-throw for App.js to track
+    }
   }
 
   /**
@@ -641,23 +712,59 @@ class BookmarkModule extends BaseModule {
   async destroy() {
     this.log('Destroying BookmarkModule...');
 
-    // Unsubscribe from visibility changes
-    if (this.visibilityUnsubscribe) {
-      this.visibilityUnsubscribe();
-      this.visibilityUnsubscribe = null;
+    try {
+      // Remove Chrome message listener
+      try {
+        if (this.chromeMessageListener) {
+          chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
+          this.chromeMessageListener = null;
+        }
+      } catch (error) {
+        this.error('Error removing Chrome message listener:', error);
+      }
+
+      // Unsubscribe from visibility changes
+      try {
+        if (this.visibilityUnsubscribe) {
+          this.visibilityUnsubscribe();
+          this.visibilityUnsubscribe = null;
+        }
+      } catch (error) {
+        this.error('Error unsubscribing from visibility changes:', error);
+      }
+
+      // Destroy message observer
+      try {
+        this.destroyMessageObserver();
+      } catch (error) {
+        this.error('Error destroying message observer:', error);
+      }
+
+      // Clean up UI
+      try {
+        if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
+          this.buttonManager.removeAll();
+        }
+      } catch (error) {
+        this.error('Error removing bookmark buttons:', error);
+      }
+
+      try {
+        this.panel.destroy();
+      } catch (error) {
+        this.error('Error destroying panel:', error);
+      }
+
+      try {
+        this.sidebar.destroy();
+      } catch (error) {
+        this.error('Error destroying sidebar:', error);
+      }
+
+      super.destroy();
+    } catch (error) {
+      this.error('Error in destroy method:', error);
     }
-
-    // Destroy message observer
-    this.destroyMessageObserver();
-
-    // Clean up UI
-    if (this.buttonManager && typeof this.buttonManager.removeAll === 'function') {
-      this.buttonManager.removeAll();
-    }
-    this.panel.destroy();
-    this.sidebar.destroy();
-
-    super.destroy();
   }
 }
 

@@ -36,42 +36,78 @@ class EditHistoryModule extends BaseModule {
     await super.init();
     if (!this.enabled) return;
 
-    this.log('Edit History başlatılıyor...');
+    try {
+      this.log('Edit History başlatılıyor...');
 
-    // Enhance with FixedButtonMixin
-    FixedButtonMixin.enhance(this);
+      // Enhance with FixedButtonMixin
+      FixedButtonMixin.enhance(this);
 
-    // Create fixed button
-    await this.createFixedButton({
-      id: 'claude-edit-fixed-btn',
-      icon: '✏️',
-      tooltip: 'Edit History',
-      position: { right: '30px', transform: 'translateY(-100px)' },
-      onClick: () => this.panel.toggle(),
-      showCounter: true
-    });
+      // Create fixed button
+      try {
+        await Promise.race([
+          this.createFixedButton({
+            id: 'claude-edit-fixed-btn',
+            icon: '✏️',
+            tooltip: 'Edit History',
+            position: { right: '30px', transform: 'translateY(-100px)' },
+            onClick: () => this.panel.toggle(),
+            showCounter: true
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Create fixed button timeout')), 5000)
+          )
+        ]);
+      } catch (error) {
+        this.error('Failed to create fixed button:', error);
+        throw error;
+      }
 
-    // Setup visibility listener (from mixin)
-    this.setupVisibilityListener();
+      // Setup visibility listener (from mixin)
+      try {
+        this.setupVisibilityListener();
+      } catch (error) {
+        this.error('Failed to setup visibility listener:', error);
+      }
 
-    this.panel.create();
+      // Panel creation
+      try {
+        this.panel.create();
+      } catch (error) {
+        this.error('Failed to create panel:', error);
+      }
 
-    // Taramayı başlat
-    this.scanner.start();
+      // Taramayı başlat
+      try {
+        this.scanner.start();
+      } catch (error) {
+        this.error('Failed to start scanner:', error);
+      }
 
-    // Listen to MESSAGES_UPDATED event from NavigationModule to trigger immediate scan
-    this.subscribe(Events.MESSAGES_UPDATED, () => {
-      this.log('🔄 Messages updated, scanning for edits...');
-      this.scanner.scan();
-    });
+      // Listen to MESSAGES_UPDATED event from NavigationModule to trigger immediate scan
+      this.subscribe(Events.MESSAGES_UPDATED, () => {
+        try {
+          this.log('🔄 Messages updated, scanning for edits...');
+          this.scanner.scan();
+        } catch (error) {
+          this.error('Error in message update handler:', error);
+        }
+      });
 
-    // Create collapse button (only if CompactView is enabled)
-    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
-    if (compactViewEnabled) {
-      this.createCollapseButton(this.getTheme());
+      // Create collapse button (only if CompactView is enabled)
+      try {
+        const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+        if (compactViewEnabled) {
+          this.createCollapseButton(this.getTheme());
+        }
+      } catch (error) {
+        this.error('Failed to create collapse button:', error);
+      }
+
+      this.log('✅ Edit History aktif');
+    } catch (error) {
+      this.error('Edit History initialization failed:', error);
+      throw error; // Re-throw for App.js to track
     }
-
-    this.log('✅ Edit History aktif');
   }
 
   /**
@@ -326,27 +362,62 @@ class EditHistoryModule extends BaseModule {
   destroy() {
     this.log('🛑 Edit History durduruluyor...');
 
-    // Destroy fixed button (includes visibility listener cleanup)
-    this.destroyFixedButton();
+    try {
+      // Destroy fixed button (includes visibility listener cleanup)
+      try {
+        this.destroyFixedButton();
+      } catch (error) {
+        this.error('Error destroying fixed button:', error);
+      }
 
-    // Remove collapse button
-    if (this.elements.collapseBtn) {
-      this.elements.collapseBtn.remove();
-      this.elements.collapseBtn = null;
+      // Remove collapse button
+      try {
+        if (this.elements.collapseBtn) {
+          this.elements.collapseBtn.remove();
+          this.elements.collapseBtn = null;
+        }
+      } catch (error) {
+        this.error('Error removing collapse button:', error);
+      }
+
+      // Alt bileşenleri temizle
+      try {
+        if (this.scanner) this.scanner.stop();
+      } catch (error) {
+        this.error('Error stopping scanner:', error);
+      }
+
+      try {
+        if (this.badge) this.badge.removeAll();
+      } catch (error) {
+        this.error('Error removing badges:', error);
+      }
+
+      try {
+        if (this.panel) this.panel.remove();
+      } catch (error) {
+        this.error('Error removing panel:', error);
+      }
+
+      try {
+        if (this.modal) this.modal.close();
+      } catch (error) {
+        this.error('Error closing modal:', error);
+      }
+
+      // Highlight'ları kaldır
+      try {
+        document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
+          el.classList.remove('claude-edit-highlighted');
+        });
+      } catch (error) {
+        this.error('Error removing highlights:', error);
+      }
+
+      super.destroy();
+    } catch (error) {
+      this.error('Error in destroy method:', error);
     }
-
-    // Alt bileşenleri temizle
-    this.scanner.stop();
-    this.badge.removeAll();
-    this.panel.remove();
-    this.modal.close();
-
-    // Highlight'ları kaldır
-    document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
-      el.classList.remove('claude-edit-highlighted');
-    });
-
-    super.destroy();
   }
 }
 
