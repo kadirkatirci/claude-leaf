@@ -18,7 +18,6 @@ class NavigationModule extends BaseModule {
     this.currentIndex = -1;
     this.observerTimeout = null;
     this.scrollTimeout = null;
-    this.pollingTimeout = null; // Polling timeout for message search
     this.lastCounterText = ''; // Track counter to avoid unnecessary updates
     this.lastButtonStates = { prev: null, next: null, top: null }; // Track button states
     this.lastMessageCount = 0; // Track message count for performance
@@ -42,16 +41,8 @@ class NavigationModule extends BaseModule {
       // UI oluştur
       await this.createUI();
 
-      // Find messages FIRST with retry (before visibility subscription)
-      // Add timeout to prevent hanging
-      await Promise.race([
-        this.findMessagesWithRetry(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Find messages timeout')), 5000)
-        )
-      ]);
-
-      // THEN subscribe to visibility changes (after initial messages found)
+      // Subscribe to visibility changes
+      // DO NOT search for messages here - let observer handle it when messages appear
       this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
         try {
           this.handleVisibilityChange(isConversationPage);
@@ -61,6 +52,8 @@ class NavigationModule extends BaseModule {
       });
 
       // Setup message observer
+      // Observer will fire whenever DOM mutations occur (messages added, removed, etc.)
+      // Combined with visibility tracking, this gives us full coverage
       this.setupMessageObserver(() => {
         try {
           const oldLength = this.messages.length;
@@ -78,18 +71,6 @@ class NavigationModule extends BaseModule {
         throttleDelay: 500,
         trackMessageCount: false, // We handle this manually
         checkConversationPage: true
-      });
-
-      // Listen for EditHistory's MESSAGES_UPDATED event to know when it's ready
-      // This way we know messages have been found and DOM is ready
-      this.subscribe(Events.MESSAGES_UPDATED, () => {
-        this.log('📡 Received MESSAGES_UPDATED event from EditHistory');
-        // If we're waiting for messages (visibility changed), resolve the promise
-        if (this.waitingForMessages && this.messagesReadyResolve) {
-          this.messagesReadyResolve();
-          this.messagesReadyResolve = null;
-          this.waitingForMessages = false;
-        }
       });
 
       // Klavye kısayolları
@@ -117,14 +98,9 @@ class NavigationModule extends BaseModule {
 
   /**
    * Handle visibility change from VisibilityManager
+   * When a conversation page is detected, show the UI and trust observer for updates
    */
   handleVisibilityChange(isConversationPage) {
-    // ✅ FIXED: Always process visibility changes for robustness
-    // The old guard (if lastConversationState === isConversationPage) was too coarse
-    // It prevented updates when switching between different chats (both are conversation pages)
-    // Now we always update to ensure UI is correct for current context
-    // This matches FixedButtonMixin pattern used by other modules
-
     this.lastConversationState = isConversationPage;
 
     if (this.elements.container) {
@@ -132,135 +108,18 @@ class NavigationModule extends BaseModule {
     }
 
     if (!isConversationPage) {
-      this.log('Page changed to non-conversation, hiding navigation');
+      this.log('📵 Page changed to non-conversation, hiding navigation');
       this.messages = [];
       this.lastMessageCount = 0;
     } else {
-      this.log('Page changed to conversation, showing navigation');
-
-      // Start continuous polling for messages
-      // This ensures we find messages even if EditHistory doesn't emit event
-      this.startMessagePolling();
-    }
-  }
-
-  /**
-   * Start polling for messages when on conversation page
-   * This handles the case where EditHistory doesn't emit MESSAGES_UPDATED yet
-   * Polls actively instead of waiting for events
-   *
-   * ⚠️ CRITICAL TIMING: Claude's UI (specifically the <main> element) takes ~250-300ms to render
-   * after a chat is clicked. Polling must wait for this before attempting to find messages.
-   * Too early: Messages not found, polling loops unnecessarily
-   * Too late: Already found by observer
-   * Sweet spot: 250ms initial delay aligns with Claude's UI rendering
-   */
-  startMessagePolling() {
-    // Clear any existing polling timeout
-    if (this.pollingTimeout) {
-      clearTimeout(this.pollingTimeout);
-    }
-
-    // Stop polling if already found messages
-    if (this.messages.length > 0) {
-      this.log('✅ Already have messages, polling stopped');
-      return;
-    }
-
-    this.log('🔄 Starting message polling (waiting for DOM to be ready)...');
-
-    // WAIT 250ms for Claude's UI to fully render before first poll attempt
-    // This ensures <main> element exists in DOM
-    this.pollingTimeout = setTimeout(async () => {
-      try {
-        await this.findMessagesWithRetry(3, 50); // Faster retries during polling
-
-        if (this.messages.length > 0) {
-          this.log('✅ Messages found via polling!');
-          // Trigger observer callback manually
-          this.lastMessageCount = 0;
-          if (this.observerCallback) {
-            try {
-              this.observerCallback();
-            } catch (error) {
-              this.log('Error in observer callback:', error);
-            }
-          }
-          // Polling succeeded, stop polling
-          return;
-        }
-
-        // No messages yet, continue polling with shorter interval
-        this.continuePollWithInterval();
-      } catch (error) {
-        this.log('Error during polling:', error);
-        // Continue polling on error
-        this.continuePollWithInterval();
-      }
-    }, 250); // INCREASED from 100ms to 250ms for DOM readiness
-  }
-
-  /**
-   * Continue polling with faster interval after initial wait
-   * Used after the initial 250ms wait to check more frequently
-   */
-  continuePollWithInterval() {
-    // Clear any existing polling timeout
-    if (this.pollingTimeout) {
-      clearTimeout(this.pollingTimeout);
-    }
-
-    // Stop polling if already found messages
-    if (this.messages.length > 0) {
-      this.log('✅ Already have messages, polling stopped');
-      return;
-    }
-
-    // Continue polling every 100ms
-    this.pollingTimeout = setTimeout(async () => {
-      try {
-        await this.findMessagesWithRetry(3, 50); // Faster retries during polling
-
-        if (this.messages.length > 0) {
-          this.log('✅ Messages found via polling!');
-          // Trigger observer callback manually
-          this.lastMessageCount = 0;
-          if (this.observerCallback) {
-            try {
-              this.observerCallback();
-            } catch (error) {
-              this.log('Error in observer callback:', error);
-            }
-          }
-          // Polling succeeded, stop polling
-          return;
-        }
-
-        // No messages yet, continue polling
-        this.continuePollWithInterval();
-      } catch (error) {
-        this.log('Error during polling:', error);
-        // Continue polling on error
-        this.continuePollWithInterval();
-      }
-    }, 100);
-  }
-
-  /**
-   * Stop message polling
-   */
-  stopMessagePolling() {
-    if (this.pollingTimeout) {
-      clearTimeout(this.pollingTimeout);
-      this.pollingTimeout = null;
-      this.log('⏹️ Message polling stopped');
+      this.log('💬 Page changed to conversation, showing navigation');
+      // Observer is already set up and listening for DOM mutations
+      // When Claude renders messages, observer will detect them via DOM events
+      // No polling needed - rely on event-driven updates
     }
   }
 
   destroy() {
-    // Stop polling
-    this.stopMessagePolling();
-
     // Unsubscribe from visibility changes
     if (this.visibilityUnsubscribe) {
       this.visibilityUnsubscribe();
