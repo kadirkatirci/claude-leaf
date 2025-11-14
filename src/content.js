@@ -42,6 +42,91 @@ window.addEventListener('popstate', () => {
 
 console.log('✅ History API intercepted early');
 
+// Navigation restart utilities
+let restartTimeout = null;
+let restartInProgress = false;
+
+/**
+ * Wait for DOM to be ready for module initialization
+ * Checks for message containers and ensures Claude's UI is loaded
+ */
+async function waitForDOMReady(maxAttempts = 30) {
+  for (let i = 0; i < maxAttempts; i++) {
+    // Check if Claude's main content area exists
+    const messagesContainer = document.querySelector('[data-testid="messages"]')
+      || document.querySelector('.messages')
+      || document.querySelector('main');
+
+    if (messagesContainer) {
+      console.log('✅ DOM ready: message container found');
+      return true;
+    }
+
+    // Wait 100ms before next check
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  console.warn('⚠️ DOM not fully ready after 3 seconds, proceeding anyway');
+  return false;
+}
+
+/**
+ * Debounce function to prevent rapid navigation restarts
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Handle navigation with debouncing and DOM ready checks
+ */
+const handleNavigation = debounce(async () => {
+  const newUrl = window.location.href;
+  if (newUrl === currentUrl) {
+    return;
+  }
+
+  console.log(`🔄 Navigation detected: ${currentUrl} → ${newUrl}`);
+  currentUrl = newUrl;
+
+  // Cancel any pending restart
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+    console.log('⏸️ Cancelled previous restart due to new navigation');
+  }
+
+  // Don't restart if one is already in progress
+  if (restartInProgress) {
+    console.log('⏸️ Restart already in progress, skipping');
+    return;
+  }
+
+  // Wait for DOM to be ready instead of using arbitrary delay
+  console.log('⏳ Waiting for DOM to be ready...');
+  await waitForDOMReady();
+
+  restartInProgress = true;
+  try {
+    console.log('🔄 Restarting app after navigation...');
+    await window.claudeProductivity?.restart?.();
+    console.log('✅ App restarted successfully');
+  } catch (error) {
+    console.error('❌ Failed to restart app:', error);
+  } finally {
+    restartInProgress = false;
+  }
+}, 300); // Debounce 300ms to prevent rapid restarts
+
+console.log('✅ Navigation utilities initialized');
+
 (async () => {
   try {
     console.log('🎯 Claude Productivity Extension yükleniyor...');
@@ -56,21 +141,13 @@ console.log('✅ History API intercepted early');
     const { default: app } = await import('./App.js');
 
     // Set up the callback for navigation detection
-    navigationCallback = () => {
-      const newUrl = window.location.href;
-      if (newUrl !== currentUrl) {
-        console.log(`🔄 [EARLY] Navigation detected: ${currentUrl} → ${newUrl}`);
-        currentUrl = newUrl;
+    navigationCallback = handleNavigation;
 
-        // Restart app after navigation
-        setTimeout(async () => {
-          console.log('🔄 Restarting app after navigation...');
-          await app.restart();
-          console.log('✅ App restarted');
-        }, 1000);
-      }
-    };
+    // Check DOM is ready before initializing
+    console.log('⏳ Checking DOM readiness...');
+    await waitForDOMReady();
 
+    console.log('🚀 Initializing Claude Productivity Extension...');
     await app.init();
 
     console.log('✅ Claude Productivity Extension hazır!');

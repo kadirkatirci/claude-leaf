@@ -10,6 +10,8 @@ export class ChromeLocalAdapter extends BaseAdapter {
   constructor() {
     super();
     this.storageAPI = this.getStorageAPI();
+    this.retryAttempts = 3;
+    this.retryDelayMs = 100; // Start with 100ms, exponential backoff
   }
 
   /**
@@ -80,63 +82,164 @@ export class ChromeLocalAdapter extends BaseAdapter {
   }
 
   /**
-   * Get value by key
+   * Check for Chrome runtime errors
+   */
+  checkChromeError() {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+      return new Error(chrome.runtime.lastError.message);
+    }
+    return null;
+  }
+
+  /**
+   * Exponential backoff delay
+   */
+  async delay(attemptNumber) {
+    const delayMs = this.retryDelayMs * Math.pow(2, attemptNumber);
+    return new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  /**
+   * Retry wrapper for storage operations
+   */
+  async withRetry(operation, operationName = 'operation') {
+    let lastError;
+
+    for (let attempt = 0; attempt < this.retryAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+
+        if (attempt < this.retryAttempts - 1) {
+          console.warn(
+            `[ChromeLocalAdapter] ${operationName} failed (attempt ${attempt + 1}/${this.retryAttempts}):`,
+            error.message
+          );
+          await this.delay(attempt);
+        }
+      }
+    }
+
+    console.error(
+      `[ChromeLocalAdapter] ${operationName} failed after ${this.retryAttempts} attempts`,
+      lastError
+    );
+    throw lastError;
+  }
+
+  /**
+   * Get value by key (with retry)
    */
   async get(key) {
-    return new Promise((resolve, reject) => {
-      this.storageAPI.get([key], (result) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
+    return this.withRetry(async () => {
+      return new Promise((resolve, reject) => {
+        try {
+          this.storageAPI.get([key], (result) => {
+            const error = this.checkChromeError();
+            if (error) {
+              reject(error);
+              return;
+            }
+
+            // Validate result is an object
+            if (!result || typeof result !== 'object') {
+              reject(new Error('Invalid storage response'));
+              return;
+            }
+
+            resolve(result[key]);
+          });
+        } catch (error) {
+          reject(error);
         }
-        resolve(result[key]);
       });
-    });
+    }, `get('${key}')`);
   }
 
   /**
-   * Set value for key
+   * Set value for key (with retry and quota checking)
    */
   async set(key, value) {
-    return new Promise((resolve, reject) => {
-      this.storageAPI.set({ [key]: value }, () => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
+    return this.withRetry(async () => {
+      // Validate value
+      if (value === undefined) {
+        throw new Error('Cannot store undefined value');
+      }
+
+      // Check if value is serializable
+      try {
+        JSON.stringify(value);
+      } catch (error) {
+        throw new Error(`Value not serializable: ${error.message}`);
+      }
+
+      return new Promise((resolve, reject) => {
+        try {
+          this.storageAPI.set({ [key]: value }, () => {
+            const error = this.checkChromeError();
+            if (error) {
+              // Check if it's a quota error
+              if (error.message.includes('QUOTA_BYTES_PER_ITEM') ||
+                  error.message.includes('QuotaExceededError') ||
+                  error.message.includes('quota')) {
+                reject(new Error(`Storage quota exceeded for key '${key}': ${error.message}`));
+              } else {
+                reject(error);
+              }
+              return;
+            }
+            resolve();
+          });
+        } catch (error) {
+          reject(error);
         }
-        resolve();
       });
-    });
+    }, `set('${key}')`);
   }
 
   /**
-   * Remove value by key
+   * Remove value by key (with retry)
    */
   async remove(key) {
-    return new Promise((resolve, reject) => {
-      this.storageAPI.remove(key, () => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
+    return this.withRetry(async () => {
+      return new Promise((resolve, reject) => {
+        try {
+          this.storageAPI.remove(key, () => {
+            const error = this.checkChromeError();
+            if (error) {
+              reject(error);
+              return;
+            }
+            resolve();
+          });
+        } catch (error) {
+          reject(error);
         }
-        resolve();
       });
-    });
+    }, `remove('${key}')`);
   }
 
   /**
-   * Clear all data
+   * Clear all data (with retry)
    */
   async clear() {
-    return new Promise((resolve, reject) => {
-      this.storageAPI.clear(() => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
+    return this.withRetry(async () => {
+      return new Promise((resolve, reject) => {
+        try {
+          this.storageAPI.clear(() => {
+            const error = this.checkChromeError();
+            if (error) {
+              reject(error);
+              return;
+            }
+            resolve();
+          });
+        } catch (error) {
+          reject(error);
         }
-        resolve();
       });
-    });
+    }, 'clear()');
   }
 
   /**

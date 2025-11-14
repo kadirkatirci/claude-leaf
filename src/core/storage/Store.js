@@ -22,6 +22,9 @@ export class Store extends EventEmitter {
     this.cacheTTL = options.cacheTTL || 5000; // 5 seconds default
     this.cacheEnabled = options.cache !== false;
 
+    // Promise deduplication (prevent concurrent loads)
+    this.loadingPromise = null;
+
     // Debug mode
     this.debug = options.debug || false;
   }
@@ -56,7 +59,7 @@ export class Store extends EventEmitter {
   }
 
   /**
-   * Get state (with cache)
+   * Get state (with cache and promise deduplication)
    * @param {string} [key] - Optional key for nested access
    * @returns {Promise<any>}
    */
@@ -69,6 +72,31 @@ export class Store extends EventEmitter {
 
     this.log('Cache miss, loading from adapter');
 
+    // Deduplicate concurrent load requests
+    if (!this.loadingPromise) {
+      this.log('Starting new load from adapter');
+      this.loadingPromise = this.loadFromAdapter().finally(() => {
+        this.loadingPromise = null;
+      });
+    } else {
+      this.log('Reusing existing load promise');
+    }
+
+    try {
+      const data = await this.loadingPromise;
+      return key ? data[key] : data;
+    } catch (error) {
+      console.error(`[Store:${this.namespace}] Failed to get data:`, error);
+      // Return default data on error
+      const defaultData = this.createDefaultData();
+      return key ? defaultData[key] : defaultData;
+    }
+  }
+
+  /**
+   * Load data from adapter (extracted for promise deduplication)
+   */
+  async loadFromAdapter() {
     try {
       // Load from adapter
       let data = await this.adapter.get(this.namespace);
@@ -90,12 +118,10 @@ export class Store extends EventEmitter {
         this.cacheTimestamp = Date.now();
       }
 
-      return key ? data[key] : data;
+      return data;
     } catch (error) {
-      console.error(`[Store:${this.namespace}] Failed to get data:`, error);
-      // Return default data on error
-      const defaultData = this.createDefaultData();
-      return key ? defaultData[key] : defaultData;
+      console.error(`[Store:${this.namespace}] Failed to load from adapter:`, error);
+      throw error;
     }
   }
 
@@ -205,7 +231,7 @@ export class Store extends EventEmitter {
   }
 
   /**
-   * Migrate data if version changed
+   * Migrate data if version changed (with backup and rollback)
    */
   async migrateIfNeeded(data) {
     // No metadata means very old version or first time
@@ -230,6 +256,9 @@ export class Store extends EventEmitter {
 
     this.log(`Migrating from v${currentVersion} to v${this.version}`);
 
+    // Create backup before migration
+    const backup = JSON.parse(JSON.stringify(data));
+
     let migrated = { ...data };
 
     // Run migrations sequentially
@@ -240,6 +269,20 @@ export class Store extends EventEmitter {
           migrated = await this.migrations[v](migrated);
         } catch (error) {
           console.error(`[Store:${this.namespace}] Migration v${v} failed:`, error);
+          console.error('Migration backup available, data not written to storage');
+
+          // Store backup for manual recovery
+          if (this.adapter && this.adapter.set) {
+            try {
+              await this.adapter.set(`${this.namespace}_backup_v${currentVersion}`, backup);
+              console.log(
+                `Migration backup saved to ${this.namespace}_backup_v${currentVersion}`
+              );
+            } catch (backupError) {
+              console.error('Failed to save migration backup:', backupError);
+            }
+          }
+
           throw error;
         }
       }
@@ -257,6 +300,36 @@ export class Store extends EventEmitter {
     this.log('Migration complete');
 
     return migrated;
+  }
+
+  /**
+   * Rollback to backup (manual recovery from failed migration)
+   * @param {number} version - Version to rollback to
+   */
+  async rollbackToBackup(version) {
+    try {
+      const backupKey = `${this.namespace}_backup_v${version}`;
+      const backup = await this.adapter.get(backupKey);
+
+      if (!backup) {
+        throw new Error(`No backup found for version ${version}`);
+      }
+
+      // Save backup as current data
+      await this.adapter.set(this.namespace, backup);
+
+      // Update cache
+      if (this.cacheEnabled) {
+        this.cache = backup;
+        this.cacheTimestamp = Date.now();
+      }
+
+      this.log(`Rolled back to version ${version}`);
+      return backup;
+    } catch (error) {
+      console.error(`Failed to rollback to version ${version}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -344,6 +417,26 @@ export class Store extends EventEmitter {
       this.adapter = newAdapter;
       this.invalidateCache();
       this.log('Adapter changed');
+    }
+  }
+
+  /**
+   * Handle external storage changes (from other tabs/windows)
+   * Used for cross-tab synchronization via chrome.storage.onChanged
+   */
+  onStorageChanged(newData) {
+    this.log('External storage change detected');
+
+    // Validate the new data
+    if (newData && typeof newData === 'object') {
+      // Update cache
+      if (this.cacheEnabled) {
+        this.cache = newData;
+        this.cacheTimestamp = Date.now();
+      }
+
+      // Emit change event to notify subscribers
+      this.emit('external-change', newData);
     }
   }
 }
