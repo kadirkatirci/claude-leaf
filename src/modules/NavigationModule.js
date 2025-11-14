@@ -25,6 +25,11 @@ class NavigationModule extends BaseModule {
     this.visibilityUnsubscribe = null; // Store unsubscribe function
     this.cachedOpacity = 0.7; // Cached opacity for better UX
     this.hasInitialLoadCompleted = false; // Track if first message load completed
+
+    // Navigation state management - prevents scroll tracking conflicts
+    this.isNavigating = false; // Lock scroll tracking during button navigation
+    this.scrollDebounceTimer = null; // Debounce timer for manual scroll updates
+    this.navigationLockTimer = null; // Timer to unlock navigation after scroll completes
   }
 
   async init() {
@@ -225,6 +230,17 @@ class NavigationModule extends BaseModule {
   }
 
   destroy() {
+    // Clear navigation timers
+    if (this.navigationLockTimer) {
+      clearTimeout(this.navigationLockTimer);
+      this.navigationLockTimer = null;
+    }
+
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
+      this.scrollDebounceTimer = null;
+    }
+
     // Unsubscribe from visibility changes
     if (this.visibilityUnsubscribe) {
       this.visibilityUnsubscribe();
@@ -396,6 +412,26 @@ class NavigationModule extends BaseModule {
     this.log(`${this.messages.length} mesaj bulundu (${this.lastMessageCount} toplam)`);
   }
 
+  /**
+   * Lock scroll tracking during button navigation
+   * Prevents scroll detection from overwriting navigation state
+   */
+  lockScrollTracking() {
+    this.isNavigating = true;
+
+    // Clear any existing lock timer
+    if (this.navigationLockTimer) {
+      clearTimeout(this.navigationLockTimer);
+    }
+
+    // Unlock after 1 second (enough for smooth scroll to complete)
+    this.navigationLockTimer = setTimeout(() => {
+      this.isNavigating = false;
+      this.log('🔓 Scroll tracking unlocked');
+    }, 1000);
+
+    this.log('🔒 Scroll tracking locked for navigation');
+  }
 
   navigatePrevious() {
     if (this.messages.length === 0) return;
@@ -407,6 +443,7 @@ class NavigationModule extends BaseModule {
 
     if (this.currentIndex > 0) {
       this.currentIndex--;
+      this.lockScrollTracking(); // Lock scroll detection during navigation
       this.scrollToMessage(this.currentIndex);
       this.emit(Events.NAVIGATION_PREV, this.currentIndex);
     }
@@ -422,6 +459,7 @@ class NavigationModule extends BaseModule {
 
     if (this.currentIndex < this.messages.length - 1) {
       this.currentIndex++;
+      this.lockScrollTracking(); // Lock scroll detection during navigation
       this.scrollToMessage(this.currentIndex);
       this.emit(Events.NAVIGATION_NEXT, this.currentIndex);
     }
@@ -431,6 +469,7 @@ class NavigationModule extends BaseModule {
     if (this.messages.length === 0) return;
 
     this.currentIndex = 0;
+    this.lockScrollTracking(); // Lock scroll detection during navigation
     this.scrollToMessage(0);
     this.emit(Events.NAVIGATION_TOP, 0);
   }
@@ -464,19 +503,13 @@ class NavigationModule extends BaseModule {
   updateCounter() {
     let newText;
     if (this.messages.length > 0) {
-      // Use cached currentIndex if available, otherwise calculate it
-      let current;
-      if (this.currentIndex >= 0 && this.currentIndex < this.messages.length) {
-        // Use cached index
-        current = this.currentIndex + 1;
-      } else {
-        // Calculate and cache index (first time or after reset)
-        this.currentIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
-        current = this.currentIndex + 1;
-      }
+      // ALWAYS use cached index - no recalculation
+      // Clamp index to valid range
+      const safeIndex = Math.max(0, Math.min(this.currentIndex, this.messages.length - 1));
+      const current = safeIndex + 1;
 
       newText = `${current}/${this.messages.length}`;
-      this.log(`Counter güncelleniyor: ${newText} (cached index: ${this.currentIndex})`);
+      this.log(`Counter güncelleniyor: ${newText} (index: ${this.currentIndex})`);
     } else {
       newText = '0/0';
       this.currentIndex = -1; // Reset index when no messages
@@ -484,10 +517,8 @@ class NavigationModule extends BaseModule {
 
     // Only update if text changed
     if (this.lastCounterText !== newText) {
-      // ✅ FIXED: Check badge exists before updating (guard against DOM issues)
       const badge = document.getElementById('claude-nav-counter');
       if (badge) {
-        // Use CounterBadge.update for consistency
         CounterBadge.updateById('claude-nav-counter', newText);
         this.lastCounterText = newText;
         this.log(`Counter badge güncellendi: ${newText}`);
@@ -505,8 +536,9 @@ class NavigationModule extends BaseModule {
       return;
     }
 
-    // Use cached currentIndex if available, otherwise calculate it
-    const currentIdx = (this.currentIndex >= 0) ? this.currentIndex : this.dom.getCurrentVisibleMessageIndex(this.messages);
+    // ALWAYS use cached index - no recalculation
+    // Clamp to valid range
+    const currentIdx = Math.max(0, Math.min(this.currentIndex, this.messages.length - 1));
 
     const newStates = {
       prev: currentIdx === 0 || this.messages.length === 0,
@@ -514,7 +546,7 @@ class NavigationModule extends BaseModule {
       top: this.messages.length === 0
     };
 
-    this.log(`Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${currentIdx}, total: ${this.messages.length})`);
+    this.log(`Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${this.currentIndex}, total: ${this.messages.length})`);
 
     // Only update if states changed
     if (newStates.prev !== this.lastButtonStates.prev) {
@@ -583,22 +615,36 @@ class NavigationModule extends BaseModule {
     // Debug flag for scroll tracking (can be enabled via settings or console)
     this.debugScroll = false; // Set to true for debugging
 
-    // Throttle scroll events for performance
-    const handleScroll = this.dom.throttle(() => {
-      // Cache the current visible message index
-      if (this.messages.length > 0) {
-        const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
-
-        // Only update if index changed
-        if (newIndex !== this.currentIndex) {
-          if (this.debugScroll) {
-            console.log(`[NAV SCROLL DEBUG] Index changed: ${this.currentIndex} → ${newIndex}`);
-          }
-          this.currentIndex = newIndex;
-          this.updateCounter();
+    // Debounced scroll handler - only updates after scroll settles
+    const handleScroll = () => {
+      // Ignore scroll events during button navigation
+      if (this.isNavigating) {
+        if (this.debugScroll) {
+          console.log(`[NAV SCROLL DEBUG] Ignoring scroll (navigation in progress)`);
         }
+        return;
       }
-    }, 300);
+
+      // Clear existing debounce timer
+      if (this.scrollDebounceTimer) {
+        clearTimeout(this.scrollDebounceTimer);
+      }
+
+      // Wait 500ms after scroll stops before updating
+      this.scrollDebounceTimer = setTimeout(() => {
+        if (this.messages.length > 0) {
+          const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
+
+          if (newIndex !== this.currentIndex) {
+            if (this.debugScroll) {
+              console.log(`[NAV SCROLL DEBUG] Manual scroll settled: ${this.currentIndex} → ${newIndex}`);
+            }
+            this.currentIndex = newIndex;
+            this.updateCounter();
+          }
+        }
+      }, 500);
+    };
 
     // Function to find and attach to scrollable containers
     const attachScrollListeners = () => {
@@ -655,19 +701,7 @@ class NavigationModule extends BaseModule {
       subtree: true
     });
 
-    // Also add a periodic check as a fallback (every 1000ms)
-    // This ensures the counter updates even if scroll events don't fire
-    this.scrollCheckInterval = setInterval(() => {
-      if (this.messages.length > 0) {
-        const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
-        if (newIndex !== this.currentIndex && newIndex >= 0) {
-          this.currentIndex = newIndex;
-          this.updateCounter();
-        }
-      }
-    }, 1000); // Increased to 1s for better performance
-
-    this.log('📜 Scroll listeners attached with periodic fallback');
+    this.log('📜 Scroll listeners attached with debounced tracking');
 
     this.unsubscribers.push(() => {
       this.scrollContainers.forEach(container => {
@@ -676,10 +710,7 @@ class NavigationModule extends BaseModule {
       if (this.scrollReattachObserver) {
         this.scrollReattachObserver.disconnect();
       }
-      if (this.scrollCheckInterval) {
-        clearInterval(this.scrollCheckInterval);
-      }
-      this.log('📜 All scroll listeners and interval removed');
+      this.log('📜 All scroll listeners removed');
     });
   }
 
