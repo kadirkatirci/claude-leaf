@@ -129,6 +129,17 @@ class NavigationModule extends BaseModule {
       // because messages haven't loaded yet
       this.findMessagesWithRetry().catch(err => {
         this.log('Failed to find messages after retry:', err);
+      }).then(() => {
+        // After finding messages, manually trigger observer callback
+        // This ensures counter is updated even if observer doesn't fire immediately
+        // (observer guard checks lastConversationState which was just set to true)
+        if (this.observerCallback) {
+          try {
+            this.observerCallback();
+          } catch (error) {
+            this.log('Error in manual observer callback:', error);
+          }
+        }
       });
     }
   }
