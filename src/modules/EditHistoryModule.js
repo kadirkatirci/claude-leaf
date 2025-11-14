@@ -191,7 +191,7 @@ class EditHistoryModule extends BaseModule {
     // Click handler
     collapseBtn.addEventListener('click', () => {
       this.isAllCollapsed = !this.isAllCollapsed;
-      collapseBtn.innerHTML = this.isAllCollapsed ? '📂' : '📦';
+      collapseBtn.textContent = this.isAllCollapsed ? '📂' : '📦';
       collapseBtn.setAttribute('data-tooltip', this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)');
       this.handleCollapseAll(this.isAllCollapsed);
     });

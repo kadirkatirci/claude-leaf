@@ -74,7 +74,7 @@ export class EmojiPicker {
 
     // Add "more" button for full picker
     const moreBtn = DOMUtils.createElement('button');
-    moreBtn.innerHTML = '⋯';
+    moreBtn.textContent = '⋯';
     moreBtn.title = 'More emojis';
 
     if (theme.useNativeClasses) {
@@ -306,7 +306,7 @@ export class EmojiPicker {
     const theme = this.getTheme();
 
     const btn = DOMUtils.createElement('button');
-    btn.innerHTML = emoji;
+    btn.textContent = emoji;
     btn.title = emoji;
 
     if (theme.useNativeClasses) {

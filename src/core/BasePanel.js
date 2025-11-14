@@ -143,7 +143,7 @@ export default class BasePanel {
 
     // Close button
     const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
+    closeBtn.textContent = '×';
 
     if (theme?.useNativeClasses) {
       // Claude's native button classes
@@ -245,7 +245,7 @@ export default class BasePanel {
     this.lastContentSignature = signature;
 
     // Clear and rebuild content
-    this.content.innerHTML = '';
+    this.content.textContent = '';
 
     if (!items || items.length === 0) {
       this.showEmptyState();

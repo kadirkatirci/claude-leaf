@@ -231,7 +231,7 @@ class CodeBlockFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.button.innerHTML = '⬇️';
+    cached.button.textContent = '⬇️';
     cached.button.title = `Expand ${cached.lineCount} lines`;
     cached.button.style.opacity = '0.8'; // Always visible when collapsed
 
@@ -266,7 +266,7 @@ class CodeBlockFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.button.innerHTML = '⬆️';
+    cached.button.textContent = '⬆️';
     cached.button.title = 'Collapse code';
     cached.button.style.opacity = '0'; // Hidden when expanded (until hover)
 

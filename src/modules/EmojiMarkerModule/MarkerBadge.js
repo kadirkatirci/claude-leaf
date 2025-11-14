@@ -144,7 +144,7 @@ export class MarkerBadge {
   updateBadge(messageEl, newEmoji) {
     const badge = this.badgeCache.get(messageEl);
     if (badge) {
-      badge.innerHTML = newEmoji;
+      badge.textContent = newEmoji;
       badge.title = `Marked with ${newEmoji}\nClick to see options`;
     }
   }

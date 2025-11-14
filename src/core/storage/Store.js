@@ -13,7 +13,6 @@ export class Store extends EventEmitter {
     this.adapter = options.adapter;
     this.schema = options.schema;
     this.version = options.version || 1;
-    this.migrations = options.migrations || {};
     this.defaultData = options.defaultData || {};
 
     // Cache configuration
@@ -106,8 +105,13 @@ export class Store extends EventEmitter {
         data = this.createDefaultData();
       }
 
-      // Migrate if needed
-      data = await this.migrateIfNeeded(data);
+      // Ensure metadata exists
+      if (!data.__meta) {
+        data.__meta = {
+          version: this.version,
+          createdAt: new Date().toISOString()
+        };
+      }
 
       // Validate schema
       data = this.validate(data);
@@ -230,107 +234,6 @@ export class Store extends EventEmitter {
     };
   }
 
-  /**
-   * Migrate data if version changed (with backup and rollback)
-   */
-  async migrateIfNeeded(data) {
-    // No metadata means very old version or first time
-    if (!data || !data.__meta) {
-      this.log('No metadata found, creating fresh data structure');
-      return {
-        __meta: {
-          version: this.version,
-          migrated: true,
-          migratedAt: new Date().toISOString()
-        },
-        ...data
-      };
-    }
-
-    const currentVersion = data.__meta.version || 1;
-
-    // Already at correct version
-    if (currentVersion === this.version) {
-      return data;
-    }
-
-    this.log(`Migrating from v${currentVersion} to v${this.version}`);
-
-    // Create backup before migration
-    const backup = JSON.parse(JSON.stringify(data));
-
-    let migrated = { ...data };
-
-    // Run migrations sequentially
-    for (let v = currentVersion + 1; v <= this.version; v++) {
-      if (this.migrations[v]) {
-        this.log(`Running migration v${v}`);
-        try {
-          migrated = await this.migrations[v](migrated);
-        } catch (error) {
-          console.error(`[Store:${this.namespace}] Migration v${v} failed:`, error);
-          console.error('Migration backup available, data not written to storage');
-
-          // Store backup for manual recovery
-          if (this.adapter && this.adapter.set) {
-            try {
-              await this.adapter.set(`${this.namespace}_backup_v${currentVersion}`, backup);
-              console.log(
-                `Migration backup saved to ${this.namespace}_backup_v${currentVersion}`
-              );
-            } catch (backupError) {
-              console.error('Failed to save migration backup:', backupError);
-            }
-          }
-
-          throw error;
-        }
-      }
-    }
-
-    // Update metadata
-    migrated.__meta = {
-      ...migrated.__meta,
-      version: this.version,
-      migrated: true,
-      migratedFrom: currentVersion,
-      migratedAt: new Date().toISOString()
-    };
-
-    this.log('Migration complete');
-
-    return migrated;
-  }
-
-  /**
-   * Rollback to backup (manual recovery from failed migration)
-   * @param {number} version - Version to rollback to
-   */
-  async rollbackToBackup(version) {
-    try {
-      const backupKey = `${this.namespace}_backup_v${version}`;
-      const backup = await this.adapter.get(backupKey);
-
-      if (!backup) {
-        throw new Error(`No backup found for version ${version}`);
-      }
-
-      // Save backup as current data
-      await this.adapter.set(this.namespace, backup);
-
-      // Update cache
-      if (this.cacheEnabled) {
-        this.cache = backup;
-        this.cacheTimestamp = Date.now();
-      }
-
-      this.log(`Rolled back to version ${version}`);
-      return backup;
-    } catch (error) {
-      console.error(`Failed to rollback to version ${version}:`, error);
-      throw error;
-    }
-  }
 
   /**
    * Validate data against schema

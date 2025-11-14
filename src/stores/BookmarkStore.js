@@ -13,18 +13,6 @@ export class BookmarkStore {
       version: 2,
       defaultData: {
         bookmarks: []
-      },
-      migrations: {
-        // v2: Normalize conversation URLs from full URL to pathname
-        2: (data) => {
-          if (data.bookmarks) {
-            data.bookmarks = data.bookmarks.map(bookmark => ({
-              ...bookmark,
-              conversationUrl: this.normalizeUrl(bookmark.conversationUrl)
-            }));
-          }
-          return data;
-        }
       }
     });
   }

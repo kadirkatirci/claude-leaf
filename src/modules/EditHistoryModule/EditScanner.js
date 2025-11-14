@@ -8,29 +8,25 @@ class EditScanner {
     this.onEditFound = onEditFound;
     this.observer = null;
     this.observerTimeout = null;
-    this.scanInterval = null;
     this.lastCount = 0;
     this.lastEditIds = new Set(); // Track edit IDs to detect actual changes
   }
 
   /**
-   * Sürekli tarama modunu başlat
-   * Optimized: Removed scroll listener, increased interval
+   * Start continuous scanning mode
+   * Uses DOM observer only - no polling needed
    */
   start() {
-    // 1. İlk tarama
+    // 1. Initial scan
     setTimeout(() => this.scan(), 100);
 
-    // 2. Periyodik tarama (5 saniyede bir - daha az sık)
-    this.scanInterval = setInterval(() => this.scan(), 5000);
-
-    // 3. DOM observer (sadece bu yeterli)
+    // 2. DOM observer (event-driven, no polling)
     this.observer = DOMUtils.observeDOM(() => {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => this.scan(), 1000);
     });
 
-    console.log('[EditScanner] ➡️ Sürekli tarama başlatıldı (optimized)');
+    console.log('[EditScanner] ➡️ Continuous scanning started (event-driven)');
   }
 
   /**
@@ -57,14 +53,9 @@ class EditScanner {
   }
 
   /**
-   * Taramayı durdur
+   * Stop scanning
    */
   stop() {
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
-    }
-
     if (this.observer) {
       this.observer.disconnect();
       this.observer = null;
@@ -74,7 +65,7 @@ class EditScanner {
       clearTimeout(this.observerTimeout);
     }
 
-    console.log('[EditScanner] 🛑 Tarama durduruldu');
+    console.log('[EditScanner] 🛑 Scanning stopped');
   }
 }
 

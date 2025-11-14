@@ -129,32 +129,35 @@ console.log('✅ Navigation utilities initialized');
 
 (async () => {
   try {
-    console.log('🎯 Claude Productivity Extension yükleniyor...');
+    console.log('🎯 Claude Productivity Extension loading...');
 
-    // URL kontrolü
+    // URL check
     if (!window.location.hostname.includes('claude.ai')) {
-      console.log('⏸️ Claude.ai olmayan bir sitede, extension pasif');
+      console.log('⏸️ Not on claude.ai, extension inactive');
       return;
     }
 
-    // Doğrudan import et (content script context'te)
+    // CRITICAL: Wait for DOM BEFORE importing modules
+    // This ensures modules don't try to access DOM elements that don't exist yet
+    console.log('⏳ Waiting for DOM to be ready before loading modules...');
+    await waitForDOMReady();
+
+    // Now safe to import App.js which may access DOM during module loading
+    console.log('📦 Loading extension modules...');
     const { default: app } = await import('./App.js');
 
     // Set up the callback for navigation detection
     navigationCallback = handleNavigation;
 
-    // Check DOM is ready before initializing
-    console.log('⏳ Checking DOM readiness...');
-    await waitForDOMReady();
-
+    // Initialize the app (DOM is already ready)
     console.log('🚀 Initializing Claude Productivity Extension...');
     await app.init();
 
-    console.log('✅ Claude Productivity Extension hazır!');
-    console.log('💡 İpucu: window.claudeProductivity ile extension\'a erişebilirsiniz');
+    console.log('✅ Claude Productivity Extension ready!');
+    console.log('💡 Tip: Access extension via window.claudeProductivity');
 
   } catch (error) {
-    console.error('❌ Claude Productivity Extension başlatılamadı:', error);
-    console.error('Detay:', error.stack);
+    console.error('❌ Claude Productivity Extension failed to initialize:', error);
+    console.error('Stack:', error.stack);
   }
 })();

@@ -11,7 +11,6 @@ class VisibilityManager {
     this.isChecking = false;
     this.debugMode = false;
     this.observer = null;
-    this.checkInterval = null;
 
     // Start monitoring URL changes
     this.startMonitoring();
@@ -44,17 +43,8 @@ class VisibilityManager {
       setTimeout(() => this.checkPageType(), 50);
     });
 
-    // Method 3: Add interval checking as backup for edge cases (like sidebar navigation)
-    // This catches navigation that doesn't trigger History API
-    this.checkInterval = setInterval(() => {
-      const currentPath = window.location.pathname;
-      if (currentPath !== this.lastPath) {
-        if (this.debugMode) {
-          console.log(`[VisibilityManager] Interval detected path change: ${this.lastPath} -> ${currentPath}`);
-        }
-        this.checkPageType();
-      }
-    }, 500); // Check every 500ms
+    // Method 3: Enhanced DOM observation for soft navigation
+    // Instead of polling, we'll use more targeted observers
 
     // Method 4: Observe DOM for main content changes (catches soft navigation)
     this.observeMainContent();
@@ -186,23 +176,48 @@ class VisibilityManager {
       this.observer.disconnect();
     }
 
-    // Create observer for main content changes
+    // Create observer for main content changes and URL monitoring
     this.observer = new MutationObserver((mutations) => {
-      // Check if this might be a navigation
+      // First check: URL might have changed (sidebar navigation)
+      const currentPath = window.location.pathname;
+      if (currentPath !== this.lastPath) {
+        if (this.debugMode) {
+          console.log(`[VisibilityManager] DOM observer detected URL change: ${this.lastPath} -> ${currentPath}`);
+        }
+        this.checkPageType();
+        return;
+      }
+
+      // Second check: Significant DOM changes that might indicate navigation
       const hasSignificantChange = mutations.some(mutation => {
-        // Look for large content changes that indicate navigation
-        return mutation.addedNodes.length > 5 ||
-               mutation.removedNodes.length > 5 ||
-               (mutation.target && mutation.target.tagName === 'MAIN');
+        // Look for specific Claude UI changes
+        if (mutation.type === 'childList') {
+          // Check for main content replacement
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Check for conversation/chat elements
+              if (node.querySelector?.('[data-testid="messages"]') ||
+                  node.classList?.contains('conversation-content') ||
+                  node.tagName === 'MAIN') {
+                return true;
+              }
+            }
+          }
+
+          // Large content changes
+          return mutation.addedNodes.length > 5 ||
+                 mutation.removedNodes.length > 5;
+        }
+        return false;
       });
 
       if (hasSignificantChange) {
-        // Delay check to let DOM settle
+        // Delay check to let DOM and URL settle
         setTimeout(() => {
-          const currentPath = window.location.pathname;
-          if (currentPath !== this.lastPath) {
+          const newPath = window.location.pathname;
+          if (newPath !== this.lastPath) {
             if (this.debugMode) {
-              console.log(`[VisibilityManager] DOM observer detected navigation: ${this.lastPath} -> ${currentPath}`);
+              console.log(`[VisibilityManager] DOM change led to navigation: ${this.lastPath} -> ${newPath}`);
             }
             this.checkPageType();
           }
@@ -210,12 +225,12 @@ class VisibilityManager {
       }
     });
 
-    // Start observing
+    // Observe both body for comprehensive changes
     const targetNode = document.body;
     const config = {
       childList: true,
       subtree: true,
-      attributes: false
+      attributes: false // Don't need attribute changes
     };
 
     this.observer.observe(targetNode, config);
@@ -238,12 +253,6 @@ class VisibilityManager {
   destroy() {
     // Clear listeners
     this.listeners.clear();
-
-    // Stop interval
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
 
     // Stop observer
     if (this.observer) {

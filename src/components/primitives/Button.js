@@ -176,7 +176,7 @@ export class Button {
     }
 
     // Clear existing content
-    button.innerHTML = '';
+    button.textContent = '';
 
     // Add content parts
     contentParts.forEach(part => button.appendChild(part));

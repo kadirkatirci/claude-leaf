@@ -96,7 +96,7 @@ export class MarkerButton {
       });
     }
 
-    button.innerHTML = '🏷️';
+    button.textContent = '🏷️';
     button.title = 'Add emoji marker';
 
     // Hover effects for button scaling (only for custom theme)
@@ -137,7 +137,7 @@ export class MarkerButton {
       this.onMarkerAdd(messageEl, messageIndex, emoji);
 
       // Update button
-      button.innerHTML = emoji;
+      button.textContent = emoji;
       button.title = `Marked with ${emoji}`;
       const theme = this.getTheme();
       button.style.background = theme.primary || theme.accentColor || '#CC785C';
@@ -206,7 +206,7 @@ export class MarkerButton {
         this.onMarkerUpdate(marker.id, emoji);
 
         // Update button
-        button.innerHTML = emoji;
+        button.textContent = emoji;
         button.title = `Marked with ${emoji}`;
       });
     });
@@ -237,7 +237,7 @@ export class MarkerButton {
       this.onMarkerRemove(marker.id);
 
       // Update button to "add" state
-      button.innerHTML = '🏷️';
+      button.textContent = '🏷️';
       button.title = 'Add emoji marker';
       button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
       // Position stays the same (fixed at -36px)
@@ -276,7 +276,7 @@ export class MarkerButton {
     } else {
       // Marker yoksa button'u göster (add marker için)
       button.style.display = 'flex';
-      button.innerHTML = '🏷️';
+      button.textContent = '🏷️';
       button.title = 'Add emoji marker';
 
       // Only update background if not using native classes

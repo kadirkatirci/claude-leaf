@@ -80,8 +80,7 @@ export class SettingsStore {
       adapter: 'sync',
       version: 1,
       defaultData: this.defaults,
-      cacheTTL: 30000, // Cache for 30 seconds (settings don't change frequently)
-      migrations: {}
+      cacheTTL: 30000 // Cache for 30 seconds (settings don't change frequently)
     });
   }
 

@@ -29,7 +29,7 @@ class ExpandButton {
     }
 
     const button = DOMUtils.createElement('button');
-    button.innerHTML = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+    button.textContent = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
 
     if (theme.useNativeClasses) {
       // Claude's native button classes

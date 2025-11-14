@@ -261,7 +261,7 @@ class MessageFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.chevron.innerHTML = '▶';
+    cached.chevron.textContent = '▶';
     cached.chevron.title = 'Expand message';
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
@@ -296,7 +296,7 @@ class MessageFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.chevron.innerHTML = '▼';
+    cached.chevron.textContent = '▼';
     cached.chevron.title = 'Collapse message';
     cached.chevron.style.opacity = '0'; // Hidden when expanded (until hover)
 

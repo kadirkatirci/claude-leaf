@@ -198,7 +198,7 @@ class SidebarCollapseModule extends BaseModule {
 
     // Update chevron icon
     if (section.chevron) {
-      section.chevron.innerHTML = section.isCollapsed ? '▶' : '▼';
+      section.chevron.textContent = section.isCollapsed ? '▶' : '▼';
     }
 
     // Apply state

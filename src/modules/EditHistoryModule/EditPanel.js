@@ -74,7 +74,7 @@ class EditPanel extends BasePanel {
     this.lastEditIds = editedMessages.map(e => e.containerId);
 
     // Clear content
-    this.content.innerHTML = '';
+    this.content.textContent = '';
 
     // Show empty state if no edits
     if (editedMessages.length === 0) {

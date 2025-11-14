@@ -189,7 +189,7 @@ class HeadingFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.chevron.innerHTML = '▶';
+    cached.chevron.textContent = '▶';
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Find content to hide
@@ -226,7 +226,7 @@ class HeadingFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.chevron.innerHTML = '▼';
+    cached.chevron.textContent = '▼';
     cached.chevron.style.opacity = '0'; // Hidden when expanded (until hover)
 
     // Find content to show

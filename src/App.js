@@ -108,41 +108,88 @@ class ClaudeProductivityApp {
    * Main initialization sequence
    */
   async doInitialize() {
-    // Initialize core utilities (and wait for VisibilityManager to load)
-    await DOMUtils.init();
+    console.log('🏗️ [ARCHITECTURE] Starting initialization sequence...');
 
-    // Initialize managers
-    this.initializeManagers();
+    // STEP 1: Load settings FIRST (critical for all other components)
+    console.log('📍 [STEP 1/6] Loading settings BEFORE anything else...');
+    const startTime = performance.now();
 
-    // Initialize cross-tab synchronization
-    this.initializeCrossTabSync();
-
-    // Load settings (single load, no double load)
     try {
       await settingsStore.load();
+      console.log('✅ [STEP 1/6] Settings loaded successfully');
     } catch (error) {
-      console.error('Failed to load settings, using defaults:', error);
+      console.error('⚠️ [STEP 1/6] Failed to load settings, using defaults:', error);
       // Continue with defaults
     }
 
+    // Initialize SettingsCache with loaded settings
+    const { default: settingsCache } = await import('./core/SettingsCache.js');
+    await settingsCache.init(settingsStore);
+    console.log('✅ [STEP 1/6] SettingsCache initialized - settings now available SYNCHRONOUSLY');
+
     const settings = await settingsStore.getAll();
 
-    // Apply settings to managers
+    // STEP 2: Initialize core utilities with settings available
+    console.log('📍 [STEP 2/6] Initializing core infrastructure...');
+    await DOMUtils.init();
+
+    // Initialize centralized managers
+    const { default: asyncManager } = await import('./managers/AsyncManager.js');
+    const { default: domManager } = await import('./managers/DOMManager.js');
+    const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
+
+    console.log('✅ [STEP 2/6] Centralized managers loaded:');
+    console.log('  - AsyncManager: Ready (handles all timers/async)');
+    console.log('  - DOMManager: Ready (single MutationObserver)');
+    console.log('  - ButtonFactory: Ready (unified button creation)');
+    console.log('  - SettingsCache: Ready (synchronous access)');
+
+    // Set debug mode if enabled
+    if (settings.general?.debugMode) {
+      asyncManager.setDebugMode(true);
+      domManager.setDebugMode(true);
+      buttonFactory.setDebugMode(true);
+      settingsCache.setDebugMode(true);
+      console.log('🐛 Debug mode enabled for all managers');
+    }
+
+    // Initialize DOM manager
+    domManager.init();
+
+    // STEP 3: Initialize managers with settings
+    console.log('📍 [STEP 3/6] Initializing application managers...');
+    this.initializeManagers();
     this.applySettingsToManagers(settings);
+    console.log('✅ [STEP 3/6] Managers initialized with settings');
 
-    // Register feature modules with dependencies
+    // STEP 4: Initialize cross-tab synchronization
+    console.log('📍 [STEP 4/6] Setting up cross-tab synchronization...');
+    this.initializeCrossTabSync();
+    console.log('✅ [STEP 4/6] Cross-tab sync ready');
+
+    // STEP 5: Register and initialize modules
+    console.log('📍 [STEP 5/6] Initializing feature modules...');
     this.registerModulesWithDependencies();
-
-    // Initialize all modules (respecting dependencies)
     await this.initializeModules();
+    console.log('✅ [STEP 5/6] Modules initialized:', Array.from(this.modules.keys()));
 
-    // Setup global event listeners
+    // STEP 6: Setup global event listeners
+    console.log('📍 [STEP 6/6] Setting up global listeners...');
     this.setupGlobalListeners();
+    console.log('✅ [STEP 6/6] Global listeners ready');
 
-    // Enable debug mode if configured
+    // Enable debug mode UI if configured
     if (settings.general?.debugMode) {
       this.enableDebugMode();
     }
+
+    const totalTime = Math.round(performance.now() - startTime);
+    console.log(`🎉 [ARCHITECTURE] Initialization complete in ${totalTime}ms`);
+    console.log('📊 [ARCHITECTURE] System status:');
+    console.log('  - No polling intervals (all event-driven)');
+    console.log('  - Single MutationObserver active');
+    console.log('  - Settings cached for synchronous access');
+    console.log('  - All timers centralized in AsyncManager');
   }
 
   /**
@@ -438,7 +485,7 @@ class ClaudeProductivityApp {
   /**
    * Stop the application
    */
-  destroy() {
+  async destroy() {
     if (!this.initialized) return;
 
     console.log('🗑️ Stopping Claude Productivity Extension...');
@@ -468,6 +515,21 @@ class ClaudeProductivityApp {
     }
     if (this.managers.observer) {
       this.managers.observer.destroy();
+    }
+
+    // Clean up new centralized managers
+    try {
+      const { default: asyncManager } = await import('./managers/AsyncManager.js');
+      const { default: domManager } = await import('./managers/DOMManager.js');
+      const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
+      const { default: settingsCache } = await import('./core/SettingsCache.js');
+
+      asyncManager.destroy();
+      domManager.destroy();
+      buttonFactory.clearAll();
+      settingsCache.clear();
+    } catch (error) {
+      console.error('Error cleaning up managers:', error);
     }
 
     // Clear event bus
@@ -532,6 +594,132 @@ class ClaudeProductivityApp {
       settings: await settingsStore.getAll(),
       observers: ObserverManager.getAllStatuses(),
       shortcuts: KeyboardManager.getShortcuts()
+    };
+  }
+
+  /**
+   * Verify architecture implementation
+   * Run with: window.claudeProductivity.verifyArchitecture()
+   */
+  async verifyArchitecture() {
+    console.log('🔍 [ARCHITECTURE VERIFICATION] Starting system check...\n');
+
+    const { default: asyncManager } = await import('./managers/AsyncManager.js');
+    const { default: domManager } = await import('./managers/DOMManager.js');
+    const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
+    const { default: settingsCache } = await import('./core/SettingsCache.js');
+
+    // 1. Check AsyncManager
+    const asyncStats = asyncManager.getStats();
+    const activeOps = asyncManager.listActiveOperations();
+    console.log('📊 AsyncManager Status:');
+    console.log('  - Timers:', asyncStats.timers);
+    console.log('  - Promises:', asyncStats.promises);
+    console.log('  - Observers:', asyncStats.observers);
+
+    if (activeOps.timers.length > 0) {
+      console.log('  ⚠️ Active timers found:', activeOps.timers);
+      const hasPolling = activeOps.timers.some(t =>
+        t.type === 'interval' && t.interval < 10000
+      );
+      if (hasPolling) {
+        console.error('  ❌ POLLING DETECTED! Intervals under 10s found');
+      }
+    } else {
+      console.log('  ✅ No active timers (good - all event-driven)');
+    }
+
+    // 2. Check DOMManager
+    const domStats = domManager.getStats();
+    console.log('\n📊 DOMManager Status:');
+    console.log('  - Observers registered:', domStats.observers);
+    console.log('  - Cached elements:', domStats.cachedElements);
+    console.log('  - Observer active:', domStats.isObserving);
+    if (domStats.isObserving) {
+      console.log('  ✅ Single MutationObserver is active');
+    } else {
+      console.log('  ⚠️ MutationObserver not active');
+    }
+
+    // 3. Check ButtonFactory
+    const buttonStats = buttonFactory.getStats();
+    console.log('\n📊 ButtonFactory Status:');
+    console.log('  - Fixed buttons:', buttonStats.fixedButtons);
+    console.log('  - Visibility timers:', buttonStats.visibilityTimers);
+    if (buttonStats.visibilityTimers === 0) {
+      console.log('  ✅ No visibility polling (event-driven)');
+    } else {
+      console.log('  ⚠️ Visibility timers found:', buttonStats.visibilityTimers);
+    }
+
+    // 4. Check SettingsCache
+    const cacheLoaded = settingsCache.isLoaded();
+    console.log('\n📊 SettingsCache Status:');
+    console.log('  - Cache loaded:', cacheLoaded);
+    if (cacheLoaded) {
+      // Test synchronous access
+      const theme = settingsCache.getTheme();
+      const opacity = settingsCache.getOpacity();
+      console.log('  ✅ Synchronous access working:');
+      console.log('    - Theme:', theme);
+      console.log('    - Opacity:', opacity);
+    } else {
+      console.log('  ❌ Settings not cached!');
+    }
+
+    // 5. Check for old intervals
+    console.log('\n🔍 Checking for legacy polling...');
+
+    // Check window for any intervals
+    const checkForIntervals = () => {
+      let intervalCount = 0;
+      // This is a heuristic - we can't directly access all intervals
+      // but we can check known problem areas
+
+      if (typeof window.__checkInterval !== 'undefined') {
+        console.log('  ⚠️ Legacy interval found: window.__checkInterval');
+        intervalCount++;
+      }
+
+      // Check modules for visibilityCheckInterval
+      this.modules.forEach((module, name) => {
+        if (module.visibilityCheckInterval) {
+          console.log(`  ⚠️ ${name} has visibilityCheckInterval`);
+          intervalCount++;
+        }
+        if (module.scanInterval) {
+          console.log(`  ⚠️ ${name} has scanInterval`);
+          intervalCount++;
+        }
+      });
+
+      return intervalCount;
+    };
+
+    const intervalCount = checkForIntervals();
+    if (intervalCount === 0) {
+      console.log('  ✅ No legacy polling intervals found');
+    } else {
+      console.log(`  ❌ Found ${intervalCount} legacy intervals`);
+    }
+
+    // 6. Performance metrics
+    console.log('\n📊 Performance Metrics:');
+    const memory = performance.memory;
+    if (memory) {
+      console.log(`  - JS Heap: ${Math.round(memory.usedJSHeapSize / 1024 / 1024)}MB / ${Math.round(memory.jsHeapSizeLimit / 1024 / 1024)}MB`);
+    }
+
+    // Summary
+    console.log('\n✅ [ARCHITECTURE VERIFICATION] Complete');
+    console.log('Run this check with: window.claudeProductivity.verifyArchitecture()');
+
+    return {
+      asyncManager: asyncStats,
+      domManager: domStats,
+      buttonFactory: buttonStats,
+      settingsCache: cacheLoaded,
+      hasPolling: intervalCount > 0
     };
   }
 

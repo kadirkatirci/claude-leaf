@@ -186,10 +186,10 @@ class CompactViewModule extends BaseModule {
   updateToggleButton() {
     if (this.elements && this.elements.toggleBtn) {
       if (this.isAllCollapsed) {
-        this.elements.toggleBtn.innerHTML = '📂';
+        this.elements.toggleBtn.textContent = '📂';
         this.elements.toggleBtn.title = 'Tümünü Genişlet (Alt+→)';
       } else {
-        this.elements.toggleBtn.innerHTML = '📦';
+        this.elements.toggleBtn.textContent = '📦';
         this.elements.toggleBtn.title = 'Tümünü Daralt (Alt+←)';
       }
     }
@@ -202,7 +202,7 @@ class CompactViewModule extends BaseModule {
     const theme = this.getTheme();
     const button = document.createElement('button');
 
-    button.innerHTML = icon;
+    button.textContent = icon;
     button.title = tooltip;
 
     if (theme.useNativeClasses) {
@@ -345,7 +345,7 @@ class CompactViewModule extends BaseModule {
     // Mevcut butonu güncelle
     const button = container.querySelector('.claude-expand-btn');
     if (button) {
-      button.innerHTML = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+      button.textContent = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
     }
   }
 

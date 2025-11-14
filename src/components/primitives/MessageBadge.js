@@ -43,8 +43,8 @@ export default class MessageBadge {
     const existingBadge = this.badgeCache.get(element);
     if (existingBadge) {
       // Update existing badge
-      if (existingBadge.innerHTML !== content) {
-        existingBadge.innerHTML = content;
+      if (existingBadge.textContent !== content) {
+        existingBadge.textContent = content;
       }
       if (title && existingBadge.title !== title) {
         existingBadge.title = title;
@@ -57,7 +57,6 @@ export default class MessageBadge {
     // Create badge element
     const badge = DOMUtils.createElement('div', {
       className,
-      innerHTML: content,
       title,
       style: {
         position: 'absolute',
@@ -71,6 +70,9 @@ export default class MessageBadge {
         ...style
       }
     });
+
+    // Set content
+    badge.textContent = content;
 
     // Add hover effects
     this.attachHoverEffects(badge);
@@ -125,7 +127,7 @@ export default class MessageBadge {
   update(element, content, title) {
     const badge = this.badgeCache.get(element);
     if (badge) {
-      badge.innerHTML = content;
+      badge.textContent = content;
       if (title) {
         badge.title = title;
       }

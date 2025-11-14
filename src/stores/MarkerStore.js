@@ -13,18 +13,6 @@ export class MarkerStore {
       version: 2,
       defaultData: {
         markers: []
-      },
-      migrations: {
-        // v2: Normalize conversation URLs from full URL to pathname
-        2: (data) => {
-          if (data.markers) {
-            data.markers = data.markers.map(marker => ({
-              ...marker,
-              conversationUrl: this.normalizeUrl(marker.conversationUrl)
-            }));
-          }
-          return data;
-        }
       }
     });
   }

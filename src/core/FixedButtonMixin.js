@@ -23,7 +23,6 @@ export default class FixedButtonMixin {
     module.updateButtonCounter = this.createCounterUpdater(module);
     module.setupVisibilityListener = this.createVisibilitySetup(module);
     module.destroyFixedButton = this.createButtonDestroyer(module);
-    module.ensureButtonVisibility = this.createVisibilityEnsurer(module);
   }
 
   /**
@@ -101,7 +100,7 @@ export default class FixedButtonMixin {
       // Create button element
       const button = document.createElement('button');
       button.id = id;
-      button.innerHTML = icon;
+      button.textContent = icon;
       button.title = tooltip || '';
 
       // Apply Claude native classes or custom styling based on theme
@@ -244,14 +243,8 @@ export default class FixedButtonMixin {
       const isConversationPage = VisibilityManager.isOnConversationPage();
       this.handleVisibilityChange(isConversationPage);
 
-      // Set up periodic visibility check for extra stability
-      if (this.visibilityCheckInterval) {
-        clearInterval(this.visibilityCheckInterval);
-      }
-
-      this.visibilityCheckInterval = setInterval(() => {
-        this.ensureButtonVisibility();
-      }, 2000); // Check every 2 seconds
+      // Instead of polling, rely on VisibilityManager's event-driven updates
+      // and DOM observer for any edge cases
 
       module.log('Visibility listener setup complete');
     }.bind(module);
@@ -275,48 +268,8 @@ export default class FixedButtonMixin {
         this.visibilityUnsubscribe = null;
       }
 
-      // Clean up visibility check interval
-      if (this.visibilityCheckInterval) {
-        clearInterval(this.visibilityCheckInterval);
-        this.visibilityCheckInterval = null;
-      }
-
       module.log('Fixed button and listeners destroyed');
     }.bind(module);
   }
 
-  /**
-   * Create visibility ensurer - periodically checks and fixes visibility state
-   */
-  static createVisibilityEnsurer(module) {
-    return function() {
-      if (!this.fixedButton) return;
-
-      const isConversationPage = VisibilityManager.isOnConversationPage();
-      const shouldBeVisible = isConversationPage;
-
-      // Check current visibility state
-      const isCurrentlyVisible = (
-        this.fixedButton.style.display !== 'none' &&
-        this.fixedButton.style.visibility !== 'hidden'
-      );
-
-      // Fix if there's a mismatch
-      if (shouldBeVisible !== isCurrentlyVisible) {
-        module.log(`Fixing button visibility mismatch: should be ${shouldBeVisible}, is ${isCurrentlyVisible}`);
-
-        if (shouldBeVisible) {
-          this.fixedButton.style.display = 'flex';
-          this.fixedButton.style.visibility = 'visible';
-          this.fixedButton.style.opacity = '0.9';
-          this.fixedButton.style.pointerEvents = 'auto';
-        } else {
-          this.fixedButton.style.display = 'none';
-          this.fixedButton.style.visibility = 'hidden';
-          this.fixedButton.style.opacity = '0';
-          this.fixedButton.style.pointerEvents = 'none';
-        }
-      }
-    }.bind(module);
-  }
 }
