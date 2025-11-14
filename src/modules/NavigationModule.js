@@ -124,8 +124,12 @@ class NavigationModule extends BaseModule {
       this.lastMessageCount = 0;
     } else {
       this.log('Page changed to conversation, showing navigation');
-      // Always re-find messages on conversation page (handles chat switches correctly)
-      this.findMessages();
+      // Use retry mechanism to wait for DOM to be ready on navigation
+      // This fixes the issue where first chat click from home page fails
+      // because messages haven't loaded yet
+      this.findMessagesWithRetry().catch(err => {
+        this.log('Failed to find messages after retry:', err);
+      });
     }
   }
 
