@@ -172,27 +172,40 @@ const DOMUtilsCore = {
    * Get current visible message index
    * @returns {number} Message index
    */
-  getCurrentVisibleMessageIndex() {
-    const messages = this.findMessages();
-    const scrollPosition = window.scrollY + window.innerHeight / 2;
+  getCurrentVisibleMessageIndex(messages = null) {
+    // Use provided messages array or find them
+    const msgArray = messages || this.findMessages();
 
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
+    console.log(`[DOM getCurrentVisibleMessageIndex] Called with ${messages ? 'provided' : 'NO'} messages array. Array length: ${msgArray ? msgArray.length : 0}`);
+
+    // Return -1 if no messages
+    if (!msgArray || msgArray.length === 0) {
+      console.log(`[DOM getCurrentVisibleMessageIndex] No messages, returning -1`);
+      return -1;
+    }
+
+    const scrollPosition = window.scrollY + window.innerHeight / 2;
+    console.log(`[DOM getCurrentVisibleMessageIndex] Scroll position: ${scrollPosition}, checking ${msgArray.length} messages`);
+
+    // Check which message contains the viewport center
+    for (let i = 0; i < msgArray.length; i++) {
+      const msg = msgArray[i];
       const rect = msg.getBoundingClientRect();
       const elementTop = rect.top + window.scrollY;
       const elementBottom = elementTop + rect.height;
 
       if (scrollPosition >= elementTop && scrollPosition <= elementBottom) {
+        console.log(`[DOM getCurrentVisibleMessageIndex] Found message at index ${i} (contains viewport center)`);
         return i;
       }
     }
 
-    // Find closest message
+    // Find closest message if none contain the center
     let closest = 0;
     let minDistance = Infinity;
 
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
+    for (let i = 0; i < msgArray.length; i++) {
+      const msg = msgArray[i];
       const rect = msg.getBoundingClientRect();
       const elementTop = rect.top + window.scrollY;
       const distance = Math.abs(scrollPosition - elementTop);
@@ -203,6 +216,7 @@ const DOMUtilsCore = {
       }
     }
 
+    console.log(`[DOM getCurrentVisibleMessageIndex] Returning closest index: ${closest}`);
     return closest;
   }
 };
