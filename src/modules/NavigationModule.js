@@ -39,7 +39,7 @@ class NavigationModule extends BaseModule {
       MessageObserverMixin.enhance(this);
 
       // UI oluştur
-      this.createUI();
+      await this.createUI();
 
       // Find messages FIRST with retry (before visibility subscription)
       // Add timeout to prevent hanging
