@@ -26,16 +26,19 @@ const MessageObserverMixin = {
    * @param {number} options.throttleDelay - Delay in ms for throttling (default: 500)
    * @param {boolean} options.trackMessageCount - Only call callback if message count changes (default: true)
    * @param {boolean} options.checkConversationPage - Only observe on conversation pages (default: true)
+   * @param {boolean} options.forceInitialCallback - Force callback on first observation even if count is 0 (default: false)
    */
   setupMessageObserver(callback, options = {}) {
     const {
       throttleDelay = 500,
       trackMessageCount = true,
-      checkConversationPage = true
+      checkConversationPage = true,
+      forceInitialCallback = false
     } = options;
 
     // Store callback for cleanup
     this.observerCallback = callback;
+    this.hasCalledInitialCallback = false; // Track if initial callback was made
 
     // Create observer
     this.observer = this.dom.observeDOM(() => {
@@ -54,16 +57,24 @@ const MessageObserverMixin = {
           const messages = this.dom.findMessages();
           const currentCount = messages.length;
 
-          // Only call callback if message count changed
-          if (currentCount !== this.lastMessageCount) {
+          // Call callback if:
+          // 1. Message count changed
+          // 2. OR this is the first observation and forceInitialCallback is true
+          const shouldCallCallback =
+            currentCount !== this.lastMessageCount ||
+            (forceInitialCallback && !this.hasCalledInitialCallback);
+
+          if (shouldCallCallback) {
             if (this.log) {
               this.log(`Mesaj sayısı güncellendi: ${this.lastMessageCount} → ${currentCount}`);
             }
             this.lastMessageCount = currentCount;
+            this.hasCalledInitialCallback = true;
             callback(messages, currentCount, this.lastMessageCount);
           }
         } else {
           // Call callback regardless of message count
+          this.hasCalledInitialCallback = true;
           callback();
         }
       }, throttleDelay);

@@ -61,9 +61,22 @@ export default class FixedButtonMixin {
           this.clearUIElements();
         }
       } else {
-        // Update UI for conversation page
+        // Update UI for conversation page with retry mechanism
         if (this.updateUI) {
+          // Call immediately for fast response
           this.updateUI();
+
+          // Also schedule a delayed update to catch late-loading content
+          if (this.waitAndUpdateUI) {
+            this.waitAndUpdateUI();
+          } else {
+            // Default retry mechanism if module doesn't have custom implementation
+            setTimeout(() => {
+              if (this.updateUI) {
+                this.updateUI();
+              }
+            }, 500);
+          }
         }
       }
     }.bind(module);

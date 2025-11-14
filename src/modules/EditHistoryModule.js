@@ -145,6 +145,41 @@ class EditHistoryModule extends BaseModule {
     this.scanner.scan();
   }
 
+  /**
+   * Wait for messages and update UI with retry mechanism
+   */
+  async waitAndUpdateUI() {
+    const maxRetries = 5;
+    const baseDelay = 200;
+    let retryCount = 0;
+
+    const checkForEdits = async () => {
+      // Trigger a scan
+      this.scanner.scan();
+
+      // Check if we found any edits
+      if (this.editedMessages.length > 0 || retryCount >= maxRetries) {
+        if (this.editedMessages.length > 0) {
+          this.log(`✅ Found ${this.editedMessages.length} edited messages after ${retryCount} retries`);
+        } else {
+          this.log(`⚠️ No edited messages found after ${retryCount} retries`);
+        }
+        return;
+      }
+
+      // Retry with exponential backoff
+      retryCount++;
+      const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
+      this.log(`🔄 Edit scan retry ${retryCount}/${maxRetries}: Waiting ${delay}ms...`);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return checkForEdits();
+    };
+
+    // Start checking
+    await checkForEdits();
+  }
+
 
   /**
    * Create Collapse/Expand All button in navigation container

@@ -59,10 +59,16 @@ class NavigationModule extends BaseModule {
           const oldLength = this.messages.length;
           this.messages = this.dom.findMessages();
 
-          // Only emit and update if message count changed
-          if (this.messages.length !== oldLength) {
+          // Update if count changed OR if this is the first successful load
+          if (this.messages.length !== oldLength || !this.hasInitialLoadCompleted) {
             this.updateCounter();
             this.emit(Events.MESSAGES_UPDATED, this.messages);
+
+            // Mark initial load as complete if we found messages
+            if (!this.hasInitialLoadCompleted && this.messages.length > 0) {
+              this.hasInitialLoadCompleted = true;
+              this.log(`✅ Initial load from observer: ${this.messages.length} messages`);
+            }
           }
         } catch (error) {
           console.error(`❌ Error in message observer callback:`, error);
@@ -111,12 +117,51 @@ class NavigationModule extends BaseModule {
       this.log('📵 Page changed to non-conversation, hiding navigation');
       this.messages = [];
       this.lastMessageCount = 0;
+      this.hasInitialLoadCompleted = false; // Reset flag for next conversation
     } else {
       this.log('💬 Page changed to conversation, showing navigation');
-      // Observer is already set up and listening for DOM mutations
-      // When Claude renders messages, observer will detect them via DOM events
-      // No polling needed - rely on event-driven updates
+      // Wait for messages to appear with retry mechanism
+      this.waitForMessagesAndUpdate();
     }
+  }
+
+  /**
+   * Wait for messages to appear in DOM with retry mechanism
+   */
+  async waitForMessagesAndUpdate() {
+    const maxRetries = 10;
+    const baseDelay = 100;
+    let retryCount = 0;
+
+    const checkMessages = async () => {
+      const messages = this.dom.findMessages();
+
+      if (messages.length > 0 || retryCount >= maxRetries) {
+        // Messages found or max retries reached
+        this.messages = messages;
+        this.updateCounter();
+        this.emit(Events.MESSAGES_UPDATED, this.messages);
+        this.hasInitialLoadCompleted = true;
+
+        if (messages.length > 0) {
+          this.log(`✅ Initial load: Found ${messages.length} messages after ${retryCount} retries`);
+        } else {
+          this.log(`⚠️ No messages found after ${retryCount} retries`);
+        }
+        return true;
+      }
+
+      // No messages yet, retry with exponential backoff
+      retryCount++;
+      const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
+      this.log(`🔄 Retry ${retryCount}/${maxRetries}: Waiting ${delay}ms for messages...`);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return checkMessages();
+    };
+
+    // Start checking
+    await checkMessages();
   }
 
   destroy() {

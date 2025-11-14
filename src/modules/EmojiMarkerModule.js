@@ -166,6 +166,42 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   /**
+   * Wait for messages and update UI with retry mechanism
+   */
+  async waitAndUpdateUI() {
+    const maxRetries = 5;
+    const baseDelay = 200;
+    let retryCount = 0;
+
+    const checkForMessages = async () => {
+      const messages = this.dom.findMessages();
+
+      if (messages.length > 0 || retryCount >= maxRetries) {
+        // Messages found or max retries reached
+        await this.updateUI();
+
+        if (messages.length > 0) {
+          this.log(`✅ Found ${messages.length} messages after ${retryCount} retries, markers updated`);
+        } else {
+          this.log(`⚠️ No messages found after ${retryCount} retries`);
+        }
+        return;
+      }
+
+      // Retry with exponential backoff
+      retryCount++;
+      const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
+      this.log(`🔄 Marker retry ${retryCount}/${maxRetries}: Waiting ${delay}ms for messages...`);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return checkForMessages();
+    };
+
+    // Start checking
+    await checkForMessages();
+  }
+
+  /**
    * Add a new marker
    */
   async addMarker(messageEl, messageIndex, emoji) {
