@@ -181,6 +181,15 @@ const DOMUtilsCore = {
       return -1;
     }
 
+    // SIMPLE FIX: If first message is at the top, show "1/N"
+    const firstMsg = msgArray[0];
+    const firstRect = firstMsg.getBoundingClientRect();
+
+    // If first message top is near viewport top (within 100px), it's visible at top
+    if (firstRect.top >= -100 && firstRect.top <= 100) {
+      return 0; // Show "1/N"
+    }
+
     const scrollPosition = window.scrollY + window.innerHeight / 2;
 
     // Check which message contains the viewport center
