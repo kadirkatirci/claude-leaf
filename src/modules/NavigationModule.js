@@ -185,7 +185,6 @@ class NavigationModule extends BaseModule {
     if (this.messages.length > 0) {
       const scrollIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
       if (scrollIndex !== this.currentIndex && scrollIndex >= 0) {
-        console.log(`[NAV UPDATE UI] Scroll position check: updating currentIndex from ${this.currentIndex} to ${scrollIndex}`);
         this.currentIndex = scrollIndex;
         this.updateCounter();
       }
@@ -463,8 +462,6 @@ class NavigationModule extends BaseModule {
   }
 
   updateCounter() {
-    console.log(`[NAV UPDATE COUNTER] Called. currentIndex: ${this.currentIndex}, messages: ${this.messages.length}`);
-
     let newText;
     if (this.messages.length > 0) {
       // Use cached currentIndex if available, otherwise calculate it
@@ -472,13 +469,10 @@ class NavigationModule extends BaseModule {
       if (this.currentIndex >= 0 && this.currentIndex < this.messages.length) {
         // Use cached index
         current = this.currentIndex + 1;
-        console.log(`[NAV UPDATE COUNTER] Using cached index: ${this.currentIndex} → display ${current}`);
       } else {
         // Calculate and cache index (first time or after reset)
-        console.log(`[NAV UPDATE COUNTER] Calculating index (currentIndex was ${this.currentIndex})`);
         this.currentIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
         current = this.currentIndex + 1;
-        console.log(`[NAV UPDATE COUNTER] Calculated new index: ${this.currentIndex} → display ${current}`);
       }
 
       newText = `${current}/${this.messages.length}`;
@@ -486,27 +480,18 @@ class NavigationModule extends BaseModule {
     } else {
       newText = '0/0';
       this.currentIndex = -1; // Reset index when no messages
-      console.log(`[NAV UPDATE COUNTER] No messages, resetting to 0/0`);
     }
-
-    console.log(`[NAV UPDATE COUNTER] New text: "${newText}", last text: "${this.lastCounterText}"`);
 
     // Only update if text changed
     if (this.lastCounterText !== newText) {
-      console.log(`[NAV UPDATE COUNTER] Text changed! Updating badge...`);
       // ✅ FIXED: Check badge exists before updating (guard against DOM issues)
       const badge = document.getElementById('claude-nav-counter');
       if (badge) {
         // Use CounterBadge.update for consistency
         CounterBadge.updateById('claude-nav-counter', newText);
         this.lastCounterText = newText;
-        console.log(`[NAV UPDATE COUNTER] Badge updated to: ${newText}`);
         this.log(`Counter badge güncellendi: ${newText}`);
-      } else {
-        console.error(`[NAV UPDATE COUNTER] Badge element not found!`);
       }
-    } else {
-      console.log(`[NAV UPDATE COUNTER] Text unchanged, skipping badge update`);
     }
 
     // Butonları enable/disable et
@@ -595,27 +580,23 @@ class NavigationModule extends BaseModule {
     // Store references for cleanup
     this.scrollContainers = new Set();
 
+    // Debug flag for scroll tracking (can be enabled via settings or console)
+    this.debugScroll = false; // Set to true for debugging
+
     // Throttle scroll events for performance
     const handleScroll = this.dom.throttle(() => {
-      console.log(`[NAV SCROLL] Scroll event fired. Messages: ${this.messages.length}, currentIndex: ${this.currentIndex}`);
-
       // Cache the current visible message index
       if (this.messages.length > 0) {
         const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
-        console.log(`[NAV SCROLL] Got newIndex: ${newIndex}, currentIndex was: ${this.currentIndex}`);
 
         // Only update if index changed
         if (newIndex !== this.currentIndex) {
-          const oldIndex = this.currentIndex;
+          if (this.debugScroll) {
+            console.log(`[NAV SCROLL DEBUG] Index changed: ${this.currentIndex} → ${newIndex}`);
+          }
           this.currentIndex = newIndex;
-          console.log(`[NAV SCROLL] Index changed: ${oldIndex} → ${newIndex}, calling updateCounter()`);
-          this.log(`Scroll: currentIndex updated to ${this.currentIndex}`);
           this.updateCounter();
-        } else {
-          console.log(`[NAV SCROLL] Index unchanged at ${this.currentIndex}, skipping update`);
         }
-      } else {
-        console.log(`[NAV SCROLL] No messages found, skipping`);
       }
     }, 300);
 
@@ -630,12 +611,10 @@ class NavigationModule extends BaseModule {
       // Always attach to window
       window.addEventListener('scroll', handleScroll, { passive: true });
       this.scrollContainers.add(window);
-      console.log('[NAV SCROLL] Attached listener to window');
 
       // Also attach to document for capturing
       document.addEventListener('scroll', handleScroll, { passive: true, capture: true });
       this.scrollContainers.add(document);
-      console.log('[NAV SCROLL] Attached listener to document (capture mode)');
 
       // Find scrollable containers in Claude's UI
       const selectors = [
@@ -656,13 +635,11 @@ class NavigationModule extends BaseModule {
             if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
               element.addEventListener('scroll', handleScroll, { passive: true });
               this.scrollContainers.add(element);
-              console.log(`[NAV SCROLL] Attached listener to ${element.tagName}.${element.className.split(' ')[0] || ''}`);
             }
           }
         });
       });
 
-      console.log(`[NAV SCROLL] Total scroll listeners attached: ${this.scrollContainers.size}`);
     };
 
     // Attach listeners initially
@@ -670,27 +647,25 @@ class NavigationModule extends BaseModule {
 
     // Re-attach listeners when DOM changes (in case scrollable containers are added dynamically)
     this.scrollReattachObserver = new MutationObserver(this.dom.throttle(() => {
-      console.log('[NAV SCROLL] DOM changed, re-attaching scroll listeners');
       attachScrollListeners();
-    }, 2000));
+    }, 5000)); // Increased to 5s for better performance
 
     this.scrollReattachObserver.observe(document.body, {
       childList: true,
       subtree: true
     });
 
-    // Also add a periodic check as a fallback (every 500ms)
+    // Also add a periodic check as a fallback (every 1000ms)
     // This ensures the counter updates even if scroll events don't fire
     this.scrollCheckInterval = setInterval(() => {
       if (this.messages.length > 0) {
         const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
         if (newIndex !== this.currentIndex && newIndex >= 0) {
-          console.log(`[NAV PERIODIC CHECK] Index changed from ${this.currentIndex} to ${newIndex}`);
           this.currentIndex = newIndex;
           this.updateCounter();
         }
       }
-    }, 500);
+    }, 1000); // Increased to 1s for better performance
 
     this.log('📜 Scroll listeners attached with periodic fallback');
 
@@ -817,6 +792,21 @@ class NavigationModule extends BaseModule {
     this.updateButtonStates();
 
     this.log('✅ Navigation reinitialized');
+  }
+
+  /**
+   * Enable or disable scroll debugging (can be called from console)
+   * Usage: window.claudeProductivity.getModule('navigation').setScrollDebug(true)
+   * @param {boolean} enable - Enable or disable debug logging
+   */
+  setScrollDebug(enable) {
+    this.debugScroll = enable;
+    console.log(`NavigationModule scroll debugging ${enable ? 'enabled' : 'disabled'}`);
+
+    if (enable) {
+      console.log('Scroll debug info will be logged. Watch for [NAV SCROLL DEBUG] messages.');
+      console.log(`Current state: ${this.messages.length} messages, index: ${this.currentIndex}`);
+    }
   }
 }
 
