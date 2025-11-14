@@ -181,46 +181,36 @@ const DOMUtilsCore = {
       return -1;
     }
 
-    // SIMPLE FIX: If first message is at the top, show "1/N"
-    const firstMsg = msgArray[0];
-    const firstRect = firstMsg.getBoundingClientRect();
+    // Find the topmost visible message in viewport
+    // We check which message's top is closest to viewport top (within viewport)
+    const viewportTop = window.scrollY;
+    const viewportBottom = viewportTop + window.innerHeight;
 
-    // If first message top is near viewport top (within 100px), it's visible at top
-    if (firstRect.top >= -100 && firstRect.top <= 100) {
-      return 0; // Show "1/N"
-    }
-
-    const scrollPosition = window.scrollY + window.innerHeight / 2;
-
-    // Check which message contains the viewport center
-    for (let i = 0; i < msgArray.length; i++) {
-      const msg = msgArray[i];
-      const rect = msg.getBoundingClientRect();
-      const elementTop = rect.top + window.scrollY;
-      const elementBottom = elementTop + rect.height;
-
-      if (scrollPosition >= elementTop && scrollPosition <= elementBottom) {
-        return i;
-      }
-    }
-
-    // Find closest message if none contain the center
-    let closest = 0;
+    let closestIndex = 0;
     let minDistance = Infinity;
 
     for (let i = 0; i < msgArray.length; i++) {
       const msg = msgArray[i];
       const rect = msg.getBoundingClientRect();
-      const elementTop = rect.top + window.scrollY;
-      const distance = Math.abs(scrollPosition - elementTop);
+      const msgTop = rect.top + window.scrollY;
+      const msgBottom = msgTop + rect.height;
 
+      // Skip messages that are completely out of viewport
+      if (msgBottom < viewportTop || msgTop > viewportBottom) {
+        continue;
+      }
+
+      // Calculate distance from message top to viewport top
+      const distance = Math.abs(msgTop - viewportTop);
+
+      // Find the message closest to viewport top
       if (distance < minDistance) {
         minDistance = distance;
-        closest = i;
+        closestIndex = i;
       }
     }
 
-    return closest;
+    return closestIndex;
   }
 };
 

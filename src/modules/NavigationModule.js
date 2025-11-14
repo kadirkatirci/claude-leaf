@@ -446,9 +446,9 @@ class NavigationModule extends BaseModule {
     // Smooth scroll ayarı kontrol et
     const smoothScroll = await this.getSetting('smoothScroll');
     if (smoothScroll) {
-      this.dom.scrollToElement(message, 'center');
+      this.dom.scrollToElement(message, 'start');
     } else {
-      message.scrollIntoView({ block: 'center' });
+      message.scrollIntoView({ block: 'start' });
     }
 
     // Highlight
