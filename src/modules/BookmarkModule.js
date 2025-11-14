@@ -197,6 +197,14 @@ class BookmarkModule extends BaseModule {
     // Clear panel and sidebar
     this.panel.updateContent([]);
     this.sidebar.update([]);
+
+    // Also try to inject sidebar on page changes
+    // This ensures sidebar is present when navigating between pages
+    try {
+      this.sidebar.inject();
+    } catch (error) {
+      this.error('Failed to inject sidebar during clearUIElements:', error);
+    }
   }
 
   /**
@@ -488,6 +496,15 @@ class BookmarkModule extends BaseModule {
       (bookmark) => this.navigateToBookmark(bookmark),
       (id) => this.deleteBookmark(id)
     );
+
+    // Try to inject sidebar if it's not in the DOM
+    // This handles cases where sidebar wasn't ready on initial load
+    try {
+      this.sidebar.inject();
+    } catch (error) {
+      this.error('Failed to inject sidebar during updateUI:', error);
+    }
+
     this.sidebar.update(
       currentBookmarks,
       (bookmark) => this.navigateToBookmark(bookmark)
@@ -509,6 +526,13 @@ class BookmarkModule extends BaseModule {
         // Messages found or max retries reached
         await this.updateUI();
         await this.addBookmarkButtons();
+
+        // Also ensure sidebar is injected
+        try {
+          this.sidebar.inject();
+        } catch (error) {
+          this.error('Failed to inject sidebar during waitAndUpdateUI:', error);
+        }
 
         if (messages.length > 0) {
           this.log(`✅ Found ${messages.length} messages after ${retryCount} retries, bookmarks updated`);

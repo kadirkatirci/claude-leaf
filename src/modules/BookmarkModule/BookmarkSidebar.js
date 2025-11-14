@@ -18,17 +18,15 @@ export class BookmarkSidebar {
 
     // Don't inject if already exists
     if (this.elements.section && document.body.contains(this.elements.section)) {
-      console.log('[BookmarkSidebar] Section already exists in DOM');
+      // Already injected and in DOM
       return true;
     }
 
     const sidebar = document.querySelector('.flex.flex-col.overflow-y-auto.overflow-x-hidden.relative.px-2.mb-2');
     if (!sidebar) {
       if (retryCount < maxRetries) {
-        console.log(`[BookmarkSidebar] Sidebar not found, retry ${retryCount + 1}/${maxRetries}...`);
+        // Retry silently (no console spam)
         setTimeout(() => this.inject(retryCount + 1), 1000);
-      } else {
-        console.error('[BookmarkSidebar] Sidebar not found after max retries');
       }
       return false;
     }
@@ -79,7 +77,6 @@ export class BookmarkSidebar {
     }
 
     this.elements = { section };
-    console.log('[BookmarkSidebar] ✅ Sidebar header injected');
     return true;
   }
 
