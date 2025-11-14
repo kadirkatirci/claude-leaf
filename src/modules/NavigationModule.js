@@ -482,13 +482,23 @@ class NavigationModule extends BaseModule {
     // Update currentIndex when navigating programmatically
     this.currentIndex = index;
 
-    // Smooth scroll ayarı kontrol et
+    // Add temporary scroll-margin to create top spacing
+    const originalMargin = message.style.scrollMarginTop;
+    message.style.scrollMarginTop = '20px';
+
+    // Scroll to message
     const smoothScroll = await this.getSetting('smoothScroll');
+
     if (smoothScroll) {
       this.dom.scrollToElement(message, 'start');
     } else {
       message.scrollIntoView({ block: 'start' });
     }
+
+    // Restore original margin after scroll
+    setTimeout(() => {
+      message.style.scrollMarginTop = originalMargin;
+    }, smoothScroll ? 500 : 100);
 
     // Highlight
     const duration = await this.getSetting('highlightDuration') || 2000;
@@ -581,13 +591,13 @@ class NavigationModule extends BaseModule {
         e.preventDefault();
         this.navigatePrevious();
       }
-      
+
       // Alt + Arrow Down
       if (e.altKey && e.key === 'ArrowDown') {
         e.preventDefault();
         this.navigateNext();
       }
-      
+
       // Alt + Home
       if (e.altKey && e.key === 'Home') {
         e.preventDefault();
@@ -596,7 +606,7 @@ class NavigationModule extends BaseModule {
     };
 
     document.addEventListener('keydown', handleKeydown);
-    
+
     // Cleanup için sakla
     this.keydownHandler = handleKeydown;
     this.unsubscribers.push(() => {
