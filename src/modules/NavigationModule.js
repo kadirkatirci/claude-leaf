@@ -18,6 +18,7 @@ class NavigationModule extends BaseModule {
     this.currentIndex = -1;
     this.observerTimeout = null;
     this.scrollTimeout = null;
+    this.pollingTimeout = null; // Polling timeout for message search
     this.lastCounterText = ''; // Track counter to avoid unnecessary updates
     this.lastButtonStates = { prev: null, next: null, top: null }; // Track button states
     this.lastMessageCount = 0; // Track message count for performance
@@ -79,6 +80,18 @@ class NavigationModule extends BaseModule {
         checkConversationPage: true
       });
 
+      // Listen for EditHistory's MESSAGES_UPDATED event to know when it's ready
+      // This way we know messages have been found and DOM is ready
+      this.subscribe(Events.MESSAGES_UPDATED, () => {
+        this.log('📡 Received MESSAGES_UPDATED event from EditHistory');
+        // If we're waiting for messages (visibility changed), resolve the promise
+        if (this.waitingForMessages && this.messagesReadyResolve) {
+          this.messagesReadyResolve();
+          this.messagesReadyResolve = null;
+          this.waitingForMessages = false;
+        }
+      });
+
       // Klavye kısayolları
       try {
         if (await this.getSetting('keyboardShortcuts')) {
@@ -124,29 +137,130 @@ class NavigationModule extends BaseModule {
       this.lastMessageCount = 0;
     } else {
       this.log('Page changed to conversation, showing navigation');
-      // Use retry mechanism to wait for DOM to be ready on navigation
-      // This fixes the issue where first chat click from home page fails
-      // because messages haven't loaded yet
-      this.findMessagesWithRetry().catch(err => {
-        this.log('Failed to find messages after retry:', err);
-      }).then(() => {
-        // After finding messages, manually trigger observer callback
-        // Reset lastMessageCount to 0 so callback detects the change
-        // (observer callback checks if oldLength !== newLength)
-        this.lastMessageCount = 0;
 
-        if (this.observerCallback) {
-          try {
-            this.observerCallback();
-          } catch (error) {
-            this.log('Error in manual observer callback:', error);
+      // Start continuous polling for messages
+      // This ensures we find messages even if EditHistory doesn't emit event
+      this.startMessagePolling();
+    }
+  }
+
+  /**
+   * Start polling for messages when on conversation page
+   * This handles the case where EditHistory doesn't emit MESSAGES_UPDATED yet
+   * Polls actively instead of waiting for events
+   *
+   * ⚠️ CRITICAL TIMING: Claude's UI (specifically the <main> element) takes ~250-300ms to render
+   * after a chat is clicked. Polling must wait for this before attempting to find messages.
+   * Too early: Messages not found, polling loops unnecessarily
+   * Too late: Already found by observer
+   * Sweet spot: 250ms initial delay aligns with Claude's UI rendering
+   */
+  startMessagePolling() {
+    // Clear any existing polling timeout
+    if (this.pollingTimeout) {
+      clearTimeout(this.pollingTimeout);
+    }
+
+    // Stop polling if already found messages
+    if (this.messages.length > 0) {
+      this.log('✅ Already have messages, polling stopped');
+      return;
+    }
+
+    this.log('🔄 Starting message polling (waiting for DOM to be ready)...');
+
+    // WAIT 250ms for Claude's UI to fully render before first poll attempt
+    // This ensures <main> element exists in DOM
+    this.pollingTimeout = setTimeout(async () => {
+      try {
+        await this.findMessagesWithRetry(3, 50); // Faster retries during polling
+
+        if (this.messages.length > 0) {
+          this.log('✅ Messages found via polling!');
+          // Trigger observer callback manually
+          this.lastMessageCount = 0;
+          if (this.observerCallback) {
+            try {
+              this.observerCallback();
+            } catch (error) {
+              this.log('Error in observer callback:', error);
+            }
           }
+          // Polling succeeded, stop polling
+          return;
         }
-      });
+
+        // No messages yet, continue polling with shorter interval
+        this.continuePollWithInterval();
+      } catch (error) {
+        this.log('Error during polling:', error);
+        // Continue polling on error
+        this.continuePollWithInterval();
+      }
+    }, 250); // INCREASED from 100ms to 250ms for DOM readiness
+  }
+
+  /**
+   * Continue polling with faster interval after initial wait
+   * Used after the initial 250ms wait to check more frequently
+   */
+  continuePollWithInterval() {
+    // Clear any existing polling timeout
+    if (this.pollingTimeout) {
+      clearTimeout(this.pollingTimeout);
+    }
+
+    // Stop polling if already found messages
+    if (this.messages.length > 0) {
+      this.log('✅ Already have messages, polling stopped');
+      return;
+    }
+
+    // Continue polling every 100ms
+    this.pollingTimeout = setTimeout(async () => {
+      try {
+        await this.findMessagesWithRetry(3, 50); // Faster retries during polling
+
+        if (this.messages.length > 0) {
+          this.log('✅ Messages found via polling!');
+          // Trigger observer callback manually
+          this.lastMessageCount = 0;
+          if (this.observerCallback) {
+            try {
+              this.observerCallback();
+            } catch (error) {
+              this.log('Error in observer callback:', error);
+            }
+          }
+          // Polling succeeded, stop polling
+          return;
+        }
+
+        // No messages yet, continue polling
+        this.continuePollWithInterval();
+      } catch (error) {
+        this.log('Error during polling:', error);
+        // Continue polling on error
+        this.continuePollWithInterval();
+      }
+    }, 100);
+  }
+
+  /**
+   * Stop message polling
+   */
+  stopMessagePolling() {
+    if (this.pollingTimeout) {
+      clearTimeout(this.pollingTimeout);
+      this.pollingTimeout = null;
+      this.log('⏹️ Message polling stopped');
     }
   }
 
   destroy() {
+    // Stop polling
+    this.stopMessagePolling();
+
     // Unsubscribe from visibility changes
     if (this.visibilityUnsubscribe) {
       this.visibilityUnsubscribe();
@@ -267,6 +381,11 @@ class NavigationModule extends BaseModule {
    * Find messages with retry mechanism for page load stability
    */
   async findMessagesWithRetry(maxRetries = 5, delay = 200) {
+    // Log diagnostic info on first attempt
+    this.log(`🔍 Mesaj arama başlandı (max ${maxRetries} deneme, delay ${delay}ms)`);
+    this.log(`📍 URL: ${window.location.pathname}`);
+    this.log(`📍 isOnConversationPage: ${this.dom.isOnConversationPage()}`);
+
     for (let i = 0; i < maxRetries; i++) {
       this.messages = this.dom.findMessages();
 
@@ -281,6 +400,14 @@ class NavigationModule extends BaseModule {
       if (i < maxRetries - 1) {
         this.log(`⏳ Mesaj bulunamadı, tekrar deneniyor (${i + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // Last attempt failed - additional diagnostic logging
+        this.log(`❌ Son deneme başarısız oldu. DOM kontrol:`, {
+          hasMainElement: !!document.querySelector('main'),
+          hasRoleMain: !!document.querySelector('[role="main"]'),
+          isConversationPage: this.dom.isOnConversationPage(),
+          url: window.location.pathname
+        });
       }
     }
 
