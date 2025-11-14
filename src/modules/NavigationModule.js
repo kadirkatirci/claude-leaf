@@ -131,8 +131,10 @@ class NavigationModule extends BaseModule {
         this.log('Failed to find messages after retry:', err);
       }).then(() => {
         // After finding messages, manually trigger observer callback
-        // This ensures counter is updated even if observer doesn't fire immediately
-        // (observer guard checks lastConversationState which was just set to true)
+        // Reset lastMessageCount to 0 so callback detects the change
+        // (observer callback checks if oldLength !== newLength)
+        this.lastMessageCount = 0;
+
         if (this.observerCallback) {
           try {
             this.observerCallback();
