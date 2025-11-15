@@ -145,8 +145,7 @@ function getDefaultSettings() {
     },
     general: {
       opacity: 0.7,
-      colorTheme: 'native',
-      customColor: '#667eea',
+      colorTheme: 'native', // Always native - theme selection removed
     }
   };
 }
@@ -211,20 +210,6 @@ function updateUI() {
   document.getElementById('nav-highlight').value = currentSettings.navigation.highlightDuration;
   document.getElementById('nav-opacity').value = currentSettings.general.opacity;
   document.getElementById('nav-opacity-value').textContent = currentSettings.general.opacity;
-  
-  // General color theme
-  const colorTheme = currentSettings.general.colorTheme || 'native';
-  const customColor = currentSettings.general.customColor || '#667eea';
-  document.getElementById('general-color-theme').value = colorTheme;
-  document.getElementById('general-custom-color').value = customColor;
-  document.getElementById('general-custom-color-hex').value = customColor;
-  
-  // Custom color container göster/gizle
-  document.getElementById('general-custom-color-container').style.display = 
-    colorTheme === 'custom' ? 'flex' : 'none';
-  
-  // Theme preview güncelle
-  updateThemePreview(colorTheme, customColor);
 }
 
 /**
@@ -425,38 +410,6 @@ function setupEventListeners() {
     document.getElementById('nav-opacity-value').textContent = value.toFixed(1);
   });
 
-  // General color theme
-  document.getElementById('general-color-theme').addEventListener('change', (e) => {
-    const theme = e.target.value;
-    currentSettings.general.colorTheme = theme;
-    
-    // Custom color container göster/gizle
-    document.getElementById('general-custom-color-container').style.display = 
-      theme === 'custom' ? 'flex' : 'none';
-    
-    // Preview güncelle
-    updateThemePreview(theme, currentSettings.general.customColor);
-  });
-
-  // General custom color (color picker)
-  document.getElementById('general-custom-color').addEventListener('input', (e) => {
-    const color = e.target.value;
-    currentSettings.general.customColor = color;
-    document.getElementById('general-custom-color-hex').value = color;
-    updateThemePreview('custom', color);
-  });
-
-  // General custom color (hex input)
-  document.getElementById('general-custom-color-hex').addEventListener('input', (e) => {
-    const color = e.target.value;
-    // Validate hex color
-    if (/^#[0-9A-F]{6}$/i.test(color)) {
-      currentSettings.general.customColor = color;
-      document.getElementById('general-custom-color').value = color;
-      updateThemePreview('custom', color);
-    }
-  });
-
   // Save button
   document.getElementById('save-btn').addEventListener('click', saveSettings);
 
@@ -571,33 +524,10 @@ function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.className = `toast ${type}`;
-  
+
   setTimeout(() => {
     toast.classList.add('hidden');
   }, 3000);
-}
-
-/**
- * Theme preview güncelle
- */
-function updateThemePreview(theme, customColor) {
-  const preview = document.getElementById('general-theme-preview');
-  if (!preview) return;
-
-  let background;
-
-  if (theme === 'native') {
-    // Claude Native - uses Claude's turuncu color (solid, no gradient)
-    background = 'hsl(var(--accent-main-000))';
-  } else if (theme === 'orange') {
-    // Orange - basit turuncu (solid, no gradient)
-    background = 'hsl(var(--accent-main-000))';
-  } else if (theme === 'custom' && customColor) {
-    // Custom - solid color (no gradient)
-    background = customColor;
-  }
-
-  preview.style.background = background;
 }
 
 /**

@@ -485,38 +485,14 @@
     <div class="tab-content hidden" id="tab-general">
       <div class="section">
         <h2>Genel Ayarlar</h2>
-        
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="general-color-theme">🎨 Renk Teması</label>
-            <select id="general-color-theme">
-              <option value="native" selected>Claude Native</option>
-              <option value="orange">Orange</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
 
-          <div class="setting-item" id="general-custom-color-container" style="display: none;">
-            <label for="general-custom-color">Custom Renk</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="color" id="general-custom-color" value="#667eea" style="width: 50px; height: 35px; border: none; border-radius: 4px; cursor: pointer;">
-              <input type="text" id="general-custom-color-hex" value="#667eea" placeholder="#667eea" style="width: 100px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: monospace;">
-            </div>
-          </div>
-        </div>
-
-        <div class="theme-preview" id="general-theme-preview" style="margin-top: 16px; padding: 16px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; font-weight: 600;">
-          🎨 Theme Preview
-        </div>
-
-        <div class="info-box" style="margin-top: 16px;">
+        <div class="info-box">
           <h3>ℹ️ Tema Hakkında</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li><strong>Claude Native:</strong> Claude'un orijinal turuncu/kahverengi tonu</li>
-            <li><strong>Purple:</strong> Modern mor gradient</li>
-            <li><strong>Custom:</strong> Kendi renginizi seçin</li>
-            <li>Tema tüm modüllere uygulanır (Navigation, Edit History vb.)</li>
-          </ul>
+          <p style="font-size: 13px; color: #666; margin-top: 8px;">
+            Extension artık sadece <strong>Claude Native</strong> tasarım sistemini kullanıyor.
+            Tüm bileşenler otomatik olarak Claude.ai'nin renk temasına uyum sağlar ve
+            dark/light mode değişikliklerine otomatik adapte olur.
+          </p>
         </div>
       </div>
     </div>
