@@ -1,14 +1,14 @@
 /**
  * CounterBadge Component
  * Centralized badge/counter creation for all modules
- * Ensures consistent styling and theme adaptation
+ * Uses Claude native classes exclusively
  */
 
-import tokens from '../theme/tokens.js';
+import { ClaudeClasses, cn } from '../../utils/ClassNames.js';
 
 /**
  * CounterBadge Class
- * Creates consistent counter badges across all modules
+ * Creates consistent counter badges across all modules using Claude native classes
  */
 export class CounterBadge {
   /**
@@ -16,22 +16,17 @@ export class CounterBadge {
    * @param {Object} options - Badge configuration
    * @param {string} options.id - Badge element ID
    * @param {string|number} options.content - Badge text/number
-   * @param {Object} options.theme - Theme configuration
    * @param {Object} options.position - Position offsets {top, right, bottom, left}
-   * @param {Object} options.style - Additional inline styles
+   * @param {string} options.className - Additional CSS classes
    * @returns {HTMLElement}
    */
   static create(options = {}) {
     const {
       id = 'counter-badge',
       content = '0',
-      theme = {},
-      position = { top: -8, right: -8 },
-      style = {}
+      position = { top: '-8px', right: '-8px' },
+      className = ''
     } = options;
-
-    // Determine background color based on theme
-    const background = this.getBackgroundColor(theme);
 
     // Create badge element
     const badge = document.createElement('div');
@@ -40,23 +35,16 @@ export class CounterBadge {
       badge.id = id;
     }
 
-    // Apply base styles
-    const baseStyles = {
-      position: 'absolute',
-      background,
-      color: 'white',
-      borderRadius: '12px',
-      padding: '2px 6px',
-      fontSize: '10px',
-      fontWeight: 'bold',
-      minWidth: '20px',
-      textAlign: 'center',
-      transition: 'all 0.2s ease',
-      ...this.getPositionStyles(position),
-      ...style
-    };
+    // Apply Claude native classes
+    badge.className = cn(
+      ClaudeClasses.badge.counter,
+      ClaudeClasses.util.transition,
+      className
+    );
 
-    Object.assign(badge.style, baseStyles);
+    // Apply position styles (minimal inline styles for positioning only)
+    Object.assign(badge.style, this.getPositionStyles(position));
+
     badge.textContent = content;
 
     return badge;
@@ -79,20 +67,6 @@ export class CounterBadge {
     // Auto-hide if content is 0 or empty
     const shouldHide = !content || content === '0' || content === '0/0';
     badge.style.display = shouldHide ? 'none' : 'block';
-  }
-
-  /**
-   * Get background color based on theme
-   * @private
-   */
-  static getBackgroundColor(theme) {
-    // Native theme: Use Claude's accent color variable
-    if (theme.useNativeClasses) {
-      return theme.accentColor || 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))';
-    }
-
-    // Custom theme: Use theme's primary color or fallback to orange
-    return theme.primary || theme.accentColor || '#CC785C';
   }
 
   /**

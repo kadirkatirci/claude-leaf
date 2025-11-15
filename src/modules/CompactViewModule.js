@@ -232,33 +232,14 @@ class CompactViewModule extends BaseModule {
     button.textContent = icon;
     button.title = tooltip;
 
-    if (theme.useNativeClasses) {
-      button.className = theme.buttonClasses || '';
-    } else {
-      Object.assign(button.style, {
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        background: theme.primary || '#CC785C',
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '20px',
-        color: 'white',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.3s ease'
-      });
+    // Use Claude's native button classes (size-9 = 36px from buttonClasses)
+    button.className = theme.buttonClasses || '';
 
-      button.addEventListener('mouseenter', () => {
-        button.style.transform = 'scale(1.05)';
-      });
-
-      button.addEventListener('mouseleave', () => {
-        button.style.transform = 'scale(1)';
-      });
-    }
+    // Only set positioning (sizing handled by classes)
+    Object.assign(button.style, {
+      position: 'relative',
+      color: 'white'
+    });
 
     button.addEventListener('click', onClick);
     return button;

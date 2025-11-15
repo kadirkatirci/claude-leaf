@@ -3,6 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
+import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 export class MarkerButton {
   constructor(getTheme, getFavoriteEmojis, emojiPicker, onMarkerAdd, onMarkerRemove, onMarkerUpdate) {
@@ -54,7 +55,6 @@ export class MarkerButton {
    * Create marker button for a message
    */
   createButton(messageEl, messageIndex, markers) {
-    const theme = this.getTheme();
     const existingMarker = markers.find(m => m.index === messageIndex);
 
     // Container'ın DIŞINDA sabit pozisyon
@@ -62,55 +62,37 @@ export class MarkerButton {
 
     const button = DOMUtils.createElement('button');
 
-    // Use native classes if theme.useNativeClasses is true
-    if (theme.useNativeClasses) {
-      // Claude's native button classes - automatically adapts to dark/light mode
-      button.className = 'emoji-marker-btn absolute size-8 rounded-md bg-bg-100 hover:bg-bg-200 border border-border-300 flex items-center justify-center text-lg opacity-0 pointer-events-none transition-all duration-200 hover:scale-110 hover:shadow-md';
-      button.style.cssText = `
-        top: 8px;
-        right: ${buttonRight};
-        display: ${existingMarker ? 'none' : 'flex'};
-        z-index: 100;
-      `;
-    } else {
-      // Fallback to custom theme styles
-      button.className = 'emoji-marker-btn';
-      Object.assign(button.style, {
-        position: 'absolute',
-        top: '8px',
-        right: buttonRight,
-        width: '32px',
-        height: '32px',
-        borderRadius: '6px',
-        background: theme.isDark ? '#3d3d3d' : '#f5f5f5',
-        border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
-        cursor: 'pointer',
-        display: existingMarker ? 'none' : 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '18px',
-        opacity: '0',
-        pointerEvents: 'none',
-        transition: 'all 0.2s ease',
-        zIndex: '100',
-      });
-    }
+    // Claude's native button classes - automatically adapts to dark/light mode
+    button.className = cn(
+      'emoji-marker-btn',
+      'absolute',
+      'size-8',
+      'rounded-md',
+      'bg-bg-100',
+      'hover:bg-bg-200',
+      'border',
+      'border-border-300',
+      'flex',
+      'items-center',
+      'justify-center',
+      'text-lg',
+      'opacity-0',
+      'pointer-events-none',
+      'transition-all',
+      'duration-200',
+      'hover:scale-110',
+      'hover:shadow-md'
+    );
+
+    button.style.cssText = `
+      top: 8px;
+      right: ${buttonRight};
+      display: ${existingMarker ? 'none' : 'flex'};
+      z-index: 100;
+    `;
 
     button.textContent = '🏷️';
     button.title = 'Add emoji marker';
-
-    // Hover effects for button scaling (only for custom theme)
-    if (!theme.useNativeClasses) {
-      button.addEventListener('mouseenter', () => {
-        button.style.transform = 'scale(1.1)';
-        button.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-      });
-
-      button.addEventListener('mouseleave', () => {
-        button.style.transform = 'scale(1)';
-        button.style.boxShadow = 'none';
-      });
-    }
 
     // Click handler - sadece marker yoksa (add için)
     button.addEventListener('click', (e) => {
@@ -139,8 +121,10 @@ export class MarkerButton {
       // Update button
       button.textContent = emoji;
       button.title = `Marked with ${emoji}`;
-      const theme = this.getTheme();
-      button.style.background = theme.primary || theme.accentColor || '#CC785C';
+      // Add accent color class
+      if (!button.classList.contains('bg-accent-main-100')) {
+        button.classList.add('bg-accent-main-100');
+      }
       // Position stays the same (fixed at -36px)
     });
   }
@@ -149,53 +133,19 @@ export class MarkerButton {
    * Show marker options (change/remove)
    */
   showMarkerOptions(button, messageEl, messageIndex, marker) {
-    const theme = this.getTheme();
-
     // Create options menu
     const menu = DOMUtils.createElement('div');
 
-    if (theme.useNativeClasses) {
-      // Claude's native dropdown menu classes
-      menu.className = 'emoji-marker-options absolute top-full right-0 mt-1 bg-bg-000 border border-border-300 rounded-lg shadow-lg p-2 flex flex-col gap-1 z-50 min-w-[120px]';
-    } else {
-      menu.className = 'emoji-marker-options';
-      Object.assign(menu.style, {
-        position: 'absolute',
-        top: '100%',
-        right: '0',
-        marginTop: '4px',
-        background: theme.isDark ? '#2d2d2d' : 'white',
-        border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-        padding: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        zIndex: '101',
-        minWidth: '120px',
-      });
-    }
+    // Claude's native dropdown menu classes
+    menu.className = cn(
+      'emoji-marker-options',
+      ClaudeClasses.menu.container
+    );
 
     // Change emoji button
     const changeBtn = DOMUtils.createElement('button');
     changeBtn.textContent = 'Change Emoji';
-
-    if (theme.useNativeClasses) {
-      // Claude's native button classes for menu items
-      changeBtn.className = 'px-3 py-1.5 rounded bg-bg-100 hover:bg-bg-200 text-text-000 cursor-pointer text-sm text-left transition-colors';
-    } else {
-      Object.assign(changeBtn.style, {
-        padding: '6px 12px',
-        border: 'none',
-        borderRadius: '4px',
-        background: theme.isDark ? '#3d3d3d' : '#f5f5f5',
-        color: theme.isDark ? 'white' : 'black',
-        cursor: 'pointer',
-        fontSize: '13px',
-        textAlign: 'left',
-      });
-    }
+    changeBtn.className = ClaudeClasses.menu.item;
 
     changeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -214,22 +164,17 @@ export class MarkerButton {
     // Remove button
     const removeBtn = DOMUtils.createElement('button');
     removeBtn.textContent = 'Remove Marker';
+    // Use inline styles for danger color (red not in Claude native)
+    removeBtn.className = 'px-3 py-1.5 rounded text-white cursor-pointer text-sm text-left transition-colors';
+    removeBtn.style.backgroundColor = '#ef4444'; // red-500
 
-    if (theme.useNativeClasses) {
-      // Claude's native button classes with danger styling
-      removeBtn.className = 'px-3 py-1.5 rounded bg-red-500 hover:bg-red-600 text-white cursor-pointer text-sm text-left transition-colors';
-    } else {
-      Object.assign(removeBtn.style, {
-        padding: '6px 12px',
-        border: 'none',
-        borderRadius: '4px',
-        background: '#ef4444',
-        color: 'white',
-        cursor: 'pointer',
-        fontSize: '13px',
-        textAlign: 'left',
-      });
-    }
+    // Add hover effect
+    removeBtn.addEventListener('mouseenter', () => {
+      removeBtn.style.backgroundColor = '#dc2626'; // red-600
+    });
+    removeBtn.addEventListener('mouseleave', () => {
+      removeBtn.style.backgroundColor = '#ef4444'; // red-500
+    });
 
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -239,7 +184,8 @@ export class MarkerButton {
       // Update button to "add" state
       button.textContent = '🏷️';
       button.title = 'Add emoji marker';
-      button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
+      // Remove custom background to use native classes
+      button.style.removeProperty('background');
       // Position stays the same (fixed at -36px)
     });
 
@@ -268,8 +214,6 @@ export class MarkerButton {
     const button = this.buttonCache.get(messageEl);
     if (!button) return;
 
-    const theme = this.getTheme();
-
     if (marker) {
       // Marker varsa button'u gizle (badge zaten gösteriyor)
       button.style.display = 'none';
@@ -278,11 +222,8 @@ export class MarkerButton {
       button.style.display = 'flex';
       button.textContent = '🏷️';
       button.title = 'Add emoji marker';
-
-      // Only update background if not using native classes
-      if (!theme.useNativeClasses) {
-        button.style.background = theme.isDark ? '#3d3d3d' : '#f5f5f5';
-      }
+      // Remove custom background to use native classes
+      button.style.removeProperty('background');
     }
     // Position stays the same (fixed at -36px)
   }

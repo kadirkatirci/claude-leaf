@@ -2,6 +2,7 @@
  * MarkerBadge - Displays emoji badges on marked messages
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 export class MarkerBadge {
   constructor(getTheme, emojiPicker, getFavoriteEmojis, onMarkerUpdate, onMarkerRemove) {
@@ -50,8 +51,6 @@ export class MarkerBadge {
     // Skip if badge already exists
     if (this.badgeCache.has(messageEl)) return;
 
-    const theme = this.getTheme();
-
     // Container'ın DIŞINDA sabit pozisyon
     // Marker button ile aynı yatay hizada, üstünde
     const markerBtn = messageEl.querySelector('.emoji-marker-btn');
@@ -69,40 +68,22 @@ export class MarkerBadge {
     }
 
     const badge = DOMUtils.createElement('div', {
-      className: 'emoji-marker-badge',
+      className: cn(
+        'emoji-marker-badge',
+        'absolute z-[99]',
+        'size-7 flex items-center justify-center',
+        'rounded-full cursor-pointer',
+        'text-sm font-bold',
+        'transition-all duration-200',
+        'hover:scale-110 hover:shadow-lg'
+      ),
       innerHTML: marker.emoji,
       title: `Marked with ${marker.emoji}\nClick to see options`,
       style: {
-        position: 'absolute',
         top: badgeTop, // Dinamik top
         right: badgeRight, // Dinamik right - container dışında
-        width: '28px',
-        height: '28px',
-        borderRadius: '50%',
-        // background: theme.gradient,
-        // border: `2px solid ${theme.isDark ? '#1d1d1d' : 'white'}`,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        // boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
-        transition: 'all 0.2s ease',
-        zIndex: '99',
         animation: 'fadeIn 0.3s ease',
       }
-    });
-
-    // Hover effect
-    badge.addEventListener('mouseenter', () => {
-      badge.style.transform = 'scale(1.15)';
-      badge.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
-    });
-
-    badge.addEventListener('mouseleave', () => {
-      badge.style.transform = 'scale(1)';
-      badge.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)';
     });
 
     // Click handler
@@ -165,59 +146,43 @@ export class MarkerBadge {
 
     // Create options container
     const container = DOMUtils.createElement('div', {
-      className: 'emoji-marker-options',
-      style: {
-        position: 'absolute',
-        top: '100%',
-        right: '0',
-        marginTop: '8px',
-        background: theme.isDark ? '#2d2d2d' : 'white',
-        // border: `1px solid ${theme.isDark ? '#555' : '#ddd'}`,
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-        padding: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        zIndex: '1000',
-        minWidth: '200px',
-      }
+      className: cn(
+        'emoji-marker-options',
+        'absolute top-full right-0 mt-2',
+        'bg-bg-000 border border-border-300 rounded-lg shadow-xl',
+        'p-2 flex flex-col gap-2 z-[1000]',
+        'min-w-[200px]'
+      )
     });
 
     // Emoji picker grid
-    const emojiGrid = DOMUtils.createElement('div', {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
-        gap: '4px',
-      }
+    const emojiGrid = DOMUtils.createElement('div');
+    emojiGrid.className = 'grid grid-cols-6 gap-1';
+    // Fallback: Claude may not have grid classes, add inline styles
+    Object.assign(emojiGrid.style, {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(6, 1fr)',
+      gap: '4px'
     });
 
+    const primaryColor = theme.primary || theme.accentColor || '#CC785C';
+
     favoriteEmojis.forEach(emoji => {
-      const emojiBtn = DOMUtils.createElement('button', {
-        innerHTML: emoji,
-        style: {
-          width: '32px',
-          height: '32px',
-          border: 'none',
-          borderRadius: '4px',
-          background: emoji === marker.emoji ? (theme.primary || theme.accentColor || '#CC785C') : (theme.isDark ? '#3d3d3d' : '#f5f5f5'),
-          cursor: 'pointer',
-          fontSize: '18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.2s ease',
-        }
-      });
+      const isSelected = emoji === marker.emoji;
 
-      emojiBtn.addEventListener('mouseenter', () => {
-        emojiBtn.style.transform = 'scale(1.1)';
-      });
+      const emojiBtn = DOMUtils.createElement('button');
+      emojiBtn.innerHTML = emoji;
+      emojiBtn.className = cn(
+        'size-8 flex items-center justify-center',
+        'border-none rounded cursor-pointer',
+        'text-lg transition-all duration-200',
+        'hover:scale-110',
+        isSelected ? 'bg-accent-main-100' : 'bg-bg-100 hover:bg-bg-200'
+      );
 
-      emojiBtn.addEventListener('mouseleave', () => {
-        emojiBtn.style.transform = 'scale(1)';
-      });
+      if (isSelected) {
+        emojiBtn.style.backgroundColor = primaryColor;
+      }
 
       emojiBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -229,31 +194,19 @@ export class MarkerBadge {
     });
 
     // Delete button
-    const deleteBtn = DOMUtils.createElement('button', {
-      innerHTML: '🗑️ Delete Marker',
-      style: {
-        padding: '8px 12px',
-        border: 'none',
-        borderRadius: '6px',
-        background: '#ef4444',
-        color: 'white',
-        cursor: 'pointer',
-        fontSize: '13px',
-        fontWeight: '500',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '6px',
-        transition: 'all 0.2s ease',
-      }
-    });
+    const deleteBtn = DOMUtils.createElement('button');
+    deleteBtn.innerHTML = '🗑️ Delete Marker';
+    // Use inline styles for danger button (red colors not in Claude native classes)
+    deleteBtn.className = 'px-3 py-2 border-none rounded cursor-pointer text-white text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-200';
+    deleteBtn.style.backgroundColor = '#ef4444'; // red-500
+    deleteBtn.style.fontFamily = 'inherit';
 
+    // Add hover effect
     deleteBtn.addEventListener('mouseenter', () => {
-      deleteBtn.style.background = '#dc2626';
+      deleteBtn.style.backgroundColor = '#dc2626'; // red-600
     });
-
     deleteBtn.addEventListener('mouseleave', () => {
-      deleteBtn.style.background = '#ef4444';
+      deleteBtn.style.backgroundColor = '#ef4444'; // red-500
     });
 
     deleteBtn.addEventListener('click', (e) => {

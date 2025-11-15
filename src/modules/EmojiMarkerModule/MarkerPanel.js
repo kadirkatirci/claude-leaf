@@ -1,11 +1,10 @@
 /**
  * MarkerPanel - Floating panel for emoji markers
  * Now extends BasePanel for consistent UI and reduced code
+ * Refactored to use ONLY Claude native classes
  */
 import BasePanel from '../../core/BasePanel.js';
-import Button from '../../components/primitives/Button.js';
-import Badge from '../../components/primitives/Badge.js';
-import tokens from '../../components/theme/tokens.js';
+import { cn } from '../../utils/ClassNames.js';
 
 export class MarkerPanel extends BasePanel {
   constructor(getTheme, onItemClick, onItemDelete) {
@@ -56,127 +55,47 @@ export class MarkerPanel extends BasePanel {
    * Create a marker list item
    */
   createMarkerItem(marker, index) {
-    const theme = this.getTheme();
-
     // Create item container
     const item = document.createElement('div');
-
-    if (theme.useNativeClasses) {
-      // Claude's native card classes
-      item.className = 'flex gap-3 items-start p-3 mb-2 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
-    } else {
-      // Fallback to styled components
-      const isDark = theme.isDark || window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-      item.className = 'cp-card';
-      item.style.display = 'flex';
-      item.style.gap = tokens.space('md');
-      item.style.alignItems = 'flex-start';
-      item.style.marginBottom = tokens.space('sm');
-      item.style.padding = tokens.space('md');
-      item.style.cursor = 'pointer';
-
-      // Apply dark mode styles if needed
-      if (isDark) {
-        item.style.background = tokens.colors.neutral[800];
-        item.style.borderColor = tokens.colors.neutral[700];
-      }
-    }
+    item.className = 'flex gap-3 items-start p-3 mb-2 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
 
     // Emoji display
     const emojiDiv = document.createElement('div');
     emojiDiv.textContent = marker.emoji;
-
-    if (theme.useNativeClasses) {
-      emojiDiv.className = 'text-2xl flex-shrink-0';
-    } else {
-      // Use Badge component for non-native themes
-      const badge = Badge.createEmoji(marker.emoji, {
-        style: {
-          fontSize: '24px',
-          background: 'transparent',
-          flexShrink: '0'
-        }
-      });
-      item.appendChild(badge);
-    }
-
-    if (theme.useNativeClasses) {
-      item.appendChild(emojiDiv);
-    }
+    emojiDiv.className = 'text-2xl flex-shrink-0';
 
     // Content container
     const contentDiv = document.createElement('div');
-
-    if (theme.useNativeClasses) {
-      contentDiv.className = 'flex-1 min-w-0';
-    } else {
-      contentDiv.style.flex = '1';
-      contentDiv.style.minWidth = '0'; // Allow text truncation
-    }
+    contentDiv.className = 'flex-1 min-w-0';
 
     // Message preview
     const preview = document.createElement('div');
     preview.textContent = marker.messagePreview || 'Message preview...';
-
-    if (theme.useNativeClasses) {
-      preview.className = 'text-text-000 text-sm truncate mb-1';
-    } else {
-      preview.className = 'cp-card-description cp-truncate';
-      preview.style.marginBottom = tokens.space('xs');
-    }
+    preview.className = 'text-text-000 text-sm truncate mb-1';
 
     // Timestamp
     const timestamp = document.createElement('div');
     timestamp.textContent = this.getRelativeTime(marker.timestamp);
-
-    if (theme.useNativeClasses) {
-      timestamp.className = 'text-text-400 text-xs';
-    } else {
-      timestamp.style.fontSize = tokens.typography.fontSize.xs;
-      timestamp.style.color = tokens.colors.text.tertiary;
-    }
+    timestamp.className = 'text-text-400 text-xs';
 
     contentDiv.appendChild(preview);
     contentDiv.appendChild(timestamp);
 
     // Delete button
     const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'text-text-400 hover:text-red-500 flex-shrink-0 p-1';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.title = 'Remove marker';
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('Remove this marker?')) {
+        this.onItemDelete(marker.id);
+      }
+    });
 
-    if (theme.useNativeClasses) {
-      deleteBtn.className = 'text-text-400 hover:text-red-500 flex-shrink-0 p-1';
-      deleteBtn.textContent = '🗑️';
-      deleteBtn.title = 'Remove marker';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('Remove this marker?')) {
-          this.onItemDelete(marker.id);
-        }
-      });
-    } else {
-      // Use Button component for non-native themes
-      const button = Button.createIcon('🗑️', {
-        title: 'Remove marker',
-        onClick: (e) => {
-          e.stopPropagation();
-          if (confirm('Remove this marker?')) {
-            this.onItemDelete(marker.id);
-          }
-        },
-        style: {
-          fontSize: '16px',
-          padding: '4px',
-          flexShrink: '0'
-        }
-      });
-      item.appendChild(contentDiv);
-      item.appendChild(button);
-    }
-
-    if (theme.useNativeClasses) {
-      item.appendChild(contentDiv);
-      item.appendChild(deleteBtn);
-    }
+    item.appendChild(emojiDiv);
+    item.appendChild(contentDiv);
+    item.appendChild(deleteBtn);
 
     // Click to scroll
     item.addEventListener('click', () => {

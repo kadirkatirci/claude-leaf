@@ -1,7 +1,9 @@
 /**
  * EditModal - Edit history modal dialog
+ * Refactored to use Claude native classes
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { cn, textClass } from '../../utils/ClassNames.js';
 
 class EditModal {
   constructor() {
@@ -15,36 +17,16 @@ class EditModal {
     // Mesaj içeriğini al
     const userMessage = messageElement.querySelector('[data-testid="user-message"]');
     const messageText = userMessage ? userMessage.textContent : messageElement.textContent;
-    
-    // Modal oluştur
-    const modal = DOMUtils.createElement('div', {
-      style: {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        right: '0',
-        bottom: '0',
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: '10000',
-        animation: 'fadeIn 0.2s ease',
-      }
-    });
 
-    const modalContent = DOMUtils.createElement('div', {
-      style: {
-        background: 'white',
-        borderRadius: '16px',
-        padding: '24px',
-        maxWidth: '600px',
-        maxHeight: '80vh',
-        overflow: 'auto',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        animation: 'slideUp 0.3s ease',
-      }
-    });
+    // Modal backdrop
+    const modal = DOMUtils.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]';
+    modal.style.animation = 'fadeIn 0.2s ease';
+
+    // Modal content
+    const modalContent = DOMUtils.createElement('div');
+    modalContent.className = 'bg-bg-000 rounded-xl p-6 max-w-[600px] max-h-[80vh] overflow-auto shadow-2xl';
+    modalContent.style.animation = 'slideUp 0.3s ease';
 
     // Header
     const header = this.createHeader(versionInfo);
@@ -79,52 +61,16 @@ class EditModal {
    * Modal header oluştur
    */
   createHeader(versionInfo) {
-    const header = DOMUtils.createElement('div', {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '2px solid #f0f0f0',
-      }
-    });
+    const header = DOMUtils.createElement('div');
+    header.className = 'flex justify-between items-center mb-5 pb-4 border-b-2 border-border-300';
 
-    const title = DOMUtils.createElement('h2', {
-      innerHTML: `✏️ Edit History ${versionInfo ? `<span style="color: #667eea; font-size: 16px;">${versionInfo}</span>` : ''}`,
-      style: {
-        fontSize: '20px',
-        fontWeight: '600',
-        color: '#333',
-        margin: '0',
-      }
-    });
+    const title = DOMUtils.createElement('h2');
+    title.className = textClass({ size: 'xl', weight: 'semibold' });
+    title.innerHTML = `✏️ Edit History ${versionInfo ? `<span class="text-accent-main-100 text-base">${versionInfo}</span>` : ''}`;
 
-    const closeBtn = DOMUtils.createElement('button', {
-      innerHTML: '✕',
-      style: {
-        background: 'none',
-        border: 'none',
-        fontSize: '24px',
-        color: '#999',
-        cursor: 'pointer',
-        padding: '0',
-        width: '32px',
-        height: '32px',
-        borderRadius: '50%',
-        transition: 'all 0.2s ease',
-      }
-    });
-
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.background = '#f0f0f0';
-      closeBtn.style.color = '#333';
-    });
-
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.background = 'none';
-      closeBtn.style.color = '#999';
-    });
+    const closeBtn = DOMUtils.createElement('button');
+    closeBtn.className = 'bg-transparent border-0 text-2xl text-text-400 hover:bg-bg-200 hover:text-text-000 cursor-pointer p-0 size-8 rounded-full transition-all flex items-center justify-center';
+    closeBtn.innerHTML = '✕';
 
     header.appendChild(title);
     header.appendChild(closeBtn);
@@ -136,24 +82,38 @@ class EditModal {
    * Modal content oluştur
    */
   createContent(messageText, versionInfo) {
-    return DOMUtils.createElement('div', {
-      innerHTML: `
-        <p style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 14px;">
-          ℹ️ <strong>Not:</strong> Claude edit history'yi tam saklamıyor. Bu badge edit yapıldığını gösterir.
-        </p>
-        <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 2px solid #667eea;">
-          <div style="margin-bottom: 12px; font-size: 14px;">
-            <strong style="color: #667eea;">📝 Güncel Mesaj:</strong>
-          </div>
-          <div style="font-size: 14px; color: #333; white-space: pre-wrap; word-break: break-word;">
-            ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
-          </div>
-        </div>
-        <div style="margin-top: 20px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 13px; color: #856404;">
-          💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için mesaj üzerindeki <strong>◀ / ▶</strong> butonlarını kullanın.
-        </div>
-      `,
-    });
+    const container = DOMUtils.createElement('div');
+
+    // Info note
+    const infoBox = DOMUtils.createElement('div');
+    infoBox.className = 'mb-4 p-3 bg-bg-100 rounded-lg text-sm';
+    infoBox.innerHTML = `ℹ️ <strong>Not:</strong> Claude edit history'yi tam saklamıyor. Bu badge edit yapıldığını gösterir.`;
+
+    // Current message box
+    const messageBox = DOMUtils.createElement('div');
+    messageBox.className = 'mt-5 p-4 bg-bg-100 rounded-lg border-2 border-accent-main-100';
+
+    const messageLabel = DOMUtils.createElement('div');
+    messageLabel.className = 'mb-3 text-sm font-semibold text-accent-main-100';
+    messageLabel.innerHTML = '📝 Güncel Mesaj:';
+
+    const messageContent = DOMUtils.createElement('div');
+    messageContent.className = 'text-sm text-text-000 whitespace-pre-wrap break-words';
+    messageContent.textContent = messageText.substring(0, 500) + (messageText.length > 500 ? '...' : '');
+
+    messageBox.appendChild(messageLabel);
+    messageBox.appendChild(messageContent);
+
+    // Tip box
+    const tipBox = DOMUtils.createElement('div');
+    tipBox.className = 'mt-5 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800';
+    tipBox.innerHTML = `💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için mesaj üzerindeki <strong>◀ / ▶</strong> butonlarını kullanın.`;
+
+    container.appendChild(infoBox);
+    container.appendChild(messageBox);
+    container.appendChild(tipBox);
+
+    return container;
   }
 
   /**

@@ -116,60 +116,19 @@ export default class FixedButtonMixin {
       button.textContent = icon;
       button.title = tooltip || '';
 
-      // Apply Claude native classes or custom styling based on theme
-      if (theme.useNativeClasses) {
-        // Use Claude's native classes (includes bg-bg-000/80 for neutral background)
-        button.className = theme.buttonClasses || '';
+      // Use Claude's native classes (always)
+      button.className = theme.buttonClasses || '';
 
-        // Apply positioning and other necessary inline styles
-        // DON'T override background - let buttonClasses handle it
-        button.style.position = 'fixed';
-        button.style.right = position.right;
-        button.style.top = '50%';
-        button.style.transform = position.transform;
-        button.style.cursor = 'pointer';
-        button.style.zIndex = '9999';
-        button.style.color = 'white';
-        button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
-      } else {
-        // Custom theme - use inline styles (solid color, no gradient)
-        Object.assign(button.style, {
-          position: 'fixed',
-          right: position.right,
-          top: '50%',
-          transform: position.transform,
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          background: theme.primary || '#CC785C',
-          border: 'none',
-          cursor: 'pointer',
-          zIndex: '9999',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '20px',
-          color: 'white',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          transition: 'all 0.3s ease',
-          opacity: buttonOpacity.toString(),
-          overflow: 'visible' // Allow counter badge to overflow
-        });
-      }
+      // Apply positioning and other necessary inline styles
+      // Only use inline styles for positioning - everything else via classes
+      button.style.position = 'fixed';
+      button.style.right = position.right;
+      button.style.top = '50%';
+      button.style.transform = position.transform;
+      button.style.zIndex = '9999';
+      button.style.color = 'white';
+      button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
 
-      // Add hover effect
-      if (!theme.useNativeClasses) {
-        // Custom theme hover effects
-        button.addEventListener('mouseenter', () => {
-          button.style.opacity = '1';
-          button.style.transform = `${position.transform} scale(1.05)`;
-        });
-
-        button.addEventListener('mouseleave', () => {
-          button.style.opacity = buttonOpacity.toString();
-          button.style.transform = position.transform;
-        });
-      }
       // Native classes already have hover effects defined in buttonClasses
 
       // Add click handler

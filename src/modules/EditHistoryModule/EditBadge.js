@@ -2,6 +2,7 @@
  * EditBadge - Edit badge yönetimi
  */
 import MessageBadge from '../../components/primitives/MessageBadge.js';
+import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 class EditBadge {
   constructor(getTheme, onBadgeClick) {
@@ -38,23 +39,30 @@ class EditBadge {
    * Get badge options for an element
    */
   getBadgeOptions(element, versionInfo) {
-    const theme = this.getTheme();
-
     return {
-      className: 'claude-edit-badge',
+      className: cn(
+        'claude-edit-badge',
+        ClaudeClasses.position.absolute,
+        ClaudeClasses.layout.flex,
+        ClaudeClasses.layout.itemsCenter,
+        ClaudeClasses.layout.justifyCenter,
+        ClaudeClasses.util.cursorPointer,
+        ClaudeClasses.util.transition,
+        'bg-bg-200',
+        'text-text-000',
+        'px-2.5',
+        'py-1',
+        'rounded-xl',
+        'text-[11px]',
+        'font-semibold',
+        'gap-1',
+        'shadow-md',
+        'z-[100]'
+      ),
       content: `✏️ ${versionInfo}`,
       title: 'Click to see edit history',
       position: { top: '-35px', right: '8px' },
-      style: {
-        background: theme.useNativeClasses ? 'var(--claude-productivity-neutral)' : (theme.primary || theme.accentColor || '#CC785C'),
-        color: 'white',
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '11px',
-        fontWeight: '600',
-        gap: '4px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-      },
+      style: {},
       data: versionInfo,
       setParentPosition: true
     };

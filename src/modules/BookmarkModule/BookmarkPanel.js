@@ -1,12 +1,13 @@
 /**
  * BookmarkPanel - Floating panel for bookmarks
  * Now extends BasePanel for consistent UI and reduced code
+ * Refactored to use ONLY Claude native classes
  */
 import BasePanel from '../../core/BasePanel.js';
 import Button from '../../components/primitives/Button.js';
 import Badge from '../../components/primitives/Badge.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import tokens from '../../components/theme/tokens.js';
+import { cn, cardClass } from '../../utils/ClassNames.js';
 
 export class BookmarkPanel extends BasePanel {
   constructor(domUtils, getTheme, getSetting) {
@@ -64,8 +65,7 @@ export class BookmarkPanel extends BasePanel {
         marginLeft: '8px',
         position: 'relative'
       },
-      onClick: onToggle,
-      useNativeClasses: theme.useNativeClasses
+      onClick: onToggle
     });
 
     // Add counter badge as a child element
@@ -76,8 +76,8 @@ export class BookmarkPanel extends BasePanel {
       size: 'sm',
       position: { top: -6, right: -6 },
       style: {
-        fontSize: tokens.typography.fontSize.xs,
-        fontWeight: tokens.typography.fontWeight.bold
+        fontSize: '10px',
+        fontWeight: '700'
       }
     });
 
@@ -123,93 +123,38 @@ export class BookmarkPanel extends BasePanel {
    * Create a bookmark item
    */
   createBookmarkItem(bookmark) {
-    const theme = this.getTheme();
-
     // Create item container
     const item = document.createElement('div');
-
-    if (theme.useNativeClasses) {
-      // Claude's native card classes
-      item.className = 'p-3 mb-2 border-l-4 border-accent-main-100 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
-    } else {
-      // Fallback to styled components
-      item.className = 'cp-card';
-      item.style.marginBottom = tokens.space('xs');
-      item.style.borderLeft = `3px solid ${theme.primary || tokens.colors.primary}`;
-      item.style.cursor = 'pointer';
-    }
+    item.className = cardClass(true); // 'p-3 mb-2 border-l-4 border-accent-main-100 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors'
 
     // Header container
     const header = document.createElement('div');
-
-    if (theme.useNativeClasses) {
-      header.className = 'flex justify-between items-center mb-2';
-    } else {
-      header.style.display = 'flex';
-      header.style.justifyContent = 'space-between';
-      header.style.alignItems = 'center';
-      header.style.marginBottom = tokens.space('xs');
-    }
+    header.className = 'flex justify-between items-center mb-2';
 
     // Timestamp
     const timestamp = document.createElement('span');
     timestamp.textContent = new Date(bookmark.timestamp).toLocaleDateString();
-
-    if (theme.useNativeClasses) {
-      timestamp.className = 'text-accent-main-100 text-xs font-semibold';
-    } else {
-      timestamp.style.fontSize = tokens.typography.fontSize.xs;
-      timestamp.style.color = theme.primary || tokens.colors.primary;
-      timestamp.style.fontWeight = tokens.typography.fontWeight.semibold;
-    }
+    timestamp.className = 'text-accent-main-100 text-xs font-semibold';
 
     // Delete button
     const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'size-4 text-text-400 hover:text-red-500 text-sm leading-none';
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.onDeleteCallback) {
+        this.onDeleteCallback(bookmark.id);
+      }
+    });
 
-    if (theme.useNativeClasses) {
-      deleteBtn.className = 'size-4 text-text-400 hover:text-red-500 text-sm leading-none';
-      deleteBtn.textContent = '×';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (this.onDeleteCallback) {
-          this.onDeleteCallback(bookmark.id);
-        }
-      });
-    } else {
-      // Use Button component for non-native themes
-      const button = Button.createClose({
-        onClick: (e) => {
-          e.stopPropagation();
-          if (this.onDeleteCallback) {
-            this.onDeleteCallback(bookmark.id);
-          }
-        },
-        style: {
-          width: '16px',
-          height: '16px',
-          fontSize: '14px',
-          padding: '0'
-        }
-      });
-      header.appendChild(timestamp);
-      header.appendChild(button);
-    }
-
-    if (theme.useNativeClasses) {
-      header.appendChild(timestamp);
-      header.appendChild(deleteBtn);
-    }
+    header.appendChild(timestamp);
+    header.appendChild(deleteBtn);
 
     // Preview text
     const preview = document.createElement('div');
     preview.textContent = bookmark.previewText.substring(0, 50) +
       (bookmark.previewText.length > 50 ? '...' : '');
-
-    if (theme.useNativeClasses) {
-      preview.className = 'text-text-400 text-xs truncate';
-    } else {
-      preview.className = 'cp-card-description cp-truncate';
-    }
+    preview.className = 'text-text-400 text-xs truncate';
 
     // Assemble item
     item.appendChild(header);

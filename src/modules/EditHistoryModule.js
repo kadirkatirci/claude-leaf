@@ -195,23 +195,16 @@ class EditHistoryModule extends BaseModule {
       return;
     }
 
-    // Use same background as navigation buttons (neutral for native theme)
-    const collapseBg = theme.useNativeClasses
-      ? 'var(--claude-productivity-neutral)'
-      : (theme.primary || theme.accentColor || '#CC785C');
+    // Use native class background (neutral background)
+    const collapseBg = 'var(--claude-productivity-neutral)';
 
     const collapseBtn = this.dom.createElement('button', {
       id: 'claude-collapse-btn',
-      className: 'claude-nav-btn', // Same class as navigation buttons
+      className: 'claude-nav-btn', // Same class as navigation buttons (size-9 from theme)
       innerHTML: '📦',
       'data-tooltip': 'Collapse/Expand All (Edited Messages)',
       style: {
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
         background: collapseBg,
-        border: 'none',
-        cursor: 'pointer',
         display: this.editedMessages.length > 0 ? 'flex' : 'none', // Hide if no edits
         alignItems: 'center',
         justifyContent: 'center',

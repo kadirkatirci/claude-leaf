@@ -338,9 +338,7 @@ class NavigationModule extends BaseModule {
   }
 
   createButton(icon, tooltip, onClick) {
-    const theme = this.getTheme();
-
-    // Use Button component for consistent styling
+    // Use Button component for consistent styling (size-9 = 36px from theme.buttonClasses)
     return Button.create({
       variant: 'fixed',
       icon: icon,
@@ -348,12 +346,8 @@ class NavigationModule extends BaseModule {
       onClick: onClick,
       className: 'claude-nav-btn',
       style: {
-        width: '48px',
-        height: '48px',
-        fontSize: '20px',
         position: 'relative'
-      },
-      useNativeClasses: theme.useNativeClasses
+      }
     });
   }
 

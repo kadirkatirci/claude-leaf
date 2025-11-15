@@ -3,6 +3,7 @@
  */
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
+import { cn } from '../../utils/ClassNames.js';
 
 export class BookmarkButton {
   constructor(domUtils, getTheme) {
@@ -43,44 +44,33 @@ export class BookmarkButton {
    * Create a bookmark button
    */
   createButton(messageElement, messageId, isBookmarked, onToggle) {
-    const theme = this.getTheme();
-
     const button = this.dom.createElement('button');
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
-    if (theme.useNativeClasses) {
-      // Claude's native button classes
-      const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
-      button.className = `claude-bookmark-btn absolute z-10 px-2.5 py-1.5 rounded-md ${bgClass} cursor-pointer transition-all shadow-sm hover:shadow-md hover:scale-110`;
-      button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
+    // Claude's native button classes
+    const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
+    button.className = cn(
+      'claude-bookmark-btn',
+      'absolute',
+      'z-10',
+      'px-2.5',
+      'py-1.5',
+      'rounded-md',
+      bgClass,
+      'cursor-pointer',
+      'transition-all',
+      'shadow-sm',
+      'hover:shadow-md',
+      'hover:scale-110'
+    );
+    button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
 
-      // Only positioning and visibility styles
-      Object.assign(button.style, {
-        top: '8px',
-        right: '8px',
-        opacity: isBookmarked ? '1' : '0',
-      });
-    } else {
-      button.className = 'claude-bookmark-btn';
-      button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, '#333');
-
-      Object.assign(button.style, {
-        position: 'absolute',
-        top: '8px',
-        right: '8px',
-        padding: '6px 10px',
-        borderRadius: '6px',
-        border: 'none',
-        background: isBookmarked ? (theme.primary || theme.accentColor || '#CC785C') : '#f0f0f0',
-        color: isBookmarked ? 'white' : '#333',
-        cursor: 'pointer',
-        fontSize: '14px',
-        zIndex: '10',
-        opacity: isBookmarked ? '1' : '0',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-      });
-    }
+    // Only positioning and visibility styles (must be inline for calculated values)
+    Object.assign(button.style, {
+      top: '8px',
+      right: '8px',
+      opacity: isBookmarked ? '1' : '0',
+    });
 
     // Set relative positioning on message
     if (messageElement.style.position !== 'relative' && messageElement.style.position !== 'absolute') {
@@ -103,16 +93,6 @@ export class BookmarkButton {
       onToggle(messageElement, messageId);
     });
 
-    // Button hover effect (only for custom theme)
-    if (!theme.useNativeClasses) {
-      button.addEventListener('mouseenter', () => {
-        button.style.transform = 'scale(1.1)';
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.transform = 'scale(1)';
-      });
-    }
-
     messageElement.appendChild(button);
     return button;
   }
@@ -124,22 +104,26 @@ export class BookmarkButton {
     const button = this.buttons.get(messageElement);
     if (!button) return;
 
-    const theme = this.getTheme();
-
     // Update data attribute first
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
-    if (theme.useNativeClasses) {
-      // Update native classes
-      const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
-      button.className = `claude-bookmark-btn absolute z-10 px-2.5 py-1.5 rounded-md ${bgClass} cursor-pointer transition-all shadow-sm hover:shadow-md hover:scale-110`;
-      button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
-    } else {
-      // Update visual appearance for custom theme
-      button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, '#333');
-      button.style.background = isBookmarked ? (theme.primary || theme.accentColor || '#CC785C') : '#f0f0f0';
-      button.style.color = isBookmarked ? 'white' : '#333';
-    }
+    // Update native classes
+    const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
+    button.className = cn(
+      'claude-bookmark-btn',
+      'absolute',
+      'z-10',
+      'px-2.5',
+      'py-1.5',
+      'rounded-md',
+      bgClass,
+      'cursor-pointer',
+      'transition-all',
+      'shadow-sm',
+      'hover:shadow-md',
+      'hover:scale-110'
+    );
+    button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
 
     // Update opacity - bookmarked always visible, otherwise check hover
     if (isBookmarked) {

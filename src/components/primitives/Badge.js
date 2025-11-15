@@ -2,10 +2,11 @@
  * Universal Badge Component
  * Replaces all duplicate badge creation code across the extension
  * Used for counters, indicators, version badges, emoji markers, etc.
+ *
+ * REFACTORED: Uses ONLY Claude native classes, no inline styles
  */
 
-import { classNames } from '../theme/styled.js';
-import tokens from '../theme/tokens.js';
+import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 /**
  * Badge Component Class
@@ -16,33 +17,27 @@ export class Badge {
    * Creates a badge element with specified options
    * @param {Object} options - Badge configuration
    * @param {string|number} options.content - Badge content (text, number, or emoji)
-   * @param {string} options.variant - Badge variant: 'primary', 'success', 'warning', 'error', 'neutral', 'custom'
-   * @param {string} options.size - Badge size: 'sm', 'base', 'lg'
+   * @param {string} options.variant - Badge variant: 'primary', 'accent', 'neutral', 'counter'
+   * @param {string} options.size - Badge size: 'xs', 'sm', 'base'
    * @param {string} options.className - Additional CSS classes
    * @param {string} options.id - Badge ID
    * @param {string} options.title - Badge tooltip
-   * @param {Object} options.position - Absolute position { top, right, bottom, left }
-   * @param {Object} options.style - Additional inline styles
-   * @param {string} options.customColor - Custom background color (for variant='custom')
+   * @param {boolean} options.rounded - Use rounded-full (default: false, uses rounded-md)
    * @param {boolean} options.clickable - Whether the badge is clickable
    * @param {Function} options.onClick - Click handler
-   * @param {boolean} options.animated - Whether to add animation
    * @returns {HTMLElement}
    */
   static create(options = {}) {
     const {
       content = '',
-      variant = 'primary',
+      variant = 'accent',
       size = 'base',
       className = '',
       id = null,
       title = null,
-      position = null,
-      style = {},
-      customColor = null,
+      rounded = false,
       clickable = false,
       onClick = null,
-      animated = false,
     } = options;
 
     // Create badge element
@@ -59,32 +54,14 @@ export class Badge {
     }
 
     // Apply classes
-    const classes = this.getBadgeClasses(variant, size, className, clickable, animated);
-    badge.className = classes;
+    badge.className = this.getBadgeClasses(variant, size, rounded, clickable, className);
 
     // Set content
     this.setBadgeContent(badge, content);
 
-    // Apply custom color if specified
-    if (variant === 'custom' && customColor) {
-      badge.style.background = customColor;
-    }
-
-    // Apply positioning if specified
-    if (position) {
-      this.applyPosition(badge, position);
-    }
-
-    // Apply additional inline styles
-    if (Object.keys(style).length > 0) {
-      Object.assign(badge.style, style);
-    }
-
     // Add click handler if clickable
     if (clickable && onClick) {
-      badge.style.cursor = 'pointer';
       badge.addEventListener('click', onClick);
-      this.addHoverEffects(badge);
     }
 
     return badge;
@@ -93,17 +70,16 @@ export class Badge {
   /**
    * Gets the appropriate CSS classes for the badge
    */
-  static getBadgeClasses(variant, size, additionalClasses, clickable, animated) {
-    const baseClass = 'cp-badge';
+  static getBadgeClasses(variant, size, rounded, clickable, additionalClasses) {
     const variantClass = this.getVariantClass(variant);
     const sizeClass = this.getSizeClass(size);
+    const roundedClass = rounded ? ClaudeClasses.util.roundedFull : ClaudeClasses.util.rounded;
 
-    return classNames(
-      baseClass,
+    return cn(
       variantClass,
       sizeClass,
-      clickable && 'cp-badge-clickable',
-      animated && 'cp-badge-animated',
+      roundedClass,
+      clickable && cn(ClaudeClasses.util.cursorPointer, 'hover:scale-110 transition-transform'),
       additionalClasses
     );
   }
@@ -113,15 +89,13 @@ export class Badge {
    */
   static getVariantClass(variant) {
     const variantMap = {
-      primary: 'cp-badge-primary',
-      success: 'cp-badge-success',
-      warning: 'cp-badge-warning',
-      error: 'cp-badge-error',
-      neutral: 'cp-badge-neutral',
-      custom: 'cp-badge-custom',
+      primary: 'px-2 py-1 bg-bg-200 text-text-000 text-xs font-semibold',
+      accent: ClaudeClasses.badge.accent,
+      neutral: ClaudeClasses.badge.neutral,
+      counter: ClaudeClasses.badge.counter,
     };
 
-    return variantMap[variant] || 'cp-badge-primary';
+    return variantMap[variant] || variantMap.accent;
   }
 
   /**
@@ -129,12 +103,12 @@ export class Badge {
    */
   static getSizeClass(size) {
     const sizeMap = {
-      sm: 'cp-badge-sm',
-      base: 'cp-badge-base',
-      lg: 'cp-badge-lg',
+      xs: 'text-xs px-1 py-0.5 min-w-[16px]',
+      sm: 'text-xs px-1.5 py-0.5 min-w-[20px]',
+      base: 'text-xs px-2 py-1 min-w-[24px]',
     };
 
-    return sizeMap[size] || 'cp-badge-base';
+    return sizeMap[size] || sizeMap.base;
   }
 
   /**
@@ -142,13 +116,11 @@ export class Badge {
    */
   static setBadgeContent(badge, content) {
     if (typeof content === 'number') {
-      badge.textContent = content.toString();
-
       // Add special formatting for large numbers
       if (content > 999) {
         badge.textContent = '999+';
-      } else if (content > 99) {
-        badge.style.minWidth = '24px';
+      } else {
+        badge.textContent = content.toString();
       }
     } else {
       badge.textContent = content;
@@ -156,36 +128,8 @@ export class Badge {
 
     // Hide badge if no content
     if (!content && content !== 0) {
-      badge.style.display = 'none';
+      badge.className = cn(badge.className, 'hidden');
     }
-  }
-
-  /**
-   * Applies absolute positioning to the badge
-   */
-  static applyPosition(badge, position) {
-    badge.style.position = 'absolute';
-
-    ['top', 'right', 'bottom', 'left'].forEach(prop => {
-      if (position[prop] !== undefined) {
-        badge.style[prop] = typeof position[prop] === 'number'
-          ? `${position[prop]}px`
-          : position[prop];
-      }
-    });
-  }
-
-  /**
-   * Adds hover effects to clickable badges
-   */
-  static addHoverEffects(badge) {
-    badge.addEventListener('mouseenter', () => {
-      badge.style.transform = 'scale(1.1)';
-    });
-
-    badge.addEventListener('mouseleave', () => {
-      badge.style.transform = 'scale(1)';
-    });
   }
 
   /**
@@ -195,9 +139,9 @@ export class Badge {
     return this.create({
       ...options,
       content: count,
-      variant: options.variant || 'error',
+      variant: 'counter',
       size: 'sm',
-      position: options.position || { top: -6, right: -6 },
+      rounded: true,
     });
   }
 
@@ -205,20 +149,12 @@ export class Badge {
    * Creates an emoji badge (for emoji markers)
    */
   static createEmoji(emoji, options = {}) {
-    const badge = this.create({
+    return this.create({
       ...options,
       content: emoji,
-      variant: 'custom',
-      customColor: 'transparent',
-      style: {
-        fontSize: '16px',
-        minWidth: '24px',
-        height: '24px',
-        ...options.style,
-      },
+      variant: 'primary',
+      className: cn('text-base min-w-[24px] h-6 bg-transparent', options.className),
     });
-
-    return badge;
   }
 
   /**
@@ -229,13 +165,9 @@ export class Badge {
     return this.create({
       ...options,
       content,
-      variant: options.variant || 'neutral',
-      size: 'sm',
-      style: {
-        padding: '2px 6px',
-        fontFamily: tokens.typography.fontFamily.mono,
-        ...options.style,
-      },
+      variant: 'neutral',
+      size: 'xs',
+      className: cn('font-mono', options.className),
     });
   }
 
@@ -244,9 +176,9 @@ export class Badge {
    */
   static createStatus(status, options = {}) {
     const statusVariants = {
-      active: 'success',
-      pending: 'warning',
-      error: 'error',
+      active: 'accent',
+      pending: 'neutral',
+      error: 'accent', // Use accent for errors (red in Claude)
       inactive: 'neutral',
     };
 
@@ -261,20 +193,13 @@ export class Badge {
    * Creates an indicator dot badge
    */
   static createDot(options = {}) {
-    const badge = this.create({
+    return this.create({
       ...options,
       content: '',
-      size: 'sm',
-      style: {
-        width: '8px',
-        height: '8px',
-        minWidth: '8px',
-        padding: 0,
-        ...options.style,
-      },
+      variant: options.variant || 'accent',
+      className: cn('w-2 h-2 min-w-[8px] p-0', options.className),
+      rounded: true,
     });
-
-    return badge;
   }
 
   /**
@@ -286,22 +211,19 @@ export class Badge {
     // Update content
     this.setBadgeContent(badge, content);
 
-    // Update visibility
+    // Update visibility by toggling hidden class
     if (!content && content !== 0) {
-      badge.style.display = 'none';
+      badge.className = cn(badge.className, 'hidden');
     } else {
-      badge.style.display = '';
+      badge.className = badge.className.replace(/\bhidden\b/g, '').trim();
     }
 
-    // Update other properties if provided
+    // Update variant if provided
     if (options.variant) {
-      badge.className = badge.className
-        .replace(/cp-badge-\w+/g, '')
-        .concat(` cp-badge-${options.variant}`);
-    }
-
-    if (options.style) {
-      Object.assign(badge.style, options.style);
+      // Remove old variant classes and add new ones
+      const oldVariantPattern = /\b(px-2 py-1 bg-bg-200 text-text-000|px-2 py-1 rounded-md bg-accent-main-100 text-white|px-2 py-1 rounded-md bg-bg-200 text-text-000|absolute top-0 right-0 -mt-1 -mr-1 px-1\.5 py-0\.5 rounded-full bg-accent-main-100 text-white)\b/g;
+      badge.className = badge.className.replace(oldVariantPattern, '').trim();
+      badge.className = cn(badge.className, this.getVariantClass(options.variant));
     }
   }
 
@@ -310,14 +232,13 @@ export class Badge {
    */
   static createGroup(badges, options = {}) {
     const group = document.createElement('div');
-    group.className = classNames('cp-badge-group', options.className);
-    group.style.display = 'flex';
-    group.style.gap = tokens.space('xs');
-    group.style.alignItems = 'center';
-
-    if (options.direction === 'vertical') {
-      group.style.flexDirection = 'column';
-    }
+    const direction = options.direction === 'vertical' ? 'col' : 'row';
+    group.className = cn(
+      ClaudeClasses.layout[`flex${direction === 'col' ? 'Col' : 'Row'}`],
+      ClaudeClasses.layout.gap2,
+      ClaudeClasses.layout.itemsCenter,
+      options.className
+    );
 
     badges.forEach(badgeOptions => {
       const badge = this.create(badgeOptions);
@@ -333,10 +254,12 @@ export class Badge {
   static pulse(badge) {
     if (!badge) return;
 
-    badge.style.animation = `pulse ${tokens.animation.duration.normal} ${tokens.animation.easing.easeOut}`;
+    // Add animation class
+    badge.className = cn(badge.className, 'animate-pulse');
 
+    // Remove after animation
     setTimeout(() => {
-      badge.style.animation = '';
+      badge.className = badge.className.replace(/\banimate-pulse\b/g, '').trim();
     }, 250);
   }
 
@@ -352,46 +275,6 @@ export class Badge {
     newBadge.remove();
   }
 }
-
-// Add required CSS for badge animations
-const style = document.createElement('style');
-style.textContent = `
-  .cp-badge-animated {
-    transition: all ${tokens.animation.duration.fast} ${tokens.animation.easing.easeOut};
-  }
-
-  .cp-badge-clickable:hover {
-    transform: scale(1.1);
-    cursor: pointer;
-  }
-
-  .cp-badge-sm {
-    font-size: ${tokens.typography.fontSize.xs};
-    height: 14px;
-    min-width: 14px;
-    padding: 0 4px;
-  }
-
-  .cp-badge-base {
-    font-size: ${tokens.typography.fontSize.xs};
-    height: 18px;
-    min-width: 18px;
-    padding: 0 6px;
-  }
-
-  .cp-badge-lg {
-    font-size: ${tokens.typography.fontSize.sm};
-    height: 22px;
-    min-width: 22px;
-    padding: 0 8px;
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
-  }
-`;
 
 // Export as default for convenience
 export default Badge;
