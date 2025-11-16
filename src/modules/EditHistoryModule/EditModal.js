@@ -3,7 +3,7 @@
  * Refactored to use Claude native classes
  */
 import DOMUtils from '../../utils/DOMUtils.js';
-import { cn, textClass } from '../../utils/ClassNames.js';
+import { textClass } from '../../utils/ClassNames.js';
 
 class EditModal {
   constructor() {
@@ -25,8 +25,12 @@ class EditModal {
 
     // Modal content
     const modalContent = DOMUtils.createElement('div');
-    modalContent.className = 'bg-bg-000 rounded-xl p-6 max-w-[600px] max-h-[80vh] overflow-auto shadow-2xl';
-    modalContent.style.animation = 'slideUp 0.3s ease';
+    modalContent.className = 'bg-bg-000 rounded-xl p-6 overflow-auto shadow-2xl';
+    Object.assign(modalContent.style, {
+      maxWidth: '600px',
+      maxHeight: '80vh',
+      animation: 'slideUp 0.3s ease'
+    });
 
     // Header
     const header = this.createHeader(versionInfo);
@@ -34,7 +38,7 @@ class EditModal {
     closeBtn.addEventListener('click', () => this.close());
 
     // Content
-    const content = this.createContent(messageText, versionInfo);
+    const content = this.createContent(messageText);
 
     modalContent.appendChild(header);
     modalContent.appendChild(content);
@@ -81,7 +85,7 @@ class EditModal {
   /**
    * Modal content oluştur
    */
-  createContent(messageText, versionInfo) {
+  createContent(messageText) {
     const container = DOMUtils.createElement('div');
 
     // Info note
@@ -106,7 +110,7 @@ class EditModal {
 
     // Tip box
     const tipBox = DOMUtils.createElement('div');
-    tipBox.className = 'mt-5 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800';
+    tipBox.className = 'mt-5 p-3 bg-bg-100 rounded-lg text-xs text-text-300';
     tipBox.innerHTML = `💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için mesaj üzerindeki <strong>◀ / ▶</strong> butonlarını kullanın.`;
 
     container.appendChild(infoBox);
