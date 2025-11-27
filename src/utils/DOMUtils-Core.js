@@ -119,9 +119,9 @@ const DOMUtilsCore = {
       if (msg.getAttribute('data-testid') === 'chat-input') return false;
       if (msg.getAttribute('data-testid') === 'prompt-input') return false;
 
-      // Must have some content
+      // Must have some content (allow even single characters like "i", "a", etc.)
       const text = msg.textContent?.trim() || '';
-      if (text.length < 5) return false;
+      if (text.length === 0) return false;
 
       // If it has data-test-render-count and passed above checks, it's a message
       return true;
