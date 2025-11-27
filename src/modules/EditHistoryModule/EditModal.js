@@ -11,9 +11,32 @@ class EditModal {
   }
 
   /**
+   * Get current version info from DOM
+   * Reads the version span in real-time to get the up-to-date version number
+   */
+  getCurrentVersionInfo(messageElement) {
+    if (!messageElement) return null;
+
+    // Find version span (same logic as getEditedPrompts)
+    const allSpans = messageElement.querySelectorAll('span');
+    for (const span of allSpans) {
+      const text = span.textContent.trim();
+      if (/^\d+\s*\/\s*\d+$/.test(text)) {
+        return text; // Return current version like "2 / 3"
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Modal'ı göster
    */
   show(messageElement, versionInfo = '') {
+    // Get the CURRENT version info from DOM (not from cached badge data)
+    // This ensures we show the up-to-date version number
+    const currentVersionInfo = this.getCurrentVersionInfo(messageElement) || versionInfo;
+
     // Mesaj içeriğini al
     const userMessage = messageElement.querySelector('[data-testid="user-message"]');
     const messageText = userMessage ? userMessage.textContent : messageElement.textContent;
@@ -33,7 +56,7 @@ class EditModal {
     });
 
     // Header
-    const header = this.createHeader(versionInfo);
+    const header = this.createHeader(currentVersionInfo);
     const closeBtn = header.querySelector('button');
     closeBtn.addEventListener('click', () => this.close());
 
