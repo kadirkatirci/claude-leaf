@@ -32,6 +32,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
    */
   createLocalStorageFallback() {
     const prefix = '__sync__';
+    const QUOTA_BYTES_PER_ITEM = 8192; // 8KB - defined here for use in closure
 
     return {
       get: (keys) => {
@@ -59,7 +60,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
               const serialized = JSON.stringify(value);
 
               // Check size limit (8KB per item)
-              if (serialized.length > this.QUOTA_BYTES_PER_ITEM) {
+              if (serialized.length > QUOTA_BYTES_PER_ITEM) {
                 throw new Error(`Item "${key}" exceeds 8KB limit (${serialized.length} bytes)`);
               }
 

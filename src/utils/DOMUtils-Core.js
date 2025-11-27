@@ -50,35 +50,95 @@ const DOMUtilsCore = {
     }
 
     // Find main content area (excluding sidebar)
-    const mainContent = document.querySelector('main') ||
-                       document.querySelector('[role="main"]') ||
-                       document.querySelector('.flex-1.overflow-hidden');
+    // Strategy 1: Look for main element
+    let mainContent = document.querySelector('main') ||
+                     document.querySelector('[role="main"]');
 
-    if (!mainContent) return [];
+    // Strategy 2: If no main, search entire document (Claude.ai removed main element)
+    if (!mainContent) {
+      mainContent = document.body;
+    }
 
-    // Find messages only within main content
-    const messages = mainContent.querySelectorAll('[data-test-render-count]');
+    // Try multiple selector strategies (Claude.ai's structure changes frequently)
+    let messages = [];
 
-    // Filter: Extract real messages
+    // Strategy 1: Old selector (for backward compatibility)
+    messages = mainContent.querySelectorAll('[data-test-render-count]');
+
+    // Strategy 2: New selector based on data-testid
+    if (messages.length === 0) {
+      messages = mainContent.querySelectorAll('[data-testid*="message"], [data-testid*="conversation-turn"]');
+    }
+
+    // Strategy 3: Look for message containers by class patterns
+    if (messages.length === 0) {
+      // Find divs that contain either user messages or assistant responses
+      const allDivs = mainContent.querySelectorAll('div');
+      messages = Array.from(allDivs).filter(div => {
+        // Must have reasonable depth (not too shallow, not too deep)
+        const depth = this.getElementDepth(div);
+        if (depth < 3 || depth > 20) return false;
+
+        // Check for message indicators
+        const hasUserIndicator = div.querySelector('[data-testid="user-message"]') ||
+                                 div.querySelector('.font-user-message') ||
+                                 div.textContent.trim().length > 0 && div.querySelector('p, pre, code');
+
+        const hasAssistantIndicator = div.querySelector('[data-is-streaming]') ||
+                                     div.querySelector('.font-claude-message') ||
+                                     div.querySelector('.font-claude-response') ||
+                                     div.querySelector('[class*="claude"]');
+
+        return hasUserIndicator || hasAssistantIndicator;
+      });
+    }
+
+    // Strategy 4: Fallback - find message pairs (user + assistant pattern)
+    if (messages.length === 0) {
+      // Look for the typical chat pattern: alternating messages
+      const chatMessages = mainContent.querySelectorAll('div[class*="group"], div[class*="message"]');
+      if (chatMessages.length > 0) {
+        messages = chatMessages;
+      }
+    }
+
+    // Filter: Extract real messages (simplified - trust data-test-render-count selector)
     return Array.from(messages).filter(msg => {
-      // Sidebar check - not in nav or sidebar
+      // ONLY exclude obvious non-message elements
+
+      // Skip sidebar elements
       if (msg.closest('nav')) return false;
       if (msg.closest('[aria-label="Sidebar"]')) return false;
-      if (msg.closest('.sidebar')) return false;
-      if (msg.closest('[data-testid="sidebar"]')) return false;
-      if (msg.closest('[data-testid="pin-sidebar-toggle"]')) return false;
 
-      // Input field check - not chat input
-      if (msg.closest('[data-testid="chat-input"]')) return false;
-      if (msg.closest('[aria-label="Write your prompt to Claude"]')) return false;
+      // Skip if it IS an input/textarea (not just contains one)
+      if (msg.tagName === 'TEXTAREA') return false;
+      if (msg.tagName === 'INPUT') return false;
+      if (msg.tagName === 'BUTTON') return false;
 
-      // Real message check - is it user or assistant message?
-      const hasUserMessage = msg.querySelector('[data-testid="user-message"]');
-      const hasAssistantMessage = msg.querySelector('[data-is-streaming]');
-      const hasClaudeResponse = msg.querySelector('.font-claude-response');
+      // Skip if it's the chat input container (but not message containers that contain chat input)
+      if (msg.getAttribute('data-testid') === 'chat-input') return false;
+      if (msg.getAttribute('data-testid') === 'prompt-input') return false;
 
-      return hasUserMessage || hasAssistantMessage || hasClaudeResponse;
+      // Must have some content
+      const text = msg.textContent?.trim() || '';
+      if (text.length < 5) return false;
+
+      // If it has data-test-render-count and passed above checks, it's a message
+      return true;
     });
+  },
+
+  /**
+   * Helper: Get element depth in DOM tree
+   */
+  getElementDepth(element) {
+    let depth = 0;
+    let current = element;
+    while (current.parentElement) {
+      depth++;
+      current = current.parentElement;
+    }
+    return depth;
   },
 
   /**
