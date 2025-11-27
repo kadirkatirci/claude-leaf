@@ -9,7 +9,8 @@ class EditScanner {
     this.observer = null;
     this.observerTimeout = null;
     this.lastCount = 0;
-    this.lastEditIds = new Set(); // Track edit IDs to detect actual changes
+    // Track both container IDs and version info to detect version changes
+    this.lastEditData = new Map(); // Map<containerId, versionInfo>
   }
 
   /**
@@ -31,24 +32,67 @@ class EditScanner {
 
   /**
    * Edit'leri tara
-   * Only calls onEditFound if edits actually changed
+   * Calls onEditFound if:
+   * - New edited messages added/removed (container ID changes)
+   * - Version info changed within existing edited messages (version number changes)
    */
   scan() {
     const editedPrompts = DOMUtils.getEditedPrompts();
 
-    // Create ID set for comparison
-    const currentIds = new Set(editedPrompts.map(e => e.containerId));
+    console.log(`[EditScanner] 🔍 Scanning... found ${editedPrompts.length} edited prompts`);
 
-    // Check if edits changed
-    const idsChanged =
-      currentIds.size !== this.lastEditIds.size ||
-      [...currentIds].some(id => !this.lastEditIds.has(id));
+    // Build current edit data map: containerId → versionInfo
+    const currentEditData = new Map();
+    editedPrompts.forEach(edit => {
+      currentEditData.set(edit.containerId, edit.versionInfo);
+      console.log(`[EditScanner] 📝 Container: ${edit.containerId}, Version: ${edit.versionInfo}`);
+    });
+
+    // Check if anything changed
+    let hasChanges = false;
+    let changeReason = '';
+
+    // 1. Check if container count changed (new/removed messages)
+    if (currentEditData.size !== this.lastEditData.size) {
+      hasChanges = true;
+      changeReason = `Count changed: ${this.lastEditData.size} → ${currentEditData.size}`;
+    }
+
+    // 2. Check if any container ID is new or removed
+    if (!hasChanges) {
+      for (const containerId of currentEditData.keys()) {
+        if (!this.lastEditData.has(containerId)) {
+          hasChanges = true;
+          changeReason = `New container: ${containerId}`;
+          break;
+        }
+      }
+    }
+
+    // 3. Check if version info changed for any existing container (THIS IS THE FIX!)
+    if (!hasChanges) {
+      for (const [containerId, versionInfo] of currentEditData.entries()) {
+        const lastVersionInfo = this.lastEditData.get(containerId);
+        console.log(`[EditScanner] 🔎 Comparing ${containerId}: "${lastVersionInfo}" vs "${versionInfo}"`);
+        if (lastVersionInfo !== versionInfo) {
+          hasChanges = true;
+          changeReason = `Version changed for ${containerId}: ${lastVersionInfo} → ${versionInfo}`;
+          console.log(`[EditScanner] 🔄 ${changeReason}`);
+          break;
+        }
+      }
+    }
+
+    console.log(`[EditScanner] 📊 Has changes: ${hasChanges}${changeReason ? ' - ' + changeReason : ''}`);
 
     // Only notify if edits actually changed
-    if (idsChanged) {
+    if (hasChanges) {
       this.lastCount = editedPrompts.length;
-      this.lastEditIds = currentIds;
+      this.lastEditData = currentEditData;
       this.onEditFound(editedPrompts);
+      console.log(`[EditScanner] ✅ Edit changes detected and notified: ${editedPrompts.length} edited messages`);
+    } else {
+      console.log(`[EditScanner] ⏭️ No changes detected, skipping update`);
     }
   }
 

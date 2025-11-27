@@ -53,10 +53,15 @@ const DOMUtilsParsing = {
             // Find edit button (retry button - circular arrow icon)
             const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
 
-            // Generate a unique ID if data-test-render-count is not available
-            const containerId = container.getAttribute('data-test-render-count') ||
-                               container.getAttribute('data-testid') ||
-                               `edit-${idx}-${Date.now()}`;
+            // Generate a unique ID using multiple sources for better uniqueness
+            // Since data-test-render-count might not be unique, use element's position + content hash
+            let containerId = container.getAttribute('data-test-render-count');
+
+            if (!containerId || containerId === '2') {
+              // Fallback: Use index + content signature for uniqueness
+              const contentSignature = userMessage.textContent.substring(0, 50).replace(/\s+/g, '');
+              containerId = `msg-${idx}-${contentSignature.substring(0, 20)}`;
+            }
 
             edited.push({
               element: container,
