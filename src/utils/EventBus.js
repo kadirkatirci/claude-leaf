@@ -90,6 +90,10 @@ const Events = {
   MESSAGE_CLICKED: 'message:clicked',
   MESSAGE_SCROLLED: 'message:scrolled',
 
+  // Edit/Version events
+  EDIT_VERSION_CHANGED: 'edit:version_changed', // Fired when user changes edit version
+  EDITS_UPDATED: 'edits:updated', // Fired when edited prompts list changes
+
   // Settings events
   SETTINGS_CHANGED: 'settings:changed',
   FEATURE_TOGGLED: 'feature:toggled',

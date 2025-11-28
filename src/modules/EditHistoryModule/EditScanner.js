@@ -1,7 +1,19 @@
 /**
  * EditScanner - Edit tarama ve tespit mantığı
+ * 
+ * Versiyon değişikliklerini tespit eder ve callback'leri çağırır.
+ * Diğer modüller (Bookmark, EmojiMarker) onVersionChange callback'i
+ * kaydederek versiyon değişikliklerini anında alabilir.
+ * 
+ * Bu yaklaşım EventBus'tan daha güvenilir çünkü:
+ * - Senkron callback çağrısı (async event dispatch değil)
+ * - Aynı DOM observer'ı paylaşıyor (duplicate observer yok)
+ * - EditHistory ile aynı mekanizma (tutarlılık)
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+
+// Singleton instance for shared access
+let scannerInstance = null;
 
 class EditScanner {
   constructor(onEditFound) {
@@ -11,6 +23,53 @@ class EditScanner {
     this.lastCount = 0;
     // Track both container IDs and version info to detect version changes
     this.lastEditData = new Map(); // Map<containerId, versionInfo>
+    
+    // Additional callbacks for version changes (used by Bookmark, EmojiMarker)
+    this.versionChangeCallbacks = new Set();
+    
+    // Store singleton reference
+    scannerInstance = this;
+    console.log('[EditScanner] 🔧 Singleton instance created');
+  }
+  
+  /**
+   * Get the singleton scanner instance
+   * Other modules can use this to register for version change notifications
+   */
+  static getInstance() {
+    return scannerInstance;
+  }
+  
+  /**
+   * Register a callback for version changes
+   * @param {Function} callback - Called with {changeReason, editCount} when version changes
+   * @returns {Function} Unsubscribe function
+   */
+  onVersionChange(callback) {
+    this.versionChangeCallbacks.add(callback);
+    console.log(`[EditScanner] 📝 Version change callback registered (total: ${this.versionChangeCallbacks.size})`);
+    
+    // Return unsubscribe function
+    return () => {
+      this.versionChangeCallbacks.delete(callback);
+      console.log(`[EditScanner] 📝 Version change callback removed (total: ${this.versionChangeCallbacks.size})`);
+    };
+  }
+  
+  /**
+   * Notify all registered version change callbacks
+   * Called synchronously for immediate response
+   */
+  notifyVersionChange(data) {
+    console.log(`[EditScanner] 📡 Notifying ${this.versionChangeCallbacks.size} version change callbacks`);
+    
+    this.versionChangeCallbacks.forEach(callback => {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error('[EditScanner] Error in version change callback:', error);
+      }
+    });
   }
 
   /**
@@ -22,9 +81,10 @@ class EditScanner {
     setTimeout(() => this.scan(), 100);
 
     // 2. DOM observer (event-driven, no polling)
+    // Reduced throttle to 200ms for faster version change detection
     this.observer = DOMUtils.observeDOM(() => {
       clearTimeout(this.observerTimeout);
-      this.observerTimeout = setTimeout(() => this.scan(), 1000);
+      this.observerTimeout = setTimeout(() => this.scan(), 200);
     });
 
     console.log('[EditScanner] ➡️ Continuous scanning started (event-driven)');
@@ -39,18 +99,16 @@ class EditScanner {
   scan() {
     const editedPrompts = DOMUtils.getEditedPrompts();
 
-    console.log(`[EditScanner] 🔍 Scanning... found ${editedPrompts.length} edited prompts`);
-
     // Build current edit data map: containerId → versionInfo
     const currentEditData = new Map();
     editedPrompts.forEach(edit => {
       currentEditData.set(edit.containerId, edit.versionInfo);
-      console.log(`[EditScanner] 📝 Container: ${edit.containerId}, Version: ${edit.versionInfo}`);
     });
 
     // Check if anything changed
     let hasChanges = false;
     let changeReason = '';
+    let isVersionChange = false;
 
     // 1. Check if container count changed (new/removed messages)
     if (currentEditData.size !== this.lastEditData.size) {
@@ -69,30 +127,40 @@ class EditScanner {
       }
     }
 
-    // 3. Check if version info changed for any existing container (THIS IS THE FIX!)
+    // 3. Check if version info changed for any existing container
+    // THIS IS THE KEY CHECK for version changes (when user clicks edit arrows)
     if (!hasChanges) {
       for (const [containerId, versionInfo] of currentEditData.entries()) {
         const lastVersionInfo = this.lastEditData.get(containerId);
-        console.log(`[EditScanner] 🔎 Comparing ${containerId}: "${lastVersionInfo}" vs "${versionInfo}"`);
         if (lastVersionInfo !== versionInfo) {
           hasChanges = true;
-          changeReason = `Version changed for ${containerId}: ${lastVersionInfo} → ${versionInfo}`;
-          console.log(`[EditScanner] 🔄 ${changeReason}`);
+          isVersionChange = true; // This is specifically a version change!
+          changeReason = `Version changed for ${containerId}: "${lastVersionInfo}" → "${versionInfo}"`;
           break;
         }
       }
     }
 
-    console.log(`[EditScanner] 📊 Has changes: ${hasChanges}${changeReason ? ' - ' + changeReason : ''}`);
-
     // Only notify if edits actually changed
     if (hasChanges) {
       this.lastCount = editedPrompts.length;
       this.lastEditData = currentEditData;
+      
+      // Call main callback (EditHistoryModule)
       this.onEditFound(editedPrompts);
-      console.log(`[EditScanner] ✅ Edit changes detected and notified: ${editedPrompts.length} edited messages`);
-    } else {
-      console.log(`[EditScanner] ⏭️ No changes detected, skipping update`);
+      
+      // If version changed, notify all registered callbacks immediately
+      // This is the key for Bookmark and EmojiMarker to update instantly
+      if (isVersionChange) {
+        console.log(`[EditScanner] 🔄 ${changeReason}`);
+        this.notifyVersionChange({
+          changeReason,
+          editCount: editedPrompts.length,
+          isVersionChange: true
+        });
+      }
+      
+      console.log(`[EditScanner] ✅ Changes detected: ${changeReason}`);
     }
   }
 
@@ -107,6 +175,14 @@ class EditScanner {
 
     if (this.observerTimeout) {
       clearTimeout(this.observerTimeout);
+    }
+    
+    // Clear callbacks
+    this.versionChangeCallbacks.clear();
+    
+    // Clear singleton
+    if (scannerInstance === this) {
+      scannerInstance = null;
     }
 
     console.log('[EditScanner] 🛑 Scanning stopped');

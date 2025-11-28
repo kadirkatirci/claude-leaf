@@ -1,17 +1,25 @@
 /**
  * EmojiMarkerModule - Emoji-based message marking system
+ * 
+ * Handles edit version changes: When user changes edit version, message indices
+ * may shift. This module uses content-based verification to resolve markers
+ * to their correct positions.
+ * 
+ * Uses EditScanner's direct callback for instant version change detection
+ * (same mechanism as EditHistoryModule for reliability).
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
-import { hashString } from '../utils/HashUtils.js';
+import { getCleanMessageText, generateSignature, getValidMarkers } from '../utils/MarkerUtils.js';
 import { markerStore } from '../stores/index.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
 import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
+import EditScanner from './EditHistoryModule/EditScanner.js';
 
 class EmojiMarkerModule extends BaseModule {
   constructor() {
@@ -38,6 +46,9 @@ class EmojiMarkerModule extends BaseModule {
       (marker) => this.scrollToMarker(marker),
       (markerId) => this.removeMarker(markerId)
     );
+    
+    // Will hold unsubscribe function for EditScanner callback
+    this.versionChangeUnsubscribe = null;
   }
 
   async init() {
@@ -77,12 +88,16 @@ class EmojiMarkerModule extends BaseModule {
       // Initial UI update
       await this.updateUI();
 
-      // Listen for message updates
+      // Listen for message updates (NavigationModule triggers this)
       this.subscribe(Events.MESSAGES_UPDATED, async () => {
         await this.updateUI();
       });
 
-      // Setup message observer
+      // Register for edit version changes directly with EditScanner
+      // This is the same mechanism EditHistoryModule uses - no EventBus delay
+      this.registerForVersionChanges();
+
+      // Setup message observer (fallback for other changes)
       this.setupMessageObserver(async () => {
         await this.updateUI();
       }, {
@@ -94,8 +109,31 @@ class EmojiMarkerModule extends BaseModule {
       this.log('✅ Emoji Markers aktif');
     } catch (error) {
       this.error('❌ Emoji Markers init failed:', error);
-      throw error; // Re-throw to see in console
+      throw error;
     }
+  }
+
+  /**
+   * Register for version changes directly with EditScanner
+   * Uses polling to wait for scanner to be available
+   */
+  registerForVersionChanges() {
+    const tryRegister = () => {
+      const scanner = EditScanner.getInstance();
+      if (scanner) {
+        this.versionChangeUnsubscribe = scanner.onVersionChange(async (data) => {
+          this.log(`📡 Version change callback: ${data.changeReason}`);
+          await this.updateUI();
+        });
+        this.log('✅ Registered for EditScanner version changes');
+      } else {
+        // Scanner not ready yet, try again
+        this.log('⏳ EditScanner not ready, retrying in 100ms...');
+        setTimeout(tryRegister, 100);
+      }
+    };
+    
+    tryRegister();
   }
 
   /**
@@ -118,10 +156,9 @@ class EmojiMarkerModule extends BaseModule {
     this.panel.updateContent([]);
   }
 
-
-
   /**
    * Update all UI components
+   * Uses content-based verification to handle edit version changes
    */
   async updateUI() {
     // Don't update if not on conversation page
@@ -132,37 +169,60 @@ class EmojiMarkerModule extends BaseModule {
     // Filter: Sadece gerçek mesaj container'larını kullan
     // Streaming olan mesajları EXCLUDE et (data-is-streaming="true")
     const messages = allMessages.filter(msg => {
-      // Eğer data-is-streaming attribute'u varsa
       if (msg.hasAttribute('data-is-streaming')) {
-        // Streaming=true olanları EXCLUDE et (henüz tamamlanmamış)
         return msg.getAttribute('data-is-streaming') === 'false';
       }
-      // Attribute yoksa INCLUDE et (eski mesajlar attribute olmayabilir)
       return true;
     });
 
-    this.log(`UI güncelleniyor: ${messages.length} mesaj bulundu (${allMessages.length} toplam)`);
+    this.log(`UI güncelleniyor: ${messages.length} mesaj bulundu`);
 
     const currentConversationUrl = window.location.pathname;
     const conversationMarkers = await markerStore.getByConversation(currentConversationUrl);
 
-    // Update counter using mixin method
-    this.updateButtonCounter(conversationMarkers.length);
+    // Resolve markers to their current positions using content verification
+    const updateCallback = async (markerId, updates) => {
+      await markerStore.update(markerId, updates);
+      this.log(`🔄 Marker index güncellendi: ${markerId}`, updates);
+    };
 
-    // Update badges
+    const validMarkers = getValidMarkers(conversationMarkers, messages, { 
+      updateCallback,
+      strictMode: false
+    });
+
+    // Create resolved markers array with updated indices
+    const resolvedMarkers = validMarkers.map(item => ({
+      ...item.marker,
+      index: item.resolvedIndex,
+      _status: item.status
+    }));
+
+    this.log(`📍 Markers resolved: ${resolvedMarkers.length}/${conversationMarkers.length} valid`);
+
+    // Log any markers that couldn't be resolved
+    const invalidCount = conversationMarkers.length - resolvedMarkers.length;
+    if (invalidCount > 0) {
+      this.warn(`⚠️ ${invalidCount} marker(s) could not be resolved`);
+    }
+
+    // Update counter
+    this.updateButtonCounter(resolvedMarkers.length);
+
+    // Update badges with resolved markers
     const showBadges = await this.getSetting('showBadges');
     if (showBadges) {
-      this.badge.updateAll(messages, conversationMarkers);
+      this.badge.updateAll(messages, resolvedMarkers);
     }
 
-    // Update hover buttons
+    // Update hover buttons with resolved markers
     const showOnHover = await this.getSetting('showOnHover');
     if (showOnHover) {
-      this.button.addToMessages(messages, conversationMarkers);
+      this.button.addToMessages(messages, resolvedMarkers);
     }
 
-    // Update panel
-    this.panel.updateContent(conversationMarkers);
+    // Update panel with resolved markers
+    this.panel.updateContent(resolvedMarkers);
   }
 
   /**
@@ -177,27 +237,24 @@ class EmojiMarkerModule extends BaseModule {
       const messages = this.dom.findMessages();
 
       if (messages.length > 0 || retryCount >= maxRetries) {
-        // Messages found or max retries reached
         await this.updateUI();
 
         if (messages.length > 0) {
-          this.log(`✅ Found ${messages.length} messages after ${retryCount} retries, markers updated`);
+          this.log(`✅ Found ${messages.length} messages after ${retryCount} retries`);
         } else {
           this.log(`⚠️ No messages found after ${retryCount} retries`);
         }
         return;
       }
 
-      // Retry with exponential backoff
       retryCount++;
       const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
-      this.log(`🔄 Marker retry ${retryCount}/${maxRetries}: Waiting ${delay}ms for messages...`);
+      this.log(`🔄 Marker retry ${retryCount}/${maxRetries}: Waiting ${delay}ms...`);
 
       await new Promise(resolve => setTimeout(resolve, delay));
       return checkForMessages();
     };
 
-    // Start checking
     await checkForMessages();
   }
 
@@ -205,34 +262,26 @@ class EmojiMarkerModule extends BaseModule {
    * Add a new marker
    */
   async addMarker(messageEl, messageIndex, emoji) {
-    // Validate we're on a conversation page
     if (!this.dom.isOnConversationPage()) {
       this.warn('Cannot add marker - not on conversation page');
       return;
     }
 
     const conversationUrl = window.location.pathname;
+    const messageText = getCleanMessageText(messageEl);
+    const messagePreview = messageText.substring(0, 100).trim();
 
-    // Get message preview
-    const messageText = messageEl.textContent || '';
-    const messagePreview = messageText.substring(0, 50).trim();
-
-    // Create marker object
     const marker = {
       conversationUrl,
       index: messageIndex,
       emoji,
       timestamp: Date.now(),
-      contentSignature: hashString(messageText.substring(0, 1000)),
+      contentSignature: generateSignature(messageEl),
       messagePreview,
     };
 
-    // Add to store (handles duplicate check internally)
     await markerStore.add(marker);
-
     this.log(`Marker eklendi: ${emoji} at index ${messageIndex}`);
-
-    // Update UI
     await this.updateUI();
   }
 
@@ -241,10 +290,7 @@ class EmojiMarkerModule extends BaseModule {
    */
   async removeMarker(markerId) {
     await markerStore.remove(markerId);
-
     this.log(`Marker silindi: ${markerId}`);
-
-    // Update UI
     await this.updateUI();
   }
 
@@ -253,10 +299,7 @@ class EmojiMarkerModule extends BaseModule {
    */
   async updateMarker(markerId, newEmoji) {
     await markerStore.update(markerId, { emoji: newEmoji });
-
     this.log(`Marker güncellendi: ${markerId} -> ${newEmoji}`);
-
-    // Update UI
     await this.updateUI();
   }
 
@@ -265,14 +308,22 @@ class EmojiMarkerModule extends BaseModule {
    */
   scrollToMarker(marker) {
     const messages = this.dom.findMessages();
-    const messageEl = messages[marker.index];
-
-    if (messageEl) {
+    const resolved = getValidMarkers([marker], messages, { strictMode: false });
+    
+    if (resolved.length > 0 && resolved[0].resolvedIndex !== null) {
+      const messageEl = messages[resolved[0].resolvedIndex];
       DOMUtils.scrollToElement(messageEl, 'center');
       DOMUtils.flashClass(messageEl, 'claude-nav-highlight', 2000);
-      this.log(`Scrolled to marker: ${marker.emoji}`);
+      this.log(`Scrolled to marker: ${marker.emoji} at index ${resolved[0].resolvedIndex}`);
     } else {
-      this.warn(`Message not found for marker: ${marker.id}`);
+      const messageEl = messages[marker.index];
+      if (messageEl) {
+        DOMUtils.scrollToElement(messageEl, 'center');
+        DOMUtils.flashClass(messageEl, 'claude-nav-highlight', 2000);
+        this.warn(`Scrolled to marker using fallback index: ${marker.index}`);
+      } else {
+        this.warn(`Message not found for marker: ${marker.id}`);
+      }
     }
   }
 
@@ -288,7 +339,6 @@ class EmojiMarkerModule extends BaseModule {
    */
   async exportMarkers() {
     const exported = await markerStore.export();
-    // Create download
     const dataBlob = new Blob([exported], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -309,7 +359,6 @@ class EmojiMarkerModule extends BaseModule {
    */
   async importMarkers() {
     try {
-      // Open file picker
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/json';
@@ -331,7 +380,6 @@ class EmojiMarkerModule extends BaseModule {
 
                 this.log(`${result.imported} markers imported`);
                 await this.updateUI();
-
                 resolve(result.imported);
               } catch (error) {
                 this.error('Import failed:', error);
@@ -367,8 +415,6 @@ class EmojiMarkerModule extends BaseModule {
    */
   async onSettingsChanged() {
     this.log('⚙️ Settings değişti');
-
-    // UI yenile
     await this.updateUI();
   }
 
@@ -376,7 +422,6 @@ class EmojiMarkerModule extends BaseModule {
    * UI'ı yeniden oluştur
    */
   async recreateUI() {
-    // Destroy and recreate fixed button
     this.destroyFixedButton();
     await this.createFixedButton({
       id: 'claude-marker-fixed-btn',
@@ -388,13 +433,9 @@ class EmojiMarkerModule extends BaseModule {
     });
     this.setupVisibilityListener();
 
-    // Remove and recreate panel
     this.panel.remove();
     this.panel.create();
-
-    // Update UI
     await this.updateUI();
-
     this.log('🎨 UI tema ile yenilendi');
   }
 
@@ -404,16 +445,17 @@ class EmojiMarkerModule extends BaseModule {
   destroy() {
     this.log('🛑 Emoji Markers durduruluyor...');
 
-    // Destroy fixed button (includes visibility listener cleanup)
-    this.destroyFixedButton();
+    // Unsubscribe from version changes
+    if (this.versionChangeUnsubscribe) {
+      this.versionChangeUnsubscribe();
+      this.versionChangeUnsubscribe = null;
+    }
 
-    // Remove components
+    this.destroyFixedButton();
     this.button.removeAll();
     this.badge.removeAll();
     this.panel.remove();
     this.emojiPicker.removePicker();
-
-    // Destroy message observer
     this.destroyMessageObserver();
 
     super.destroy();
