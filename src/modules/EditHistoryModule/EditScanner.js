@@ -5,16 +5,10 @@
  * Diğer modüller (Bookmark, EmojiMarker) onVersionChange callback'i
  * kaydederek versiyon değişikliklerini anında alabilir.
  * 
- * ContainerId Strategy:
- * - Uses hash of user message content + occurrence index
- * - This ensures stable IDs across version changes
- * - User message stays the same even when Claude's response changes
- * - Occurrence index handles duplicate messages (same user text sent twice)
- * 
- * Bu yaklaşım EventBus'tan daha güvenilir çünkü:
- * - Senkron callback çağrısı (async event dispatch değil)
- * - Aynı DOM observer'ı paylaşıyor (duplicate observer yok)
- * - EditHistory ile aynı mekanizma (tutarlılık)
+ * Race Condition Handling:
+ * - DOM değişikliği sonrası stabilizasyon için bekleme
+ * - Async callback'ler için proper await
+ * - Debounce ile çoklu tetiklemeleri önleme
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 
@@ -27,153 +21,222 @@ class EditScanner {
     this.observer = null;
     this.observerTimeout = null;
     this.lastCount = 0;
-    // Track both container IDs and version info to detect version changes
-    // Key: containerId (hash-based), Value: versionInfo string
     this.lastEditData = new Map();
-
-    // Additional callbacks for version changes (used by Bookmark, EmojiMarker)
     this.versionChangeCallbacks = new Set();
+    
+    // Race condition prevention
+    this.isScanning = false;
+    this.pendingScan = false;
+    this.lastScanTime = 0;
+    this.minScanInterval = 150; // Minimum ms between scans
 
-    // Store singleton reference
     scannerInstance = this;
-    console.log('[EditScanner] 🔧 Singleton instance created');
   }
 
-  /**
-   * Get the singleton scanner instance
-   * Other modules can use this to register for version change notifications
-   */
   static getInstance() {
     return scannerInstance;
   }
 
   /**
    * Register a callback for version changes
-   * @param {Function} callback - Called with {changeReason, editCount} when version changes
+   * @param {Function} callback - Async function called with change data
    * @returns {Function} Unsubscribe function
    */
   onVersionChange(callback) {
     this.versionChangeCallbacks.add(callback);
-    console.log(`[EditScanner] 📝 Version change callback registered (total: ${this.versionChangeCallbacks.size})`);
+    console.log(`[EditScanner] 📝 Callback registered (total: ${this.versionChangeCallbacks.size})`);
 
-    // Return unsubscribe function
     return () => {
       this.versionChangeCallbacks.delete(callback);
-      console.log(`[EditScanner] 📝 Version change callback removed (total: ${this.versionChangeCallbacks.size})`);
     };
   }
 
   /**
-   * Notify all registered version change callbacks
-   * Called synchronously for immediate response
+   * Notify all registered callbacks - handles async callbacks properly
    */
-  notifyVersionChange(data) {
-    console.log(`[EditScanner] 📡 Notifying ${this.versionChangeCallbacks.size} version change callbacks`);
+  async notifyVersionChange(data) {
+    console.log(`[EditScanner] 📡 Notifying ${this.versionChangeCallbacks.size} callbacks`);
 
+    // Execute all callbacks and wait for them
+    const promises = [];
     this.versionChangeCallbacks.forEach(callback => {
       try {
-        callback(data);
+        const result = callback(data);
+        // If callback returns a promise, track it
+        if (result && typeof result.then === 'function') {
+          promises.push(result.catch(err => {
+            console.error('[EditScanner] Callback error:', err);
+          }));
+        }
       } catch (error) {
-        console.error('[EditScanner] Error in version change callback:', error);
+        console.error('[EditScanner] Sync callback error:', error);
       }
     });
+
+    // Wait for all async callbacks to complete
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
   }
 
   /**
    * Start continuous scanning mode
-   * Uses DOM observer only - no polling needed
    */
   start() {
-    // 1. Initial scan
+    // Initial scan with delay for DOM to be ready
     setTimeout(() => this.scan(), 100);
 
-    // 2. DOM observer (event-driven, no polling)
-    // Reduced throttle to 200ms for faster version change detection
+    // DOM observer with debounce
     this.observer = DOMUtils.observeDOM(() => {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = setTimeout(() => this.scan(), 200);
     });
 
-    console.log('[EditScanner] ➡️ Continuous scanning started (event-driven)');
+    console.log('[EditScanner] ➡️ Started');
   }
 
   /**
-   * Edit'leri tara
-   * Calls onEditFound if:
-   * - New edited messages added/removed (container ID changes)
-   * - Version info changed within existing edited messages (version number changes)
+   * Scan for edit changes with race condition protection
    */
-  scan() {
-    const editedPrompts = DOMUtils.getEditedPrompts();
-
-    // Build current edit data map: containerId → versionInfo
-    const currentEditData = new Map();
-    editedPrompts.forEach(edit => {
-      currentEditData.set(edit.containerId, edit.versionInfo);
-    });
-
-    // Check if anything changed
-    let hasChanges = false;
-    let changeReason = '';
-    let isVersionChange = false;
-
-    // 1. Check if container count changed (new/removed messages)
-    if (currentEditData.size !== this.lastEditData.size) {
-      hasChanges = true;
-      changeReason = `Count changed: ${this.lastEditData.size} → ${currentEditData.size}`;
+  async scan() {
+    // Prevent concurrent scans
+    if (this.isScanning) {
+      this.pendingScan = true;
+      return;
     }
 
-    // 2. Check if any container ID is new (shouldn't happen often with hash-based IDs)
-    if (!hasChanges) {
-      for (const containerId of currentEditData.keys()) {
-        if (!this.lastEditData.has(containerId)) {
-          hasChanges = true;
-          changeReason = `New edit container: ${containerId}`;
-          break;
-        }
-      }
+    // Enforce minimum scan interval
+    const now = Date.now();
+    const timeSinceLastScan = now - this.lastScanTime;
+    if (timeSinceLastScan < this.minScanInterval) {
+      clearTimeout(this.observerTimeout);
+      this.observerTimeout = setTimeout(() => this.scan(), this.minScanInterval - timeSinceLastScan);
+      return;
     }
 
-    // 3. Check if version info changed for any existing container
-    // THIS IS THE KEY CHECK for version changes (when user clicks edit arrows)
-    if (!hasChanges) {
-      for (const [containerId, versionInfo] of currentEditData.entries()) {
-        const lastVersionInfo = this.lastEditData.get(containerId);
-        if (lastVersionInfo !== versionInfo) {
-          hasChanges = true;
-          isVersionChange = true; // This is specifically a version change!
-          changeReason = `Version changed for ${containerId}: "${lastVersionInfo}" → "${versionInfo}"`;
-          console.log(`[EditScanner] 🔄 VERSION CHANGE DETECTED: ${changeReason}`);
-          break;
-        }
-      }
-    }
+    this.isScanning = true;
+    this.lastScanTime = now;
 
-    // Only notify if edits actually changed
-    if (hasChanges) {
-      this.lastCount = editedPrompts.length;
-      this.lastEditData = currentEditData;
+    try {
+      const editedPrompts = DOMUtils.getEditedPrompts();
 
-      // Call main callback (EditHistoryModule)
-      this.onEditFound(editedPrompts);
-
-      // Notify all registered callbacks for ANY edit-related change
-      // Version changes appear as "new container" because user message content changes
-      console.log(`[EditScanner] 📡 Notifying callbacks for: ${changeReason}`);
-      this.notifyVersionChange({
-        changeReason,
-        editCount: editedPrompts.length,
-        isVersionChange: isVersionChange,
-        isAnyChange: true
+      // Build current edit data map
+      const currentEditData = new Map();
+      editedPrompts.forEach(edit => {
+        currentEditData.set(edit.containerId, edit.versionInfo);
       });
 
-      console.log(`[EditScanner] ✅ Changes detected: ${changeReason}`);
+      // Detect changes
+      let hasChanges = false;
+      let changeReason = '';
+      let isVersionChange = false;
+
+      // Check count change
+      if (currentEditData.size !== this.lastEditData.size) {
+        hasChanges = true;
+        changeReason = `Count: ${this.lastEditData.size} → ${currentEditData.size}`;
+      }
+
+      // Check for new containers
+      if (!hasChanges) {
+        for (const containerId of currentEditData.keys()) {
+          if (!this.lastEditData.has(containerId)) {
+            hasChanges = true;
+            changeReason = `New container: ${containerId}`;
+            break;
+          }
+        }
+      }
+
+      // Check for version changes in existing containers
+      if (!hasChanges) {
+        for (const [containerId, versionInfo] of currentEditData.entries()) {
+          const lastVersionInfo = this.lastEditData.get(containerId);
+          if (lastVersionInfo !== versionInfo) {
+            hasChanges = true;
+            isVersionChange = true;
+            changeReason = `Version: ${containerId} "${lastVersionInfo}" → "${versionInfo}"`;
+            break;
+          }
+        }
+      }
+
+      if (hasChanges) {
+        this.lastCount = editedPrompts.length;
+        this.lastEditData = currentEditData;
+
+        // Call main callback (sync)
+        this.onEditFound(editedPrompts);
+
+        // Wait for DOM to stabilize after version change
+        if (isVersionChange) {
+          await this.waitForDOMStabilization();
+        }
+
+        // Notify all registered callbacks (async)
+        console.log(`[EditScanner] 📡 Notifying: ${changeReason}`);
+        await this.notifyVersionChange({
+          changeReason,
+          editCount: editedPrompts.length,
+          isVersionChange,
+          isAnyChange: true
+        });
+
+        console.log(`[EditScanner] ✅ Done: ${changeReason}`);
+      }
+    } finally {
+      this.isScanning = false;
+
+      // Process pending scan if any
+      if (this.pendingScan) {
+        this.pendingScan = false;
+        setTimeout(() => this.scan(), 50);
+      }
     }
   }
 
   /**
-   * Stop scanning
+   * Wait for DOM to stabilize after a version change
+   * Claude may take a moment to render the new content
    */
+  async waitForDOMStabilization() {
+    return new Promise(resolve => {
+      let lastMessageCount = 0;
+      let stableCount = 0;
+      const maxChecks = 10;
+      let checks = 0;
+
+      const checkStability = () => {
+        checks++;
+        const messages = DOMUtils.findMessages ? DOMUtils.findMessages() : [];
+        const currentCount = messages.length;
+
+        if (currentCount === lastMessageCount && currentCount > 0) {
+          stableCount++;
+          if (stableCount >= 2) {
+            // DOM is stable
+            resolve();
+            return;
+          }
+        } else {
+          stableCount = 0;
+        }
+
+        lastMessageCount = currentCount;
+
+        if (checks >= maxChecks) {
+          // Timeout - proceed anyway
+          resolve();
+          return;
+        }
+
+        setTimeout(checkStability, 50);
+      };
+
+      checkStability();
+    });
+  }
+
   stop() {
     if (this.observer) {
       this.observer.disconnect();
@@ -184,15 +247,13 @@ class EditScanner {
       clearTimeout(this.observerTimeout);
     }
 
-    // Clear callbacks
     this.versionChangeCallbacks.clear();
 
-    // Clear singleton
     if (scannerInstance === this) {
       scannerInstance = null;
     }
 
-    console.log('[EditScanner] 🛑 Scanning stopped');
+    console.log('[EditScanner] 🛑 Stopped');
   }
 }
 

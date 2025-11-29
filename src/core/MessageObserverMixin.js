@@ -1,6 +1,9 @@
 /**
  * MessageObserverMixin - Reusable observer pattern for message tracking
  * Provides standardized DOM observation with throttling and message count tracking
+ * 
+ * Note: EditScanner handles version changes separately. This mixin checks
+ * the _isUpdating flag to avoid race conditions during version change processing.
  */
 
 const MessageObserverMixin = {
@@ -23,10 +26,6 @@ const MessageObserverMixin = {
    * Setup message observer with throttling and optional message count tracking
    * @param {Function} callback - Function to call when messages change
    * @param {Object} options - Configuration options
-   * @param {number} options.throttleDelay - Delay in ms for throttling (default: 500)
-   * @param {boolean} options.trackMessageCount - Only call callback if message count changes (default: true)
-   * @param {boolean} options.checkConversationPage - Only observe on conversation pages (default: true)
-   * @param {boolean} options.forceInitialCallback - Force callback on first observation even if count is 0 (default: false)
    */
   setupMessageObserver(callback, options = {}) {
     const {
@@ -38,11 +37,11 @@ const MessageObserverMixin = {
 
     // Store callback for cleanup
     this.observerCallback = callback;
-    this.hasCalledInitialCallback = false; // Track if initial callback was made
+    this.hasCalledInitialCallback = false;
 
     // Create observer
     this.observer = this.dom.observeDOM(() => {
-      // Don't process if not on conversation page (if enabled)
+      // Don't process if not on conversation page
       if (checkConversationPage && !this.lastConversationState) {
         return;
       }
@@ -52,14 +51,16 @@ const MessageObserverMixin = {
 
       // Setup throttled callback
       this.observerTimeout = setTimeout(() => {
+        // Skip if module is currently updating via EditScanner
+        // This prevents race conditions between observer and version change handler
+        if (this._isUpdating) {
+          return;
+        }
+
         if (trackMessageCount) {
-          // Get current messages
           const messages = this.dom.findMessages();
           const currentCount = messages.length;
 
-          // Call callback if:
-          // 1. Message count changed
-          // 2. OR this is the first observation and forceInitialCallback is true
           const shouldCallCallback =
             currentCount !== this.lastMessageCount ||
             (forceInitialCallback && !this.hasCalledInitialCallback);
@@ -73,7 +74,6 @@ const MessageObserverMixin = {
             callback(messages, currentCount, this.lastMessageCount);
           }
         } else {
-          // Call callback regardless of message count
           this.hasCalledInitialCallback = true;
           callback();
         }
@@ -81,7 +81,7 @@ const MessageObserverMixin = {
     });
 
     if (this.log) {
-      this.log(`Message observer başlatıldı (throttle: ${throttleDelay}ms, trackCount: ${trackMessageCount})`);
+      this.log(`Message observer başlatıldı (throttle: ${throttleDelay}ms)`);
     }
   },
 
@@ -89,19 +89,16 @@ const MessageObserverMixin = {
    * Destroy message observer and cleanup
    */
   destroyMessageObserver() {
-    // Clear timeout
     if (this.observerTimeout) {
       clearTimeout(this.observerTimeout);
       this.observerTimeout = null;
     }
 
-    // Disconnect observer
     if (this.observer) {
       this.observer.disconnect();
       this.observer = null;
     }
 
-    // Reset state
     this.lastMessageCount = 0;
     this.observerCallback = null;
 
