@@ -4,15 +4,17 @@
  * Problem: When user changes edit version, messages after that edit point change,
  * causing index-based markers to point to wrong messages.
  * 
- * Solution: Multi-strategy content-based verification
- * 1. Try saved index first with signature verification
- * 2. Search by content signature
- * 3. Search by preview text (fuzzy)
- * 4. Search by user message preview (for version changes)
+ * Solution: Multi-strategy content-based verification with robust fallbacks
+ * 1. Try saved index first with signature verification (exact match)
+ * 2. Search all messages by content signature (content moved)
+ * 3. Fuzzy search by preview text (content slightly changed)
+ * 4. For Claude responses: Find by user message preview (version changed)
+ * 5. For user messages: Find by own preview text (fallback)
  * 
- * Version Change Handling:
- * When edit version changes, Claude's response changes but user message stays the same.
- * For Claude response markers, we use the parent user message to locate the correct position.
+ * Key Insight:
+ * - Edit'ten ÖNCE olan mesajlar: Index ve content aynı kalır, signature match olmalı
+ * - Edit'ten SONRA olan mesajlar: Index kayabilir ama content aynı kalır (Claude yanıtı hariç)
+ * - Claude yanıtları: Content değişir ama parent user message aynı kalır
  */
 
 import { hashString } from './HashUtils.js';
@@ -20,16 +22,12 @@ import { hashString } from './HashUtils.js';
 /**
  * Get clean text content from a message element
  * Excludes marker buttons, bookmark buttons, and other injected UI
- * @param {HTMLElement} messageEl - Message element
- * @returns {string} - Clean text content
  */
 export function getCleanMessageText(messageEl) {
   if (!messageEl) return '';
   
-  // Clone to avoid modifying original
   const clone = messageEl.cloneNode(true);
   
-  // Remove all injected UI elements
   const selectorsToRemove = [
     '.emoji-marker-btn',
     '.emoji-marker-badge',
@@ -52,9 +50,6 @@ export function getCleanMessageText(messageEl) {
 
 /**
  * Generate content signature for a message
- * @param {HTMLElement} messageEl - Message element
- * @param {number} maxLength - Max chars to use for signature (default: 1000)
- * @returns {string} - Content signature hash
  */
 export function generateSignature(messageEl, maxLength = 1000) {
   const text = getCleanMessageText(messageEl);
@@ -63,9 +58,6 @@ export function generateSignature(messageEl, maxLength = 1000) {
 
 /**
  * Generate preview text for a message
- * @param {HTMLElement} messageEl - Message element
- * @param {number} maxLength - Max chars for preview (default: 100)
- * @returns {string} - Preview text
  */
 export function generatePreview(messageEl, maxLength = 100) {
   const text = getCleanMessageText(messageEl);
@@ -74,52 +66,52 @@ export function generatePreview(messageEl, maxLength = 100) {
 
 /**
  * Check if message is a user message
- * @param {HTMLElement} messageEl - Message element
- * @returns {boolean}
  */
 export function isUserMessage(messageEl) {
   return !!messageEl.querySelector('[data-testid="user-message"]');
 }
 
 /**
- * Get user message text from a message element
- * If element is Claude response, find the parent user message
- * @param {HTMLElement} messageEl - Message element
- * @param {HTMLElement[]} allMessages - All messages array
- * @param {number} currentIndex - Current message index
- * @returns {string} - User message text
+ * Get user message element from a message (or find parent)
  */
-export function getUserMessageText(messageEl, allMessages, currentIndex) {
-  // If this is a user message, return its text
+export function getUserMessageElement(messageEl, allMessages, currentIndex) {
+  // If this is a user message, return it
   const userMsgEl = messageEl.querySelector('[data-testid="user-message"]');
   if (userMsgEl) {
-    return getCleanMessageText(userMsgEl);
+    return { element: userMsgEl, index: currentIndex };
   }
   
   // Find parent user message (look backwards)
   for (let i = currentIndex - 1; i >= 0; i--) {
-    const prevUserMsg = allMessages[i].querySelector('[data-testid="user-message"]');
+    const prevUserMsg = allMessages[i]?.querySelector('[data-testid="user-message"]');
     if (prevUserMsg) {
-      return getCleanMessageText(prevUserMsg);
+      return { element: prevUserMsg, index: i };
     }
   }
   
-  return '';
+  return { element: null, index: -1 };
+}
+
+/**
+ * Get user message text from a message element
+ */
+export function getUserMessageText(messageEl, allMessages, currentIndex) {
+  const { element } = getUserMessageElement(messageEl, allMessages, currentIndex);
+  return element ? getCleanMessageText(element) : '';
+}
+
+/**
+ * Normalize text for comparison (case-insensitive, trimmed, limited length)
+ */
+function normalizeForComparison(text, maxLength = 50) {
+  if (!text) return '';
+  return text.toLowerCase().trim().substring(0, maxLength);
 }
 
 /**
  * Resolve marker/bookmark to current message index
  * 
- * Strategy:
- * 1. Try saved index first with signature verification
- * 2. Search all messages by signature
- * 3. Fuzzy search by preview text
- * 4. For Claude responses: Find by user message preview + offset
- * 
- * @param {Object} marker - Marker/bookmark object
- * @param {HTMLElement[]} messages - Array of current message elements
- * @param {Object} options - Options
- * @returns {Object} - { index, status, message }
+ * Multi-strategy resolution with detailed logging
  */
 export function resolveMarkerIndex(marker, messages, options = {}) {
   const { updateCallback = null, strictMode = false } = options;
@@ -132,99 +124,102 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   const savedSignature = marker.contentSignature;
   const savedPreview = marker.messagePreview || marker.previewText || '';
   const savedUserPreview = marker.userMessagePreview || '';
-  const isClaudeResponse = marker.isClaudeResponse || false;
+  const markerIsClaudeResponse = marker.isClaudeResponse || false;
   
-  // Strategy 1: Try saved index with signature verification
+  // ============================================
+  // Strategy 1: Exact match at saved index
+  // ============================================
   if (savedIndex !== undefined && savedIndex >= 0 && savedIndex < messages.length) {
     const messageAtIndex = messages[savedIndex];
     const currentSignature = generateSignature(messageAtIndex);
     
     if (currentSignature === savedSignature) {
-      // Perfect match
       return { index: savedIndex, status: 'exact', message: messageAtIndex };
     }
   }
   
-  // Strategy 2: Search all messages by content signature
+  // ============================================
+  // Strategy 2: Search by content signature
+  // Message content same but index shifted
+  // ============================================
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     const msgSignature = generateSignature(msg);
     
     if (msgSignature === savedSignature) {
-      // Found by signature
       if (updateCallback && i !== savedIndex) {
         updateCallback(marker.id, { index: i });
       }
-      return { index: i, status: 'relocated', message: msg };
+      return { index: i, status: 'signature_match', message: msg };
     }
   }
   
-  // Strategy 3: Fuzzy search by preview text
+  // ============================================
+  // Strategy 3: Fuzzy match by preview text
+  // Handles minor content changes
+  // ============================================
   if (!strictMode && savedPreview) {
-    const normalizedPreview = savedPreview.toLowerCase().trim().substring(0, 50);
+    const normalizedSavedPreview = normalizeForComparison(savedPreview);
     
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      const msgPreview = generatePreview(msg, 50).toLowerCase().trim();
+      const msgPreview = normalizeForComparison(generatePreview(msg, 50));
       
-      if (msgPreview === normalizedPreview) {
+      if (msgPreview === normalizedSavedPreview) {
         const newSignature = generateSignature(msg);
-        if (updateCallback && (i !== savedIndex || newSignature !== savedSignature)) {
+        if (updateCallback) {
           updateCallback(marker.id, { index: i, contentSignature: newSignature });
         }
-        return { index: i, status: 'fuzzy', message: msg };
+        return { index: i, status: 'preview_match', message: msg };
       }
     }
   }
   
-  // Strategy 4: For Claude responses, find by user message preview
-  // This handles version changes where Claude response content changed
-  if (!strictMode && savedUserPreview) {
-    const normalizedUserPreview = savedUserPreview.toLowerCase().trim().substring(0, 50);
+  // ============================================
+  // Strategy 4: For user messages, find by own preview
+  // User message content doesn't change in same edit
+  // ============================================
+  if (!strictMode && savedUserPreview && !markerIsClaudeResponse) {
+    const normalizedUserPreview = normalizeForComparison(savedUserPreview);
     
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      const userText = getUserMessageText(msg, messages, i);
-      const userPreview = userText.toLowerCase().trim().substring(0, 50);
       
-      if (userPreview === normalizedUserPreview) {
-        // Found the user message or its response
-        // If marker was on Claude response, go to next message
-        let targetIndex = i;
-        if (isClaudeResponse && isUserMessage(msg) && i + 1 < messages.length) {
-          targetIndex = i + 1;
+      if (isUserMessage(msg)) {
+        const userMsgEl = msg.querySelector('[data-testid="user-message"]');
+        const userText = getCleanMessageText(userMsgEl);
+        const currentUserPreview = normalizeForComparison(userText);
+        
+        if (currentUserPreview === normalizedUserPreview) {
+          const newSignature = generateSignature(msg);
+          const newPreview = generatePreview(msg);
+          
+          if (updateCallback) {
+            updateCallback(marker.id, { 
+              index: i, 
+              contentSignature: newSignature,
+              messagePreview: newPreview
+            });
+          }
+          return { index: i, status: 'user_message_match', message: msg };
         }
-        
-        const targetMsg = messages[targetIndex];
-        const newSignature = generateSignature(targetMsg);
-        const newPreview = generatePreview(targetMsg);
-        
-        if (updateCallback) {
-          updateCallback(marker.id, { 
-            index: targetIndex, 
-            contentSignature: newSignature,
-            messagePreview: newPreview
-          });
-        }
-        
-        console.log(`[MarkerUtils] Marker found by user message: ${savedIndex} → ${targetIndex}`);
-        return { index: targetIndex, status: 'user_match', message: targetMsg };
       }
     }
   }
   
-  // Not found
-  console.warn(`[MarkerUtils] Marker not found: index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`);
+  // ============================================
+  // NO INDEX FALLBACK
+  // If content doesn't match, marker is invalid
+  // Edit sonrası mesajlar versiyon değişince kaybolmalı
+  // ============================================
+  
+  // Not found - marker's message no longer exists
+  console.warn(`[MarkerUtils] Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`);
   return { index: null, status: 'not_found', message: null };
 }
 
 /**
  * Create marker data with all necessary fields for robust resolution
- * @param {HTMLElement} messageEl - Message element
- * @param {number} messageIndex - Message index
- * @param {HTMLElement[]} allMessages - All messages array
- * @param {Object} extraData - Additional data to include
- * @returns {Object} - Marker data
  */
 export function createMarkerData(messageEl, messageIndex, allMessages, extraData = {}) {
   const messageText = getCleanMessageText(messageEl);
@@ -244,10 +239,6 @@ export function createMarkerData(messageEl, messageIndex, allMessages, extraData
 
 /**
  * Batch resolve multiple markers
- * @param {Object[]} markers - Array of markers
- * @param {HTMLElement[]} messages - Array of current message elements
- * @param {Object} options - Options
- * @returns {Map<string, Object>} - Map of markerId -> resolution result
  */
 export function resolveAllMarkers(markers, messages, options = {}) {
   const results = new Map();
@@ -262,10 +253,6 @@ export function resolveAllMarkers(markers, messages, options = {}) {
 
 /**
  * Filter markers to only those that can be resolved
- * @param {Object[]} markers - Array of markers
- * @param {HTMLElement[]} messages - Array of current message elements
- * @param {Object} options - Options
- * @returns {Object[]} - Array of { marker, resolvedIndex, status, message }
  */
 export function getValidMarkers(markers, messages, options = {}) {
   return markers
@@ -286,6 +273,7 @@ export default {
   generateSignature,
   generatePreview,
   isUserMessage,
+  getUserMessageElement,
   getUserMessageText,
   createMarkerData,
   resolveMarkerIndex,
