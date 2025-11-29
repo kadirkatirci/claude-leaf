@@ -25,9 +25,9 @@ import { hashString } from './HashUtils.js';
  */
 export function getCleanMessageText(messageEl) {
   if (!messageEl) return '';
-  
+
   const clone = messageEl.cloneNode(true);
-  
+
   const selectorsToRemove = [
     '.emoji-marker-btn',
     '.emoji-marker-badge',
@@ -38,14 +38,60 @@ export function getCleanMessageText(messageEl) {
     '[class*="bookmark"]',
     'button',
     'script',
-    'style'
+    'style',
+    '[aria-label="Edit"]',
+    '[aria-label="Copy"]',
+    '[role="button"]',
+    '.font-mono.text-xs',
+    '.opacity-0', // Hidden accessibility text
+    '.sr-only'    // Screen reader only text
   ];
-  
+
   selectorsToRemove.forEach(selector => {
     clone.querySelectorAll(selector).forEach(el => el.remove());
   });
-  
+
   return clone.textContent.trim();
+}
+
+/**
+ * Calculate Levenshtein distance between two strings
+ * Used for fuzzy matching when exact match fails
+ */
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix = [];
+
+  // increment along the first column of each row
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  // increment each column in the first row
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1 // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
 }
 
 /**
@@ -80,7 +126,7 @@ export function getUserMessageElement(messageEl, allMessages, currentIndex) {
   if (userMsgEl) {
     return { element: userMsgEl, index: currentIndex };
   }
-  
+
   // Find parent user message (look backwards)
   for (let i = currentIndex - 1; i >= 0; i--) {
     const prevUserMsg = allMessages[i]?.querySelector('[data-testid="user-message"]');
@@ -88,7 +134,7 @@ export function getUserMessageElement(messageEl, allMessages, currentIndex) {
       return { element: prevUserMsg, index: i };
     }
   }
-  
+
   return { element: null, index: -1 };
 }
 
@@ -115,29 +161,50 @@ function normalizeForComparison(text, maxLength = 50) {
  */
 export function resolveMarkerIndex(marker, messages, options = {}) {
   const { updateCallback = null, strictMode = false } = options;
-  
+
   if (!marker || !messages || messages.length === 0) {
     return { index: null, status: 'not_found', message: null };
   }
-  
+
   const savedIndex = marker.index;
   const savedSignature = marker.contentSignature;
   const savedPreview = marker.messagePreview || marker.previewText || '';
   const savedUserPreview = marker.userMessagePreview || '';
   const markerIsClaudeResponse = marker.isClaudeResponse || false;
-  
+
   // ============================================
   // Strategy 1: Exact match at saved index
   // ============================================
   if (savedIndex !== undefined && savedIndex >= 0 && savedIndex < messages.length) {
     const messageAtIndex = messages[savedIndex];
     const currentSignature = generateSignature(messageAtIndex);
-    
+
     if (currentSignature === savedSignature) {
       return { index: savedIndex, status: 'exact', message: messageAtIndex };
     }
+
+    // ============================================
+    // Strategy 1.5: Fuzzy Preview match at saved index (Fallback for UI noise)
+    // If signature changed but preview text is SIMILAR at same index -> It's the same message
+    // ============================================
+    if (!strictMode && savedPreview) {
+      const msgPreview = normalizeForComparison(generatePreview(messageAtIndex, 50));
+      const normalizedSavedPreview = normalizeForComparison(savedPreview);
+
+      // Allow up to 20% difference or 5 characters
+      const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
+      const maxDist = Math.max(5, Math.floor(normalizedSavedPreview.length * 0.2));
+
+      if (distance <= maxDist) {
+        // Update signature to match new UI state
+        if (updateCallback) {
+          updateCallback(marker.id, { contentSignature: currentSignature });
+        }
+        return { index: savedIndex, status: 'fuzzy_match_index', message: messageAtIndex };
+      }
+    }
   }
-  
+
   // ============================================
   // Strategy 2: Search by content signature
   // Message content same but index shifted
@@ -145,7 +212,7 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     const msgSignature = generateSignature(msg);
-    
+
     if (msgSignature === savedSignature) {
       if (updateCallback && i !== savedIndex) {
         updateCallback(marker.id, { index: i });
@@ -153,50 +220,54 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
       return { index: i, status: 'signature_match', message: msg };
     }
   }
-  
+
   // ============================================
   // Strategy 3: Fuzzy match by preview text
   // Handles minor content changes
   // ============================================
   if (!strictMode && savedPreview) {
     const normalizedSavedPreview = normalizeForComparison(savedPreview);
-    
+
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
       const msgPreview = normalizeForComparison(generatePreview(msg, 50));
-      
-      if (msgPreview === normalizedSavedPreview) {
+
+      // Use Levenshtein for search as well
+      const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
+      const maxDist = Math.max(5, Math.floor(normalizedSavedPreview.length * 0.2));
+
+      if (distance <= maxDist) {
         const newSignature = generateSignature(msg);
         if (updateCallback) {
           updateCallback(marker.id, { index: i, contentSignature: newSignature });
         }
-        return { index: i, status: 'preview_match', message: msg };
+        return { index: i, status: 'fuzzy_preview_match', message: msg };
       }
     }
   }
-  
+
   // ============================================
   // Strategy 4: For user messages, find by own preview
   // User message content doesn't change in same edit
   // ============================================
   if (!strictMode && savedUserPreview && !markerIsClaudeResponse) {
     const normalizedUserPreview = normalizeForComparison(savedUserPreview);
-    
+
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      
+
       if (isUserMessage(msg)) {
         const userMsgEl = msg.querySelector('[data-testid="user-message"]');
         const userText = getCleanMessageText(userMsgEl);
         const currentUserPreview = normalizeForComparison(userText);
-        
+
         if (currentUserPreview === normalizedUserPreview) {
           const newSignature = generateSignature(msg);
           const newPreview = generatePreview(msg);
-          
+
           if (updateCallback) {
-            updateCallback(marker.id, { 
-              index: i, 
+            updateCallback(marker.id, {
+              index: i,
               contentSignature: newSignature,
               messagePreview: newPreview
             });
@@ -206,13 +277,13 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
       }
     }
   }
-  
+
   // ============================================
   // NO INDEX FALLBACK
   // If content doesn't match, marker is invalid
   // Edit sonrası mesajlar versiyon değişince kaybolmalı
   // ============================================
-  
+
   // Not found - marker's message no longer exists
   console.warn(`[MarkerUtils] Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`);
   return { index: null, status: 'not_found', message: null };
@@ -225,7 +296,7 @@ export function createMarkerData(messageEl, messageIndex, allMessages, extraData
   const messageText = getCleanMessageText(messageEl);
   const userText = getUserMessageText(messageEl, allMessages, messageIndex);
   const isResponse = !isUserMessage(messageEl);
-  
+
   return {
     index: messageIndex,
     contentSignature: generateSignature(messageEl),
@@ -242,12 +313,12 @@ export function createMarkerData(messageEl, messageIndex, allMessages, extraData
  */
 export function resolveAllMarkers(markers, messages, options = {}) {
   const results = new Map();
-  
+
   markers.forEach(marker => {
     const result = resolveMarkerIndex(marker, messages, options);
     results.set(marker.id, result);
   });
-  
+
   return results;
 }
 
