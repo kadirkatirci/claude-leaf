@@ -41,10 +41,10 @@ class SidebarCollapseModule extends BaseModule {
     const maxRetries = 10;
     const retryDelay = 1000;
 
-    // Find sidebar
-    const sidebar = document.querySelector('.flex.flex-col.overflow-y-auto.overflow-x-hidden.relative.px-2.mb-2');
+    // Find sidebar nav to scope our search
+    const sidebarNav = document.querySelector('nav[aria-label="Sidebar"]');
 
-    if (!sidebar) {
+    if (!sidebarNav) {
       if (retryCount < maxRetries) {
         this.log(`⏳ Sidebar bulunamadı, yeniden deneniyor (${retryCount + 1}/${maxRetries})...`);
         setTimeout(() => this.injectIntoSidebar(retryCount + 1), retryDelay);
@@ -54,19 +54,33 @@ class SidebarCollapseModule extends BaseModule {
       return false;
     }
 
+    // Find all headers in the sidebar
+    const headers = Array.from(sidebarNav.querySelectorAll('h3'));
+    let foundAny = false;
+
     // Find Starred section
-    const starredSection = this.findSectionByTitle(sidebar, 'Starred');
-    if (starredSection) {
-      await this.injectChevronToSection('starred', starredSection);
+    const starredHeader = headers.find(h => h.textContent.trim() === 'Starred');
+    if (starredHeader) {
+      const starredSection = starredHeader.closest('.flex.flex-col');
+      if (starredSection) {
+        await this.injectChevronToSection('starred', starredSection);
+        foundAny = true;
+      }
     }
 
     // Find Recent section
-    const recentSection = this.findSectionByTitle(sidebar, 'Recents');
-    if (recentSection) {
-      await this.injectChevronToSection('recent', recentSection);
+    // Recents header might have a "Hide" span inside, so use includes or startsWith
+    const recentHeader = headers.find(h => h.textContent.trim().startsWith('Recents'));
+    if (recentHeader) {
+      // Recents section is usually the one with flex-grow
+      const recentSection = recentHeader.closest('.flex.flex-col');
+      if (recentSection) {
+        await this.injectChevronToSection('recent', recentSection);
+        foundAny = true;
+      }
     }
 
-    if (!starredSection && !recentSection) {
+    if (!foundAny) {
       if (retryCount < maxRetries) {
         this.log(`⏳ Sections bulunamadı, yeniden deneniyor (${retryCount + 1}/${maxRetries})...`);
         setTimeout(() => this.injectIntoSidebar(retryCount + 1), retryDelay);
@@ -81,19 +95,13 @@ class SidebarCollapseModule extends BaseModule {
   }
 
   /**
-   * Find section by header title
+   * Find section by header title - Deprecated but kept for compatibility if needed
    */
   findSectionByTitle(sidebar, title) {
-    const sections = sidebar.querySelectorAll('div.flex.flex-col');
-
-    for (const section of sections) {
-      const header = section.querySelector('h3');
-      if (header && header.textContent.trim() === title) {
-        return section;
-      }
-    }
-
-    return null;
+    // This method is no longer used by the main logic but kept as utility
+    const headers = Array.from(sidebar.querySelectorAll('h3'));
+    const header = headers.find(h => h.textContent.trim().startsWith(title));
+    return header ? header.closest('.flex.flex-col') : null;
   }
 
   /**
