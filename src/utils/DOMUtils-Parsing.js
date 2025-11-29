@@ -4,6 +4,7 @@
  */
 
 import DOMUtilsCore from './DOMUtils-Core.js';
+import { hashString } from './HashUtils.js';
 
 const DOMUtilsParsing = {
   /**
@@ -21,6 +22,10 @@ const DOMUtilsParsing = {
 
     // Get only real messages (excluding sidebar)
     const messageContainers = DOMUtilsCore.findActualMessages();
+
+    // Track hash occurrences to handle duplicate content
+    // Key: userMessageHash, Value: occurrence count
+    const hashOccurrences = new Map();
 
     messageContainers.forEach((container, idx) => {
       // Does this container have a user message?
@@ -53,13 +58,23 @@ const DOMUtilsParsing = {
             // Find edit button (retry button - circular arrow icon)
             const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
 
-            // Generate a stable ID based ONLY on DOM position (index)
-            // IMPORTANT: Do NOT use content in containerId!
-            // When version changes, content changes too, which would create a new containerId
-            // and prevent version change detection.
+            // Generate a STABLE containerId based on user message content
+            // This survives version changes because user message stays the same
             // 
-            // We use only the message index which stays constant across version changes.
-            const containerId = `msg-${idx}`;
+            // Strategy: hash(userMessageContent) + occurrence index
+            // This handles duplicate messages (same user sent same text twice)
+            const userText = userMessage.textContent.trim();
+            const userHash = hashString(userText.substring(0, 200)); // Use first 200 chars
+            
+            // Track occurrence of this hash
+            const occurrence = hashOccurrences.get(userHash) || 0;
+            hashOccurrences.set(userHash, occurrence + 1);
+            
+            // ContainerId format: edit-{hash}-{occurrence}
+            // - hash: ensures same content maps to same base ID
+            // - occurrence: differentiates duplicate messages
+            // - Both together ensure unique, stable IDs across version changes
+            const containerId = `edit-${userHash}-${occurrence}`;
 
             edited.push({
               element: container,
@@ -68,7 +83,9 @@ const DOMUtilsParsing = {
               currentVersion: current,
               totalVersions: total,
               hasEditHistory: true,
-              containerId: containerId
+              containerId: containerId,
+              // Also include DOM index for debugging/fallback
+              domIndex: idx
             });
           }
         }
@@ -219,15 +236,8 @@ const DOMUtilsParsing = {
     const text = this.extractTextContent(element);
     const truncated = text.substring(0, maxLength);
 
-    // Simple hash function
-    let hash = 0;
-    for (let i = 0; i < truncated.length; i++) {
-      const char = truncated.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-
-    return hash.toString(36);
+    // Use HashUtils for consistency
+    return hashString(truncated);
   },
 
   /**

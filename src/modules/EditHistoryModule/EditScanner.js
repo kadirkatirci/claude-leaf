@@ -5,6 +5,12 @@
  * Diğer modüller (Bookmark, EmojiMarker) onVersionChange callback'i
  * kaydederek versiyon değişikliklerini anında alabilir.
  * 
+ * ContainerId Strategy:
+ * - Uses hash of user message content + occurrence index
+ * - This ensures stable IDs across version changes
+ * - User message stays the same even when Claude's response changes
+ * - Occurrence index handles duplicate messages (same user text sent twice)
+ * 
  * Bu yaklaşım EventBus'tan daha güvenilir çünkü:
  * - Senkron callback çağrısı (async event dispatch değil)
  * - Aynı DOM observer'ı paylaşıyor (duplicate observer yok)
@@ -22,16 +28,17 @@ class EditScanner {
     this.observerTimeout = null;
     this.lastCount = 0;
     // Track both container IDs and version info to detect version changes
-    this.lastEditData = new Map(); // Map<containerId, versionInfo>
-    
+    // Key: containerId (hash-based), Value: versionInfo string
+    this.lastEditData = new Map();
+
     // Additional callbacks for version changes (used by Bookmark, EmojiMarker)
     this.versionChangeCallbacks = new Set();
-    
+
     // Store singleton reference
     scannerInstance = this;
     console.log('[EditScanner] 🔧 Singleton instance created');
   }
-  
+
   /**
    * Get the singleton scanner instance
    * Other modules can use this to register for version change notifications
@@ -39,7 +46,7 @@ class EditScanner {
   static getInstance() {
     return scannerInstance;
   }
-  
+
   /**
    * Register a callback for version changes
    * @param {Function} callback - Called with {changeReason, editCount} when version changes
@@ -48,21 +55,21 @@ class EditScanner {
   onVersionChange(callback) {
     this.versionChangeCallbacks.add(callback);
     console.log(`[EditScanner] 📝 Version change callback registered (total: ${this.versionChangeCallbacks.size})`);
-    
+
     // Return unsubscribe function
     return () => {
       this.versionChangeCallbacks.delete(callback);
       console.log(`[EditScanner] 📝 Version change callback removed (total: ${this.versionChangeCallbacks.size})`);
     };
   }
-  
+
   /**
    * Notify all registered version change callbacks
    * Called synchronously for immediate response
    */
   notifyVersionChange(data) {
     console.log(`[EditScanner] 📡 Notifying ${this.versionChangeCallbacks.size} version change callbacks`);
-    
+
     this.versionChangeCallbacks.forEach(callback => {
       try {
         callback(data);
@@ -116,12 +123,12 @@ class EditScanner {
       changeReason = `Count changed: ${this.lastEditData.size} → ${currentEditData.size}`;
     }
 
-    // 2. Check if any container ID is new or removed
+    // 2. Check if any container ID is new (shouldn't happen often with hash-based IDs)
     if (!hasChanges) {
       for (const containerId of currentEditData.keys()) {
         if (!this.lastEditData.has(containerId)) {
           hasChanges = true;
-          changeReason = `New container: ${containerId}`;
+          changeReason = `New edit container: ${containerId}`;
           break;
         }
       }
@@ -136,6 +143,7 @@ class EditScanner {
           hasChanges = true;
           isVersionChange = true; // This is specifically a version change!
           changeReason = `Version changed for ${containerId}: "${lastVersionInfo}" → "${versionInfo}"`;
+          console.log(`[EditScanner] 🔄 VERSION CHANGE DETECTED: ${changeReason}`);
           break;
         }
       }
@@ -145,21 +153,20 @@ class EditScanner {
     if (hasChanges) {
       this.lastCount = editedPrompts.length;
       this.lastEditData = currentEditData;
-      
+
       // Call main callback (EditHistoryModule)
       this.onEditFound(editedPrompts);
-      
-      // If version changed, notify all registered callbacks immediately
-      // This is the key for Bookmark and EmojiMarker to update instantly
-      if (isVersionChange) {
-        console.log(`[EditScanner] 🔄 ${changeReason}`);
-        this.notifyVersionChange({
-          changeReason,
-          editCount: editedPrompts.length,
-          isVersionChange: true
-        });
-      }
-      
+
+      // Notify all registered callbacks for ANY edit-related change
+      // Version changes appear as "new container" because user message content changes
+      console.log(`[EditScanner] 📡 Notifying callbacks for: ${changeReason}`);
+      this.notifyVersionChange({
+        changeReason,
+        editCount: editedPrompts.length,
+        isVersionChange: isVersionChange,
+        isAnyChange: true
+      });
+
       console.log(`[EditScanner] ✅ Changes detected: ${changeReason}`);
     }
   }
@@ -176,10 +183,10 @@ class EditScanner {
     if (this.observerTimeout) {
       clearTimeout(this.observerTimeout);
     }
-    
+
     // Clear callbacks
     this.versionChangeCallbacks.clear();
-    
+
     // Clear singleton
     if (scannerInstance === this) {
       scannerInstance = null;

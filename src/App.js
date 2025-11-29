@@ -11,6 +11,7 @@ import ThemeManager from './managers/ThemeManager.js';
 import KeyboardManager from './managers/KeyboardManager.js';
 import ObserverManager from './managers/ObserverManager.js';
 import { storageSync } from './core/StorageSync.js';
+import MessageRegistry from './core/MessageRegistry.js';
 
 // Import feature modules
 import NavigationModule from './modules/NavigationModule.js';
@@ -155,6 +156,13 @@ class ClaudeProductivityApp {
 
     // Initialize DOM manager
     domManager.init();
+
+    // Initialize MessageRegistry (central message management)
+    // Must be started before modules so they can subscribe to it
+    const messageRegistry = MessageRegistry.getInstance();
+    messageRegistry.start();
+    this.managers.messageRegistry = messageRegistry;
+    console.log('  - MessageRegistry: Ready (central message tracking)');
 
     // STEP 3: Initialize managers with settings
     console.log('📍 [STEP 3/6] Initializing application managers...');
@@ -489,6 +497,12 @@ class ClaudeProductivityApp {
     if (!this.initialized) return;
 
     console.log('🗑️ Stopping Claude Productivity Extension...');
+
+    // Stop MessageRegistry first (other modules may depend on it)
+    if (this.managers.messageRegistry) {
+      this.managers.messageRegistry.stop();
+      this.managers.messageRegistry = null;
+    }
 
     // Destroy all modules
     this.modules.forEach((module, name) => {
