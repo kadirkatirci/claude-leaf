@@ -46,6 +46,7 @@ class BookmarkModule extends BaseModule {
 
     this.setupMessageObserver(async () => {
       await this.addBookmarkButtons();
+      await this.updateUI();
     }, { throttleDelay: 500, trackMessageCount: true, checkConversationPage: true });
 
     if (await this.getSetting('keyboardShortcuts')) {
@@ -54,6 +55,7 @@ class BookmarkModule extends BaseModule {
 
     this.subscribe(Events.MESSAGES_UPDATED, async () => {
       await this.addBookmarkButtons();
+      await this.updateUI();
     });
 
     this.registerForVersionChanges();
@@ -157,7 +159,7 @@ class BookmarkModule extends BaseModule {
     if (messages.length === 0) return;
 
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
-    
+
     // Get currently visible bookmarks (content matched)
     const validBookmarks = getValidMarkers(bookmarks, messages, { strictMode: false });
     const bookmarkedIndices = new Set(validBookmarks.map(item => item.resolvedIndex).filter(i => i !== null));
@@ -177,7 +179,7 @@ class BookmarkModule extends BaseModule {
     const messages = this.dom.findMessages();
     const currentSignature = generateSignature(messageElement);
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
-    
+
     // Find bookmark that matches THIS message's content (not just index)
     const existingBookmark = bookmarks.find(b => b.contentSignature === currentSignature);
 
@@ -192,7 +194,7 @@ class BookmarkModule extends BaseModule {
 
   async addBookmark(messageElement, messageIndex) {
     const fullText = getCleanMessageText(messageElement);
-    
+
     const bookmark = {
       index: messageIndex,
       contentSignature: generateSignature(messageElement),
