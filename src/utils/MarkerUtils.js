@@ -97,7 +97,7 @@ function levenshteinDistance(a, b) {
 /**
  * Generate content signature for a message
  */
-export function generateSignature(messageEl, maxLength = 1000) {
+export function generateSignature(messageEl, maxLength = 5000) {
   const text = getCleanMessageText(messageEl);
   return hashString(text.substring(0, maxLength));
 }
@@ -105,7 +105,7 @@ export function generateSignature(messageEl, maxLength = 1000) {
 /**
  * Generate preview text for a message
  */
-export function generatePreview(messageEl, maxLength = 100) {
+export function generatePreview(messageEl, maxLength = 300) {
   const text = getCleanMessageText(messageEl);
   return text.substring(0, maxLength).trim();
 }
@@ -149,7 +149,7 @@ export function getUserMessageText(messageEl, allMessages, currentIndex) {
 /**
  * Normalize text for comparison (case-insensitive, trimmed, limited length)
  */
-function normalizeForComparison(text, maxLength = 50) {
+function normalizeForComparison(text, maxLength = 300) {
   if (!text) return '';
   return text.toLowerCase().trim().substring(0, maxLength);
 }
@@ -188,12 +188,12 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
     // If signature changed but preview text is SIMILAR at same index -> It's the same message
     // ============================================
     if (!strictMode && savedPreview) {
-      const msgPreview = normalizeForComparison(generatePreview(messageAtIndex, 50));
-      const normalizedSavedPreview = normalizeForComparison(savedPreview);
+      const msgPreview = normalizeForComparison(generatePreview(messageAtIndex, 300), 300);
+      const normalizedSavedPreview = normalizeForComparison(savedPreview, 300);
 
-      // Allow up to 20% difference or 5 characters
+      // Allow up to 20% difference or 10 characters (increased for longer preview)
       const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
-      const maxDist = Math.max(5, Math.floor(normalizedSavedPreview.length * 0.2));
+      const maxDist = Math.max(10, Math.floor(normalizedSavedPreview.length * 0.2));
 
       if (distance <= maxDist) {
         // Update signature to match new UI state
@@ -226,15 +226,15 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   // Handles minor content changes
   // ============================================
   if (!strictMode && savedPreview) {
-    const normalizedSavedPreview = normalizeForComparison(savedPreview);
+    const normalizedSavedPreview = normalizeForComparison(savedPreview, 300);
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      const msgPreview = normalizeForComparison(generatePreview(msg, 50));
+      const msgPreview = normalizeForComparison(generatePreview(msg, 300), 300);
 
       // Use Levenshtein for search as well
       const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
-      const maxDist = Math.max(5, Math.floor(normalizedSavedPreview.length * 0.2));
+      const maxDist = Math.max(10, Math.floor(normalizedSavedPreview.length * 0.2));
 
       if (distance <= maxDist) {
         const newSignature = generateSignature(msg);
@@ -251,7 +251,7 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   // User message content doesn't change in same edit
   // ============================================
   if (!strictMode && savedUserPreview && !markerIsClaudeResponse) {
-    const normalizedUserPreview = normalizeForComparison(savedUserPreview);
+    const normalizedUserPreview = normalizeForComparison(savedUserPreview, 300);
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
@@ -259,7 +259,7 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
       if (isUserMessage(msg)) {
         const userMsgEl = msg.querySelector('[data-testid="user-message"]');
         const userText = getCleanMessageText(userMsgEl);
-        const currentUserPreview = normalizeForComparison(userText);
+        const currentUserPreview = normalizeForComparison(userText, 300);
 
         if (currentUserPreview === normalizedUserPreview) {
           const newSignature = generateSignature(msg);
@@ -300,8 +300,8 @@ export function createMarkerData(messageEl, messageIndex, allMessages, extraData
   return {
     index: messageIndex,
     contentSignature: generateSignature(messageEl),
-    messagePreview: messageText.substring(0, 100).trim(),
-    userMessagePreview: userText.substring(0, 100).trim(),
+    messagePreview: messageText.substring(0, 300).trim(),
+    userMessagePreview: userText.substring(0, 300).trim(),
     isClaudeResponse: isResponse,
     timestamp: Date.now(),
     ...extraData
