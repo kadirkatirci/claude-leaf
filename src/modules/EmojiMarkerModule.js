@@ -1,12 +1,9 @@
 /**
  * EmojiMarkerModule - Emoji-based message marking system
  * 
- * Handles edit version changes: When user changes edit version, message indices
- * may shift. This module uses content-based verification to resolve markers
- * to their correct positions.
- * 
- * Uses EditScanner's direct callback for instant version change detection
- * (same mechanism as EditHistoryModule for reliability).
+ * Markers are tied to specific messages via content signature.
+ * If the message exists, show the marker. If not, don't show it.
+ * NEVER auto-delete - only user can delete.
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
@@ -47,7 +44,6 @@ class EmojiMarkerModule extends BaseModule {
       (markerId) => this.removeMarker(markerId)
     );
     
-    // Will hold unsubscribe function for EditScanner callback
     this.versionChangeUnsubscribe = null;
   }
 
@@ -58,18 +54,14 @@ class EmojiMarkerModule extends BaseModule {
 
       this.log('Emoji Markers başlatılıyor...');
 
-      // Storage type is always 'local' (sync storage removed for simplicity)
       await markerStore.setStorageType('local');
 
-      // Load markers
       const markers = await markerStore.getAll();
       this.log(`${markers.length} marker yüklendi`);
 
-      // Enhance with mixins
       FixedButtonMixin.enhance(this);
       MessageObserverMixin.enhance(this);
 
-      // Create fixed button
       await this.createFixedButton({
         id: 'claude-marker-fixed-btn',
         icon: '📍',
@@ -79,25 +71,16 @@ class EmojiMarkerModule extends BaseModule {
         showCounter: true
       });
 
-      // Setup visibility listener (from mixin)
       this.setupVisibilityListener();
-
-      // Create panel
       this.panel.create();
-
-      // Initial UI update
       await this.updateUI();
 
-      // Listen for message updates (NavigationModule triggers this)
       this.subscribe(Events.MESSAGES_UPDATED, async () => {
         await this.updateUI();
       });
 
-      // Register for edit version changes directly with EditScanner
-      // This is the same mechanism EditHistoryModule uses - no EventBus delay
       this.registerForVersionChanges();
 
-      // Setup message observer (fallback for other changes)
       this.setupMessageObserver(async () => {
         await this.updateUI();
       }, {
@@ -113,61 +96,30 @@ class EmojiMarkerModule extends BaseModule {
     }
   }
 
-  /**
-   * Register for version changes directly with EditScanner
-   * Uses polling to wait for scanner to be available
-   */
   registerForVersionChanges() {
     const tryRegister = () => {
       const scanner = EditScanner.getInstance();
       if (scanner) {
-        this.versionChangeUnsubscribe = scanner.onVersionChange(async (data) => {
-          this.log(`📡 Version change callback: ${data.changeReason}`);
+        this.versionChangeUnsubscribe = scanner.onVersionChange(async () => {
           await this.updateUI();
         });
-        this.log('✅ Registered for EditScanner version changes');
       } else {
-        // Scanner not ready yet, try again
-        this.log('⏳ EditScanner not ready, retrying in 100ms...');
         setTimeout(tryRegister, 100);
       }
     };
-    
     tryRegister();
   }
 
-  /**
-   * Clear UI elements on page change (required for FixedButtonMixin)
-   */
   clearUIElements() {
-    this.log('Clearing marker UI elements');
-
-    // Clear hover buttons
-    if (this.button && typeof this.button.removeAll === 'function') {
-      this.button.removeAll();
-    }
-
-    // Clear badges
-    if (this.badge && typeof this.badge.removeAll === 'function') {
-      this.badge.removeAll();
-    }
-
-    // Clear panel
+    this.button?.removeAll?.();
+    this.badge?.removeAll?.();
     this.panel.updateContent([]);
   }
 
-  /**
-   * Update all UI components
-   * Uses content-based verification to handle edit version changes
-   */
   async updateUI() {
-    // Don't update if not on conversation page
     if (!this.lastConversationState) return;
 
     const allMessages = this.dom.findMessages();
-
-    // Filter: Sadece gerçek mesaj container'larını kullan
-    // Streaming olan mesajları EXCLUDE et (data-is-streaming="true")
     const messages = allMessages.filter(msg => {
       if (msg.hasAttribute('data-is-streaming')) {
         return msg.getAttribute('data-is-streaming') === 'false';
@@ -175,137 +127,89 @@ class EmojiMarkerModule extends BaseModule {
       return true;
     });
 
-    this.log(`UI güncelleniyor: ${messages.length} mesaj bulundu`);
+    const conversationMarkers = await markerStore.getByConversation(window.location.pathname);
 
-    const currentConversationUrl = window.location.pathname;
-    const conversationMarkers = await markerStore.getByConversation(currentConversationUrl);
-
-    // Resolve markers to their current positions using content verification
-    const updateCallback = async (markerId, updates) => {
-      await markerStore.update(markerId, updates);
-      this.log(`🔄 Marker index güncellendi: ${markerId}`, updates);
-    };
-
-    const validMarkers = getValidMarkers(conversationMarkers, messages, { 
-      updateCallback,
-      strictMode: false
-    });
-
-    // Create resolved markers array with updated indices
+    // Only show markers whose messages exist (content match)
+    const validMarkers = getValidMarkers(conversationMarkers, messages, { strictMode: false });
     const resolvedMarkers = validMarkers.map(item => ({
       ...item.marker,
       index: item.resolvedIndex,
       _status: item.status
     }));
 
-    this.log(`📍 Markers resolved: ${resolvedMarkers.length}/${conversationMarkers.length} valid`);
+    this.log(`📍 Markers: ${resolvedMarkers.length} shown / ${conversationMarkers.length} in storage`);
 
-    // Log any markers that couldn't be resolved
-    const invalidCount = conversationMarkers.length - resolvedMarkers.length;
-    if (invalidCount > 0) {
-      this.warn(`⚠️ ${invalidCount} marker(s) could not be resolved`);
-    }
-
-    // Update counter
     this.updateButtonCounter(resolvedMarkers.length);
 
-    // Update badges with resolved markers
     const showBadges = await this.getSetting('showBadges');
     if (showBadges) {
       this.badge.updateAll(messages, resolvedMarkers);
     }
 
-    // Update hover buttons with resolved markers
     const showOnHover = await this.getSetting('showOnHover');
     if (showOnHover) {
       this.button.addToMessages(messages, resolvedMarkers);
     }
 
-    // Update panel with resolved markers
     this.panel.updateContent(resolvedMarkers);
   }
 
-  /**
-   * Wait for messages and update UI with retry mechanism
-   */
   async waitAndUpdateUI() {
-    const maxRetries = 5;
-    const baseDelay = 200;
-    let retryCount = 0;
-
-    const checkForMessages = async () => {
-      const messages = this.dom.findMessages();
-
-      if (messages.length > 0 || retryCount >= maxRetries) {
-        await this.updateUI();
-
-        if (messages.length > 0) {
-          this.log(`✅ Found ${messages.length} messages after ${retryCount} retries`);
-        } else {
-          this.log(`⚠️ No messages found after ${retryCount} retries`);
-        }
-        return;
-      }
-
-      retryCount++;
-      const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
-      this.log(`🔄 Marker retry ${retryCount}/${maxRetries}: Waiting ${delay}ms...`);
-
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return checkForMessages();
-    };
-
-    await checkForMessages();
+    let retries = 0;
+    while (this.dom.findMessages().length === 0 && retries < 5) {
+      await new Promise(r => setTimeout(r, 200 * Math.pow(1.5, retries)));
+      retries++;
+    }
+    await this.updateUI();
   }
 
   /**
-   * Add a new marker
+   * Add marker - checks by content signature to avoid duplicates
    */
   async addMarker(messageEl, messageIndex, emoji) {
-    if (!this.dom.isOnConversationPage()) {
-      this.warn('Cannot add marker - not on conversation page');
+    if (!this.dom.isOnConversationPage()) return;
+
+    const conversationUrl = window.location.pathname;
+    const currentSignature = generateSignature(messageEl);
+    
+    // Check if this exact message already has a marker
+    const existingMarkers = await markerStore.getByConversation(conversationUrl);
+    const existingMarker = existingMarkers.find(m => m.contentSignature === currentSignature);
+    
+    if (existingMarker) {
+      // Update existing marker's emoji instead of adding new
+      this.log(`Marker already exists for this message, updating emoji`);
+      await this.updateMarker(existingMarker.id, emoji);
       return;
     }
 
-    const conversationUrl = window.location.pathname;
     const messageText = getCleanMessageText(messageEl);
-    const messagePreview = messageText.substring(0, 100).trim();
-
     const marker = {
       conversationUrl,
       index: messageIndex,
       emoji,
       timestamp: Date.now(),
-      contentSignature: generateSignature(messageEl),
-      messagePreview,
+      contentSignature: currentSignature,
+      messagePreview: messageText.substring(0, 100).trim(),
     };
 
     await markerStore.add(marker);
-    this.log(`Marker eklendi: ${emoji} at index ${messageIndex}`);
+    this.log(`✅ Marker eklendi: ${emoji} at index ${messageIndex}`);
     await this.updateUI();
   }
 
-  /**
-   * Remove a marker
-   */
   async removeMarker(markerId) {
     await markerStore.remove(markerId);
     this.log(`Marker silindi: ${markerId}`);
     await this.updateUI();
   }
 
-  /**
-   * Update marker emoji
-   */
   async updateMarker(markerId, newEmoji) {
     await markerStore.update(markerId, { emoji: newEmoji });
     this.log(`Marker güncellendi: ${markerId} -> ${newEmoji}`);
     await this.updateUI();
   }
 
-  /**
-   * Scroll to marker
-   */
   scrollToMarker(marker) {
     const messages = this.dom.findMessages();
     const resolved = getValidMarkers([marker], messages, { strictMode: false });
@@ -314,29 +218,13 @@ class EmojiMarkerModule extends BaseModule {
       const messageEl = messages[resolved[0].resolvedIndex];
       DOMUtils.scrollToElement(messageEl, 'center');
       DOMUtils.flashClass(messageEl, 'claude-nav-highlight', 2000);
-      this.log(`Scrolled to marker: ${marker.emoji} at index ${resolved[0].resolvedIndex}`);
-    } else {
-      const messageEl = messages[marker.index];
-      if (messageEl) {
-        DOMUtils.scrollToElement(messageEl, 'center');
-        DOMUtils.flashClass(messageEl, 'claude-nav-highlight', 2000);
-        this.warn(`Scrolled to marker using fallback index: ${marker.index}`);
-      } else {
-        this.warn(`Message not found for marker: ${marker.id}`);
-      }
     }
   }
 
-  /**
-   * Get favorite emojis from settings
-   */
   async getFavoriteEmojis() {
     return await this.getSetting('favoriteEmojis') || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
   }
 
-  /**
-   * Export markers
-   */
   async exportMarkers() {
     const exported = await markerStore.export();
     const dataBlob = new Blob([exported], { type: 'application/json' });
@@ -348,79 +236,43 @@ class EmojiMarkerModule extends BaseModule {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    const markers = await markerStore.getAll();
-    this.log(`${markers.length} markers exported`);
-    return markers.length;
+    return (await markerStore.getAll()).length;
   }
 
-  /**
-   * Import markers
-   */
   async importMarkers() {
-    try {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'application/json';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
 
-      return new Promise((resolve, reject) => {
-        input.onchange = async (e) => {
+    return new Promise((resolve, reject) => {
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return reject(new Error('No file'));
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
           try {
-            const file = e.target.files[0];
-            if (!file) {
-              reject(new Error('No file selected'));
-              return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-              try {
-                const jsonString = event.target.result;
-                const result = await markerStore.import(jsonString, true);
-
-                this.log(`${result.imported} markers imported`);
-                await this.updateUI();
-                resolve(result.imported);
-              } catch (error) {
-                this.error('Import failed:', error);
-                reject(error);
-              }
-            };
-
-            reader.readAsText(file);
+            const result = await markerStore.import(event.target.result, true);
+            await this.updateUI();
+            resolve(result.imported);
           } catch (error) {
             reject(error);
           }
         };
-
-        input.click();
-      });
-    } catch (error) {
-      this.error('Import failed:', error);
-      throw error;
-    }
+        reader.readAsText(file);
+      };
+      input.click();
+    });
   }
 
-  /**
-   * Reload markers from storage
-   */
   async reloadMarkers() {
-    const markers = await markerStore.getAll();
-    this.log(`Reloaded ${markers.length} markers`);
     await this.updateUI();
   }
 
-  /**
-   * Settings değiştiğinde
-   */
   async onSettingsChanged() {
-    this.log('⚙️ Settings değişti');
     await this.updateUI();
   }
 
-  /**
-   * UI'ı yeniden oluştur
-   */
   async recreateUI() {
     this.destroyFixedButton();
     await this.createFixedButton({
@@ -432,32 +284,19 @@ class EmojiMarkerModule extends BaseModule {
       showCounter: true
     });
     this.setupVisibilityListener();
-
     this.panel.remove();
     this.panel.create();
     await this.updateUI();
-    this.log('🎨 UI tema ile yenilendi');
   }
 
-  /**
-   * Modülü durdur
-   */
   destroy() {
-    this.log('🛑 Emoji Markers durduruluyor...');
-
-    // Unsubscribe from version changes
-    if (this.versionChangeUnsubscribe) {
-      this.versionChangeUnsubscribe();
-      this.versionChangeUnsubscribe = null;
-    }
-
+    this.versionChangeUnsubscribe?.();
     this.destroyFixedButton();
     this.button.removeAll();
     this.badge.removeAll();
     this.panel.remove();
     this.emojiPicker.removePicker();
     this.destroyMessageObserver();
-
     super.destroy();
   }
 }

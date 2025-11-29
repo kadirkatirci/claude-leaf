@@ -1,13 +1,14 @@
 /**
  * BookmarkStore - Bookmark management with conversation-aware filtering
- * Uses chrome.storage.local by default (can switch to sync via settings)
+ * 
+ * Bookmarks are identified by content signature, not by index.
+ * This allows different versions of the same conversation to have separate bookmarks.
  */
 
 import { stateManager } from '../core/StateManager.js';
 
 export class BookmarkStore {
   constructor() {
-    // Create store with local adapter (bookmarks can be large)
     this.store = stateManager.createStore('bookmarks', {
       adapter: 'local',
       version: 2,
@@ -17,36 +18,22 @@ export class BookmarkStore {
     });
   }
 
-  /**
-   * Get all bookmarks
-   */
   async getAll() {
     const data = await this.store.get();
     return data.bookmarks || [];
   }
 
-  /**
-   * Get bookmarks for specific conversation
-   * @param {string} conversationUrl - Conversation URL or pathname
-   */
   async getByConversation(conversationUrl) {
     const bookmarks = await this.getAll();
     const normalized = this.normalizeUrl(conversationUrl);
-
     return bookmarks.filter(b => b.conversationUrl === normalized);
   }
 
-  /**
-   * Get bookmark count for conversation
-   */
   async getCountByConversation(conversationUrl) {
     const bookmarks = await this.getByConversation(conversationUrl);
     return bookmarks.length;
   }
 
-  /**
-   * Get bookmark by ID
-   */
   async getById(bookmarkId) {
     const bookmarks = await this.getAll();
     return bookmarks.find(b => b.id === bookmarkId);
@@ -54,14 +41,12 @@ export class BookmarkStore {
 
   /**
    * Add new bookmark
-   * @param {Object} bookmark - Bookmark data
-   * @returns {Promise<Object>} - Created bookmark with ID
+   * Duplicate check is by content signature (not index)
    */
   async add(bookmark) {
     return this.store.update((data) => {
       const bookmarks = data.bookmarks || [];
 
-      // Normalize conversation URL
       const normalized = {
         ...bookmark,
         conversationUrl: this.normalizeUrl(bookmark.conversationUrl),
@@ -69,15 +54,16 @@ export class BookmarkStore {
         createdAt: bookmark.createdAt || new Date().toISOString()
       };
 
-      // Check for duplicates (same conversation + index)
+      // Check for duplicates by CONTENT SIGNATURE (not index)
+      // This allows same index in different versions to have separate bookmarks
       const exists = bookmarks.some(b =>
         b.conversationUrl === normalized.conversationUrl &&
-        b.index === normalized.index
+        b.contentSignature === normalized.contentSignature
       );
 
       if (exists) {
-        console.warn('[BookmarkStore] Bookmark already exists:', normalized);
-        return data; // No change
+        console.warn('[BookmarkStore] Bookmark already exists for this content:', normalized.contentSignature);
+        return data;
       }
 
       return {
@@ -87,16 +73,11 @@ export class BookmarkStore {
     });
   }
 
-  /**
-   * Update bookmark
-   * @param {string} bookmarkId - Bookmark ID
-   * @param {Object} updates - Fields to update
-   */
   async update(bookmarkId, updates) {
     return this.store.update((data) => {
       const bookmarks = data.bookmarks || [];
-
       const index = bookmarks.findIndex(b => b.id === bookmarkId);
+      
       if (index === -1) {
         console.warn('[BookmarkStore] Bookmark not found:', bookmarkId);
         return data;
@@ -109,17 +90,10 @@ export class BookmarkStore {
         updatedAt: new Date().toISOString()
       };
 
-      return {
-        ...data,
-        bookmarks: updated
-      };
+      return { ...data, bookmarks: updated };
     });
   }
 
-  /**
-   * Remove bookmark
-   * @param {string} bookmarkId - Bookmark ID
-   */
   async remove(bookmarkId) {
     return this.store.update((data) => ({
       ...data,
@@ -127,51 +101,27 @@ export class BookmarkStore {
     }));
   }
 
-  /**
-   * Remove all bookmarks for conversation
-   * @param {string} conversationUrl - Conversation URL
-   */
   async removeByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
-
     return this.store.update((data) => ({
       ...data,
       bookmarks: (data.bookmarks || []).filter(b => b.conversationUrl !== normalized)
     }));
   }
 
-  /**
-   * Clear all bookmarks
-   */
   async clear() {
     return this.store.set({ bookmarks: [] });
   }
 
-  /**
-   * Set storage type (local or sync)
-   * Automatically migrates data to new storage
-   * @param {string} type - 'local' or 'sync'
-   */
   async setStorageType(type) {
     if (type !== 'local' && type !== 'sync') {
-      throw new Error(`Invalid storage type: ${type}. Must be 'local' or 'sync'`);
+      throw new Error(`Invalid storage type: ${type}`);
     }
-
-    // Get current data
-    const currentData = await this.store.get();
-
-    // Get new adapter
     const newAdapter = stateManager.adapters[type];
-
-    // Change adapter and migrate data
     await this.store.changeAdapter(newAdapter, true);
-
-    console.log(`[BookmarkStore] Storage type changed to ${type}, data migrated`);
+    console.log(`[BookmarkStore] Storage type changed to ${type}`);
   }
 
-  /**
-   * Get current storage type
-   */
   getStorageType() {
     const adapter = this.store.adapter;
     if (adapter.constructor.name === 'ChromeLocalAdapter') return 'local';
@@ -179,38 +129,22 @@ export class BookmarkStore {
     return 'unknown';
   }
 
-  /**
-   * Subscribe to bookmark changes
-   * @param {Function} callback - Called when bookmarks change
-   */
   subscribe(callback) {
-    return this.store.subscribe((data) => {
-      callback(data.bookmarks || []);
-    });
+    return this.store.subscribe((data) => callback(data.bookmarks || []));
   }
 
-  /**
-   * Export bookmarks
-   */
   async export() {
     const exported = await this.store.export();
     return JSON.stringify(exported, null, 2);
   }
 
-  /**
-   * Import bookmarks
-   * @param {string} jsonString - JSON string of exported bookmarks
-   * @param {boolean} merge - Merge with existing or replace
-   */
   async import(jsonString, merge = true) {
     try {
       const imported = JSON.parse(jsonString);
 
       if (merge) {
-        // Merge by ID (avoid duplicates)
         const current = await this.getAll();
         const existingIds = new Set(current.map(b => b.id));
-
         const newBookmarks = (imported.data.bookmarks || []).filter(b => !existingIds.has(b.id));
 
         if (newBookmarks.length > 0) {
@@ -222,7 +156,6 @@ export class BookmarkStore {
 
         return { success: true, imported: newBookmarks.length, skipped: imported.data.bookmarks.length - newBookmarks.length };
       } else {
-        // Replace all
         await this.store.set({ bookmarks: imported.data.bookmarks || [] });
         return { success: true, imported: imported.data.bookmarks.length };
       }
@@ -232,36 +165,20 @@ export class BookmarkStore {
     }
   }
 
-  /**
-   * Normalize URL to pathname + search
-   * Handles both full URLs and pathnames
-   */
   normalizeUrl(url) {
     if (!url) return '';
-
     try {
-      // If it's already a pathname, return as-is
-      if (url.startsWith('/')) {
-        return url;
-      }
-
-      // Parse full URL
+      if (url.startsWith('/')) return url;
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname + parsed.search;
     } catch (error) {
-      // If parsing fails, return original
-      console.warn('[BookmarkStore] Failed to normalize URL:', url);
       return url;
     }
   }
 
-  /**
-   * Get storage info
-   */
   async getStorageInfo() {
     return this.store.getStorageInfo();
   }
 }
 
-// Singleton instance
 export const bookmarkStore = new BookmarkStore();
