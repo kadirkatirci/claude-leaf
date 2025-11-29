@@ -15,95 +15,107 @@ export class BookmarkSidebar {
    */
   inject(retryCount = 0) {
     const maxRetries = 10;
-
     // Don't inject if already exists
     if (this.elements.section && document.body.contains(this.elements.section)) {
       return true;
     }
 
-    // Strategy 1: Find by "Starred" header
-    // This is the most reliable way as we want to insert right before it
-    const headers = Array.from(document.querySelectorAll('h3'));
-    const starredHeader = headers.find(h => h.textContent.trim() === 'Starred');
+    // Find the container that holds Chats, Projects, etc.
+    const container = document.querySelector('.flex.flex-col.px-2.gap-px.pt-px');
 
-    let targetContainer = null;
-    let insertBeforeElement = null;
-
-    if (starredHeader) {
-      // Found Starred header, get its container (the section)
-      const starredSection = starredHeader.closest('.flex.flex-col');
-      if (starredSection) {
-        targetContainer = starredSection.parentElement;
-        insertBeforeElement = starredSection;
-      }
-    }
-
-    // Strategy 2: Fallback to finding the main sidebar container if Starred not found
-    if (!targetContainer) {
-      const sidebarNav = document.querySelector('nav[aria-label="Sidebar"]');
-      if (sidebarNav) {
-        // Try to find the inner scrollable container
-        // Based on recent HTML: .px-2.mt-4 seems to be the wrapper for sections
-        // But let's look for a generic container inside
-        const potentialContainers = sidebarNav.querySelectorAll('.flex.flex-col');
-        // The one we want usually has other sections
-        for (const container of potentialContainers) {
-          if (container.querySelector('h3')) {
-            targetContainer = container;
-            insertBeforeElement = container.firstChild;
-            break;
-          }
-        }
-      }
-    }
-
-    if (!targetContainer) {
+    if (!container) {
       if (retryCount < maxRetries) {
         setTimeout(() => this.inject(retryCount + 1), 1000);
       }
       return false;
     }
 
-    // Create bookmark section with only header
-    const section = this.dom.createElement('div', {
-      className: 'flex flex-col mb-4', // Updated to match new Claude style (mb-4 instead of mb-6)
+    // Create the bookmark item matching native structure
+    const bookmarkItem = this.dom.createElement('div', {
+      className: 'relative group',
+      'data-state': 'closed'
+    });
+
+    // Create the link
+    const link = this.dom.createElement('a', {
+      className: `inline-flex
+  items-center
+  justify-center
+  relative
+  shrink-0
+  can-focus
+  select-none
+  disabled:pointer-events-none
+  disabled:opacity-50
+  disabled:shadow-none
+  disabled:drop-shadow-none border-transparent
+          transition
+          font-base
+          duration-300
+          ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 rounded-md px-3 min-w-[4rem] active:scale-[0.985] whitespace-nowrap !text-xs w-full overflow-hidden !min-w-0 group py-1.5 rounded-lg px-4 !duration-75 active:bg-bg-300 active:scale-[1.0] Button_ghost__BUAoh`,
+      'aria-label': 'Bookmarks',
+      'data-dd-action-name': 'sidebar-nav-item'
+    });
+
+    // Create inner content wrapper
+    const contentWrapper = this.dom.createElement('div', {
+      className: '-translate-x-2 w-full flex flex-row items-center justify-start gap-3'
+    });
+
+    // Create icon container
+    const iconOuterContainer = this.dom.createElement('div', {
+      className: 'flex items-center justify-center text-text-100'
+    });
+
+    const iconInnerContainer = this.dom.createElement('div', {
+      className: 'flex items-center justify-center group',
       style: {
-        position: 'relative',
+        width: '16px',
+        height: '16px'
       }
     });
 
-    // Header - make it clickable to open bookmarks page
-    const header = this.dom.createElement('h3', {
-      className: 'text-text-300 pb-2 mt-1 text-xs select-none pl-2 sticky top-0 z-10 bg-gradient-to-b from-bg-200 from-50% to-bg-200/40 cursor-pointer hover:text-text-100',
-      'aria-hidden': 'true',
-      style: {
-        pointerEvents: 'auto',
-        transition: 'color 0.2s ease',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-      }
+    // Insert the bookmark icon
+    iconInnerContainer.innerHTML = IconLibrary.bookmarkWithDarkMode();
+    iconOuterContainer.appendChild(iconInnerContainer);
+
+    // Create text container
+    const textContainer = this.dom.createElement('span', {
+      className: 'truncate text-sm whitespace-nowrap flex-1'
     });
 
-    // Add SVG icon and text
-    header.innerHTML = `${IconLibrary.bookmarkWithDarkMode()} <span>Bookmarks</span>`;
+    const textInner = this.dom.createElement('div', {
+      className: 'transition-all duration-200'
+    });
+    textInner.textContent = 'Bookmarks';
 
-    // Make header clickable to open bookmarks page
-    header.addEventListener('click', () => {
+    textContainer.appendChild(textInner);
+
+    // Assemble the content
+    contentWrapper.appendChild(iconOuterContainer);
+    contentWrapper.appendChild(textContainer);
+    link.appendChild(contentWrapper);
+
+    // Add click handler
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
       const bookmarksUrl = chrome.runtime.getURL('bookmarks/bookmarks.html');
       window.open(bookmarksUrl, '_blank');
     });
 
-    section.appendChild(header);
+    // Create the empty hover container (for consistency with native items)
+    const hoverContainer = this.dom.createElement('div', {
+      className: 'absolute right-0 top-1/2 -translate-y-1/2 transition-opacity duration-150 hidden group-hover:block group-focus-within:block opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+    });
 
-    // Insert into DOM
-    if (insertBeforeElement && insertBeforeElement.parentNode === targetContainer) {
-      targetContainer.insertBefore(section, insertBeforeElement);
-    } else {
-      targetContainer.appendChild(section);
-    }
+    // Assemble the bookmark item
+    bookmarkItem.appendChild(link);
+    bookmarkItem.appendChild(hoverContainer);
 
-    this.elements = { section };
+    // Insert at the end of the container
+    container.appendChild(bookmarkItem);
+
+    this.elements = { section: bookmarkItem };
     return true;
   }
 
