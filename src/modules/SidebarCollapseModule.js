@@ -75,8 +75,30 @@ class SidebarCollapseModule extends BaseModule {
       // Recents section is usually the one with flex-grow
       const recentSection = recentHeader.closest('.flex.flex-col');
       if (recentSection) {
-        await this.injectChevronToSection('recent', recentSection);
-        foundAny = true;
+        // Check if list exists, if not, it might be natively collapsed
+        let list = recentSection.querySelector('ul');
+
+        if (!list && recentHeader.getAttribute('aria-expanded') === 'false') {
+          this.log('ℹ️ Recents section natively collapsed, expanding...');
+          recentHeader.click();
+
+          // Wait for list to appear
+          await new Promise(resolve => setTimeout(resolve, 100));
+          list = recentSection.querySelector('ul');
+
+          if (!list) {
+            // Try one more time with longer delay
+            await new Promise(resolve => setTimeout(resolve, 300));
+            list = recentSection.querySelector('ul');
+          }
+        }
+
+        if (list) {
+          await this.injectChevronToSection('recent', recentSection);
+          foundAny = true;
+        } else {
+          this.warn('⚠️ Recents list not found even after expansion attempt');
+        }
       }
     }
 
@@ -119,6 +141,17 @@ class SidebarCollapseModule extends BaseModule {
     // Find the list
     const list = sectionElement.querySelector('ul');
     if (!list) return;
+
+    // Special handling for Recents section: Hide the native "Show/Hide" text
+    if (sectionKey === 'recent') {
+      const nativeToggle = header.querySelector('span');
+      if (nativeToggle) {
+        nativeToggle.style.display = 'none';
+      }
+      // Fix layout to match Starred (remove justify-between spacing)
+      header.style.justifyContent = 'flex-start';
+      header.style.gap = '4px';
+    }
 
     // Get saved state or default to expanded
     const defaultState = await this.getSetting('defaultState') || 'expanded';
