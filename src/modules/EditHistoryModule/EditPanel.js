@@ -54,70 +54,24 @@ class EditPanel extends BasePanel {
 
   createFooter() {
     const footer = DOMUtils.createElement('div');
-    footer.className = 'p-2 border-t border-border-200 flex justify-between bg-bg-100';
+    footer.className = 'p-2 border-t border-border-200 bg-bg-100';
 
-    const exportBtn = DOMUtils.createElement('button', {
-      textContent: 'Export',
-      className: 'px-3 py-1 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors'
+    const mapBtn = DOMUtils.createElement('button', {
+      textContent: '🗺️ Show Chat Branch Map',
+      className: 'w-full px-3 py-2 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors font-medium flex items-center justify-center gap-2'
     });
 
-    const importBtn = DOMUtils.createElement('button', {
-      textContent: 'Import',
-      className: 'px-3 py-1 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors'
+    mapBtn.addEventListener('click', () => {
+      // Dispatch event to open Branch Map Modal
+      // EditHistoryModule will listen for this
+      const event = new CustomEvent('claude:open_branch_map', {
+        detail: { conversationUrl: window.location.pathname }
+      });
+      document.dispatchEvent(event);
     });
 
-    // Hidden file input
-    const fileInput = DOMUtils.createElement('input', {
-      type: 'file',
-      accept: '.json',
-      style: { display: 'none' }
-    });
-
-    exportBtn.addEventListener('click', async () => {
-      try {
-        const json = await editHistoryStore.export();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `claude-edit-history-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error('Export failed:', err);
-        alert('Export failed');
-      }
-    });
-
-    importBtn.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const result = await editHistoryStore.import(event.target.result);
-          if (result.success) {
-            alert(`Import successful! Added ${result.imported} entries.`);
-            // Refresh panel if needed (although it updates on next scan/open)
-          } else {
-            alert('Import failed: ' + result.error);
-          }
-        } catch (err) {
-          console.error('Import error:', err);
-          alert('Import error');
-        }
-        fileInput.value = ''; // Reset
-      };
-      reader.readAsText(file);
-    });
-
-    footer.appendChild(importBtn);
-    footer.appendChild(exportBtn);
+    footer.appendChild(mapBtn);
     this.panel.appendChild(footer);
-    this.panel.appendChild(fileInput);
   }
 
   /**

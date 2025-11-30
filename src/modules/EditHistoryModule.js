@@ -13,6 +13,8 @@ import EditBadge from './EditHistoryModule/EditBadge.js';
 import EditPanel from './EditHistoryModule/EditPanel.js';
 import EditModal from './EditHistoryModule/EditModal.js';
 import EditUI from './EditHistoryModule/EditUI.js';
+import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
+import { editHistoryStore } from '../stores/index.js';
 
 class EditHistoryModule extends BaseModule {
   constructor() {
@@ -28,11 +30,17 @@ class EditHistoryModule extends BaseModule {
     });
     this.panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
     this.modal = new EditModal();
+    this.branchMapModal = new BranchMapModal();
     this.ui = new EditUI(
       () => this.getTheme(),
       () => this.panel.toggle(),
       (shouldCollapse) => this.handleCollapseAll(shouldCollapse)
     );
+
+    // Listen for Branch Map open event
+    document.addEventListener('claude:open_branch_map', (e) => {
+      this.branchMapModal.show(e.detail.conversationUrl);
+    });
   }
 
   async init() {

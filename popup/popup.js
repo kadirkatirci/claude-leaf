@@ -5,13 +5,13 @@ let currentSettings = null;
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup yükleniyor...');
-  
+
   // Settings'i yükle
   await loadSettings();
-  
+
   // Event listener'ları kur
   setupEventListeners();
-  
+
   // Tab switching
   setupTabs();
 });
@@ -55,7 +55,7 @@ async function loadSettings() {
  */
 function deepMerge(target, source) {
   const result = { ...target };
-  
+
   for (const key in source) {
     if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
       result[key] = deepMerge(target[key] || {}, source[key]);
@@ -63,7 +63,7 @@ function deepMerge(target, source) {
       result[key] = source[key];
     }
   }
-  
+
   return result;
 }
 
@@ -156,12 +156,12 @@ function getDefaultSettings() {
 function updateUI() {
   // Navigation settings
   document.getElementById('navigation-enabled').checked = currentSettings.navigation.enabled;
-  
+
   // Edit History settings
   document.getElementById('editHistory-enabled').checked = currentSettings.editHistory.enabled;
   document.getElementById('edit-badges').checked = currentSettings.editHistory.showBadges;
   document.getElementById('edit-highlight').checked = currentSettings.editHistory.highlightEdited;
-  
+
   // Compact View settings
   const compactView = currentSettings.compactView || {};
   document.getElementById('compactView-enabled').checked = compactView.enabled || false;
@@ -433,6 +433,15 @@ function setupEventListeners() {
 
   // Emoji Markers Clear button
   document.getElementById('emojiMarkers-clear-btn').addEventListener('click', clearAllEmojiMarkers);
+
+  // Edit History Export button
+  document.getElementById('editHistory-export-btn').addEventListener('click', exportEditHistory);
+
+  // Edit History Import button
+  document.getElementById('editHistory-import-btn').addEventListener('click', importEditHistory);
+
+  // Edit History Clear button
+  document.getElementById('editHistory-clear-btn').addEventListener('click', clearAllEditHistory);
 }
 
 /**
@@ -1109,3 +1118,138 @@ async function clearAllEmojiMarkers() {
   }
 }
 
+/**
+ * Export Edit History to JSON file
+ */
+async function exportEditHistory() {
+  try {
+    // Load history from Chrome storage (new format)
+    const result = await new Promise((resolve) => {
+      chrome.storage.local.get(['editHistory'], resolve);
+    });
+
+    let history = [];
+    // Store format: { editHistory: { __meta: {...}, history: [...] } }
+    if (result.editHistory && result.editHistory.history) {
+      history = result.editHistory.history;
+    }
+
+    if (history.length === 0) {
+      showToast('Henüz edit geçmişi yok! ⚠️', 'warning');
+      return;
+    }
+
+    // Create JSON file
+    const dataStr = JSON.stringify(history, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+
+    // Download file
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `claude-edit-history-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`${history.length} kayıt export edildi! 📤`, 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Export başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Import Edit History from JSON file
+ */
+async function importEditHistory() {
+  try {
+    // Create file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+
+          if (!Array.isArray(imported)) {
+            throw new Error('Invalid history file format');
+          }
+
+          // Load existing history
+          const result = await new Promise((resolve) => {
+            chrome.storage.local.get(['editHistory'], resolve);
+          });
+
+          let existingHistory = [];
+          if (result.editHistory && result.editHistory.history) {
+            existingHistory = result.editHistory.history;
+          }
+
+          // Merge history (avoid duplicates by ID)
+          const existingIds = new Set(existingHistory.map(h => h.id));
+          const newEntries = imported.filter(h => !existingIds.has(h.id));
+
+          if (newEntries.length === 0) {
+            showToast('Hiçbir yeni kayıt bulunamadı! ⚠️', 'warning');
+            return;
+          }
+
+          const mergedHistory = [...existingHistory, ...newEntries];
+
+          // Save to Chrome storage
+          const storeData = {
+            __meta: result.editHistory?.__meta || {
+              version: 1,
+              createdAt: new Date().toISOString()
+            },
+            history: mergedHistory
+          };
+          storeData.__meta.updatedAt = new Date().toISOString();
+
+          await new Promise((resolve) => {
+            chrome.storage.local.set({ editHistory: storeData }, resolve);
+          });
+
+          showToast(`${newEntries.length} kayıt import edildi! 📥`, 'success');
+
+          // Notify content script? (Not strictly necessary as it reads from store on demand, but good practice)
+        } catch (error) {
+          console.error('Import error:', error);
+          showToast('Import başarısız: Geçersiz dosya! ❌', 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    };
+
+    input.click();
+  } catch (error) {
+    console.error('Import error:', error);
+    showToast('Import başarısız! ❌', 'error');
+  }
+}
+
+/**
+ * Clear all Edit History
+ */
+async function clearAllEditHistory() {
+  if (confirm('Tüm edit geçmişini silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+    try {
+      await new Promise((resolve) => {
+        chrome.storage.local.remove(['editHistory'], resolve);
+      });
+      showToast('Tüm geçmiş silindi! 🗑️', 'success');
+    } catch (error) {
+      console.error('Clear error:', error);
+      showToast('Silme işlemi başarısız! ❌', 'error');
+    }
+  }
+}
