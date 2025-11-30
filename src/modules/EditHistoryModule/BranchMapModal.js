@@ -67,6 +67,8 @@ class BranchMapModal {
         // Content Area (Scrollable)
         const content = DOMUtils.createElement('div');
         content.className = 'flex-1 overflow-auto p-8 bg-bg-000 relative';
+        content.style.overflowX = 'auto';
+        content.style.overflowY = 'auto';
 
         // Render the tree/timeline
         this.renderTimeline(content, history);
@@ -183,10 +185,12 @@ class BranchMapModal {
         // 4. Render the tree
         // We'll use a recursive flexbox layout
         container.innerHTML = '';
-        container.className = 'flex-1 overflow-auto p-8 bg-bg-000 relative min-w-max'; // Ensure horizontal scroll
+        container.className = 'flex-1 overflow-auto p-8 bg-bg-000 relative';
+        container.style.overflowX = 'auto';
+        container.style.overflowY = 'auto';
 
         const treeContainer = DOMUtils.createElement('div');
-        treeContainer.className = 'tree-visualization flex flex-col items-center gap-8';
+        treeContainer.className = 'tree-visualization flex flex-col items-center gap-8 min-w-max min-h-max';
 
         // Render Root's children (Top level messages)
         // If multiple top-level branches, show them side-by-side
@@ -194,20 +198,40 @@ class BranchMapModal {
         rootRow.className = 'flex gap-12 items-start';
 
         treeRoot.children.forEach(childNode => {
-            rootRow.appendChild(this.renderTreeNode(childNode));
+            rootRow.appendChild(this.renderTreeNode(childNode, 0));
         });
 
         treeContainer.appendChild(rootRow);
         container.appendChild(treeContainer);
     }
 
-    renderTreeNode(node) {
+    renderTreeNode(node, depth = 0) {
         const wrapper = DOMUtils.createElement('div');
         wrapper.className = 'flex flex-col items-center gap-4 relative';
 
         // Node Card
         const card = DOMUtils.createElement('div');
-        card.className = 'w-64 p-3 rounded-lg border border-border-200 bg-bg-100 hover:border-accent-main-100 hover:shadow-md transition-all cursor-pointer relative z-10';
+        card.className = 'w-64 p-3 rounded-lg border-2 bg-bg-100 hover:shadow-md transition-all cursor-pointer relative z-10';
+
+        // Add visual indicator for same edit point (same message index)
+        // Extract message index from containerId
+        let msgIndex = -1;
+        if (node.version.containerId.startsWith('edit-index-')) {
+            msgIndex = parseInt(node.version.containerId.replace('edit-index-', ''));
+        }
+
+        // Color code by message index (modulo for cycling colors)
+        const colors = [
+            'rgb(96, 165, 250)',   // blue-400
+            'rgb(74, 222, 128)',   // green-400
+            'rgb(192, 132, 252)',  // purple-400
+            'rgb(251, 146, 60)',   // orange-400
+            'rgb(244, 114, 182)',  // pink-400
+            'rgb(34, 211, 238)'    // cyan-400
+        ];
+        const borderColor = msgIndex >= 0 ? colors[msgIndex % colors.length] : 'rgb(229, 231, 235)';
+        card.style.borderColor = borderColor;
+        card.style.borderWidth = '2px';
 
         const header = DOMUtils.createElement('div');
         header.className = 'flex justify-between items-center mb-2';
@@ -230,11 +254,12 @@ class BranchMapModal {
         card.appendChild(header);
         card.appendChild(preview);
 
-        card.addEventListener('click', () => {
+        // Click to navigate (but not if clicking collapse button)
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.collapse-btn')) return;
             this.scrollToMessage(node.version.containerId);
             this.hide();
         });
-
         wrapper.appendChild(card);
 
         // Children
@@ -243,7 +268,31 @@ class BranchMapModal {
             node.children.sort((a, b) => a.version.timestamp - b.version.timestamp);
 
             const childrenWrapper = DOMUtils.createElement('div');
-            childrenWrapper.className = 'flex gap-8 items-start pt-8 relative';
+            childrenWrapper.className = 'flex gap-8 items-start pt-8 relative transition-all duration-300';
+            childrenWrapper.dataset.nodeId = node.id;
+
+            // Collapse/Expand button
+            const collapseBtn = DOMUtils.createElement('button');
+            collapseBtn.className = 'collapse-btn absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-bg-200 hover:bg-accent-main-100 hover:text-white border border-border-300 flex items-center justify-center text-xs font-bold transition-colors z-20';
+            collapseBtn.innerHTML = '−'; // Minus sign
+            collapseBtn.title = 'Collapse children';
+
+            collapseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isCollapsed = childrenWrapper.classList.contains('hidden');
+
+                if (isCollapsed) {
+                    childrenWrapper.classList.remove('hidden');
+                    collapseBtn.innerHTML = '−';
+                    collapseBtn.title = 'Collapse children';
+                } else {
+                    childrenWrapper.classList.add('hidden');
+                    collapseBtn.innerHTML = '+';
+                    collapseBtn.title = 'Expand children';
+                }
+            });
+
+            wrapper.appendChild(collapseBtn);
 
             // Vertical line from parent to children wrapper
             const vLine = DOMUtils.createElement('div');
@@ -254,15 +303,11 @@ class BranchMapModal {
             if (node.children.length > 1) {
                 const hBar = DOMUtils.createElement('div');
                 hBar.className = 'absolute top-8 left-0 right-0 h-0.5 bg-border-300';
-                // Adjust width to cover centers of first and last child
-                // This is hard to do with pure CSS without knowing widths.
-                // Instead, we can use ::before on children to draw lines up to the bar.
-                // Let's use a simpler approach:
-                // Each child has a top line.
+                childrenWrapper.appendChild(hBar);
             }
 
             node.children.forEach((child, idx) => {
-                const childEl = this.renderTreeNode(child);
+                const childEl = this.renderTreeNode(child, depth + 1);
 
                 // Add connector lines
                 // Vertical line above child
