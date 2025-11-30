@@ -58,23 +58,10 @@ const DOMUtilsParsing = {
             // Find edit button (retry button - circular arrow icon)
             const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
 
-            // Generate a STABLE containerId based on user message content
-            // This survives version changes because user message stays the same
-            // 
-            // Strategy: hash(userMessageContent) + occurrence index
-            // This handles duplicate messages (same user sent same text twice)
-            const userText = userMessage.textContent.trim();
-            const userHash = hashString(userText.substring(0, 200)); // Use first 200 chars
-            
-            // Track occurrence of this hash
-            const occurrence = hashOccurrences.get(userHash) || 0;
-            hashOccurrences.set(userHash, occurrence + 1);
-            
-            // ContainerId format: edit-{hash}-{occurrence}
-            // - hash: ensures same content maps to same base ID
-            // - occurrence: differentiates duplicate messages
-            // - Both together ensure unique, stable IDs across version changes
-            const containerId = `edit-${userHash}-${occurrence}`;
+            // Generate a STABLE containerId based on message INDEX
+            // This ensures the ID remains constant even when content is edited
+            // which is crucial for tracking history across versions.
+            const containerId = `edit-index-${idx}`;
 
             edited.push({
               element: container,

@@ -22,7 +22,10 @@ class EditHistoryModule extends BaseModule {
 
     // Alt bileşenler
     this.scanner = new EditScanner((edits) => this.handleEditsFound(edits));
-    this.badge = new EditBadge(() => this.getTheme(), (el, ver) => this.modal.show(el, ver));
+    this.badge = new EditBadge(() => this.getTheme(), (el, data) => {
+      // data is now the editInfo object
+      this.modal.show(el, data?.versionInfo, data?.containerId);
+    });
     this.panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
     this.modal = new EditModal();
     this.ui = new EditUI(

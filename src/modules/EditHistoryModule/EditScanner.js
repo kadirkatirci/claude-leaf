@@ -11,6 +11,7 @@
  * - Debounce ile çoklu tetiklemeleri önleme
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { editHistoryStore } from '../../stores/index.js';
 
 // Singleton instance for shared access
 let scannerInstance = null;
@@ -23,7 +24,7 @@ class EditScanner {
     this.lastCount = 0;
     this.lastEditData = new Map();
     this.versionChangeCallbacks = new Set();
-    
+
     // Race condition prevention
     this.isScanning = false;
     this.pendingScan = false;
@@ -168,6 +169,9 @@ class EditScanner {
         // Call main callback (sync)
         this.onEditFound(editedPrompts);
 
+        // Capture content for history
+        this.captureHistory(editedPrompts);
+
         // Wait for DOM to stabilize after version change
         if (isVersionChange) {
           await this.waitForDOMStabilization();
@@ -235,6 +239,35 @@ class EditScanner {
 
       checkStability();
     });
+  }
+
+  /**
+   * Capture content for history storage
+   */
+  async captureHistory(editedPrompts) {
+    try {
+      const conversationUrl = window.location.pathname;
+
+      for (const edit of editedPrompts) {
+        // Extract text content
+        const userMessage = edit.element.querySelector('[data-testid="user-message"]');
+        if (!userMessage) continue;
+
+        const content = userMessage.textContent.trim();
+
+        // Add to store
+        await editHistoryStore.addOrUpdate({
+          conversationUrl,
+          containerId: edit.containerId,
+          messageIndex: edit.domIndex, // Fallback
+          content,
+          versionLabel: edit.versionInfo, // e.g. "2 / 3"
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      console.error('[EditScanner] Failed to capture history:', error);
+    }
   }
 
   stop() {

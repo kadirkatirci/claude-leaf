@@ -26,7 +26,7 @@ class EditBadge {
 
     // Use MessageBadge's updateAll
     const elementsSet = new Set(editedPrompts.map(e => e.element));
-    const editMap = new Map(editedPrompts.map(e => [e.element, e.versionInfo]));
+    const editMap = new Map(editedPrompts.map(e => [e.element, e]));
 
     this.badge.updateAll(
       editedPrompts.map(e => e.element),
@@ -38,7 +38,8 @@ class EditBadge {
   /**
    * Get badge options for an element
    */
-  getBadgeOptions(element, versionInfo) {
+  getBadgeOptions(element, editInfo) {
+    const versionInfo = editInfo?.versionInfo || '';
     return {
       className: cn(
         'claude-edit-badge',
@@ -63,7 +64,7 @@ class EditBadge {
       title: 'Click to see edit history',
       position: { top: '-35px', right: '8px' },
       style: {},
-      data: versionInfo,
+      data: editInfo, // Pass full edit info object
       setParentPosition: true
     };
   }
@@ -72,7 +73,8 @@ class EditBadge {
    * Tek bir badge ekle veya güncelle
    */
   add(messageElement, versionInfo = '') {
-    const options = this.getBadgeOptions(messageElement, versionInfo);
+    // Legacy support or simple usage
+    const options = this.getBadgeOptions(messageElement, { versionInfo });
     this.badge.create(messageElement, options);
   }
 

@@ -5,6 +5,7 @@
 import BasePanel from '../../core/BasePanel.js';
 import DOMUtils from '../../utils/DOMUtils.js';
 import { cn, cardClass, textClass } from '../../utils/ClassNames.js';
+import { editHistoryStore } from '../../stores/index.js';
 
 class EditPanel extends BasePanel {
   constructor(getTheme, onItemClick) {
@@ -41,7 +42,82 @@ class EditPanel extends BasePanel {
       this.content.className = 'p-2 overflow-y-auto flex-1 bg-bg-000';
     }
 
+    if (this.content) {
+      this.content.className = 'p-2 overflow-y-auto flex-1 bg-bg-000';
+    }
+
+    // Add Footer with Import/Export
+    this.createFooter();
+
     return this.panel;
+  }
+
+  createFooter() {
+    const footer = DOMUtils.createElement('div');
+    footer.className = 'p-2 border-t border-border-200 flex justify-between bg-bg-100';
+
+    const exportBtn = DOMUtils.createElement('button', {
+      textContent: 'Export',
+      className: 'px-3 py-1 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors'
+    });
+
+    const importBtn = DOMUtils.createElement('button', {
+      textContent: 'Import',
+      className: 'px-3 py-1 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors'
+    });
+
+    // Hidden file input
+    const fileInput = DOMUtils.createElement('input', {
+      type: 'file',
+      accept: '.json',
+      style: { display: 'none' }
+    });
+
+    exportBtn.addEventListener('click', async () => {
+      try {
+        const json = await editHistoryStore.export();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `claude-edit-history-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Export failed:', err);
+        alert('Export failed');
+      }
+    });
+
+    importBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const result = await editHistoryStore.import(event.target.result);
+          if (result.success) {
+            alert(`Import successful! Added ${result.imported} entries.`);
+            // Refresh panel if needed (although it updates on next scan/open)
+          } else {
+            alert('Import failed: ' + result.error);
+          }
+        } catch (err) {
+          console.error('Import error:', err);
+          alert('Import error');
+        }
+        fileInput.value = ''; // Reset
+      };
+      reader.readAsText(file);
+    });
+
+    footer.appendChild(importBtn);
+    footer.appendChild(exportBtn);
+    this.panel.appendChild(footer);
+    this.panel.appendChild(fileInput);
   }
 
   /**
