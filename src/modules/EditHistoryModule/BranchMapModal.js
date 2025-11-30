@@ -39,14 +39,14 @@ class BranchMapModal {
     createModal(history) {
         // Overlay
         this.overlay = DOMUtils.createElement('div');
-        this.overlay.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-8 backdrop-blur-sm';
+        this.overlay.className = 'fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-8 backdrop-blur-sm';
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay) this.hide();
         });
 
         // Modal Container
         this.modal = DOMUtils.createElement('div');
-        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col border border-border-200 overflow-hidden';
+        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-[800px] max-w-[90vw] h-[600px] max-h-[80vh] flex flex-col border border-border-200 overflow-hidden';
 
         // Header
         const header = DOMUtils.createElement('div');

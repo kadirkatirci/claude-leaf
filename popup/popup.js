@@ -6,14 +6,18 @@ let currentSettings = null;
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup yükleniyor...');
 
+  // Tab switching (Run immediately so UI is responsive)
+  setupTabs();
+
   // Settings'i yükle
-  await loadSettings();
+  try {
+    await loadSettings();
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+  }
 
   // Event listener'ları kur
   setupEventListeners();
-
-  // Tab switching
-  setupTabs();
 });
 
 /**
