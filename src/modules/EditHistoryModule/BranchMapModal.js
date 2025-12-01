@@ -1,5 +1,7 @@
 import DOMUtils from '../../utils/DOMUtils.js';
 import { editHistoryStore } from '../../stores/index.js';
+import TreeBuilder from './TreeBuilder.js';
+import * as d3 from 'd3';
 
 class BranchMapModal {
     constructor() {
@@ -11,15 +13,17 @@ class BranchMapModal {
     async show(conversationUrl) {
         if (this.isVisible) return;
 
-        // Fetch all history for this conversation
-        const history = await editHistoryStore.getByConversation(conversationUrl);
+        // Fetch all snapshots for this conversation
+        const snapshots = await editHistoryStore.getSnapshots(conversationUrl);
 
-        if (!history || history.length === 0) {
-            alert('No edit history found for this conversation.');
+        if (!snapshots || snapshots.length === 0) {
+            alert('No snapshots found. Please navigate through the conversation to capture snapshots.');
             return;
         }
 
-        this.createModal(history);
+        console.log(`[BranchMapModal] Loaded ${snapshots.length} snapshots`);
+
+        this.createModal(snapshots);
         this.isVisible = true;
         document.body.style.overflow = 'hidden';
     }
@@ -36,7 +40,7 @@ class BranchMapModal {
         document.body.style.overflow = '';
     }
 
-    createModal(history) {
+    createModal(snapshots) {
         // Overlay
         this.overlay = DOMUtils.createElement('div');
         this.overlay.className = 'fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-8 backdrop-blur-sm';
@@ -46,7 +50,7 @@ class BranchMapModal {
 
         // Modal Container
         this.modal = DOMUtils.createElement('div');
-        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-[800px] max-w-[90vw] h-[600px] max-h-[80vh] flex flex-col border border-border-200 overflow-hidden';
+        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-[90vw] max-w-[1200px] h-[80vh] flex flex-col border border-border-200 overflow-hidden';
 
         // Header
         const header = DOMUtils.createElement('div');
@@ -54,7 +58,7 @@ class BranchMapModal {
 
         const title = DOMUtils.createElement('h2');
         title.className = 'text-lg font-semibold text-text-100 flex items-center gap-2';
-        title.innerHTML = '🗺️ Chat Branch Map <span class="text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full">' + history.length + ' edits</span>';
+        title.innerHTML = `🗺️ Chat Branch Map <span class="text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full">${snapshots.length} snapshots</span>`;
 
         const closeBtn = DOMUtils.createElement('button');
         closeBtn.className = 'p-2 hover:bg-bg-200 rounded-lg transition-colors text-text-300 hover:text-text-100';
@@ -64,277 +68,172 @@ class BranchMapModal {
         header.appendChild(title);
         header.appendChild(closeBtn);
 
-        // Content Area (Scrollable)
+        // Content Area (SVG Container)
         const content = DOMUtils.createElement('div');
-        content.className = 'flex-1 overflow-auto p-8 bg-bg-000 relative';
-        content.style.overflowX = 'auto';
-        content.style.overflowY = 'auto';
-
-        // Render the tree/timeline
-        this.renderTimeline(content, history);
+        content.className = 'flex-1 overflow-hidden bg-bg-000 relative';
+        content.id = 'branch-map-content';
 
         this.modal.appendChild(header);
         this.modal.appendChild(content);
         this.overlay.appendChild(this.modal);
         document.body.appendChild(this.overlay);
+
+        // Render the tree AFTER the modal is in the DOM
+        // This ensures container has proper dimensions
+        requestAnimationFrame(() => {
+            try {
+                this.renderD3Tree(content, snapshots);
+            } catch (error) {
+                console.error('[BranchMapModal] Render error:', error);
+                content.innerHTML = `<div class="p-8 text-center text-text-300">
+                    <p>Failed to render tree</p>
+                    <p class="text-xs mt-2">${error.message}</p>
+                </div>`;
+            }
+        });
     }
 
-    renderTimeline(container, history) {
-        // 1. Group by message index (using containerId 'edit-index-N')
-        const messageGroups = new Map(); // Index -> Array of versions
+    renderD3Tree(container, snapshots) {
+        // Build layers from snapshots
+        const builder = new TreeBuilder(snapshots);
+        const data = builder.build();
 
-        history.forEach(item => {
-            let index = -1;
-            if (item.containerId.startsWith('edit-index-')) {
-                index = parseInt(item.containerId.replace('edit-index-', ''));
-            } else {
-                // Fallback for legacy IDs or unknown format
-                // We'll group them under a special index
-                index = 9999;
-            }
+        console.log('[BranchMapModal] Layers:', data.layers.length);
 
-            if (!messageGroups.has(index)) {
-                messageGroups.set(index, []);
-            }
-            messageGroups.get(index).push(item);
-        });
+        // Set up SVG dimensions
+        const modalHeight = this.modal.clientHeight || 800;
+        const modalWidth = this.modal.clientWidth || 1200;
 
-        // 2. Sort groups by index
-        const sortedIndices = Array.from(messageGroups.keys()).sort((a, b) => a - b);
+        const width = Math.max(modalWidth * 0.9, 800);
+        const height = Math.max(modalHeight * 0.7, 500);
 
-        // 3. Build the tree structure
-        // We want to visualize a "Conversation Tree".
-        // Root -> Msg 0 v1 -> Msg 2 v1
-        //                  -> Msg 2 v2
-        //       -> Msg 0 v2 -> (No children yet)
+        console.log('[BranchMapModal] SVG dimensions:', width, 'x', height);
 
-        // Since we don't have explicit parent links, we infer them by timestamp.
-        // A version V of Msg N is a child of the version of Msg N-1 that was "active" at V.timestamp.
-
-        const treeRoot = { id: 'root', children: [], version: null };
-
-        // Helper to find active version of a message at a given time
-        const findActiveVersion = (msgIndex, timestamp) => {
-            if (msgIndex < 0) return treeRoot;
-            const versions = messageGroups.get(msgIndex);
-            if (!versions) return null; // Should not happen if logic is correct
-
-            // Find version with max timestamp < given timestamp
-            let active = null;
-            for (const v of versions) {
-                if (v.timestamp < timestamp) {
-                    if (!active || v.timestamp > active.timestamp) {
-                        active = v;
-                    }
-                }
-            }
-            return active;
-        };
-
-        // We need to process messages in order.
-        // But actually, we need to process *versions* in order of creation to build the tree?
-        // No, we can link them post-hoc.
-
-        // Map version ID (or object) to its Node
-        const nodeMap = new Map();
-        nodeMap.set('root', treeRoot);
-
-        // Create nodes for all versions
-        history.forEach(v => {
-            nodeMap.set(v.id || v.timestamp, { // Use ID or timestamp as key
-                id: v.id || v.timestamp,
-                version: v,
-                children: []
-            });
-        });
-
-        // Link nodes
-        sortedIndices.forEach((index, i) => {
-            const versions = messageGroups.get(index);
-            const prevIndex = i > 0 ? sortedIndices[i - 1] : -1;
-
-            versions.forEach(v => {
-                const node = nodeMap.get(v.id || v.timestamp);
-
-                if (prevIndex === -1) {
-                    // First message, link to root
-                    treeRoot.children.push(node);
-                } else {
-                    // Find parent in previous message group
-                    // Note: We need to find the specific VERSION of the previous message
-                    // that was active when THIS version was created.
-                    // However, if the previous message group has NO versions created before this one...
-                    // (e.g. we edited Msg 2 BEFORE we ever edited Msg 0? Possible if we only capture edits)
-                    // If we only capture edits, we might miss the "original" unedited version.
-                    // In that case, we just link to the closest available parent or Root?
-
-                    // Let's try to find a parent in the previous group
-                    const parentVersion = findActiveVersion(prevIndex, v.timestamp);
-
-                    if (parentVersion) {
-                        const parentNode = nodeMap.get(parentVersion.id || parentVersion.timestamp);
-                        parentNode.children.push(node);
-                    } else {
-                        // Orphan? Link to root for now to ensure visibility
-                        treeRoot.children.push(node);
-                    }
-                }
-            });
-        });
-
-        // 4. Render the tree
-        // We'll use a recursive flexbox layout
-        container.innerHTML = '';
-        container.className = 'flex-1 overflow-auto p-8 bg-bg-000 relative';
-        container.style.overflowX = 'auto';
-        container.style.overflowY = 'auto';
-
-        const treeContainer = DOMUtils.createElement('div');
-        treeContainer.className = 'tree-visualization flex flex-col items-center gap-8 min-w-max min-h-max';
-
-        // Render Root's children (Top level messages)
-        // If multiple top-level branches, show them side-by-side
-        const rootRow = DOMUtils.createElement('div');
-        rootRow.className = 'flex gap-12 items-start';
-
-        treeRoot.children.forEach(childNode => {
-            rootRow.appendChild(this.renderTreeNode(childNode, 0));
-        });
-
-        treeContainer.appendChild(rootRow);
-        container.appendChild(treeContainer);
-    }
-
-    renderTreeNode(node, depth = 0) {
-        const wrapper = DOMUtils.createElement('div');
-        wrapper.className = 'flex flex-col items-center gap-4 relative';
-
-        // Node Card
-        const card = DOMUtils.createElement('div');
-        card.className = 'w-64 p-3 rounded-lg border-2 bg-bg-100 hover:shadow-md transition-all cursor-pointer relative z-10';
-
-        // Add visual indicator for same edit point (same message index)
-        // Extract message index from containerId
-        let msgIndex = -1;
-        if (node.version.containerId.startsWith('edit-index-')) {
-            msgIndex = parseInt(node.version.containerId.replace('edit-index-', ''));
+        if (width < 100 || height < 100) {
+            console.error('[BranchMapModal] Invalid dimensions, container not ready');
+            return;
         }
 
-        // Color code by message index (modulo for cycling colors)
-        const colors = [
-            'rgb(96, 165, 250)',   // blue-400
-            'rgb(74, 222, 128)',   // green-400
-            'rgb(192, 132, 252)',  // purple-400
-            'rgb(251, 146, 60)',   // orange-400
-            'rgb(244, 114, 182)',  // pink-400
-            'rgb(34, 211, 238)'    // cyan-400
-        ];
-        const borderColor = msgIndex >= 0 ? colors[msgIndex % colors.length] : 'rgb(229, 231, 235)';
-        card.style.borderColor = borderColor;
-        card.style.borderWidth = '2px';
+        // Create SVG
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .style('background', 'var(--bg-000)');
 
-        const header = DOMUtils.createElement('div');
-        header.className = 'flex justify-between items-center mb-2';
+        console.log('[BranchMapModal] SVG created');
 
-        const badge = DOMUtils.createElement('span');
-        badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-accent-main-100 text-white';
-        badge.textContent = node.version.versionLabel;
+        // Create a group for zoom/pan
+        const g = svg.append('g');
 
-        const time = DOMUtils.createElement('span');
-        time.className = 'text-[10px] text-text-400';
-        time.textContent = new Date(node.version.timestamp).toLocaleTimeString();
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 3])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
 
-        header.appendChild(badge);
-        header.appendChild(time);
+        svg.call(zoom);
 
-        const preview = DOMUtils.createElement('div');
-        preview.className = 'text-xs text-text-200 line-clamp-3 font-mono bg-bg-200 p-2 rounded';
-        preview.textContent = node.version.content;
+        // Calculate layout
+        const layerHeight = height / (data.layers.length + 1);
+        const nodeSpacing = 80;
 
-        card.appendChild(header);
-        card.appendChild(preview);
+        // Draw layers
+        data.layers.forEach((layer, layerIndex) => {
+            const y = (layerIndex + 1) * layerHeight;
+            const totalWidth = layer.nodes.length * nodeSpacing;
+            const startX = (width - totalWidth) / 2;
 
-        // Click to navigate (but not if clicking collapse button)
-        card.addEventListener('click', (e) => {
-            if (e.target.closest('.collapse-btn')) return;
-            this.scrollToMessage(node.version.containerId);
-            this.hide();
+            // Draw layer label
+            g.append('text')
+                .attr('x', 20)
+                .attr('y', y)
+                .attr('fill', 'var(--text-300)')
+                .attr('font-size', '10px')
+                .text(`Snapshot ${layerIndex + 1}`);
+
+            // Draw nodes in this layer
+            layer.nodes.forEach((node, nodeIndex) => {
+                const x = startX + (nodeIndex + 0.5) * nodeSpacing;
+
+                // Node group
+                const nodeGroup = g.append('g')
+                    .attr('class', 'node')
+                    .attr('transform', `translate(${x},${y})`)
+                    .style('cursor', 'pointer');
+
+                // Node circle
+                const colors = ['#60a5fa', '#4ade80', '#c084fc', '#fb923c', '#f472b6', '#22d3ee'];
+                const color = colors[node.messageIndex % colors.length];
+
+                nodeGroup.append('circle')
+                    .attr('r', 12)
+                    .attr('fill', color)
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 2);
+
+                // Node label
+                nodeGroup.append('text')
+                    .attr('dy', -20)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', 'var(--text-100)')
+                    .attr('font-size', '11px')
+                    .attr('font-weight', 'bold')
+                    .text(node.version);
+
+                // Content preview on hover
+                nodeGroup.append('title')
+                    .text(node.contentPreview || 'No preview');
+
+                // Click to navigate
+                nodeGroup.on('click', () => {
+                    this.scrollToMessage(node.containerId);
+                    this.hide();
+                });
+
+                // Store position for edge drawing
+                node.x = x;
+                node.y = y;
+            });
         });
-        wrapper.appendChild(card);
 
-        // Children
-        if (node.children.length > 0) {
-            // Sort children by timestamp
-            node.children.sort((a, b) => a.version.timestamp - b.version.timestamp);
+        // Draw edges between layers
+        for (let i = 0; i < data.layers.length - 1; i++) {
+            const currentLayer = data.layers[i];
+            const nextLayer = data.layers[i + 1];
 
-            const childrenWrapper = DOMUtils.createElement('div');
-            childrenWrapper.className = 'flex gap-8 items-start pt-8 relative transition-all duration-300';
-            childrenWrapper.dataset.nodeId = node.id;
+            // For each node in current layer, find matching nodes in next layer
+            currentLayer.nodes.forEach(currentNode => {
+                nextLayer.nodes.forEach(nextNode => {
+                    // Draw edge if same message (different version) or sequential messages
+                    const shouldConnect =
+                        currentNode.containerId === nextNode.containerId || // Same message, different version
+                        currentNode.messageIndex < nextNode.messageIndex; // Sequential
 
-            // Collapse/Expand button
-            const collapseBtn = DOMUtils.createElement('button');
-            collapseBtn.className = 'collapse-btn absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-bg-200 hover:bg-accent-main-100 hover:text-white border border-border-300 flex items-center justify-center text-xs font-bold transition-colors z-20';
-            collapseBtn.innerHTML = '−'; // Minus sign
-            collapseBtn.title = 'Collapse children';
-
-            collapseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isCollapsed = childrenWrapper.classList.contains('hidden');
-
-                if (isCollapsed) {
-                    childrenWrapper.classList.remove('hidden');
-                    collapseBtn.innerHTML = '−';
-                    collapseBtn.title = 'Collapse children';
-                } else {
-                    childrenWrapper.classList.add('hidden');
-                    collapseBtn.innerHTML = '+';
-                    collapseBtn.title = 'Expand children';
-                }
+                    if (shouldConnect) {
+                        g.append('line')
+                            .attr('x1', currentNode.x)
+                            .attr('y1', currentNode.y)
+                            .attr('x2', nextNode.x)
+                            .attr('y2', nextNode.y)
+                            .attr('stroke', 'var(--border-300)')
+                            .attr('stroke-width', 1.5)
+                            .attr('stroke-opacity', 0.4)
+                            .lower(); // Send to back
+                    }
+                });
             });
-
-            wrapper.appendChild(collapseBtn);
-
-            // Vertical line from parent to children wrapper
-            const vLine = DOMUtils.createElement('div');
-            vLine.className = 'absolute top-0 left-1/2 w-0.5 h-8 bg-border-300 -translate-x-1/2';
-            childrenWrapper.appendChild(vLine);
-
-            // Horizontal bar connecting children
-            if (node.children.length > 1) {
-                const hBar = DOMUtils.createElement('div');
-                hBar.className = 'absolute top-8 left-0 right-0 h-0.5 bg-border-300';
-                childrenWrapper.appendChild(hBar);
-            }
-
-            node.children.forEach((child, idx) => {
-                const childEl = this.renderTreeNode(child, depth + 1);
-
-                // Add connector lines
-                // Vertical line above child
-                const childLine = DOMUtils.createElement('div');
-                childLine.className = 'absolute -top-8 left-1/2 w-0.5 h-8 bg-border-300 -translate-x-1/2';
-                // We can't easily append this to childEl wrapper without breaking layout flow?
-                // Actually, we can put it inside the child wrapper at the top.
-
-                // Let's use a different CSS strategy for tree lines
-                childEl.classList.add('tree-node');
-                childrenWrapper.appendChild(childEl);
-            });
-
-            wrapper.appendChild(childrenWrapper);
         }
 
-        return wrapper;
+        // Center the view
+        const initialTransform = d3.zoomIdentity
+            .translate(50, 0)
+            .scale(1);
+        svg.call(zoom.transform, initialTransform);
     }
 
     scrollToMessage(containerId) {
-        // Try to find element by container ID
-        // Note: This relies on the DOM having the ID, which might need the scanner to have run
-        // Ideally we'd use the scanner's map, but for now we'll try a selector
-
-        // Since we switched to index-based IDs (edit-index-N), we can try to parse N
-        // and find the Nth user message.
-
         if (containerId.startsWith('edit-index-')) {
             const index = parseInt(containerId.replace('edit-index-', ''));
             const userMessages = document.querySelectorAll('[data-testid="user-message"]');
@@ -352,13 +251,7 @@ class BranchMapModal {
             }
         }
 
-        // Fallback: try attribute
-        const el = document.querySelector(`[data-edit-container-id="${containerId}"]`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            console.warn('Could not find message element for', containerId);
-        }
+        console.warn('Could not find message element for', containerId);
     }
 }
 

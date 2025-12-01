@@ -265,8 +265,58 @@ class EditScanner {
           timestamp: Date.now()
         });
       }
+
+      // NEW: Capture conversation snapshot
+      // This captures the FULL state of all messages (not just edited ones)
+      await this.captureSnapshot(conversationUrl);
     } catch (error) {
       console.error('[EditScanner] Failed to capture history:', error);
+    }
+  }
+
+  /**
+   * Capture a snapshot of the current conversation state
+   * This includes ALL messages and their version info
+   */
+  async captureSnapshot(conversationUrl) {
+    try {
+      const allMessages = DOMUtils.findActualMessages ? DOMUtils.findActualMessages() : [];
+      const snapshot = {
+        conversationUrl,
+        timestamp: Date.now(),
+        messages: []
+      };
+
+      allMessages.forEach((container, idx) => {
+        const userMessage = container.querySelector('[data-testid="user-message"]');
+        if (!userMessage) return;
+
+        // Check for version info
+        const allSpans = container.querySelectorAll('span');
+        let versionInfo = null;
+
+        for (const span of allSpans) {
+          const text = span.textContent.trim();
+          if (/^\d+\s*\/\s*\d+$/.test(text)) {
+            versionInfo = text;
+            break;
+          }
+        }
+
+        // Include ALL messages, even non-edited ones (version will be null)
+        snapshot.messages.push({
+          containerId: `edit-index-${idx}`,
+          version: versionInfo, // e.g. "2/3" or null
+          contentPreview: userMessage.textContent.trim().substring(0, 100)
+        });
+      });
+
+      if (snapshot.messages.length > 0) {
+        await editHistoryStore.addSnapshot(snapshot);
+        console.log(`[EditScanner] 📸 Snapshot captured: ${snapshot.messages.length} messages`);
+      }
+    } catch (error) {
+      console.error('[EditScanner] Failed to capture snapshot:', error);
     }
   }
 

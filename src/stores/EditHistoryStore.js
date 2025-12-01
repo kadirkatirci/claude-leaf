@@ -1,8 +1,11 @@
 /**
  * EditHistoryStore - Edit history management
  * 
- * Stores captured versions of edited messages.
- * Keyed by conversationUrl + messageIndex + versionLabel.
+ * Stores:
+ * 1. Individual edit versions (legacy)
+ * 2. Conversation snapshots (full state at a given time)
+ * 
+ * Snapshots are used to reconstruct the branching tree.
  */
 
 import { stateManager } from '../core/StateManager.js';
@@ -12,9 +15,10 @@ export class EditHistoryStore {
     constructor() {
         this.store = stateManager.createStore('editHistory', {
             adapter: 'local',
-            version: 1,
+            version: 2, // Bumped for snapshots
             defaultData: {
-                history: []
+                history: [],
+                snapshots: []
             }
         });
     }
@@ -98,7 +102,66 @@ export class EditHistoryStore {
     }
 
     async clear() {
-        return this.store.set({ history: [] });
+        return this.store.set({ history: [], snapshots: [] });
+    }
+
+    /**
+     * Add a conversation snapshot
+     * @param {Object} snapshot - { conversationUrl, timestamp, messages: [...] }
+     */
+    async addSnapshot(snapshot) {
+        return this.store.update((data) => {
+            const snapshots = data.snapshots || [];
+            const normalizedUrl = this.normalizeUrl(snapshot.conversationUrl);
+
+            // Generate unique ID based ONLY on content (not timestamp)
+            // This prevents duplicate snapshots on page refresh
+            const messageIds = snapshot.messages.map(m => `${m.containerId}:${m.version}`).join('|');
+            const snapshotId = hashString(`${normalizedUrl}_${messageIds}`);
+
+            // Check if this exact snapshot already exists
+            const exists = snapshots.some(s => s.id === snapshotId);
+            if (exists) {
+                console.log('[EditHistoryStore] Snapshot already exists, skipping');
+                return data;
+            }
+
+            const newSnapshot = {
+                ...snapshot,
+                id: snapshotId,
+                conversationUrl: normalizedUrl,
+                timestamp: snapshot.timestamp || Date.now(),
+                createdAt: new Date().toISOString()
+            };
+
+            console.log('[EditHistoryStore] Adding snapshot:', snapshotId, newSnapshot.messages.length, 'messages');
+
+            return {
+                ...data,
+                snapshots: [...snapshots, newSnapshot]
+            };
+        });
+    }
+
+    /**
+     * Get all snapshots for a conversation
+     */
+    async getSnapshots(conversationUrl) {
+        const data = await this.store.get();
+        const normalized = this.normalizeUrl(conversationUrl);
+        const snapshots = (data.snapshots || []).filter(s => s.conversationUrl === normalized);
+        return snapshots.sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    /**
+     * Clear all snapshots for a conversation
+     */
+    async clearSnapshots(conversationUrl) {
+        const normalized = this.normalizeUrl(conversationUrl);
+        return this.store.update((data) => ({
+            ...data,
+            snapshots: (data.snapshots || []).filter(s => s.conversationUrl !== normalized)
+        }));
     }
 
     async export() {
