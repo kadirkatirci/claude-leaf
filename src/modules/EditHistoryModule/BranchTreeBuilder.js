@@ -1,16 +1,11 @@
 /**
- * BranchTreeBuilder - Snapshot'lardan tree yapısı oluşturur
+ * BranchTreeBuilder - Snapshot'lardan branch map yapısı oluşturur
  * 
  * Mantık:
- * 1. Her snapshot'tan edited message path'i çıkar
- * 2. Path'leri birleştirerek tree oluştur
- * 3. History'den eksik versiyonları ekle (disabled)
- * 4. Current path'i işaretle
- * 
- * Önemli:
- * - Snapshot sırası önemsiz, içerik önemli
- * - Aynı snapshot'taki mesajlar dikey gruplanır
- * - Farklı versiyonlar yatay dallanır
+ * 1. Her snapshot bir "path" - o anki edited mesajların listesi
+ * 2. Aynı mesaj numarası = aynı yatay hiza
+ * 3. Devam eden path'ler aynı sütunda, yalnız kalanlar kendi sütununda
+ * 4. Yalnız = O versiyondan sonra devam eden snapshot yok
  */
 
 class BranchTreeBuilder {
@@ -21,276 +16,213 @@ class BranchTreeBuilder {
 
   /**
    * Ana build metodu
-   * @returns {Object} Tree yapısı
+   * @returns {Object} Branch map yapısı
    */
   build() {
-    console.log('[BranchTreeBuilder] Building tree from', this.snapshots.length, 'snapshots');
+    console.log('[BranchTreeBuilder] Building from', this.snapshots.length, 'snapshots');
 
-    // 1. Path'leri çıkar
+    // 1. Snapshot'lardan path'leri çıkar
     const paths = this.extractPaths();
     console.log('[BranchTreeBuilder] Extracted paths:', paths);
 
-    // 2. Tree oluştur
-    const tree = this.mergePaths(paths);
-    console.log('[BranchTreeBuilder] Merged tree:', tree);
+    // 2. Sütunları oluştur
+    const columns = this.buildColumns(paths);
+    console.log('[BranchTreeBuilder] Built columns:', columns);
 
-    // 3. History'den eksik versiyonları ekle
-    this.addMissingVersions(tree);
+    // 3. Tüm unique mesaj numaralarını bul (yatay hiza için)
+    const messageIndices = this.getUniqueMessageIndices(paths);
+    console.log('[BranchTreeBuilder] Message indices:', messageIndices);
 
-    // 4. Current path'i işaretle
-    this.markCurrentPath(tree);
+    // 4. History'den renk bilgisi için containerId'leri topla
+    const containerIds = this.getUniqueContainerIds(paths);
 
-    // 5. Node'ları messageIndex'e göre sırala
-    this.sortChildren(tree);
-
-    return tree;
+    return {
+      columns,
+      messageIndices,
+      containerIds,
+      paths
+    };
   }
 
   /**
-   * Her snapshot'tan edited message path'i çıkar
-   * @returns {Array} Path listesi
+   * Her snapshot'tan path çıkar
+   * Path = [{ containerId, version, messageIndex, contentPreview }, ...]
    */
   extractPaths() {
     return this.snapshots.map(snapshot => {
-      const editedMessages = snapshot.messages
+      const messages = snapshot.messages
         .filter(m => m.version !== null)
         .map(m => ({
           containerId: m.containerId,
-          version: m.version,
-          contentPreview: m.contentPreview,
-          messageIndex: parseInt(m.containerId.replace('edit-index-', ''))
+          version: m.version.replace(/\s+/g, ''), // "2 / 2" -> "2/2"
+          messageIndex: parseInt(m.containerId.replace('edit-index-', '')),
+          contentPreview: m.contentPreview
         }))
-        // messageIndex'e göre sırala (snapshot içi sıra önemli)
         .sort((a, b) => a.messageIndex - b.messageIndex);
 
       return {
         snapshotId: snapshot.id,
         timestamp: snapshot.timestamp,
-        path: editedMessages
+        messages
       };
     });
   }
 
   /**
-   * Path'leri birleştirerek tree oluştur
-   * @param {Array} paths - Path listesi
-   * @returns {Object} Tree root
+   * Sütunları oluştur
+   * Her sütun = bir path'in "benzersiz" kısmı
    */
-  mergePaths(paths) {
-    const root = {
-      id: 'START',
-      type: 'root',
-      children: []
-    };
+  buildColumns(paths) {
+    if (paths.length === 0) return [];
 
-    paths.forEach(pathData => {
-      let currentNode = root;
+    const columns = [];
+    
+    // Path'leri string olarak temsil et (karşılaştırma için)
+    const pathStrings = paths.map(p => 
+      p.messages.map(m => `${m.containerId}:${m.version}`).join('|')
+    );
 
-      pathData.path.forEach((item, index) => {
-        const nodeId = `${item.containerId}:${item.version}`;
-
-        // Bu node zaten var mı?
-        let existingChild = currentNode.children.find(c => c.id === nodeId);
-
-        if (!existingChild) {
-          // Yeni node oluştur
-          existingChild = {
-            id: nodeId,
-            containerId: item.containerId,
-            version: item.version,
-            messageIndex: item.messageIndex,
-            contentPreview: item.contentPreview,
-            children: [],
-            snapshotIds: [],
-            disabled: false,
-            isCurrent: false
-          };
-          currentNode.children.push(existingChild);
-        }
-
-        // Bu snapshot'ın bu node'dan geçtiğini işaretle
-        if (!existingChild.snapshotIds.includes(pathData.snapshotId)) {
-          existingChild.snapshotIds.push(pathData.snapshotId);
-        }
-
-        // Sonraki node için parent'ı güncelle
-        currentNode = existingChild;
+    // Her path için: bu path başka bir path'in prefix'i mi?
+    paths.forEach((path, index) => {
+      const pathStr = pathStrings[index];
+      
+      // Bu path, başka bir path'in prefix'i mi kontrol et
+      const isPrefix = pathStrings.some((otherStr, otherIndex) => {
+        if (index === otherIndex) return false;
+        // otherStr, pathStr ile başlıyor VE daha uzun mu?
+        return otherStr.startsWith(pathStr) && otherStr.length > pathStr.length;
       });
-    });
 
-    return root;
-  }
-
-  /**
-   * History'den eksik versiyonları ekle (disabled olarak)
-   * @param {Object} tree - Tree root
-   */
-  addMissingVersions(tree) {
-    // History'deki tüm containerId:version kombinasyonlarını topla
-    const historyVersions = new Map();
-    this.history.forEach(h => {
-      const key = `${h.containerId}:${h.versionLabel}`;
-      historyVersions.set(key, {
-        containerId: h.containerId,
-        version: h.versionLabel,
-        content: h.content,
-        messageIndex: h.messageIndex
-      });
-    });
-
-    // Tree'deki mevcut node'ları topla
-    const existingNodes = new Set();
-    this.collectNodeIds(tree, existingNodes);
-
-    // Eksik olanları bul ve ekle
-    historyVersions.forEach((data, key) => {
-      if (!existingNodes.has(key)) {
-        console.log('[BranchTreeBuilder] Adding missing version:', key);
-        // Bu versiyon hiçbir snapshot'ta yok - disabled olarak ekle
-        this.addDisabledNode(tree, data);
-      }
-    });
-  }
-
-  /**
-   * Tree'deki tüm node ID'lerini topla
-   * @param {Object} node - Başlangıç node
-   * @param {Set} set - Toplanacak set
-   */
-  collectNodeIds(node, set) {
-    if (node.id !== 'START') {
-      set.add(node.id);
-    }
-    node.children.forEach(child => this.collectNodeIds(child, set));
-  }
-
-  /**
-   * Disabled node ekle (history'de var ama snapshot'ta yok)
-   * @param {Object} tree - Tree root
-   * @param {Object} data - Version data
-   */
-  addDisabledNode(tree, data) {
-    // Aynı containerId'ye sahip node'u bul
-    const siblingNode = this.findNodeByContainerId(tree, data.containerId);
-
-    if (siblingNode) {
-      // Sibling'in parent'ına ekle
-      const parent = this.findParent(tree, siblingNode.id);
-      if (parent) {
-        // Zaten eklenmemişse ekle
-        const nodeId = `${data.containerId}:${data.version}`;
-        const exists = parent.children.some(c => c.id === nodeId);
+      if (isPrefix) {
+        // Bu path başka bir path'in prefix'i - sütun oluşturma
+        // Ama son elemanı "yalnız" olarak işaretle
+        const lastMessage = path.messages[path.messages.length - 1];
         
-        if (!exists) {
-          parent.children.push({
-            id: nodeId,
-            containerId: data.containerId,
-            version: data.version,
-            messageIndex: data.messageIndex,
-            content: data.content,
-            children: [],
-            snapshotIds: [],
-            disabled: true,
-            isCurrent: false
+        // Bu mesajın devamı var mı kontrol et
+        const hasExtension = paths.some((otherPath, otherIndex) => {
+          if (index === otherIndex) return false;
+          // Diğer path bu path'i içeriyor ve devamı var mı?
+          const otherMessages = otherPath.messages;
+          const thisMessages = path.messages;
+          
+          if (otherMessages.length <= thisMessages.length) return false;
+          
+          // İlk N eleman aynı mı?
+          for (let i = 0; i < thisMessages.length; i++) {
+            if (otherMessages[i].containerId !== thisMessages[i].containerId ||
+                otherMessages[i].version !== thisMessages[i].version) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        if (!hasExtension) {
+          // Devamı yok - yalnız sütun oluştur (sadece son eleman için)
+          columns.push({
+            id: `col-${index}-alone`,
+            messages: [lastMessage],
+            isAlone: true,
+            snapshotId: path.snapshotId
+          });
+        }
+        // hasExtension true ise bu path tamamen başka bir path içinde, sütun oluşturma
+        
+      } else {
+        // Bu path başka bir path'in prefix'i değil
+        // Ama bu path başka bir path'i prefix olarak içeriyor olabilir
+        
+        // En uzun ortak prefix'i bul
+        let longestPrefixLength = 0;
+        paths.forEach((otherPath, otherIndex) => {
+          if (index === otherIndex) return;
+          const commonLength = this.getCommonPrefixLength(path.messages, otherPath.messages);
+          if (commonLength > longestPrefixLength && commonLength < path.messages.length) {
+            longestPrefixLength = commonLength;
+          }
+        });
+
+        // Prefix'ten sonraki kısım bu sütunun içeriği
+        const columnMessages = longestPrefixLength > 0 
+          ? path.messages.slice(longestPrefixLength)
+          : path.messages;
+
+        if (columnMessages.length > 0) {
+          columns.push({
+            id: `col-${index}`,
+            messages: columnMessages,
+            isAlone: false,
+            snapshotId: path.snapshotId,
+            prefixLength: longestPrefixLength
           });
         }
       }
-    } else {
-      // Hiç sibling yok - root'a ekle
-      const nodeId = `${data.containerId}:${data.version}`;
-      tree.children.push({
-        id: nodeId,
-        containerId: data.containerId,
-        version: data.version,
-        messageIndex: data.messageIndex,
-        content: data.content,
-        children: [],
-        snapshotIds: [],
-        disabled: true,
-        isCurrent: false
-      });
-    }
+    });
+
+    // Sütunları sırala: önce alone olanlar (solda), sonra prefixLength'e göre
+    columns.sort((a, b) => {
+      // İlk mesajın messageIndex'ine göre sırala
+      const aFirstIndex = a.messages[0]?.messageIndex || 0;
+      const bFirstIndex = b.messages[0]?.messageIndex || 0;
+      
+      if (aFirstIndex !== bFirstIndex) {
+        return aFirstIndex - bFirstIndex;
+      }
+      
+      // Aynı messageIndex ise, alone olanlar önce
+      if (a.isAlone && !b.isAlone) return -1;
+      if (!a.isAlone && b.isAlone) return 1;
+      
+      // İkisi de alone veya ikisi de değil - mesaj sayısına göre
+      return a.messages.length - b.messages.length;
+    });
+
+    return columns;
   }
 
   /**
-   * ContainerId'ye göre node bul
-   * @param {Object} node - Başlangıç node
-   * @param {string} containerId - Aranacak containerId
-   * @returns {Object|null} Bulunan node
+   * İki mesaj listesinin ortak prefix uzunluğunu bul
    */
-  findNodeByContainerId(node, containerId) {
-    if (node.containerId === containerId) return node;
-    for (const child of node.children) {
-      const found = this.findNodeByContainerId(child, containerId);
-      if (found) return found;
+  getCommonPrefixLength(messages1, messages2) {
+    let common = 0;
+    const minLength = Math.min(messages1.length, messages2.length);
+    
+    for (let i = 0; i < minLength; i++) {
+      if (messages1[i].containerId === messages2[i].containerId &&
+          messages1[i].version === messages2[i].version) {
+        common++;
+      } else {
+        break;
+      }
     }
-    return null;
+    
+    return common;
   }
 
   /**
-   * Bir node'un parent'ını bul
-   * @param {Object} tree - Tree root
-   * @param {string} targetId - Hedef node ID
-   * @param {Object|null} parent - Mevcut parent
-   * @returns {Object|null} Parent node
+   * Tüm unique mesaj index'lerini bul (sıralı)
    */
-  findParent(tree, targetId, parent = null) {
-    if (tree.id === targetId) return parent;
-    for (const child of tree.children) {
-      const found = this.findParent(child, targetId, tree);
-      if (found) return found;
-    }
-    return null;
+  getUniqueMessageIndices(paths) {
+    const indices = new Set();
+    paths.forEach(path => {
+      path.messages.forEach(m => indices.add(m.messageIndex));
+    });
+    return Array.from(indices).sort((a, b) => a - b);
   }
 
   /**
-   * Current path'i işaretle (en son snapshot)
-   * @param {Object} tree - Tree root
+   * Tüm unique containerId'leri bul
    */
-  markCurrentPath(tree) {
-    if (this.snapshots.length === 0) return;
-
-    // En son timestamp'e sahip snapshot
-    const latestSnapshot = this.snapshots.reduce((latest, s) =>
-      s.timestamp > latest.timestamp ? s : latest
-    );
-
-    console.log('[BranchTreeBuilder] Latest snapshot:', latestSnapshot.id);
-
-    this.traverseAndMark(tree, latestSnapshot.id);
-  }
-
-  /**
-   * Tree'yi traverse ederek current path'i işaretle
-   * @param {Object} node - Mevcut node
-   * @param {string} targetSnapshotId - Hedef snapshot ID
-   */
-  traverseAndMark(node, targetSnapshotId) {
-    if (node.snapshotIds?.includes(targetSnapshotId)) {
-      node.isCurrent = true;
-    }
-    node.children.forEach(child =>
-      this.traverseAndMark(child, targetSnapshotId)
-    );
-  }
-
-  /**
-   * Children'ları messageIndex'e göre sırala (recursive)
-   * @param {Object} node - Mevcut node
-   */
-  sortChildren(node) {
-    if (node.children.length > 0) {
-      node.children.sort((a, b) => {
-        // Önce messageIndex'e göre
-        if (a.messageIndex !== b.messageIndex) {
-          return a.messageIndex - b.messageIndex;
-        }
-        // Aynı messageIndex ise version'a göre
-        return a.version.localeCompare(b.version);
-      });
-
-      node.children.forEach(child => this.sortChildren(child));
-    }
+  getUniqueContainerIds(paths) {
+    const ids = new Set();
+    paths.forEach(path => {
+      path.messages.forEach(m => ids.add(m.containerId));
+    });
+    return Array.from(ids).sort((a, b) => {
+      const indexA = parseInt(a.replace('edit-index-', ''));
+      const indexB = parseInt(b.replace('edit-index-', ''));
+      return indexA - indexB;
+    });
   }
 }
 

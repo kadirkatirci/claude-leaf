@@ -1,32 +1,25 @@
 /**
- * BranchMapRenderer - Tree'yi SVG olarak renderlar
+ * BranchMapRenderer - Branch map'i SVG olarak renderlar
  * 
  * Kurallar:
- * - Aynı snapshot'taki ardışık mesajlar: Dikey (kutu içinde alt alta)
- * - Farklı versiyonlar (dallanma): Yatay
- * - Current path: Beyaz border ile vurgulu
- * - Disabled node: Soluk (opacity 0.4)
- * 
- * Görsel:
- * - Her edited message farklı renkte
- * - Kutular rounded rectangle
- * - Bağlantılar bezier curve
+ * - Aynı mesaj numarası = aynı yatay hiza (satır)
+ * - Her sütun bir snapshot path'inin benzersiz kısmı
+ * - Yalnız sütunlar: O versiyondan sonra devam eden snapshot yok
+ * - Bağlantılar: Sütunlar arası mantıksal akış
  */
 
 class BranchMapRenderer {
-  constructor(container, tree, options = {}) {
+  constructor(container, data, options = {}) {
     this.container = container;
-    this.tree = tree;
+    this.data = data; // { columns, messageIndices, containerIds, paths }
     this.options = {
       nodeWidth: 70,
       nodeHeight: 36,
-      horizontalGap: 80,
-      verticalGap: 20,
-      groupPadding: 15,
-      groupGap: 40,
-      startX: 60,
-      startY: 60,
-      // Renk paleti - her messageIndex için farklı renk
+      horizontalGap: 30,      // Sütunlar arası boşluk
+      verticalGap: 16,        // Satırlar arası boşluk
+      columnPadding: 12,      // Sütun içi padding
+      startX: 80,
+      startY: 50,
       colors: [
         '#ef4444', // kırmızı
         '#f97316', // turuncu  
@@ -41,9 +34,10 @@ class BranchMapRenderer {
     };
 
     this.svg = null;
-    this.positions = new Map(); // nodeId -> {x, y}
-    this.groups = [];          // Snapshot grupları
-    this.nodeColorMap = new Map(); // containerId -> color
+    this.mainGroup = null;
+    this.colorMap = new Map();      // containerId -> color
+    this.rowPositions = new Map();  // messageIndex -> y position
+    this.columnLayouts = [];        // Her sütunun layout bilgisi
   }
 
   /**
@@ -52,34 +46,40 @@ class BranchMapRenderer {
   render() {
     console.log('[BranchMapRenderer] Starting render');
 
-    // 1. Renk haritasını oluştur
+    // 1. Renk haritası oluştur
     this.buildColorMap();
 
-    // 2. Layout hesapla
-    const layout = this.calculateLayout();
-    console.log('[BranchMapRenderer] Layout calculated:', layout);
+    // 2. Satır pozisyonlarını hesapla (yatay hiza)
+    this.calculateRowPositions();
 
-    // 3. SVG oluştur
-    this.createSVG(layout.width, layout.height);
+    // 3. Sütun layout'larını hesapla
+    this.calculateColumnLayouts();
 
-    // 4. Grupları (snapshot kutuları) çiz
-    this.renderGroups();
+    // 4. SVG boyutlarını hesapla
+    const bounds = this.calculateBounds();
 
-    // 5. Bağlantıları çiz
-    this.renderConnections();
+    // 5. SVG oluştur
+    this.createSVG(bounds.width, bounds.height);
 
-    // 6. Node'ları çiz
-    this.renderNodes();
-
-    // 7. START node'u çiz
+    // 6. START node çiz
     this.renderStartNode();
 
-    // 8. Legend ekle
-    this.renderLegend(layout.width, layout.height);
+    // 7. Sütunları (kutuları) çiz
+    this.renderColumns();
 
-    // 9. Zoom/Pan ekle
+    // 8. Node'ları çiz
+    this.renderNodes();
+
+    // 9. Bağlantıları çiz
+    this.renderConnections();
+
+    // 10. Legend çiz
+    this.renderLegend(bounds.height);
+
+    // 11. Interaktivite ekle
     this.addInteractivity();
 
+    console.log('[BranchMapRenderer] Render complete');
     return this.svg;
   }
 
@@ -87,154 +87,84 @@ class BranchMapRenderer {
    * Her containerId için renk ata
    */
   buildColorMap() {
-    const containerIds = new Set();
-    
-    this.traverseTree(this.tree, (node) => {
-      if (node.containerId) {
-        containerIds.add(node.containerId);
-      }
+    this.data.containerIds.forEach((containerId, index) => {
+      this.colorMap.set(containerId, this.options.colors[index % this.options.colors.length]);
     });
-
-    // messageIndex'e göre sırala
-    const sorted = Array.from(containerIds).sort((a, b) => {
-      const indexA = parseInt(a.replace('edit-index-', ''));
-      const indexB = parseInt(b.replace('edit-index-', ''));
-      return indexA - indexB;
-    });
-
-    sorted.forEach((containerId, index) => {
-      this.nodeColorMap.set(containerId, this.options.colors[index % this.options.colors.length]);
-    });
-
-    console.log('[BranchMapRenderer] Color map:', this.nodeColorMap);
+    console.log('[BranchMapRenderer] Color map:', this.colorMap);
   }
 
   /**
-   * Layout hesapla - pozisyonları belirle
+   * Satır pozisyonlarını hesapla
+   * Her messageIndex için sabit bir Y pozisyonu
    */
-  calculateLayout() {
-    let currentX = this.options.startX + this.options.nodeWidth + this.options.horizontalGap;
-    let maxY = this.options.startY;
-    let maxX = currentX;
+  calculateRowPositions() {
+    const { startY, nodeHeight, verticalGap } = this.options;
+    
+    this.data.messageIndices.forEach((msgIndex, rowIndex) => {
+      const y = startY + rowIndex * (nodeHeight + verticalGap);
+      this.rowPositions.set(msgIndex, y);
+    });
+    
+    console.log('[BranchMapRenderer] Row positions:', this.rowPositions);
+  }
 
-    // START node pozisyonu
-    this.positions.set('START', {
-      x: this.options.startX,
-      y: this.options.startY,
-      width: this.options.nodeWidth,
-      height: this.options.nodeHeight
+  /**
+   * Sütun layout'larını hesapla
+   */
+  calculateColumnLayouts() {
+    const { startX, nodeWidth, horizontalGap, columnPadding } = this.options;
+    
+    let currentX = startX + nodeWidth + horizontalGap; // START'tan sonra
+    
+    this.data.columns.forEach((column, colIndex) => {
+      // Bu sütundaki mesajların Y pozisyonlarını bul
+      const nodePositions = column.messages.map(msg => ({
+        ...msg,
+        y: this.rowPositions.get(msg.messageIndex)
+      }));
+
+      // Sütun sınırlarını hesapla
+      const minY = Math.min(...nodePositions.map(n => n.y));
+      const maxY = Math.max(...nodePositions.map(n => n.y));
+      
+      const columnLayout = {
+        id: column.id,
+        x: currentX,
+        y: minY - columnPadding,
+        width: nodeWidth + columnPadding * 2,
+        height: (maxY - minY) + this.options.nodeHeight + columnPadding * 2,
+        nodes: nodePositions.map(n => ({
+          ...n,
+          x: currentX + columnPadding,
+          y: n.y
+        })),
+        isAlone: column.isAlone,
+        snapshotId: column.snapshotId
+      };
+
+      this.columnLayouts.push(columnLayout);
+      currentX += columnLayout.width + horizontalGap;
     });
 
-    // Tree'yi BFS ile traverse et ve grupları belirle
-    this.calculateBranches(this.tree, currentX, this.options.startY);
+    console.log('[BranchMapRenderer] Column layouts:', this.columnLayouts);
+  }
 
-    // Max değerleri hesapla
-    this.positions.forEach((pos) => {
-      maxX = Math.max(maxX, pos.x + (pos.width || this.options.nodeWidth));
-      maxY = Math.max(maxY, pos.y + (pos.height || this.options.nodeHeight));
-    });
+  /**
+   * SVG boyutlarını hesapla
+   */
+  calculateBounds() {
+    let maxX = this.options.startX + this.options.nodeWidth; // START node
+    let maxY = this.options.startY + this.options.nodeHeight;
 
-    this.groups.forEach(group => {
-      maxX = Math.max(maxX, group.x + group.width);
-      maxY = Math.max(maxY, group.y + group.height);
+    this.columnLayouts.forEach(col => {
+      maxX = Math.max(maxX, col.x + col.width);
+      maxY = Math.max(maxY, col.y + col.height);
     });
 
     return {
-      width: maxX + 100,
-      height: maxY + 100
+      width: maxX + 60,
+      height: maxY + 80 // Legend için alan
     };
-  }
-
-  /**
-   * Branch'ları hesapla ve grupla
-   */
-  calculateBranches(node, startX, startY) {
-    if (node.id === 'START') {
-      // Root'un her child'ı bir branch başlangıcı
-      let branchY = startY;
-      
-      node.children.forEach((child, index) => {
-        const branchHeight = this.calculateBranchLayout(child, startX, branchY);
-        branchY += branchHeight + this.options.groupGap;
-      });
-      
-      return;
-    }
-  }
-
-  /**
-   * Tek bir branch'ın layout'unu hesapla
-   * Aynı snapshot'taki ardışık mesajları grupla
-   */
-  calculateBranchLayout(startNode, startX, startY) {
-    // Bu branch'taki tüm node'ları topla (depth-first, tek yol)
-    const branchNodes = [];
-    let currentNode = startNode;
-    
-    // Ana yolu takip et (ilk child'ı takip ederek)
-    while (currentNode) {
-      branchNodes.push(currentNode);
-      
-      // Dallanma var mı kontrol et
-      if (currentNode.children.length > 1) {
-        // Dallanma noktası - bu grubu bitir ve dalları hesapla
-        break;
-      }
-      
-      currentNode = currentNode.children[0] || null;
-    }
-
-    // Grup oluştur
-    const groupHeight = branchNodes.length * (this.options.nodeHeight + this.options.verticalGap) 
-                       - this.options.verticalGap + this.options.groupPadding * 2;
-    const groupWidth = this.options.nodeWidth + this.options.groupPadding * 2;
-
-    const group = {
-      x: startX,
-      y: startY,
-      width: groupWidth,
-      height: groupHeight,
-      nodes: branchNodes,
-      isCurrent: branchNodes.some(n => n.isCurrent)
-    };
-    this.groups.push(group);
-
-    // Node pozisyonlarını hesapla
-    branchNodes.forEach((node, index) => {
-      this.positions.set(node.id, {
-        x: startX + this.options.groupPadding,
-        y: startY + this.options.groupPadding + index * (this.options.nodeHeight + this.options.verticalGap),
-        width: this.options.nodeWidth,
-        height: this.options.nodeHeight
-      });
-    });
-
-    // Dallanma varsa, dalları hesapla
-    const lastNode = branchNodes[branchNodes.length - 1];
-    if (lastNode && lastNode.children.length > 1) {
-      let branchY = startY;
-      const nextX = startX + groupWidth + this.options.horizontalGap;
-
-      lastNode.children.forEach((child, index) => {
-        const childHeight = this.calculateBranchLayout(child, nextX, branchY);
-        branchY += childHeight + this.options.groupGap;
-      });
-
-      // Grup yüksekliğini güncelle (dalların toplam yüksekliği)
-      const totalBranchHeight = branchY - startY - this.options.groupGap;
-      if (totalBranchHeight > groupHeight) {
-        group.height = Math.max(groupHeight, totalBranchHeight);
-      }
-
-      return Math.max(groupHeight, totalBranchHeight);
-    } else if (lastNode && lastNode.children.length === 1) {
-      // Tek child var - devam et
-      const nextX = startX + groupWidth + this.options.horizontalGap;
-      const childHeight = this.calculateBranchLayout(lastNode.children[0], nextX, startY);
-      return Math.max(groupHeight, childHeight);
-    }
-
-    return groupHeight;
   }
 
   /**
@@ -249,7 +179,6 @@ class BranchMapRenderer {
     this.svg.style.minWidth = `${width}px`;
     this.svg.style.minHeight = `${height}px`;
 
-    // Ana grup (zoom/pan için)
     this.mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.mainGroup.setAttribute('class', 'main-group');
     this.svg.appendChild(this.mainGroup);
@@ -258,22 +187,66 @@ class BranchMapRenderer {
   }
 
   /**
-   * Snapshot gruplarını (kutular) çiz
+   * START node çiz
    */
-  renderGroups() {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'groups');
+  renderStartNode() {
+    const { startX, startY, nodeWidth, nodeHeight } = this.options;
+    
+    // START'ın Y pozisyonu: ilk satırla aynı hizada
+    const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || startY;
 
-    this.groups.forEach(group => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${startX}, ${firstRowY})`);
+    g.setAttribute('class', 'start-node');
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', nodeWidth);
+    rect.setAttribute('height', nodeHeight);
+    rect.setAttribute('rx', '8');
+    rect.setAttribute('fill', 'var(--bg-300)');
+    rect.setAttribute('stroke', 'var(--border-300)');
+    rect.setAttribute('stroke-width', '1');
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', nodeWidth / 2);
+    text.setAttribute('y', nodeHeight / 2);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('fill', 'var(--text-200)');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('font-weight', '600');
+    text.textContent = 'START';
+
+    g.appendChild(rect);
+    g.appendChild(text);
+    this.mainGroup.appendChild(g);
+
+    // START pozisyonunu sakla (bağlantılar için)
+    this.startNodePos = {
+      x: startX,
+      y: firstRowY,
+      width: nodeWidth,
+      height: nodeHeight
+    };
+  }
+
+  /**
+   * Sütunları (kutuları) çiz
+   */
+  renderColumns() {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'columns');
+
+    this.columnLayouts.forEach(col => {
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', group.x);
-      rect.setAttribute('y', group.y);
-      rect.setAttribute('width', group.width);
-      rect.setAttribute('height', group.height);
+      rect.setAttribute('x', col.x);
+      rect.setAttribute('y', col.y);
+      rect.setAttribute('width', col.width);
+      rect.setAttribute('height', col.height);
       rect.setAttribute('rx', '12');
       rect.setAttribute('fill', 'var(--bg-100)');
-      rect.setAttribute('stroke', group.isCurrent ? 'var(--accent-500)' : 'var(--border-300)');
-      rect.setAttribute('stroke-width', group.isCurrent ? '2' : '1');
+      rect.setAttribute('stroke', 'var(--border-300)');
+      rect.setAttribute('stroke-width', '1');
       rect.setAttribute('stroke-opacity', '0.5');
 
       g.appendChild(rect);
@@ -283,84 +256,17 @@ class BranchMapRenderer {
   }
 
   /**
-   * Bağlantıları çiz
-   */
-  renderConnections() {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'connections');
-
-    // START'tan ilk node'lara
-    const startPos = this.positions.get('START');
-    this.tree.children.forEach(child => {
-      if (this.positions.has(child.id)) {
-        const childPos = this.positions.get(child.id);
-        const path = this.createConnection(
-          startPos.x + startPos.width,
-          startPos.y + startPos.height / 2,
-          childPos.x,
-          childPos.y + childPos.height / 2,
-          child.isCurrent
-        );
-        g.appendChild(path);
-      }
-    });
-
-    // Gruplar arası bağlantılar
-    this.groups.forEach(group => {
-      const lastNode = group.nodes[group.nodes.length - 1];
-      if (lastNode && lastNode.children) {
-        const lastPos = this.positions.get(lastNode.id);
-        
-        lastNode.children.forEach(child => {
-          if (this.positions.has(child.id)) {
-            const childPos = this.positions.get(child.id);
-            const path = this.createConnection(
-              group.x + group.width,
-              lastPos.y + lastPos.height / 2,
-              childPos.x,
-              childPos.y + childPos.height / 2,
-              child.isCurrent
-            );
-            g.appendChild(path);
-          }
-        });
-      }
-    });
-
-    this.mainGroup.appendChild(g);
-  }
-
-  /**
-   * Bezier curve bağlantı oluştur
-   */
-  createConnection(x1, y1, x2, y2, isCurrent) {
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-    const midX = (x1 + x2) / 2;
-    const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
-
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', isCurrent ? 'var(--accent-500)' : 'var(--border-300)');
-    path.setAttribute('stroke-width', isCurrent ? '2.5' : '1.5');
-    path.setAttribute('stroke-opacity', isCurrent ? '0.8' : '0.4');
-
-    return path;
-  }
-
-  /**
    * Node'ları çiz
    */
   renderNodes() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'nodes');
 
-    this.traverseTree(this.tree, (node) => {
-      if (node.id !== 'START' && this.positions.has(node.id)) {
-        const pos = this.positions.get(node.id);
-        const nodeGroup = this.createNode(node, pos);
-        g.appendChild(nodeGroup);
-      }
+    this.columnLayouts.forEach(col => {
+      col.nodes.forEach(node => {
+        const nodeEl = this.createNode(node);
+        g.appendChild(nodeEl);
+      });
     });
 
     this.mainGroup.appendChild(g);
@@ -369,44 +275,38 @@ class BranchMapRenderer {
   /**
    * Tek bir node elementi oluştur
    */
-  createNode(node, pos) {
+  createNode(node) {
+    const { nodeWidth, nodeHeight } = this.options;
+    
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+    g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
     g.setAttribute('class', 'node');
     g.style.cursor = 'pointer';
 
-    const color = this.nodeColorMap.get(node.containerId) || '#6366f1';
-    const opacity = node.disabled ? 0.35 : 1;
+    const color = this.colorMap.get(node.containerId) || '#6366f1';
 
     // Kutu
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('width', pos.width);
-    rect.setAttribute('height', pos.height);
-    rect.setAttribute('rx', '8');
+    rect.setAttribute('width', nodeWidth);
+    rect.setAttribute('height', nodeHeight);
+    rect.setAttribute('rx', '6');
     rect.setAttribute('fill', color);
-    rect.setAttribute('opacity', opacity);
-    
-    if (node.isCurrent && !node.disabled) {
-      rect.setAttribute('stroke', '#ffffff');
-      rect.setAttribute('stroke-width', '2.5');
-    }
 
     // Versiyon text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', pos.width / 2);
-    text.setAttribute('y', pos.height / 2);
+    text.setAttribute('x', nodeWidth / 2);
+    text.setAttribute('y', nodeHeight / 2);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('fill', '#ffffff');
     text.setAttribute('font-size', '13');
     text.setAttribute('font-weight', '600');
-    text.setAttribute('opacity', opacity);
     text.textContent = node.version;
 
     // Tooltip
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     const msgIndex = node.containerId?.replace('edit-index-', '') || '';
-    title.textContent = `Message #${msgIndex}\n${node.contentPreview || node.content || ''}`;
+    title.textContent = `Message #${msgIndex}\n${node.contentPreview || ''}`;
 
     g.appendChild(rect);
     g.appendChild(text);
@@ -422,70 +322,103 @@ class BranchMapRenderer {
 
     // Hover effect
     g.addEventListener('mouseenter', () => {
-      rect.setAttribute('filter', 'brightness(1.1)');
-      g.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(1.05)`;
+      rect.style.filter = 'brightness(1.15)';
     });
-
     g.addEventListener('mouseleave', () => {
-      rect.removeAttribute('filter');
-      g.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(1)`;
+      rect.style.filter = '';
     });
 
     return g;
   }
 
   /**
-   * START node'u çiz
+   * Bağlantıları çiz
    */
-  renderStartNode() {
-    const pos = this.positions.get('START');
-    if (!pos) return;
-
+  renderConnections() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
-    g.setAttribute('class', 'start-node');
+    g.setAttribute('class', 'connections');
 
-    // Kutu
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('width', pos.width);
-    rect.setAttribute('height', pos.height);
-    rect.setAttribute('rx', '8');
-    rect.setAttribute('fill', 'var(--bg-300)');
-    rect.setAttribute('stroke', 'var(--border-300)');
-    rect.setAttribute('stroke-width', '1');
+    const { nodeWidth, nodeHeight } = this.options;
 
-    // Text
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', pos.width / 2);
-    text.setAttribute('y', pos.height / 2);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('fill', 'var(--text-200)');
-    text.setAttribute('font-size', '12');
-    text.setAttribute('font-weight', '600');
-    text.textContent = 'START';
+    // START'tan ilk sütunlara bağlantı
+    // İlk satırdaki (en küçük messageIndex) node'lara bağlan
+    const firstRowIndex = this.data.messageIndices[0];
+    
+    this.columnLayouts.forEach(col => {
+      const firstNodeInColumn = col.nodes.find(n => n.messageIndex === firstRowIndex);
+      if (firstNodeInColumn) {
+        const path = this.createConnection(
+          this.startNodePos.x + this.startNodePos.width,
+          this.startNodePos.y + this.startNodePos.height / 2,
+          firstNodeInColumn.x,
+          firstNodeInColumn.y + nodeHeight / 2
+        );
+        g.appendChild(path);
+      }
+    });
 
-    g.appendChild(rect);
-    g.appendChild(text);
+    // Sütunlar arası bağlantılar
+    // Yalnız sütunlardan, aynı satırdaki diğer sütunlara bağlantı
+    this.columnLayouts.forEach((col, colIndex) => {
+      if (col.isAlone) {
+        // Bu yalnız sütun - aynı satırdaki sonraki sütuna bağlan
+        const lastNode = col.nodes[col.nodes.length - 1];
+        
+        // Aynı satırda başlayan sonraki sütunu bul
+        for (let i = colIndex + 1; i < this.columnLayouts.length; i++) {
+          const nextCol = this.columnLayouts[i];
+          const matchingNode = nextCol.nodes.find(n => n.messageIndex === lastNode.messageIndex);
+          
+          if (matchingNode) {
+            const path = this.createConnection(
+              lastNode.x + nodeWidth,
+              lastNode.y + nodeHeight / 2,
+              matchingNode.x,
+              matchingNode.y + nodeHeight / 2
+            );
+            g.appendChild(path);
+            break;
+          }
+        }
+      }
+    });
 
-    this.mainGroup.appendChild(g);
+    // Bu grubu arkaya al (node'ların altında)
+    this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
+  }
+
+  /**
+   * Bezier curve bağlantı oluştur
+   */
+  createConnection(x1, y1, x2, y2) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+    const midX = (x1 + x2) / 2;
+    const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'var(--border-300)');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-opacity', '0.6');
+
+    return path;
   }
 
   /**
    * Legend çiz
    */
-  renderLegend(width, height) {
+  renderLegend(svgHeight) {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'legend');
-    g.setAttribute('transform', `translate(20, ${height - 50})`);
+    g.setAttribute('transform', `translate(20, ${svgHeight - 40})`);
 
     let x = 0;
 
     // Mesaj renkleri
-    this.nodeColorMap.forEach((color, containerId) => {
+    this.colorMap.forEach((color, containerId) => {
       const msgIndex = containerId.replace('edit-index-', '');
 
-      // Renk kutusu
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', x);
       rect.setAttribute('y', 0);
@@ -494,7 +427,6 @@ class BranchMapRenderer {
       rect.setAttribute('rx', '3');
       rect.setAttribute('fill', color);
 
-      // Label
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', x + 20);
       text.setAttribute('y', 11);
@@ -505,50 +437,8 @@ class BranchMapRenderer {
       g.appendChild(rect);
       g.appendChild(text);
 
-      x += 75;
+      x += 80;
     });
-
-    // Current indicator
-    const currentRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    currentRect.setAttribute('x', x + 15);
-    currentRect.setAttribute('y', 0);
-    currentRect.setAttribute('width', 14);
-    currentRect.setAttribute('height', 14);
-    currentRect.setAttribute('rx', '3');
-    currentRect.setAttribute('fill', 'var(--accent-500)');
-    currentRect.setAttribute('stroke', '#fff');
-    currentRect.setAttribute('stroke-width', '2');
-
-    const currentText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    currentText.setAttribute('x', x + 35);
-    currentText.setAttribute('y', 11);
-    currentText.setAttribute('fill', 'var(--text-300)');
-    currentText.setAttribute('font-size', '11');
-    currentText.textContent = 'current';
-
-    g.appendChild(currentRect);
-    g.appendChild(currentText);
-
-    // Disabled indicator
-    x += 90;
-    const disabledRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    disabledRect.setAttribute('x', x + 15);
-    disabledRect.setAttribute('y', 0);
-    disabledRect.setAttribute('width', 14);
-    disabledRect.setAttribute('height', 14);
-    disabledRect.setAttribute('rx', '3');
-    disabledRect.setAttribute('fill', 'var(--text-300)');
-    disabledRect.setAttribute('opacity', '0.35');
-
-    const disabledText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    disabledText.setAttribute('x', x + 35);
-    disabledText.setAttribute('y', 11);
-    disabledText.setAttribute('fill', 'var(--text-300)');
-    disabledText.setAttribute('font-size', '11');
-    disabledText.textContent = 'uncaptured';
-
-    g.appendChild(disabledRect);
-    g.appendChild(disabledText);
 
     this.mainGroup.appendChild(g);
   }
@@ -561,9 +451,8 @@ class BranchMapRenderer {
     let startX, startY;
     let currentTransform = { x: 0, y: 0, scale: 1 };
 
-    // Pan
     this.svg.addEventListener('mousedown', (e) => {
-      if (e.target === this.svg || e.target.closest('.groups')) {
+      if (e.target === this.svg || e.target.closest('.columns')) {
         isPanning = true;
         startX = e.clientX - currentTransform.x;
         startY = e.clientY - currentTransform.y;
@@ -583,7 +472,6 @@ class BranchMapRenderer {
       this.svg.style.cursor = 'default';
     });
 
-    // Zoom
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -592,22 +480,11 @@ class BranchMapRenderer {
     });
   }
 
-  /**
-   * Transform güncelle
-   */
   updateTransform(transform) {
     this.mainGroup.setAttribute(
       'transform',
       `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`
     );
-  }
-
-  /**
-   * Tree'yi traverse et
-   */
-  traverseTree(node, callback) {
-    callback(node);
-    node.children?.forEach(child => this.traverseTree(child, callback));
   }
 }
 

@@ -7,11 +7,10 @@ import BranchMapRenderer from './BranchMapRenderer.js';
  * BranchMapModal - Conversation branch haritasını gösteren modal
  * 
  * Özellikler:
- * - Snapshot'lardan oluşturulan tree yapısını görselleştirir
- * - Aynı snapshot'taki mesajlar dikey gruplanır
- * - Farklı versiyonlar yatay dallanır
- * - Current path vurgulanır
- * - Zoom/Pan desteği
+ * - Snapshot'lardan oluşturulan branch yapısını görselleştirir
+ * - Aynı mesaj numarası = aynı yatay hiza
+ * - Devam eden path'ler aynı sütunda
+ * - Yalnız kalanlar kendi sütununda
  */
 class BranchMapModal {
     constructor() {
@@ -116,7 +115,7 @@ class BranchMapModal {
         this.overlay.appendChild(this.modal);
         document.body.appendChild(this.overlay);
 
-        // Render the tree AFTER the modal is in the DOM
+        // Render the map AFTER the modal is in the DOM
         requestAnimationFrame(() => {
             try {
                 this.renderBranchMap(content, snapshots, history);
@@ -193,16 +192,16 @@ class BranchMapModal {
      * @param {Array} history - History listesi
      */
     renderBranchMap(container, snapshots, history) {
-        console.log('[BranchMapModal] Building tree...');
+        console.log('[BranchMapModal] Building branch map...');
 
-        // Tree oluştur
+        // Tree/data yapısını oluştur
         const builder = new BranchTreeBuilder(snapshots, history);
-        const tree = builder.build();
+        const data = builder.build();
 
-        console.log('[BranchMapModal] Tree built:', tree);
+        console.log('[BranchMapModal] Data built:', data);
 
-        // Boş tree kontrolü
-        if (!tree.children || tree.children.length === 0) {
+        // Boş data kontrolü
+        if (!data.columns || data.columns.length === 0) {
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full text-text-300">
                     <span class="text-4xl mb-4">🌱</span>
@@ -215,7 +214,7 @@ class BranchMapModal {
 
         // Render
         console.log('[BranchMapModal] Rendering...');
-        this.renderer = new BranchMapRenderer(container, tree);
+        this.renderer = new BranchMapRenderer(container, data);
         this.renderer.render();
 
         // Node click handler
