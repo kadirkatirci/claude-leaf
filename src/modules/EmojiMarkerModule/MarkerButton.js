@@ -3,6 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 export class MarkerButton {
@@ -91,7 +92,7 @@ export class MarkerButton {
       z-index: 100;
     `;
 
-    button.textContent = '🏷️';
+    button.innerHTML = IconLibrary.pin('currentColor', 16); // Use pin icon for marker
     button.title = 'Add emoji marker';
 
     // Click handler - sadece marker yoksa (add için)
@@ -182,7 +183,7 @@ export class MarkerButton {
       this.onMarkerRemove(marker.id);
 
       // Update button to "add" state
-      button.textContent = '🏷️';
+      button.innerHTML = IconLibrary.pin('currentColor', 16);
       button.title = 'Add emoji marker';
       // Remove custom background to use native classes
       button.style.removeProperty('background');
@@ -220,7 +221,7 @@ export class MarkerButton {
     } else {
       // Marker yoksa button'u göster (add marker için)
       button.style.display = 'flex';
-      button.textContent = '🏷️';
+      button.innerHTML = IconLibrary.pin('currentColor', 16);
       button.title = 'Add emoji marker';
       // Remove custom background to use native classes
       button.style.removeProperty('background');
