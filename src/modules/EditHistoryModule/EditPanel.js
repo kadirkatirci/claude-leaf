@@ -4,6 +4,7 @@
  */
 import BasePanel from '../../core/BasePanel.js';
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn, cardClass, textClass } from '../../utils/ClassNames.js';
 import { editHistoryStore } from '../../stores/index.js';
 
@@ -11,7 +12,7 @@ class EditPanel extends BasePanel {
   constructor(getTheme, onItemClick) {
     super({
       id: 'claude-edit-panel',
-      title: '✏️ Edit Points',
+      title: 'Edit Points', // Icon will be added dynamically
       width: '280px',
       height: '500px',
       position: { right: '20px', top: '60px' }
@@ -80,6 +81,14 @@ class EditPanel extends BasePanel {
    */
   updateContent(editedMessages) {
     if (!this.panel || !this.content) return;
+
+    // Update title with icon and count
+    if (this.header) {
+      const title = this.header.querySelector('h3');
+      if (title) {
+        title.innerHTML = `${IconLibrary.edit('currentColor', 16)} Edit Points${editedMessages.length > 0 ? ` (${editedMessages.length})` : ''}`;
+      }
+    }
 
     // Check if edits changed
     const currentIds = editedMessages.map(e => e.containerId).join(',');

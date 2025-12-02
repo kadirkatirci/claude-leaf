@@ -14,6 +14,7 @@ import { bookmarkStore } from '../stores/index.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
 import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditScanner from './EditHistoryModule/EditScanner.js';
 
 class BookmarkModule extends BaseModule {
@@ -71,7 +72,7 @@ class BookmarkModule extends BaseModule {
 
     await this.createFixedButton({
       id: 'claude-bookmarks-fixed-btn',
-      icon: '🔖',
+      icon: IconLibrary.bookmark(false, 'currentColor', 20),
       tooltip: 'Bookmarks',
       position: { right: '30px', transform: 'translateY(-40px)' },
       onClick: () => this.togglePanel(),

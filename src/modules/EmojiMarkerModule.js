@@ -16,6 +16,7 @@ import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
 import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
 import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditScanner from './EditHistoryModule/EditScanner.js';
 
 class EmojiMarkerModule extends BaseModule {
@@ -43,7 +44,7 @@ class EmojiMarkerModule extends BaseModule {
       (marker) => this.scrollToMarker(marker),
       (markerId) => this.removeMarker(markerId)
     );
-    
+
     this.versionChangeUnsubscribe = null;
   }
 
@@ -64,7 +65,7 @@ class EmojiMarkerModule extends BaseModule {
 
       await this.createFixedButton({
         id: 'claude-marker-fixed-btn',
-        icon: '📍',
+        icon: IconLibrary.pin('currentColor', 20),
         tooltip: 'Emoji Markers',
         position: { right: '30px', transform: 'translateY(-160px)' },
         onClick: () => this.panel.toggle(),
@@ -171,11 +172,11 @@ class EmojiMarkerModule extends BaseModule {
 
     const conversationUrl = window.location.pathname;
     const currentSignature = generateSignature(messageEl);
-    
+
     // Check if this exact message already has a marker
     const existingMarkers = await markerStore.getByConversation(conversationUrl);
     const existingMarker = existingMarkers.find(m => m.contentSignature === currentSignature);
-    
+
     if (existingMarker) {
       // Update existing marker's emoji instead of adding new
       this.log(`Marker already exists for this message, updating emoji`);
@@ -213,7 +214,7 @@ class EmojiMarkerModule extends BaseModule {
   scrollToMarker(marker) {
     const messages = this.dom.findMessages();
     const resolved = getValidMarkers([marker], messages, { strictMode: false });
-    
+
     if (resolved.length > 0 && resolved[0].resolvedIndex !== null) {
       const messageEl = messages[resolved[0].resolvedIndex];
       DOMUtils.scrollToElement(messageEl, 'center');
@@ -277,7 +278,7 @@ class EmojiMarkerModule extends BaseModule {
     this.destroyFixedButton();
     await this.createFixedButton({
       id: 'claude-marker-fixed-btn',
-      icon: '📍',
+      icon: IconLibrary.pin('currentColor', 20),
       tooltip: 'Emoji Markers',
       position: { right: '30px', transform: 'translateY(-160px)' },
       onClick: () => this.panel.toggle(),

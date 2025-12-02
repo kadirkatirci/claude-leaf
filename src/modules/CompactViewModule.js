@@ -6,6 +6,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 
 // Alt bileşenler
@@ -173,7 +174,7 @@ class CompactViewModule extends BaseModule {
    */
   addButtonsToNavigation(navContainer) {
     // Toggle butonu - duruma göre collapse veya expand yapar
-    const toggleBtn = this.createNavButton('📦', 'Tümünü Daralt (Alt+←)', () => {
+    const toggleBtn = this.createNavButton(IconLibrary.collapse('currentColor', 20), 'Tümünü Daralt (Alt+←)', () => {
       this.toggleAllMessages();
     });
     toggleBtn.id = 'claude-compact-toggle-all';
@@ -213,10 +214,10 @@ class CompactViewModule extends BaseModule {
   updateToggleButton() {
     if (this.elements && this.elements.toggleBtn) {
       if (this.isAllCollapsed) {
-        this.elements.toggleBtn.textContent = '📂';
+        this.elements.toggleBtn.innerHTML = IconLibrary.expand('currentColor', 20);
         this.elements.toggleBtn.title = 'Tümünü Genişlet (Alt+→)';
       } else {
-        this.elements.toggleBtn.textContent = '📦';
+        this.elements.toggleBtn.innerHTML = IconLibrary.collapse('currentColor', 20);
         this.elements.toggleBtn.title = 'Tümünü Daralt (Alt+←)';
       }
     }
@@ -229,16 +230,16 @@ class CompactViewModule extends BaseModule {
     const theme = this.getTheme();
     const button = document.createElement('button');
 
-    button.textContent = icon;
+    button.innerHTML = icon; // Use innerHTML to support SVG strings
     button.title = tooltip;
 
     // Use Claude's native button classes (size-9 = 36px from buttonClasses)
     button.className = theme.buttonClasses || '';
 
     // Only set positioning (sizing handled by classes)
+    // Removed color: 'white' to allow currentColor in SVGs to adapt to theme
     Object.assign(button.style, {
-      position: 'relative',
-      color: 'white'
+      position: 'relative'
     });
 
     button.addEventListener('click', onClick);
@@ -315,10 +316,10 @@ class CompactViewModule extends BaseModule {
    */
   onMessageStateChanged(messageElement, isCollapsed) {
     this.log(`Mesaj ${isCollapsed ? 'collapsed' : 'expanded'}`);
-    
+
     // Butonu güncelle
     this.updateButtonState(messageElement, isCollapsed);
-    
+
     this.emit(Events.MESSAGE_COLLAPSED, { messageElement, isCollapsed });
   }
 
@@ -331,10 +332,10 @@ class CompactViewModule extends BaseModule {
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       targetContainer = messageElement.parentElement;
     }
-    
+
     // Mevcut butonu bul - birkaç yerde olabilir
     let container = targetContainer.querySelector('.claude-expand-button-container');
-    
+
     // Footer'da da arayabiliriz
     if (!container) {
       const nextSibling = targetContainer.nextElementSibling;
@@ -342,14 +343,14 @@ class CompactViewModule extends BaseModule {
         container = nextSibling.querySelector('.claude-expand-button-container');
       }
     }
-    
+
     if (!container) {
       // Buton yoksa yeni oluştur
       const button = this.expandButton.create(messageElement, isCollapsed);
       this.expandButton.insertNextToEditButton(messageElement, button);
       return;
     }
-    
+
     // Mevcut butonu güncelle
     const button = container.querySelector('.claude-expand-btn');
     if (button) {
@@ -377,7 +378,7 @@ class CompactViewModule extends BaseModule {
       // Collapse edilmeli mi?
       if (this.collapse.shouldCollapse(message)) {
         const wasCollapsed = this.collapse.isCollapsed(message);
-        
+
         // Zaten collapsed değilse, collapse et
         if (!wasCollapsed) {
           this.collapse.collapseMessage(message);
@@ -410,7 +411,7 @@ class CompactViewModule extends BaseModule {
       // Expand edilmeli mi?
       if (this.collapse.shouldCollapse(message)) {
         const wasCollapsed = this.collapse.isCollapsed(message);
-        
+
         // Zaten collapsed ise, expand et
         if (wasCollapsed) {
           this.collapse.expandMessage(message);
@@ -436,7 +437,7 @@ class CompactViewModule extends BaseModule {
         this.collapseAllMessages();
         this.log('⌨️ Alt+← (Daralt)');
       }
-      
+
       // Alt + ArrowRight (Sağ) - Tümünü Genişlet
       if (e.altKey && e.key === 'ArrowRight') {
         e.preventDefault();

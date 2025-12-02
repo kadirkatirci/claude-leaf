@@ -2,6 +2,7 @@
  * EditBadge - Edit badge yönetimi
  */
 import MessageBadge from '../../components/primitives/MessageBadge.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 class EditBadge {
@@ -60,7 +61,7 @@ class EditBadge {
         'shadow-md',
         'z-[100]'
       ),
-      content: `✏️ ${versionInfo}`,
+      content: `${IconLibrary.edit('currentColor', 11)} ${versionInfo}`,
       title: 'Click to see edit history',
       position: { top: '-35px', right: '8px' },
       style: {},

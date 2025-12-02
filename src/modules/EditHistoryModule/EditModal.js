@@ -3,6 +3,7 @@
  * Refactored to use Claude native classes
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { textClass } from '../../utils/ClassNames.js';
 import { editHistoryStore } from '../../stores/index.js';
 
@@ -99,7 +100,7 @@ class EditModal {
 
     const title = DOMUtils.createElement('h2');
     title.className = textClass({ size: 'xl', weight: 'semibold' });
-    title.innerHTML = `✏️ Edit History ${versionInfo ? `<span class="text-accent-main-100 text-base">${versionInfo}</span>` : ''}`;
+    title.innerHTML = `${IconLibrary.edit('currentColor', 16)} Edit History ${versionInfo ? `<span class="text-accent-main-100 text-base">${versionInfo}</span>` : ''}`;
 
     const closeBtn = DOMUtils.createElement('button');
     closeBtn.className = 'bg-transparent border-0 text-2xl text-text-400 hover:bg-bg-200 hover:text-text-000 cursor-pointer p-0 size-8 rounded-full transition-all flex items-center justify-center';

@@ -6,6 +6,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
 
 // Alt bileşenler
 import EditScanner from './EditHistoryModule/EditScanner.js';
@@ -58,7 +59,7 @@ class EditHistoryModule extends BaseModule {
         await Promise.race([
           this.createFixedButton({
             id: 'claude-edit-fixed-btn',
-            icon: '✏️',
+            icon: IconLibrary.edit('currentColor', 20),
             tooltip: 'Edit History',
             position: { right: '30px', transform: 'translateY(-100px)' },
             onClick: () => this.panel.toggle(),
@@ -212,7 +213,7 @@ class EditHistoryModule extends BaseModule {
     const collapseBtn = this.dom.createElement('button', {
       id: 'claude-collapse-btn',
       className: 'claude-nav-btn', // Same class as navigation buttons (size-9 from theme)
-      innerHTML: '📦',
+      innerHTML: IconLibrary.collapse('currentColor', 20),
       'data-tooltip': 'Collapse/Expand All (Edited Messages)',
       style: {
         background: collapseBg,
@@ -230,7 +231,7 @@ class EditHistoryModule extends BaseModule {
     // Click handler
     collapseBtn.addEventListener('click', () => {
       this.isAllCollapsed = !this.isAllCollapsed;
-      collapseBtn.textContent = this.isAllCollapsed ? '📂' : '📦';
+      collapseBtn.innerHTML = this.isAllCollapsed ? IconLibrary.expand('currentColor', 20) : IconLibrary.collapse('currentColor', 20);
       collapseBtn.setAttribute('data-tooltip', this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)');
       this.handleCollapseAll(this.isAllCollapsed);
     });

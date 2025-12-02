@@ -4,13 +4,14 @@
  * Refactored to use ONLY Claude native classes
  */
 import BasePanel from '../../core/BasePanel.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn } from '../../utils/ClassNames.js';
 
 export class MarkerPanel extends BasePanel {
   constructor(getTheme, onItemClick, onItemDelete) {
     super({
       id: 'claude-marker-panel',
-      title: '📍 Emoji Markers',
+      title: 'Emoji Markers', // Icon added via updateContent
       width: '320px',
       height: '500px',
       position: { right: '20px', top: '60px' }
@@ -38,7 +39,7 @@ export class MarkerPanel extends BasePanel {
     if (this.header) {
       const title = this.header.querySelector('h3');
       if (title) {
-        title.textContent = `📍 Emoji Markers (${markers.length})`;
+        title.innerHTML = `${IconLibrary.pin('currentColor', 16)} Emoji Markers (${markers.length})`;
       }
     }
 

@@ -8,6 +8,7 @@ import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
 import tokens from '../components/theme/tokens.js';
 
 class NavigationModule extends BaseModule {
@@ -281,7 +282,7 @@ class NavigationModule extends BaseModule {
     });
 
     // Top button
-    const topBtn = this.createButton('⇈', 'En üste git (Alt+Home)', () => this.navigateToTop());
+    const topBtn = this.createButton(IconLibrary.arrowUpDouble('currentColor', 20), 'En üste git (Alt+Home)', () => this.navigateToTop());
     topBtn.id = 'claude-nav-top';
     // Initialize button as disabled (will be enabled when messages found)
     topBtn.disabled = true;
@@ -289,7 +290,7 @@ class NavigationModule extends BaseModule {
     topBtn.style.cursor = 'not-allowed';
 
     // Previous button
-    const prevBtn = this.createButton('↑', 'Önceki mesaj (Alt+↑)', () => this.navigatePrevious());
+    const prevBtn = this.createButton(IconLibrary.arrowUp('currentColor', 20), 'Önceki mesaj (Alt+↑)', () => this.navigatePrevious());
     prevBtn.id = 'claude-nav-prev';
     // Initialize button as disabled (will be enabled when messages found)
     prevBtn.disabled = true;
@@ -297,7 +298,7 @@ class NavigationModule extends BaseModule {
     prevBtn.style.cursor = 'not-allowed';
 
     // Next button
-    const nextBtn = this.createButton('↓', 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
+    const nextBtn = this.createButton(IconLibrary.arrowDown('currentColor', 20), 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
     nextBtn.id = 'claude-nav-next';
     // Initialize button as disabled (will be enabled when messages found)
     nextBtn.disabled = true;

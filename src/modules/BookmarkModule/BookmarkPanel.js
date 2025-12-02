@@ -13,7 +13,7 @@ export class BookmarkPanel extends BasePanel {
   constructor(domUtils, getTheme, getSetting) {
     super({
       id: 'claude-bookmarks-panel',
-      title: '🔖 Bookmarks',
+      title: 'Bookmarks', // Icon added dynamically
       width: '280px',
       height: '500px',
       position: { right: '20px', top: '60px' }
@@ -95,6 +95,14 @@ export class BookmarkPanel extends BasePanel {
     // Store callbacks for item creation
     this.onNavigateCallback = onNavigate;
     this.onDeleteCallback = onDelete;
+
+    // Update title with icon and count
+    if (this.header) {
+      const title = this.header.querySelector('h3');
+      if (title) {
+        title.innerHTML = `${IconLibrary.bookmark(false, 'currentColor', 16)} Bookmarks${bookmarks.length > 0 ? ` (${bookmarks.length})` : ''}`;
+      }
+    }
 
     // Check if bookmarks actually changed
     const currentIds = bookmarks.map(b => b.id).sort().join(',');

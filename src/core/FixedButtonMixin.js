@@ -29,7 +29,7 @@ export default class FixedButtonMixin {
    * Create visibility change handler
    */
   static createVisibilityHandler(module) {
-    return function(isConversationPage) {
+    return function (isConversationPage) {
       // Always process visibility changes for robustness
       module.log(`Visibility change: conversation=${isConversationPage}, button exists=${!!this.fixedButton}`);
 
@@ -86,7 +86,7 @@ export default class FixedButtonMixin {
    * Create standardized fixed button factory
    */
   static createButtonFactory(module) {
-    return async function(options = {}) {
+    return async function (options = {}) {
       const {
         id,
         icon,
@@ -113,7 +113,7 @@ export default class FixedButtonMixin {
       // Create button element
       const button = document.createElement('button');
       button.id = id;
-      button.textContent = icon;
+      button.innerHTML = icon; // Use innerHTML to support SVG strings
       button.title = tooltip || '';
 
       // Use Claude's native classes (always)
@@ -126,7 +126,7 @@ export default class FixedButtonMixin {
       button.style.top = '50%';
       button.style.transform = position.transform;
       button.style.zIndex = '9999';
-      button.style.color = 'white';
+      // button.style.color = 'white'; // Commented to allow currentColor in SVGs to adapt
       button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
 
       // Native classes already have hover effects defined in buttonClasses
@@ -189,7 +189,7 @@ export default class FixedButtonMixin {
    * Create counter update function using CounterBadge component
    */
   static createCounterUpdater(module) {
-    return function(count) {
+    return function (count) {
       if (!this.buttonCounter) return;
 
       // Use CounterBadge.update which handles visibility automatically
@@ -201,7 +201,7 @@ export default class FixedButtonMixin {
    * Create visibility listener setup
    */
   static createVisibilitySetup(module) {
-    return function() {
+    return function () {
       // Subscribe to visibility changes
       if (this.visibilityUnsubscribe) {
         this.visibilityUnsubscribe();
@@ -226,7 +226,7 @@ export default class FixedButtonMixin {
    * Create button destroyer
    */
   static createButtonDestroyer(module) {
-    return function() {
+    return function () {
       // Clean up button
       if (this.fixedButton) {
         this.fixedButton.remove();

@@ -119,7 +119,7 @@ export class Button {
         ClaudeClasses.text.xl,
         'leading-none'
       );
-      iconSpan.textContent = icon;
+      iconSpan.innerHTML = icon; // Use innerHTML to support SVG strings
       contentParts.push(iconSpan);
     }
 

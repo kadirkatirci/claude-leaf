@@ -43,8 +43,8 @@ export default class MessageBadge {
     const existingBadge = this.badgeCache.get(element);
     if (existingBadge) {
       // Update existing badge
-      if (existingBadge.textContent !== content) {
-        existingBadge.textContent = content;
+      if (existingBadge.innerHTML !== content) {
+        existingBadge.innerHTML = content; // Use innerHTML to support SVG strings
       }
       if (title && existingBadge.title !== title) {
         existingBadge.title = title;
@@ -72,7 +72,7 @@ export default class MessageBadge {
     });
 
     // Set content
-    badge.textContent = content;
+    badge.innerHTML = content; // Use innerHTML to support SVG strings
 
     // Add hover effects
     this.attachHoverEffects(badge);
@@ -127,7 +127,7 @@ export default class MessageBadge {
   update(element, content, title) {
     const badge = this.badgeCache.get(element);
     if (badge) {
-      badge.textContent = content;
+      badge.innerHTML = content; // Use innerHTML to support SVG strings
       if (title) {
         badge.title = title;
       }
