@@ -276,7 +276,7 @@ class EditScanner {
 
   /**
    * Capture a snapshot of the current conversation state
-   * This includes ALL messages and their version info
+   * Only includes edited messages (version !== null) to save storage space
    */
   async captureSnapshot(conversationUrl) {
     try {
@@ -303,17 +303,20 @@ class EditScanner {
           }
         }
 
-        // Include ALL messages, even non-edited ones (version will be null)
-        snapshot.messages.push({
-          containerId: `edit-index-${idx}`,
-          version: versionInfo, // e.g. "2/3" or null
-          contentPreview: userMessage.textContent.trim().substring(0, 100)
-        });
+        // Only include edited messages (version !== null) to save storage
+        if (versionInfo) {
+          snapshot.messages.push({
+            containerId: `edit-index-${idx}`,
+            version: versionInfo, // e.g. "2/3"
+            contentPreview: userMessage.textContent.trim().substring(0, 100)
+          });
+        }
       });
 
+      // Only save snapshot if there are edited messages
       if (snapshot.messages.length > 0) {
         await editHistoryStore.addSnapshot(snapshot);
-        console.log(`[EditScanner] 📸 Snapshot captured: ${snapshot.messages.length} messages`);
+        console.log(`[EditScanner] 📸 Snapshot captured: ${snapshot.messages.length} edited messages`);
       }
     } catch (error) {
       console.error('[EditScanner] Failed to capture snapshot:', error);

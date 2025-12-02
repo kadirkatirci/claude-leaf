@@ -1,33 +1,52 @@
 import DOMUtils from '../../utils/DOMUtils.js';
 import { editHistoryStore } from '../../stores/index.js';
-import TreeBuilder from './TreeBuilder.js';
-import * as d3 from 'd3';
+import BranchTreeBuilder from './BranchTreeBuilder.js';
+import BranchMapRenderer from './BranchMapRenderer.js';
 
+/**
+ * BranchMapModal - Conversation branch haritasını gösteren modal
+ * 
+ * Özellikler:
+ * - Snapshot'lardan oluşturulan tree yapısını görselleştirir
+ * - Aynı snapshot'taki mesajlar dikey gruplanır
+ * - Farklı versiyonlar yatay dallanır
+ * - Current path vurgulanır
+ * - Zoom/Pan desteği
+ */
 class BranchMapModal {
     constructor() {
         this.overlay = null;
         this.modal = null;
         this.isVisible = false;
+        this.renderer = null;
     }
 
+    /**
+     * Modal'ı göster
+     * @param {string} conversationUrl - Conversation URL
+     */
     async show(conversationUrl) {
         if (this.isVisible) return;
 
         // Fetch all snapshots for this conversation
         const snapshots = await editHistoryStore.getSnapshots(conversationUrl);
+        const history = await editHistoryStore.getByConversation(conversationUrl);
 
-        if (!snapshots || snapshots.length === 0) {
-            alert('No snapshots found. Please navigate through the conversation to capture snapshots.');
+        if ((!snapshots || snapshots.length === 0) && (!history || history.length === 0)) {
+            this.showEmptyState();
             return;
         }
 
-        console.log(`[BranchMapModal] Loaded ${snapshots.length} snapshots`);
+        console.log(`[BranchMapModal] Loaded ${snapshots?.length || 0} snapshots, ${history?.length || 0} history entries`);
 
-        this.createModal(snapshots);
+        this.createModal(snapshots || [], history || []);
         this.isVisible = true;
         document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Modal'ı gizle
+     */
     hide() {
         if (!this.isVisible) return;
 
@@ -36,222 +55,214 @@ class BranchMapModal {
             this.overlay = null;
         }
 
+        this.modal = null;
+        this.renderer = null;
         this.isVisible = false;
         document.body.style.overflow = '';
     }
 
-    createModal(snapshots) {
+    /**
+     * Boş state göster
+     */
+    showEmptyState() {
+        const toast = DOMUtils.createElement('div');
+        toast.className = 'fixed bottom-4 right-4 bg-bg-200 text-text-100 px-4 py-3 rounded-lg shadow-lg z-[10002] flex items-center gap-2';
+        toast.innerHTML = `
+            <span>📭</span>
+            <span>No edit history captured yet. Navigate through edited messages to capture snapshots.</span>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    /**
+     * Modal oluştur
+     * @param {Array} snapshots - Snapshot listesi
+     * @param {Array} history - History listesi
+     */
+    createModal(snapshots, history) {
         // Overlay
         this.overlay = DOMUtils.createElement('div');
-        this.overlay.className = 'fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-8 backdrop-blur-sm';
+        this.overlay.className = 'fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-6 backdrop-blur-sm';
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay) this.hide();
         });
 
         // Modal Container
         this.modal = DOMUtils.createElement('div');
-        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-[90vw] max-w-[1200px] h-[80vh] flex flex-col border border-border-200 overflow-hidden';
+        this.modal.className = 'bg-bg-000 rounded-xl shadow-2xl w-[95vw] max-w-[1400px] h-[85vh] flex flex-col border border-border-200 overflow-hidden';
 
         // Header
+        const header = this.createHeader(snapshots, history);
+
+        // Content Area
+        const content = DOMUtils.createElement('div');
+        content.className = 'flex-1 overflow-auto bg-bg-000 relative';
+        content.id = 'branch-map-content';
+
+        // Help text
+        const helpText = DOMUtils.createElement('div');
+        helpText.className = 'absolute bottom-4 left-4 text-xs text-text-400 bg-bg-100/80 px-3 py-1.5 rounded-full backdrop-blur-sm';
+        helpText.textContent = '🖱️ Drag to pan • Scroll to zoom • Click node to navigate';
+
+        this.modal.appendChild(header);
+        this.modal.appendChild(content);
+        content.appendChild(helpText);
+        this.overlay.appendChild(this.modal);
+        document.body.appendChild(this.overlay);
+
+        // Render the tree AFTER the modal is in the DOM
+        requestAnimationFrame(() => {
+            try {
+                this.renderBranchMap(content, snapshots, history);
+            } catch (error) {
+                console.error('[BranchMapModal] Render error:', error);
+                content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-text-300">
+                        <span class="text-4xl mb-4">😕</span>
+                        <p class="text-lg">Failed to render branch map</p>
+                        <p class="text-sm mt-2 text-text-400">${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    /**
+     * Header oluştur
+     * @param {Array} snapshots - Snapshot listesi
+     * @param {Array} history - History listesi
+     */
+    createHeader(snapshots, history) {
         const header = DOMUtils.createElement('div');
         header.className = 'p-4 border-b border-border-200 flex justify-between items-center bg-bg-100';
 
+        // Title
+        const titleContainer = DOMUtils.createElement('div');
+        titleContainer.className = 'flex items-center gap-3';
+
         const title = DOMUtils.createElement('h2');
         title.className = 'text-lg font-semibold text-text-100 flex items-center gap-2';
-        title.innerHTML = `🗺️ Chat Branch Map <span class="text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full">${snapshots.length} snapshots</span>`;
+        title.innerHTML = '🗺️ Chat Branch Map';
 
+        // Stats badges
+        const statsContainer = DOMUtils.createElement('div');
+        statsContainer.className = 'flex items-center gap-2';
+
+        if (snapshots.length > 0) {
+            const snapshotBadge = DOMUtils.createElement('span');
+            snapshotBadge.className = 'text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full';
+            snapshotBadge.textContent = `${snapshots.length} snapshots`;
+            statsContainer.appendChild(snapshotBadge);
+        }
+
+        // Count unique edited messages
+        const uniqueMessages = new Set();
+        history.forEach(h => uniqueMessages.add(h.containerId));
+        if (uniqueMessages.size > 0) {
+            const msgBadge = DOMUtils.createElement('span');
+            msgBadge.className = 'text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full';
+            msgBadge.textContent = `${uniqueMessages.size} edited messages`;
+            statsContainer.appendChild(msgBadge);
+        }
+
+        titleContainer.appendChild(title);
+        titleContainer.appendChild(statsContainer);
+
+        // Close button
         const closeBtn = DOMUtils.createElement('button');
         closeBtn.className = 'p-2 hover:bg-bg-200 rounded-lg transition-colors text-text-300 hover:text-text-100';
         closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
         closeBtn.addEventListener('click', () => this.hide());
 
-        header.appendChild(title);
+        header.appendChild(titleContainer);
         header.appendChild(closeBtn);
 
-        // Content Area (SVG Container)
-        const content = DOMUtils.createElement('div');
-        content.className = 'flex-1 overflow-hidden bg-bg-000 relative';
-        content.id = 'branch-map-content';
-
-        this.modal.appendChild(header);
-        this.modal.appendChild(content);
-        this.overlay.appendChild(this.modal);
-        document.body.appendChild(this.overlay);
-
-        // Render the tree AFTER the modal is in the DOM
-        // This ensures container has proper dimensions
-        requestAnimationFrame(() => {
-            try {
-                this.renderD3Tree(content, snapshots);
-            } catch (error) {
-                console.error('[BranchMapModal] Render error:', error);
-                content.innerHTML = `<div class="p-8 text-center text-text-300">
-                    <p>Failed to render tree</p>
-                    <p class="text-xs mt-2">${error.message}</p>
-                </div>`;
-            }
-        });
+        return header;
     }
 
-    renderD3Tree(container, snapshots) {
-        // Build layers from snapshots
-        const builder = new TreeBuilder(snapshots);
-        const data = builder.build();
+    /**
+     * Branch map'i renderla
+     * @param {HTMLElement} container - Container element
+     * @param {Array} snapshots - Snapshot listesi
+     * @param {Array} history - History listesi
+     */
+    renderBranchMap(container, snapshots, history) {
+        console.log('[BranchMapModal] Building tree...');
 
-        console.log('[BranchMapModal] Layers:', data.layers.length);
+        // Tree oluştur
+        const builder = new BranchTreeBuilder(snapshots, history);
+        const tree = builder.build();
 
-        // Set up SVG dimensions
-        const modalHeight = this.modal.clientHeight || 800;
-        const modalWidth = this.modal.clientWidth || 1200;
+        console.log('[BranchMapModal] Tree built:', tree);
 
-        const width = Math.max(modalWidth * 0.9, 800);
-        const height = Math.max(modalHeight * 0.7, 500);
-
-        console.log('[BranchMapModal] SVG dimensions:', width, 'x', height);
-
-        if (width < 100 || height < 100) {
-            console.error('[BranchMapModal] Invalid dimensions, container not ready');
+        // Boş tree kontrolü
+        if (!tree.children || tree.children.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-text-300">
+                    <span class="text-4xl mb-4">🌱</span>
+                    <p class="text-lg">No branches to display</p>
+                    <p class="text-sm mt-2 text-text-400">Edit some messages and navigate between versions to see the branch map.</p>
+                </div>
+            `;
             return;
         }
 
-        // Create SVG
-        const svg = d3.select(container)
-            .append('svg')
-            .attr('width', width)
-            .attr('height', height)
-            .style('background', 'var(--bg-000)');
+        // Render
+        console.log('[BranchMapModal] Rendering...');
+        this.renderer = new BranchMapRenderer(container, tree);
+        this.renderer.render();
 
-        console.log('[BranchMapModal] SVG created');
-
-        // Create a group for zoom/pan
-        const g = svg.append('g');
-
-        // Add zoom behavior
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 3])
-            .on('zoom', (event) => {
-                g.attr('transform', event.transform);
-            });
-
-        svg.call(zoom);
-
-        // Calculate layout
-        const layerHeight = height / (data.layers.length + 1);
-        const nodeSpacing = 80;
-
-        // Draw layers
-        data.layers.forEach((layer, layerIndex) => {
-            const y = (layerIndex + 1) * layerHeight;
-            const totalWidth = layer.nodes.length * nodeSpacing;
-            const startX = (width - totalWidth) / 2;
-
-            // Draw layer label
-            g.append('text')
-                .attr('x', 20)
-                .attr('y', y)
-                .attr('fill', 'var(--text-300)')
-                .attr('font-size', '10px')
-                .text(`Snapshot ${layerIndex + 1}`);
-
-            // Draw nodes in this layer
-            layer.nodes.forEach((node, nodeIndex) => {
-                const x = startX + (nodeIndex + 0.5) * nodeSpacing;
-
-                // Node group
-                const nodeGroup = g.append('g')
-                    .attr('class', 'node')
-                    .attr('transform', `translate(${x},${y})`)
-                    .style('cursor', 'pointer');
-
-                // Node circle
-                const colors = ['#60a5fa', '#4ade80', '#c084fc', '#fb923c', '#f472b6', '#22d3ee'];
-                const color = colors[node.messageIndex % colors.length];
-
-                nodeGroup.append('circle')
-                    .attr('r', 12)
-                    .attr('fill', color)
-                    .attr('stroke', '#fff')
-                    .attr('stroke-width', 2);
-
-                // Node label
-                nodeGroup.append('text')
-                    .attr('dy', -20)
-                    .attr('text-anchor', 'middle')
-                    .attr('fill', 'var(--text-100)')
-                    .attr('font-size', '11px')
-                    .attr('font-weight', 'bold')
-                    .text(node.version);
-
-                // Content preview on hover
-                nodeGroup.append('title')
-                    .text(node.contentPreview || 'No preview');
-
-                // Click to navigate
-                nodeGroup.on('click', () => {
-                    this.scrollToMessage(node.containerId);
-                    this.hide();
-                });
-
-                // Store position for edge drawing
-                node.x = x;
-                node.y = y;
-            });
+        // Node click handler
+        container.addEventListener('branchmap:nodeclick', (e) => {
+            const node = e.detail.node;
+            console.log('[BranchMapModal] Node clicked:', node);
+            
+            if (node.containerId) {
+                this.scrollToMessage(node.containerId);
+                this.hide();
+            }
         });
 
-        // Draw edges between layers
-        for (let i = 0; i < data.layers.length - 1; i++) {
-            const currentLayer = data.layers[i];
-            const nextLayer = data.layers[i + 1];
-
-            // For each node in current layer, find matching nodes in next layer
-            currentLayer.nodes.forEach(currentNode => {
-                nextLayer.nodes.forEach(nextNode => {
-                    // Draw edge if same message (different version) or sequential messages
-                    const shouldConnect =
-                        currentNode.containerId === nextNode.containerId || // Same message, different version
-                        currentNode.messageIndex < nextNode.messageIndex; // Sequential
-
-                    if (shouldConnect) {
-                        g.append('line')
-                            .attr('x1', currentNode.x)
-                            .attr('y1', currentNode.y)
-                            .attr('x2', nextNode.x)
-                            .attr('y2', nextNode.y)
-                            .attr('stroke', 'var(--border-300)')
-                            .attr('stroke-width', 1.5)
-                            .attr('stroke-opacity', 0.4)
-                            .lower(); // Send to back
-                    }
-                });
-            });
-        }
-
-        // Center the view
-        const initialTransform = d3.zoomIdentity
-            .translate(50, 0)
-            .scale(1);
-        svg.call(zoom.transform, initialTransform);
+        console.log('[BranchMapModal] Render complete');
     }
 
+    /**
+     * Mesaja scroll yap
+     * @param {string} containerId - Container ID (edit-index-X)
+     */
     scrollToMessage(containerId) {
-        if (containerId.startsWith('edit-index-')) {
-            const index = parseInt(containerId.replace('edit-index-', ''));
-            const userMessages = document.querySelectorAll('[data-testid="user-message"]');
-            if (userMessages[index]) {
-                userMessages[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                // Highlight effect
-                const el = userMessages[index].closest('.font-user-message') || userMessages[index];
-                el.style.transition = 'background-color 0.5s';
-                el.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
-                setTimeout(() => {
-                    el.style.backgroundColor = '';
-                }, 2000);
-                return;
-            }
+        if (!containerId.startsWith('edit-index-')) {
+            console.warn('[BranchMapModal] Invalid containerId:', containerId);
+            return;
         }
 
-        console.warn('Could not find message element for', containerId);
+        const index = parseInt(containerId.replace('edit-index-', ''));
+        const userMessages = document.querySelectorAll('[data-testid="user-message"]');
+        
+        if (userMessages[index]) {
+            userMessages[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Highlight effect
+            const el = userMessages[index].closest('.font-user-message') || userMessages[index];
+            el.style.transition = 'background-color 0.5s, box-shadow 0.5s';
+            el.style.backgroundColor = 'rgba(99, 102, 241, 0.2)';
+            el.style.boxShadow = '0 0 0 2px rgba(99, 102, 241, 0.4)';
+            
+            setTimeout(() => {
+                el.style.backgroundColor = '';
+                el.style.boxShadow = '';
+            }, 2500);
+            
+            return;
+        }
+
+        console.warn('[BranchMapModal] Could not find message element for', containerId);
     }
 }
 
