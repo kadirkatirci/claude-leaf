@@ -76,7 +76,7 @@ export class BookmarkSidebar {
     });
 
     // Insert the bookmark icon
-    iconInnerContainer.innerHTML = IconLibrary.bookmarkWithDarkMode();
+    iconInnerContainer.innerHTML = IconLibrary.bookmark(false, 'currentColor', 16);
     iconOuterContainer.appendChild(iconInnerContainer);
 
     // Create text container

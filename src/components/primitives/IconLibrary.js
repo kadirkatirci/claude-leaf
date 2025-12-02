@@ -23,21 +23,7 @@ export default class IconLibrary {
     }
   }
 
-  /**
-   * Get bookmark icon with dark mode detection
-   * @param {boolean} filled - Whether to use filled or stroked version
-   * @param {number} size - Icon size (default: 14)
-   * @returns {string} SVG markup
-   */
-  static bookmarkWithDarkMode(filled = false, size = 14) {
-    // Detect dark mode from Claude's UI
-    const isDarkMode = document.documentElement.classList.contains('dark') ||
-                       document.body.classList.contains('dark') ||
-                       window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    const color = isDarkMode ? '#ffffff' : '#141B34';
-    return this.bookmark(filled, color, size);
-  }
 
   /**
    * Get close icon (×)
@@ -133,8 +119,7 @@ export default class IconLibrary {
     switch (name) {
       case 'bookmark':
         return this.bookmark(filled, color, size);
-      case 'bookmark-dark-mode':
-        return this.bookmarkWithDarkMode(filled, size);
+
       case 'close':
         return this.close(color, size);
       case 'chevron':
