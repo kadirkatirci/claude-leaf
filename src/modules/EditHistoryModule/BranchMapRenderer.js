@@ -4,8 +4,8 @@
  * Kurallar:
  * - Aynı mesaj numarası = Aynı yatay hiza (satır)
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
- * - Ana yol sütununda tüm ana yol mesajları dikey
- * - Dal sütunları tek node içerir
+ * - Aynı snapshot'taki mesajlar aynı sütunda (dikey)
+ * - Bağlantılar: Aynı satırdaki node'lar arası yatay
  */
 
 class BranchMapRenderer {
@@ -343,43 +343,23 @@ class BranchMapRenderer {
       }
     });
 
-    // Sol dallardan ana yola bağlantı (aynı satırda)
-    const mainColumn = this.columnLayouts.find(c => c.type === 'main');
-    if (mainColumn) {
-      this.columnLayouts.forEach(col => {
-        if (col.type === 'left-branch') {
-          col.nodes.forEach(branchNode => {
-            // Ana yolda aynı satırdaki node'u bul
-            const mainNode = mainColumn.nodes.find(n => n.messageIndex === branchNode.messageIndex);
-            if (mainNode) {
-              const path = this.createConnection(
-                branchNode.x + nodeWidth,
-                branchNode.y + nodeHeight / 2,
-                mainNode.x,
-                mainNode.y + nodeHeight / 2
-              );
-              g.appendChild(path);
-            }
-          });
-        }
-      });
+    // Sütunlar arası bağlantılar (aynı satırdaki node'lar arası)
+    // Sol dallardan ana yola veya bir sonraki sütuna
+    for (let i = 0; i < this.columnLayouts.length - 1; i++) {
+      const currentCol = this.columnLayouts[i];
+      const nextCol = this.columnLayouts[i + 1];
 
-      // Ana yoldan sağ dallara bağlantı (aynı satırda)
-      this.columnLayouts.forEach(col => {
-        if (col.type === 'right-branch') {
-          col.nodes.forEach(branchNode => {
-            // Ana yolda aynı satırdaki node'u bul
-            const mainNode = mainColumn.nodes.find(n => n.messageIndex === branchNode.messageIndex);
-            if (mainNode) {
-              const path = this.createConnection(
-                mainNode.x + nodeWidth,
-                mainNode.y + nodeHeight / 2,
-                branchNode.x,
-                branchNode.y + nodeHeight / 2
-              );
-              g.appendChild(path);
-            }
-          });
+      // Her iki sütunda da aynı satırda node var mı?
+      currentCol.nodes.forEach(currentNode => {
+        const matchingNode = nextCol.nodes.find(n => n.messageIndex === currentNode.messageIndex);
+        if (matchingNode) {
+          const path = this.createConnection(
+            currentNode.x + nodeWidth,
+            currentNode.y + nodeHeight / 2,
+            matchingNode.x,
+            matchingNode.y + nodeHeight / 2
+          );
+          g.appendChild(path);
         }
       });
     }
