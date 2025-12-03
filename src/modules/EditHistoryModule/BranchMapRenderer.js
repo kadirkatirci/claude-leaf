@@ -4,14 +4,14 @@
  * Kurallar:
  * - Aynı mesaj numarası = Aynı yatay hiza (satır)
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
- * - Dal sütunlarında sadece farklı olan mesajlar var
- * - Bağlantılar: Dallanma noktasından (ana yoldaki mesaj) dal sütununa
+ * - Duplicate node'lar filtrelenmiş durumda
+ * - Bağlantılar: connectFrom bilgisine göre çizilir
  */
 
 class BranchMapRenderer {
   constructor(container, data, options = {}) {
     this.container = container;
-    this.data = data; // { columns, messageIndices, containerIds, mainPath }
+    this.data = data;
     this.options = {
       nodeWidth: 70,
       nodeHeight: 36,
@@ -36,15 +36,12 @@ class BranchMapRenderer {
     this.svg = null;
     this.mainGroup = null;
     this.colorMap = new Map();
-    this.rowPositions = new Map();   // messageIndex -> y
-    this.columnLayouts = [];         // Her sütunun layout bilgisi
+    this.rowPositions = new Map();
+    this.columnLayouts = [];
     this.startNodePos = null;
-    this.mainColumnLayout = null;    // Ana yol sütunu referansı
+    this.nodePositionMap = new Map(); // "containerId:version" -> {x, y, columnId}
   }
 
-  /**
-   * Ana render metodu
-   */
   render() {
     console.log('[BranchMapRenderer] Starting render with data:', this.data);
 
@@ -53,87 +50,63 @@ class BranchMapRenderer {
       return;
     }
 
-    // 1. Renk haritası oluştur
     this.buildColorMap();
-
-    // 2. Satır pozisyonlarını hesapla
     this.calculateRowPositions();
-
-    // 3. Sütun layout'larını hesapla
     this.calculateColumnLayouts();
-
-    // 4. SVG boyutlarını hesapla
+    
     const bounds = this.calculateBounds();
-
-    // 5. SVG oluştur
     this.createSVG(bounds.width, bounds.height);
-
-    // 6. Sütunları (kutuları) çiz
+    
     this.renderColumns();
-
-    // 7. START node çiz
     this.renderStartNode();
-
-    // 8. Node'ları çiz
     this.renderNodes();
-
-    // 9. Bağlantıları çiz
     this.renderConnections();
-
-    // 10. Legend çiz
     this.renderLegend(bounds.height);
-
-    // 11. Interaktivite ekle
     this.addInteractivity();
 
     console.log('[BranchMapRenderer] Render complete');
     return this.svg;
   }
 
-  /**
-   * Her containerId için renk ata
-   */
   buildColorMap() {
     this.data.containerIds.forEach((containerId, index) => {
       this.colorMap.set(containerId, this.options.colors[index % this.options.colors.length]);
     });
   }
 
-  /**
-   * Satır pozisyonlarını hesapla
-   */
   calculateRowPositions() {
     const { startY, nodeHeight, verticalGap } = this.options;
-    
     this.data.messageIndices.forEach((msgIndex, rowIndex) => {
       const y = startY + rowIndex * (nodeHeight + verticalGap);
       this.rowPositions.set(msgIndex, y);
     });
   }
 
-  /**
-   * Sütun layout'larını hesapla
-   */
   calculateColumnLayouts() {
     const { startX, nodeWidth, horizontalGap, columnPadding, nodeHeight } = this.options;
-    
-    // START node'dan sonra başla
     let currentX = startX + nodeWidth + horizontalGap;
 
     this.data.columns.forEach((column) => {
-      // Boş sütunları atla
-      if (!column.nodes || column.nodes.length === 0) {
-        return;
-      }
+      if (!column.nodes || column.nodes.length === 0) return;
 
-      // Bu sütundaki node'ların pozisyonlarını hesapla
-      const nodePositions = column.nodes.map(node => ({
-        ...node,
-        x: currentX + columnPadding,
-        y: this.rowPositions.get(node.messageIndex)
-      }));
+      const nodePositions = column.nodes.map(node => {
+        const pos = {
+          ...node,
+          x: currentX + columnPadding,
+          y: this.rowPositions.get(node.messageIndex)
+        };
+        
+        // Node pozisyonunu kaydet (bağlantılar için)
+        const nodeKey = `${node.containerId}:${node.version}`;
+        this.nodePositionMap.set(nodeKey, {
+          x: pos.x,
+          y: pos.y,
+          columnId: column.id
+        });
+        
+        return pos;
+      });
 
-      // Sütun sınırlarını hesapla
       const ys = nodePositions.map(n => n.y);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
@@ -141,7 +114,7 @@ class BranchMapRenderer {
       const layout = {
         id: column.id,
         type: column.type,
-        divergeFromIndex: column.divergeFromIndex,
+        connectFrom: column.connectFrom,
         x: currentX,
         y: minY - columnPadding,
         width: nodeWidth + columnPadding * 2,
@@ -150,22 +123,12 @@ class BranchMapRenderer {
       };
 
       this.columnLayouts.push(layout);
-      
-      // Ana yol referansını sakla
-      if (column.type === 'main') {
-        this.mainColumnLayout = layout;
-      }
-
       currentX += layout.width + horizontalGap;
     });
   }
 
-  /**
-   * SVG boyutlarını hesapla
-   */
   calculateBounds() {
     const { startX, nodeWidth, nodeHeight, startY } = this.options;
-    
     let maxX = startX + nodeWidth;
     let maxY = startY + nodeHeight;
 
@@ -174,15 +137,9 @@ class BranchMapRenderer {
       maxY = Math.max(maxY, col.y + col.height);
     });
 
-    return {
-      width: maxX + 60,
-      height: maxY + 80
-    };
+    return { width: maxX + 60, height: maxY + 80 };
   }
 
-  /**
-   * SVG oluştur
-   */
   createSVG(width, height) {
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svg.setAttribute('width', '100%');
@@ -195,25 +152,14 @@ class BranchMapRenderer {
     this.mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.mainGroup.setAttribute('class', 'main-group');
     this.svg.appendChild(this.mainGroup);
-
     this.container.appendChild(this.svg);
   }
 
-  /**
-   * START node çiz
-   */
   renderStartNode() {
     const { startX, nodeWidth, nodeHeight } = this.options;
-    
-    // START'ın Y pozisyonu: ilk satırla aynı hizada
     const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || this.options.startY;
 
-    this.startNodePos = {
-      x: startX,
-      y: firstRowY,
-      width: nodeWidth,
-      height: nodeHeight
-    };
+    this.startNodePos = { x: startX, y: firstRowY, width: nodeWidth, height: nodeHeight };
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('transform', `translate(${startX}, ${firstRowY})`);
@@ -241,9 +187,6 @@ class BranchMapRenderer {
     this.mainGroup.appendChild(g);
   }
 
-  /**
-   * Sütunları (kutuları) çiz
-   */
   renderColumns() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'columns');
@@ -259,33 +202,25 @@ class BranchMapRenderer {
       rect.setAttribute('stroke', 'var(--border-300)');
       rect.setAttribute('stroke-width', '1');
       rect.setAttribute('stroke-opacity', '0.5');
-
       g.appendChild(rect);
     });
 
     this.mainGroup.appendChild(g);
   }
 
-  /**
-   * Node'ları çiz
-   */
   renderNodes() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'nodes');
 
     this.columnLayouts.forEach(col => {
       col.nodes.forEach(node => {
-        const nodeEl = this.createNode(node);
-        g.appendChild(nodeEl);
+        g.appendChild(this.createNode(node));
       });
     });
 
     this.mainGroup.appendChild(g);
   }
 
-  /**
-   * Tek bir node elementi oluştur
-   */
   createNode(node) {
     const { nodeWidth, nodeHeight } = this.options;
 
@@ -319,22 +254,15 @@ class BranchMapRenderer {
     g.appendChild(text);
     g.appendChild(title);
 
-    // Click handler
     g.addEventListener('click', () => {
-      const event = new CustomEvent('branchmap:nodeclick', { detail: { node } });
-      this.container.dispatchEvent(event);
+      this.container.dispatchEvent(new CustomEvent('branchmap:nodeclick', { detail: { node } }));
     });
-
-    // Hover
     g.addEventListener('mouseenter', () => rect.style.filter = 'brightness(1.15)');
     g.addEventListener('mouseleave', () => rect.style.filter = '');
 
     return g;
   }
 
-  /**
-   * Bağlantıları çiz
-   */
   renderConnections() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'connections');
@@ -347,106 +275,74 @@ class BranchMapRenderer {
     if (firstColumn) {
       const firstNode = firstColumn.nodes.find(n => n.messageIndex === firstRowIndex);
       if (firstNode) {
-        const path = this.createConnection(
+        g.appendChild(this.createConnection(
           this.startNodePos.x + this.startNodePos.width,
           this.startNodePos.y + this.startNodePos.height / 2,
           firstNode.x,
           firstNode.y + nodeHeight / 2
-        );
-        g.appendChild(path);
+        ));
       }
     }
 
-    // Sol dallardan ana yola bağlantı
-    // Dallanma noktası: divergeFromIndex veya ilk satır
+    // Her sütun için connectFrom bilgisine göre bağlantı
     this.columnLayouts.forEach((col, colIndex) => {
-      if (col.type === 'left-branch' && this.mainColumnLayout) {
-        const firstBranchNode = col.nodes[0];
-        if (firstBranchNode) {
-          // Dallanma noktasını bul (ana yoldaki mesaj)
-          let sourceNode;
-          
-          if (col.divergeFromIndex === -1) {
-            // START'tan dallanıyor - aynı satırdaki ana yol node'una bağlan
-            sourceNode = this.mainColumnLayout.nodes.find(
-              n => n.messageIndex === firstBranchNode.messageIndex
-            );
-          } else {
-            // Belirli bir mesajdan dallanıyor
-            sourceNode = this.mainColumnLayout.nodes.find(
-              n => n.messageIndex === col.divergeFromIndex
-            );
-          }
+      // İlk sütun START'a bağlı, zaten çizildi
+      if (colIndex === 0) return;
+      
+      const firstNodeInColumn = col.nodes[0];
+      if (!firstNodeInColumn) return;
 
-          // Aynı satırda bağlantı (sol dal → ana yol aynı satır)
-          const sameRowMainNode = this.mainColumnLayout.nodes.find(
-            n => n.messageIndex === firstBranchNode.messageIndex
-          );
-          
-          if (sameRowMainNode) {
-            const path = this.createConnection(
-              firstBranchNode.x + nodeWidth,
-              firstBranchNode.y + nodeHeight / 2,
-              sameRowMainNode.x,
-              sameRowMainNode.y + nodeHeight / 2
+      // connectFrom bilgisi varsa kullan
+      if (col.connectFrom) {
+        const sourceNodeKey = `${col.connectFrom.node.containerId}:${col.connectFrom.node.version}`;
+        const sourcePos = this.nodePositionMap.get(sourceNodeKey);
+        
+        if (sourcePos) {
+          g.appendChild(this.createConnection(
+            sourcePos.x + nodeWidth,
+            sourcePos.y + nodeHeight / 2,
+            firstNodeInColumn.x,
+            firstNodeInColumn.y + nodeHeight / 2
+          ));
+          return;
+        }
+      }
+
+      // connectFrom yoksa, önceki sütundan aynı satıra veya en yakın node'a bağlan
+      const prevColumn = this.columnLayouts[colIndex - 1];
+      if (prevColumn) {
+        // Aynı satırda node var mı?
+        let sourceNode = prevColumn.nodes.find(n => n.messageIndex === firstNodeInColumn.messageIndex);
+        
+        // Yoksa en yakın (daha küçük messageIndex) node'u bul
+        if (!sourceNode) {
+          const candidates = prevColumn.nodes.filter(n => n.messageIndex < firstNodeInColumn.messageIndex);
+          if (candidates.length > 0) {
+            sourceNode = candidates.reduce((best, n) => 
+              n.messageIndex > best.messageIndex ? n : best
             );
-            g.appendChild(path);
           }
+        }
+        
+        // Hala yoksa ilk node'u kullan
+        if (!sourceNode) {
+          sourceNode = prevColumn.nodes[0];
+        }
+
+        if (sourceNode) {
+          g.appendChild(this.createConnection(
+            sourceNode.x + nodeWidth,
+            sourceNode.y + nodeHeight / 2,
+            firstNodeInColumn.x,
+            firstNodeInColumn.y + nodeHeight / 2
+          ));
         }
       }
     });
 
-    // Ana yoldan sağ dallara bağlantı
-    this.columnLayouts.forEach((col) => {
-      if (col.type === 'right-branch' && this.mainColumnLayout) {
-        const firstBranchNode = col.nodes[0];
-        if (firstBranchNode) {
-          // Dallanma noktasını bul
-          let sourceNode;
-          
-          if (col.divergeFromIndex !== undefined && col.divergeFromIndex !== -1) {
-            // Belirli bir mesajdan dallanıyor
-            sourceNode = this.mainColumnLayout.nodes.find(
-              n => n.messageIndex === col.divergeFromIndex
-            );
-          }
-          
-          // Aynı satırdaki ana yol node'unu bul
-          const sameRowMainNode = this.mainColumnLayout.nodes.find(
-            n => n.messageIndex === firstBranchNode.messageIndex
-          );
-          
-          // Dallanma noktasından dal sütununa bağlantı
-          if (sourceNode && sourceNode.messageIndex !== firstBranchNode.messageIndex) {
-            // Çapraz bağlantı: dallanma noktası → dal'ın ilk node'u
-            const path = this.createConnection(
-              sourceNode.x + nodeWidth,
-              sourceNode.y + nodeHeight / 2,
-              firstBranchNode.x,
-              firstBranchNode.y + nodeHeight / 2
-            );
-            g.appendChild(path);
-          } else if (sameRowMainNode) {
-            // Aynı satır bağlantısı
-            const path = this.createConnection(
-              sameRowMainNode.x + nodeWidth,
-              sameRowMainNode.y + nodeHeight / 2,
-              firstBranchNode.x,
-              firstBranchNode.y + nodeHeight / 2
-            );
-            g.appendChild(path);
-          }
-        }
-      }
-    });
-
-    // Bağlantıları arkaya al
     this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
   }
 
-  /**
-   * Bezier curve bağlantı
-   */
   createConnection(x1, y1, x2, y2) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const midX = (x1 + x2) / 2;
@@ -461,16 +357,12 @@ class BranchMapRenderer {
     return path;
   }
 
-  /**
-   * Legend çiz
-   */
   renderLegend(svgHeight) {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'legend');
     g.setAttribute('transform', `translate(20, ${svgHeight - 40})`);
 
     let x = 0;
-
     this.colorMap.forEach((color, containerId) => {
       const msgIndex = containerId.replace('edit-index-', '');
 
@@ -497,9 +389,6 @@ class BranchMapRenderer {
     this.mainGroup.appendChild(g);
   }
 
-  /**
-   * Zoom/Pan
-   */
   addInteractivity() {
     let isPanning = false;
     let startX, startY;
