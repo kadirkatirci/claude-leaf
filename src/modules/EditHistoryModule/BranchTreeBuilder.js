@@ -6,7 +6,8 @@
  * 2. Ana yoldaki versiyonlardan farklı olanlar = Dallar
  * 3. Sütun sırası: Sol dallar → Ana yol → Sağ dallar
  * 4. Aynı mesaj numarası = Aynı yatay hiza (satır)
- * 5. Aynı snapshot'ta yakalanan mesajlar aynı sütunda (yalnız değil)
+ * 5. Dal sütunlarında sadece ana yoldan FARKLI olan mesajlar gösterilir
+ * 6. Bağlantı, dallanma noktasından (ana yoldaki son ortak mesaj) başlar
  */
 
 class BranchTreeBuilder {
@@ -34,12 +35,12 @@ class BranchTreeBuilder {
     const mainPath = this.findMainPath(paths);
     console.log('[BranchTreeBuilder] Main path:', mainPath);
 
-    // 3. Dal snapshot'larını bul (ana yoldan farklı olanlar)
-    const branchSnapshots = this.findBranchSnapshots(paths, mainPath);
-    console.log('[BranchTreeBuilder] Branch snapshots:', branchSnapshots);
+    // 3. Dal snapshot'larını bul ve analiz et
+    const branches = this.analyzeBranches(paths, mainPath);
+    console.log('[BranchTreeBuilder] Branches:', branches);
 
     // 4. Sütunları oluştur
-    const columns = this.buildColumns(mainPath, branchSnapshots);
+    const columns = this.buildColumns(mainPath, branches);
     console.log('[BranchTreeBuilder] Columns:', columns);
 
     // 5. Unique değerleri topla
@@ -89,10 +90,10 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Ana yoldan farklı olan snapshot'ları bul
-   * Her biri bir dal sütunu olacak
+   * Dal snapshot'larını analiz et
+   * Her dal için: farklı mesajlar ve dallanma noktası
    */
-  findBranchSnapshots(paths, mainPath) {
+  analyzeBranches(paths, mainPath) {
     const mainPathKey = this.pathToKey(mainPath.messages);
     const branches = [];
 
@@ -101,14 +102,18 @@ class BranchTreeBuilder {
       
       // Ana yol ile aynı değilse bu bir dal
       if (pathKey !== mainPathKey) {
-        // Bu dal, ana yoldan hangi noktada ayrılıyor?
-        const divergeIndex = this.findDivergencePoint(mainPath.messages, path.messages);
+        // Dallanma noktasını ve farklı mesajları bul
+        const analysis = this.analyzeDivergence(mainPath.messages, path.messages);
         
         branches.push({
           snapshotId: path.snapshotId,
-          messages: path.messages,
-          divergeIndex, // Ana yoldan ayrıldığı messageIndex
-          isLeftBranch: this.isLeftBranch(mainPath.messages, path.messages)
+          allMessages: path.messages,
+          // Sadece ana yoldan farklı olan mesajlar
+          uniqueMessages: analysis.uniqueMessages,
+          // Dallanma noktası (ana yoldaki son ortak mesajın index'i)
+          divergeFromIndex: analysis.divergeFromIndex,
+          // Sol mu sağ mı?
+          isLeftBranch: analysis.isLeftBranch
         });
       }
     });
@@ -117,11 +122,81 @@ class BranchTreeBuilder {
     branches.sort((a, b) => {
       if (a.isLeftBranch && !b.isLeftBranch) return -1;
       if (!a.isLeftBranch && b.isLeftBranch) return 1;
-      // Aynı tarafta ise messageIndex'e göre
-      return a.divergeIndex - b.divergeIndex;
+      // Aynı tarafta ise divergeFromIndex'e göre
+      return a.divergeFromIndex - b.divergeFromIndex;
     });
 
     return branches;
+  }
+
+  /**
+   * Dallanma analizi: hangi mesajlar farklı, nereden dallanıyor
+   */
+  analyzeDivergence(mainMessages, branchMessages) {
+    const uniqueMessages = [];
+    let divergeFromIndex = null;
+    let isLeftBranch = false;
+
+    // Ana yol mesajlarını map'e çevir
+    const mainMap = new Map();
+    mainMessages.forEach(m => {
+      mainMap.set(m.containerId, m);
+    });
+
+    // Branch mesajlarını kontrol et
+    for (let i = 0; i < branchMessages.length; i++) {
+      const branchMsg = branchMessages[i];
+      const mainMsg = mainMap.get(branchMsg.containerId);
+
+      if (!mainMsg) {
+        // Bu mesaj ana yolda yok - farklı
+        uniqueMessages.push(branchMsg);
+        if (divergeFromIndex === null && i > 0) {
+          // Bir önceki mesajdan dallanıyor
+          divergeFromIndex = branchMessages[i - 1].messageIndex;
+        }
+      } else if (mainMsg.version !== branchMsg.version) {
+        // Aynı mesaj ama farklı versiyon - farklı
+        uniqueMessages.push(branchMsg);
+        
+        // İlk farklılık = dallanma noktası
+        if (divergeFromIndex === null) {
+          // Bu mesajın kendisi dallanma noktası değil, bir önceki ortak mesaj
+          // Eğer ilk mesajsa, START'tan dallanıyor
+          if (i === 0) {
+            divergeFromIndex = -1; // START'tan
+          } else {
+            divergeFromIndex = branchMessages[i - 1].messageIndex;
+          }
+        }
+
+        // Sol mu sağ mı belirleme (ilk farklı mesaja göre)
+        if (uniqueMessages.length === 1) {
+          const branchVersion = parseInt(branchMsg.version.split('/')[0]);
+          const mainVersion = parseInt(mainMsg.version.split('/')[0]);
+          isLeftBranch = branchVersion < mainVersion;
+        }
+      }
+      // Aynı mesaj, aynı versiyon - ortak, atla
+    }
+
+    // Eğer hiç farklı mesaj yoksa (tamamen alt küme), tüm mesajlar unique
+    if (uniqueMessages.length === 0 && branchMessages.length > 0) {
+      uniqueMessages.push(...branchMessages);
+      divergeFromIndex = -1;
+      isLeftBranch = true;
+    }
+
+    // divergeFromIndex hala null ise (tüm mesajlar ortak ama branch daha kısa)
+    if (divergeFromIndex === null && branchMessages.length > 0) {
+      divergeFromIndex = branchMessages[branchMessages.length - 1].messageIndex;
+    }
+
+    return {
+      uniqueMessages,
+      divergeFromIndex: divergeFromIndex ?? -1,
+      isLeftBranch
+    };
   }
 
   /**
@@ -132,51 +207,19 @@ class BranchTreeBuilder {
   }
 
   /**
-   * İki path'in hangi noktada ayrıldığını bul
-   */
-  findDivergencePoint(mainMessages, branchMessages) {
-    for (let i = 0; i < branchMessages.length; i++) {
-      const branchMsg = branchMessages[i];
-      const mainMsg = mainMessages.find(m => m.containerId === branchMsg.containerId);
-      
-      if (!mainMsg || mainMsg.version !== branchMsg.version) {
-        return branchMsg.messageIndex;
-      }
-    }
-    return branchMessages[0]?.messageIndex || 0;
-  }
-
-  /**
-   * Bu dal sol tarafta mı? (İlk mesajın versiyonu ana yoldan küçükse sol)
-   */
-  isLeftBranch(mainMessages, branchMessages) {
-    if (branchMessages.length === 0) return false;
-    
-    const firstBranchMsg = branchMessages[0];
-    const mainMsg = mainMessages.find(m => m.containerId === firstBranchMsg.containerId);
-    
-    if (!mainMsg) return true; // Ana yolda yoksa sol
-    
-    // Versiyon numarasını karşılaştır
-    const branchVersion = parseInt(firstBranchMsg.version.split('/')[0]);
-    const mainVersion = parseInt(mainMsg.version.split('/')[0]);
-    
-    return branchVersion < mainVersion;
-  }
-
-  /**
    * Sütunları oluştur
    */
-  buildColumns(mainPath, branchSnapshots) {
+  buildColumns(mainPath, branches) {
     const columns = [];
 
-    // Sol dallar (ilk mesajın versiyonu ana yoldan küçük olanlar)
-    const leftBranches = branchSnapshots.filter(b => b.isLeftBranch);
+    // Sol dallar
+    const leftBranches = branches.filter(b => b.isLeftBranch);
     leftBranches.forEach((branch, idx) => {
       columns.push({
         id: `left-branch-${idx}`,
         type: 'left-branch',
-        nodes: branch.messages.map(m => ({
+        divergeFromIndex: branch.divergeFromIndex,
+        nodes: branch.uniqueMessages.map(m => ({
           containerId: m.containerId,
           messageIndex: m.messageIndex,
           version: m.version,
@@ -200,12 +243,13 @@ class BranchTreeBuilder {
     }
 
     // Sağ dallar
-    const rightBranches = branchSnapshots.filter(b => !b.isLeftBranch);
+    const rightBranches = branches.filter(b => !b.isLeftBranch);
     rightBranches.forEach((branch, idx) => {
       columns.push({
         id: `right-branch-${idx}`,
         type: 'right-branch',
-        nodes: branch.messages.map(m => ({
+        divergeFromIndex: branch.divergeFromIndex,
+        nodes: branch.uniqueMessages.map(m => ({
           containerId: m.containerId,
           messageIndex: m.messageIndex,
           version: m.version,

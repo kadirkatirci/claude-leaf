@@ -4,8 +4,8 @@
  * Kurallar:
  * - Aynı mesaj numarası = Aynı yatay hiza (satır)
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
- * - Aynı snapshot'taki mesajlar aynı sütunda (dikey)
- * - Bağlantılar: Aynı satırdaki node'lar arası yatay
+ * - Dal sütunlarında sadece farklı olan mesajlar var
+ * - Bağlantılar: Dallanma noktasından (ana yoldaki mesaj) dal sütununa
  */
 
 class BranchMapRenderer {
@@ -39,6 +39,7 @@ class BranchMapRenderer {
     this.rowPositions = new Map();   // messageIndex -> y
     this.columnLayouts = [];         // Her sütunun layout bilgisi
     this.startNodePos = null;
+    this.mainColumnLayout = null;    // Ana yol sütunu referansı
   }
 
   /**
@@ -120,6 +121,11 @@ class BranchMapRenderer {
     let currentX = startX + nodeWidth + horizontalGap;
 
     this.data.columns.forEach((column) => {
+      // Boş sütunları atla
+      if (!column.nodes || column.nodes.length === 0) {
+        return;
+      }
+
       // Bu sütundaki node'ların pozisyonlarını hesapla
       const nodePositions = column.nodes.map(node => ({
         ...node,
@@ -135,6 +141,7 @@ class BranchMapRenderer {
       const layout = {
         id: column.id,
         type: column.type,
+        divergeFromIndex: column.divergeFromIndex,
         x: currentX,
         y: minY - columnPadding,
         width: nodeWidth + columnPadding * 2,
@@ -143,6 +150,12 @@ class BranchMapRenderer {
       };
 
       this.columnLayouts.push(layout);
+      
+      // Ana yol referansını sakla
+      if (column.type === 'main') {
+        this.mainColumnLayout = layout;
+      }
+
       currentX += layout.width + horizontalGap;
     });
   }
@@ -329,40 +342,103 @@ class BranchMapRenderer {
     const { nodeWidth, nodeHeight } = this.options;
     const firstRowIndex = this.data.messageIndices[0];
 
-    // START'tan ilk satırdaki tüm node'lara bağlantı
-    this.columnLayouts.forEach(col => {
-      const firstRowNode = col.nodes.find(n => n.messageIndex === firstRowIndex);
-      if (firstRowNode) {
+    // START'tan ilk sütunun ilk satırındaki node'a bağlantı
+    const firstColumn = this.columnLayouts[0];
+    if (firstColumn) {
+      const firstNode = firstColumn.nodes.find(n => n.messageIndex === firstRowIndex);
+      if (firstNode) {
         const path = this.createConnection(
           this.startNodePos.x + this.startNodePos.width,
           this.startNodePos.y + this.startNodePos.height / 2,
-          firstRowNode.x,
-          firstRowNode.y + nodeHeight / 2
+          firstNode.x,
+          firstNode.y + nodeHeight / 2
         );
         g.appendChild(path);
       }
+    }
+
+    // Sol dallardan ana yola bağlantı
+    // Dallanma noktası: divergeFromIndex veya ilk satır
+    this.columnLayouts.forEach((col, colIndex) => {
+      if (col.type === 'left-branch' && this.mainColumnLayout) {
+        const firstBranchNode = col.nodes[0];
+        if (firstBranchNode) {
+          // Dallanma noktasını bul (ana yoldaki mesaj)
+          let sourceNode;
+          
+          if (col.divergeFromIndex === -1) {
+            // START'tan dallanıyor - aynı satırdaki ana yol node'una bağlan
+            sourceNode = this.mainColumnLayout.nodes.find(
+              n => n.messageIndex === firstBranchNode.messageIndex
+            );
+          } else {
+            // Belirli bir mesajdan dallanıyor
+            sourceNode = this.mainColumnLayout.nodes.find(
+              n => n.messageIndex === col.divergeFromIndex
+            );
+          }
+
+          // Aynı satırda bağlantı (sol dal → ana yol aynı satır)
+          const sameRowMainNode = this.mainColumnLayout.nodes.find(
+            n => n.messageIndex === firstBranchNode.messageIndex
+          );
+          
+          if (sameRowMainNode) {
+            const path = this.createConnection(
+              firstBranchNode.x + nodeWidth,
+              firstBranchNode.y + nodeHeight / 2,
+              sameRowMainNode.x,
+              sameRowMainNode.y + nodeHeight / 2
+            );
+            g.appendChild(path);
+          }
+        }
+      }
     });
 
-    // Sütunlar arası bağlantılar (aynı satırdaki node'lar arası)
-    // Sol dallardan ana yola veya bir sonraki sütuna
-    for (let i = 0; i < this.columnLayouts.length - 1; i++) {
-      const currentCol = this.columnLayouts[i];
-      const nextCol = this.columnLayouts[i + 1];
-
-      // Her iki sütunda da aynı satırda node var mı?
-      currentCol.nodes.forEach(currentNode => {
-        const matchingNode = nextCol.nodes.find(n => n.messageIndex === currentNode.messageIndex);
-        if (matchingNode) {
-          const path = this.createConnection(
-            currentNode.x + nodeWidth,
-            currentNode.y + nodeHeight / 2,
-            matchingNode.x,
-            matchingNode.y + nodeHeight / 2
+    // Ana yoldan sağ dallara bağlantı
+    this.columnLayouts.forEach((col) => {
+      if (col.type === 'right-branch' && this.mainColumnLayout) {
+        const firstBranchNode = col.nodes[0];
+        if (firstBranchNode) {
+          // Dallanma noktasını bul
+          let sourceNode;
+          
+          if (col.divergeFromIndex !== undefined && col.divergeFromIndex !== -1) {
+            // Belirli bir mesajdan dallanıyor
+            sourceNode = this.mainColumnLayout.nodes.find(
+              n => n.messageIndex === col.divergeFromIndex
+            );
+          }
+          
+          // Aynı satırdaki ana yol node'unu bul
+          const sameRowMainNode = this.mainColumnLayout.nodes.find(
+            n => n.messageIndex === firstBranchNode.messageIndex
           );
-          g.appendChild(path);
+          
+          // Dallanma noktasından dal sütununa bağlantı
+          if (sourceNode && sourceNode.messageIndex !== firstBranchNode.messageIndex) {
+            // Çapraz bağlantı: dallanma noktası → dal'ın ilk node'u
+            const path = this.createConnection(
+              sourceNode.x + nodeWidth,
+              sourceNode.y + nodeHeight / 2,
+              firstBranchNode.x,
+              firstBranchNode.y + nodeHeight / 2
+            );
+            g.appendChild(path);
+          } else if (sameRowMainNode) {
+            // Aynı satır bağlantısı
+            const path = this.createConnection(
+              sameRowMainNode.x + nodeWidth,
+              sameRowMainNode.y + nodeHeight / 2,
+              firstBranchNode.x,
+              firstBranchNode.y + nodeHeight / 2
+            );
+            g.appendChild(path);
+          }
         }
-      });
-    }
+      }
+    });
 
     // Bağlantıları arkaya al
     this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
