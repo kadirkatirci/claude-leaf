@@ -2,10 +2,10 @@
  * BranchTreeBuilder - Snapshot'lardan branch map yapısı oluşturur
  * 
  * Mantık:
- * 1. Her snapshot bir "path" - o anki edited mesajların listesi
- * 2. Aynı mesaj numarası = aynı yatay hiza
- * 3. Devam eden path'ler aynı sütunda, yalnız kalanlar kendi sütununda
- * 4. Yalnız = O versiyondan sonra devam eden snapshot yok
+ * 1. En uzun path = Ana Yol
+ * 2. Ana yoldaki versiyonlardan farklı olanlar = Dallar
+ * 3. Sütun sırası: Sol dallar → Ana yol → Sağ dallar
+ * 4. Aynı mesaj numarası = Aynı yatay hiza (satır)
  */
 
 class BranchTreeBuilder {
@@ -21,32 +21,44 @@ class BranchTreeBuilder {
   build() {
     console.log('[BranchTreeBuilder] Building from', this.snapshots.length, 'snapshots');
 
+    if (this.snapshots.length === 0) {
+      return { columns: [], messageIndices: [], containerIds: [] };
+    }
+
     // 1. Snapshot'lardan path'leri çıkar
     const paths = this.extractPaths();
     console.log('[BranchTreeBuilder] Extracted paths:', paths);
 
-    // 2. Sütunları oluştur
-    const columns = this.buildColumns(paths);
-    console.log('[BranchTreeBuilder] Built columns:', columns);
+    // 2. Ana yolu bul (en uzun path)
+    const mainPath = this.findMainPath(paths);
+    console.log('[BranchTreeBuilder] Main path:', mainPath);
 
-    // 3. Tüm unique mesaj numaralarını bul (yatay hiza için)
-    const messageIndices = this.getUniqueMessageIndices(paths);
-    console.log('[BranchTreeBuilder] Message indices:', messageIndices);
+    // 3. Tüm mesajları ve versiyonlarını analiz et
+    const messageAnalysis = this.analyzeMessages(paths, mainPath);
+    console.log('[BranchTreeBuilder] Message analysis:', messageAnalysis);
 
-    // 4. History'den renk bilgisi için containerId'leri topla
-    const containerIds = this.getUniqueContainerIds(paths);
+    // 4. Sütunları oluştur
+    const columns = this.buildColumns(mainPath, messageAnalysis);
+    console.log('[BranchTreeBuilder] Columns:', columns);
+
+    // 5. Unique değerleri topla
+    const messageIndices = this.getMessageIndices(messageAnalysis);
+    const containerIds = Array.from(messageAnalysis.keys()).sort((a, b) => {
+      const indexA = parseInt(a.replace('edit-index-', ''));
+      const indexB = parseInt(b.replace('edit-index-', ''));
+      return indexA - indexB;
+    });
 
     return {
       columns,
       messageIndices,
       containerIds,
-      paths
+      mainPath
     };
   }
 
   /**
    * Her snapshot'tan path çıkar
-   * Path = [{ containerId, version, messageIndex, contentPreview }, ...]
    */
   extractPaths() {
     return this.snapshots.map(snapshot => {
@@ -69,160 +81,156 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Sütunları oluştur
-   * Her sütun = bir path'in "benzersiz" kısmı
+   * Ana yolu bul (en uzun path)
    */
-  buildColumns(paths) {
-    if (paths.length === 0) return [];
-
-    const columns = [];
+  findMainPath(paths) {
+    if (paths.length === 0) return { messages: [] };
     
-    // Path'leri string olarak temsil et (karşılaştırma için)
-    const pathStrings = paths.map(p => 
-      p.messages.map(m => `${m.containerId}:${m.version}`).join('|')
+    return paths.reduce((longest, current) => 
+      current.messages.length > longest.messages.length ? current : longest
     );
+  }
 
-    // Her path için: bu path başka bir path'in prefix'i mi?
-    paths.forEach((path, index) => {
-      const pathStr = pathStrings[index];
-      
-      // Bu path, başka bir path'in prefix'i mi kontrol et
-      const isPrefix = pathStrings.some((otherStr, otherIndex) => {
-        if (index === otherIndex) return false;
-        // otherStr, pathStr ile başlıyor VE daha uzun mu?
-        return otherStr.startsWith(pathStr) && otherStr.length > pathStr.length;
+  /**
+   * Tüm mesajları ve versiyonlarını analiz et
+   * Her mesaj için: ana yol versiyonu ve dal versiyonları
+   */
+  analyzeMessages(paths, mainPath) {
+    // Map: containerId -> { mainVersion, branches: [], messageIndex }
+    const analysis = new Map();
+
+    // Önce ana yoldan mesajları ekle
+    mainPath.messages.forEach(msg => {
+      analysis.set(msg.containerId, {
+        containerId: msg.containerId,
+        messageIndex: msg.messageIndex,
+        mainVersion: msg.version,
+        mainContentPreview: msg.contentPreview,
+        branches: []
       });
-
-      if (isPrefix) {
-        // Bu path başka bir path'in prefix'i - sütun oluşturma
-        // Ama son elemanı "yalnız" olarak işaretle
-        const lastMessage = path.messages[path.messages.length - 1];
-        
-        // Bu mesajın devamı var mı kontrol et
-        const hasExtension = paths.some((otherPath, otherIndex) => {
-          if (index === otherIndex) return false;
-          // Diğer path bu path'i içeriyor ve devamı var mı?
-          const otherMessages = otherPath.messages;
-          const thisMessages = path.messages;
-          
-          if (otherMessages.length <= thisMessages.length) return false;
-          
-          // İlk N eleman aynı mı?
-          for (let i = 0; i < thisMessages.length; i++) {
-            if (otherMessages[i].containerId !== thisMessages[i].containerId ||
-                otherMessages[i].version !== thisMessages[i].version) {
-              return false;
-            }
-          }
-          return true;
-        });
-
-        if (!hasExtension) {
-          // Devamı yok - yalnız sütun oluştur (sadece son eleman için)
-          columns.push({
-            id: `col-${index}-alone`,
-            messages: [lastMessage],
-            isAlone: true,
-            snapshotId: path.snapshotId
-          });
-        }
-        // hasExtension true ise bu path tamamen başka bir path içinde, sütun oluşturma
-        
-      } else {
-        // Bu path başka bir path'in prefix'i değil
-        // Ama bu path başka bir path'i prefix olarak içeriyor olabilir
-        
-        // En uzun ortak prefix'i bul
-        let longestPrefixLength = 0;
-        paths.forEach((otherPath, otherIndex) => {
-          if (index === otherIndex) return;
-          const commonLength = this.getCommonPrefixLength(path.messages, otherPath.messages);
-          if (commonLength > longestPrefixLength && commonLength < path.messages.length) {
-            longestPrefixLength = commonLength;
-          }
-        });
-
-        // Prefix'ten sonraki kısım bu sütunun içeriği
-        const columnMessages = longestPrefixLength > 0 
-          ? path.messages.slice(longestPrefixLength)
-          : path.messages;
-
-        if (columnMessages.length > 0) {
-          columns.push({
-            id: `col-${index}`,
-            messages: columnMessages,
-            isAlone: false,
-            snapshotId: path.snapshotId,
-            prefixLength: longestPrefixLength
-          });
-        }
-      }
     });
 
-    // Sütunları sırala: önce alone olanlar (solda), sonra prefixLength'e göre
-    columns.sort((a, b) => {
-      // İlk mesajın messageIndex'ine göre sırala
-      const aFirstIndex = a.messages[0]?.messageIndex || 0;
-      const bFirstIndex = b.messages[0]?.messageIndex || 0;
-      
-      if (aFirstIndex !== bFirstIndex) {
-        return aFirstIndex - bFirstIndex;
+    // Diğer path'lerden dal versiyonlarını bul
+    paths.forEach(path => {
+      path.messages.forEach(msg => {
+        if (!analysis.has(msg.containerId)) {
+          // Bu mesaj ana yolda yok - yeni entry oluştur
+          analysis.set(msg.containerId, {
+            containerId: msg.containerId,
+            messageIndex: msg.messageIndex,
+            mainVersion: null,
+            mainContentPreview: null,
+            branches: []
+          });
+        }
+
+        const entry = analysis.get(msg.containerId);
+        
+        // Ana yol versiyonundan farklıysa dal olarak ekle
+        if (msg.version !== entry.mainVersion) {
+          // Zaten eklenmemişse ekle
+          const exists = entry.branches.some(b => b.version === msg.version);
+          if (!exists) {
+            entry.branches.push({
+              version: msg.version,
+              contentPreview: msg.contentPreview,
+              snapshotId: path.snapshotId
+            });
+          }
+        }
+      });
+    });
+
+    // Dal versiyonlarını sırala (küçükten büyüğe)
+    analysis.forEach(entry => {
+      entry.branches.sort((a, b) => {
+        const vA = parseInt(a.version.split('/')[0]);
+        const vB = parseInt(b.version.split('/')[0]);
+        return vA - vB;
+      });
+    });
+
+    return analysis;
+  }
+
+  /**
+   * Sütunları oluştur
+   * Sıra: Sol dallar → Ana yol → Sağ dallar
+   */
+  buildColumns(mainPath, messageAnalysis) {
+    const columns = [];
+    const messageIndices = this.getMessageIndices(messageAnalysis);
+
+    // İlk mesajın dallarını bul (sol dallar)
+    const firstMsgIndex = messageIndices[0];
+    const firstMsgContainerId = `edit-index-${firstMsgIndex}`;
+    const firstMsgAnalysis = messageAnalysis.get(firstMsgContainerId);
+
+    if (firstMsgAnalysis && firstMsgAnalysis.branches.length > 0) {
+      // Her dal için ayrı sütun (solda)
+      firstMsgAnalysis.branches.forEach((branch, idx) => {
+        columns.push({
+          id: `left-branch-${idx}`,
+          type: 'left-branch',
+          nodes: [{
+            containerId: firstMsgContainerId,
+            messageIndex: firstMsgIndex,
+            version: branch.version,
+            contentPreview: branch.contentPreview
+          }]
+        });
+      });
+    }
+
+    // Ana yol sütunu (ortada)
+    if (mainPath.messages.length > 0) {
+      columns.push({
+        id: 'main-path',
+        type: 'main',
+        nodes: mainPath.messages.map(msg => ({
+          containerId: msg.containerId,
+          messageIndex: msg.messageIndex,
+          version: msg.version,
+          contentPreview: msg.contentPreview
+        }))
+      });
+    }
+
+    // Sonraki mesajların dallarını bul (sağ dallar)
+    messageIndices.slice(1).forEach(msgIndex => {
+      const containerId = `edit-index-${msgIndex}`;
+      const msgAnalysis = messageAnalysis.get(containerId);
+
+      if (msgAnalysis && msgAnalysis.branches.length > 0) {
+        // Her dal için ayrı sütun (sağda)
+        msgAnalysis.branches.forEach((branch, idx) => {
+          columns.push({
+            id: `right-branch-${msgIndex}-${idx}`,
+            type: 'right-branch',
+            messageIndex: msgIndex, // Hangi satırda olduğunu bilmek için
+            nodes: [{
+              containerId: containerId,
+              messageIndex: msgIndex,
+              version: branch.version,
+              contentPreview: branch.contentPreview
+            }]
+          });
+        });
       }
-      
-      // Aynı messageIndex ise, alone olanlar önce
-      if (a.isAlone && !b.isAlone) return -1;
-      if (!a.isAlone && b.isAlone) return 1;
-      
-      // İkisi de alone veya ikisi de değil - mesaj sayısına göre
-      return a.messages.length - b.messages.length;
     });
 
     return columns;
   }
 
   /**
-   * İki mesaj listesinin ortak prefix uzunluğunu bul
-   */
-  getCommonPrefixLength(messages1, messages2) {
-    let common = 0;
-    const minLength = Math.min(messages1.length, messages2.length);
-    
-    for (let i = 0; i < minLength; i++) {
-      if (messages1[i].containerId === messages2[i].containerId &&
-          messages1[i].version === messages2[i].version) {
-        common++;
-      } else {
-        break;
-      }
-    }
-    
-    return common;
-  }
-
-  /**
    * Tüm unique mesaj index'lerini bul (sıralı)
    */
-  getUniqueMessageIndices(paths) {
+  getMessageIndices(messageAnalysis) {
     const indices = new Set();
-    paths.forEach(path => {
-      path.messages.forEach(m => indices.add(m.messageIndex));
+    messageAnalysis.forEach(entry => {
+      indices.add(entry.messageIndex);
     });
     return Array.from(indices).sort((a, b) => a - b);
-  }
-
-  /**
-   * Tüm unique containerId'leri bul
-   */
-  getUniqueContainerIds(paths) {
-    const ids = new Set();
-    paths.forEach(path => {
-      path.messages.forEach(m => ids.add(m.containerId));
-    });
-    return Array.from(ids).sort((a, b) => {
-      const indexA = parseInt(a.replace('edit-index-', ''));
-      const indexB = parseInt(b.replace('edit-index-', ''));
-      return indexA - indexB;
-    });
   }
 }
 
