@@ -3,6 +3,8 @@
  * Collapses entire messages (both user and Claude) with preview mode
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
+import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
 
 class MessageFolder {
@@ -10,6 +12,7 @@ class MessageFolder {
     this.module = module;
     this.messageCache = new WeakMap(); // message -> { chevron, isCollapsed, id }
     this.processedMessages = new WeakSet();
+    this.failures = { messages: [], reasons: new Map() }; // Track failures
   }
 
   /**
@@ -23,11 +26,11 @@ class MessageFolder {
       const validMessages = messages.filter((messageEl) => {
         // Skip if it's a footer or input container
         if (messageEl.tagName === 'FOOTER' ||
-            messageEl.querySelector('textarea') ||
-            messageEl.querySelector('input[type="text"]') ||
-            messageEl.classList.contains('sticky') ||
-            messageEl.style.position === 'fixed' ||
-            messageEl.style.position === 'sticky') {
+          messageEl.querySelector('textarea') ||
+          messageEl.querySelector('input[type="text"]') ||
+          messageEl.classList.contains('sticky') ||
+          messageEl.style.position === 'fixed' ||
+          messageEl.style.position === 'sticky') {
           return false;
         }
 
@@ -50,8 +53,19 @@ class MessageFolder {
           continue;
         }
 
-        await this.processMessage(messageEl, index, totalValidMessages);
-        this.processedMessages.add(messageEl);
+        try {
+          await this.processMessage(messageEl, index, totalValidMessages);
+          this.processedMessages.add(messageEl);
+        } catch (error) {
+          this.module.error(`Failed to process message ${index}:`, error);
+
+          // Track failure
+          this.failures.messages.push({ messageIndex: index, messageEl });
+          this.failures.reasons.set(messageEl, error.message);
+
+          // Mark as processed to avoid retry loops
+          this.processedMessages.add(messageEl);
+        }
       }
 
       this.module.log('✅ MessageFolder scan complete');
@@ -132,20 +146,67 @@ class MessageFolder {
 
   /**
    * Find the main content container of a message
+   * Uses multiple strategies with fallbacks for robustness
    */
   findMessageContent(messageEl) {
-    // Try to find the main content div
-    // Claude messages have nested structure, we want the first direct child div
-    const firstDiv = messageEl.querySelector(':scope > div');
+    // Multiple selector strategies (most specific to least specific)
+    const strategies = [
+      // Strategy 1: Claude-specific class (most reliable)
+      () => messageEl.querySelector('.font-claude-response'),
 
-    if (firstDiv) {
-      this.module.log('Found content container (first child div)');
-      return firstDiv;
+      // Strategy 2: Data attribute (if added by Claude)
+      () => messageEl.querySelector('[data-message-content]'),
+
+      // Strategy 3: First direct child div (current approach)
+      () => messageEl.querySelector(':scope > div'),
+
+      // Strategy 4: Find largest content div (heuristic)
+      () => {
+        const divs = messageEl.querySelectorAll('div');
+        return Array.from(divs).reduce((largest, div) => {
+          const hasContent = div.textContent.trim().length > 10;
+          const isLarger = div.scrollHeight > (largest?.scrollHeight || 0);
+          return (hasContent && isLarger) ? div : largest;
+        }, null);
+      },
+
+      // Strategy 5: Ultimate fallback - message element itself
+      () => messageEl
+    ];
+
+    // Try each strategy
+    for (const strategy of strategies) {
+      try {
+        const result = strategy();
+        if (result && result.textContent.trim().length > 10) {
+          this.module.log('Found content container via fallback strategy');
+          return result;
+        }
+      } catch (e) {
+        // Strategy failed, try next
+        continue;
+      }
     }
 
-    // Fallback: use the message element itself
-    this.module.log('Using messageEl itself as container');
+    // Ultimate fallback
+    this.module.log('Using messageEl itself as container (all strategies failed)');
     return messageEl;
+  }
+
+  /**
+   * Get computed line height with fallback for 'normal'
+   */
+  getComputedLineHeight(element) {
+    const computed = window.getComputedStyle(element);
+    let lineHeight = parseInt(computed.lineHeight);
+
+    // Handle 'normal' value
+    if (isNaN(lineHeight)) {
+      const fontSize = parseInt(computed.fontSize) || 16;
+      lineHeight = Math.round(fontSize * 1.5); // Standard 1.5x ratio
+    }
+
+    return Math.max(lineHeight, 20); // Minimum 20px for messages
   }
 
   /**
@@ -154,21 +215,30 @@ class MessageFolder {
   createChevron(messageEl, isCollapsed) {
     const theme = this.module.getTheme();
 
-    const chevron = DOMUtils.createElement('span', {
+    const chevron = DOMUtils.createElement('button', { // button for accessibility
       className: 'message-fold-chevron',
-      innerHTML: isCollapsed ? '▶' : '▼',
+      type: 'button',
+      innerHTML: isCollapsed
+        ? IconLibrary.chevron('right', 'currentColor', 14)
+        : IconLibrary.chevron('down', 'currentColor', 14),
       title: isCollapsed ? 'Expand message' : 'Collapse message',
+      'aria-label': isCollapsed ? 'Expand message' : 'Collapse message',
+      'aria-expanded': !isCollapsed,
+      tabIndex: 0,
       style: {
         position: 'absolute',
         left: '8px',
         top: '8px',
         cursor: 'pointer',
         fontSize: '14px',
-        opacity: isCollapsed ? '0.7' : '0', // Visible if collapsed, hidden if expanded
+        opacity: isCollapsed ? '0.7' : '0',
         transition: 'all 0.15s ease',
         userSelect: 'none',
         color: theme.isDark ? '#aaa' : '#666',
         zIndex: '10',
+        background: 'none',
+        border: 'none',
+        padding: '0',
       }
     });
 
@@ -224,11 +294,22 @@ class MessageFolder {
 
     chevron.addEventListener('click', onClick);
 
+    // Keyboard: Enter/Space to toggle
+    const onKeyDown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggleMessage(messageEl);
+      }
+    };
+
+    chevron.addEventListener('keydown', onKeyDown);
+
     // Store cleanup functions
     this.module.unsubscribers.push(() => {
       messageEl.removeEventListener('mouseenter', onMouseEnter);
       messageEl.removeEventListener('mouseleave', onMouseLeave);
       chevron.removeEventListener('click', onClick);
+      chevron.removeEventListener('keydown', onKeyDown);
     });
   }
 
@@ -245,11 +326,17 @@ class MessageFolder {
       await this.collapseMessage(messageEl);
     }
 
-    // Save state
+    // Update ARIA attributes
+    cached.chevron.setAttribute('aria-expanded', !cached.isCollapsed);
+    cached.chevron.setAttribute('aria-label',
+      cached.isCollapsed ? 'Expand message' : 'Collapse message'
+    );
+
+    // Save state (debounced)
     if (await this.module.getSetting('rememberState')) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.messages[cached.id] = cached.isCollapsed;
-      await conversationStateStore.setCurrentState('folding', foldingState);
+      this.module.debouncedStateSave(foldingState);
     }
   }
 
@@ -261,13 +348,13 @@ class MessageFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.chevron.textContent = '▶';
+    cached.chevron.innerHTML = IconLibrary.chevron('right', 'currentColor', 14);
     cached.chevron.title = 'Expand message';
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
     const previewLines = await this.module.getSetting('messages.previewLines') || 3;
-    const lineHeight = parseInt(getComputedStyle(cached.contentContainer).lineHeight) || 24;
+    const lineHeight = this.getComputedLineHeight(cached.contentContainer);
     const previewHeight = previewLines * lineHeight;
 
     // Apply collapsed styles
@@ -296,7 +383,7 @@ class MessageFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.chevron.textContent = '▼';
+    cached.chevron.innerHTML = IconLibrary.chevron('down', 'currentColor', 14);
     cached.chevron.title = 'Collapse message';
     cached.chevron.style.opacity = '0'; // Hidden when expanded (until hover)
 
@@ -318,37 +405,18 @@ class MessageFolder {
    * Add fade gradient overlay
    */
   addFadeGradient(container) {
-    // Remove existing gradient
-    this.removeFadeGradient(container);
-
-    const theme = this.module.getTheme();
-    const gradient = DOMUtils.createElement('div', {
+    FadeGradientHelper.add(container, {
+      height: '40px',
       className: 'message-fold-gradient',
-      style: {
-        position: 'absolute',
-        bottom: '0',
-        left: '0',
-        right: '0',
-        height: '40px',
-        background: theme.isDark
-          ? 'linear-gradient(to bottom, transparent, #1e1e1e)'
-          : 'linear-gradient(to bottom, transparent, #ffffff)',
-        pointerEvents: 'none',
-        zIndex: '5',
-      }
+      zIndex: '5'
     });
-
-    container.appendChild(gradient);
   }
 
   /**
    * Remove fade gradient
    */
   removeFadeGradient(container) {
-    const gradient = container.querySelector('.message-fold-gradient');
-    if (gradient) {
-      gradient.remove();
-    }
+    FadeGradientHelper.remove(container, 'message-fold-gradient');
   }
 
   /**
@@ -419,6 +487,16 @@ class MessageFolder {
    * Clean up all chevrons and styles
    */
   cleanup() {
+    // Report failures if any
+    if (this.failures.messages.length > 0) {
+      this.module.warn(`${this.failures.messages.length} messages failed to process`);
+      if (this.failures.reasons.size > 0) {
+        this.module.log('Failure reasons:', Array.from(this.failures.reasons.values()));
+      }
+    }
+
+    // Reset state
+    this.failures = { messages: [], reasons: new Map() };
     this.processedMessages = new WeakSet();
     this.messageCache = new WeakMap();
   }

@@ -20,6 +20,22 @@ class ContentFoldingModule extends BaseModule {
     this.messageFolder = null;
     this.observer = null;
     this.lastMessageCount = 0;
+    this.debouncedStateSave = null; // Will be initialized in init()
+  }
+
+  /**
+   * Debounce utility - delays function execution until after wait time
+   */
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 
   async init() {
@@ -39,6 +55,12 @@ class ContentFoldingModule extends BaseModule {
       this.headingFolder = new HeadingFolder(this);
       this.codeBlockFolder = new CodeBlockFolder(this);
       this.messageFolder = new MessageFolder(this);
+
+      // Create debounced state saver (1 second delay)
+      this.debouncedStateSave = this.debounce(async (state) => {
+        await conversationStateStore.setCurrentState('folding', state);
+        this.log('💾 Fold states saved (debounced)');
+      }, 1000);
 
       // Listen for messages updated
       this.subscribe(Events.MESSAGES_UPDATED, () => {

@@ -2,6 +2,8 @@
  * CodeBlockFolder - Handles code block collapse/expand for long code
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
+import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
 
 class CodeBlockFolder {
@@ -9,6 +11,7 @@ class CodeBlockFolder {
     this.module = module;
     this.codeBlockCache = new WeakMap(); // codeBlock -> { button, isCollapsed, id, lineCount }
     this.processedBlocks = new WeakSet();
+    this.failures = { blocks: [], reasons: new Map() }; // Track failures
   }
 
   /**
@@ -34,8 +37,19 @@ class CodeBlockFolder {
 
         // Only process if longer than threshold
         if (lineCount >= minLines) {
-          await this.processCodeBlock(preEl, codeEl, messageIndex, index, lineCount);
-          this.processedBlocks.add(preEl);
+          try {
+            await this.processCodeBlock(preEl, codeEl, messageIndex, index, lineCount);
+            this.processedBlocks.add(preEl);
+          } catch (error) {
+            this.module.error(`Failed to process code block ${index}:`, error);
+
+            // Track failure
+            this.failures.blocks.push({ messageIndex, blockIndex: index, preEl });
+            this.failures.reasons.set(preEl, error.message);
+
+            // Mark as processed to avoid retry loops
+            this.processedBlocks.add(preEl);
+          }
         }
       }
     } catch (error) {
@@ -49,6 +63,22 @@ class CodeBlockFolder {
   countLines(codeEl) {
     const text = codeEl.textContent || '';
     return text.split('\n').length;
+  }
+
+  /**
+   * Get computed line height with fallback for 'normal'
+   */
+  getComputedLineHeight(element) {
+    const computed = window.getComputedStyle(element);
+    let lineHeight = parseInt(computed.lineHeight);
+
+    // Handle 'normal' value
+    if (isNaN(lineHeight)) {
+      const fontSize = parseInt(computed.fontSize) || 16;
+      lineHeight = Math.round(fontSize * 1.5); // Standard 1.5x ratio
+    }
+
+    return Math.max(lineHeight, 16); // Minimum 16px
   }
 
   /**
@@ -124,8 +154,14 @@ class CodeBlockFolder {
 
     const button = DOMUtils.createElement('button', {
       className: 'code-fold-button',
-      innerHTML: isCollapsed ? '⬇️' : '⬆️',
+      type: 'button',
+      innerHTML: isCollapsed
+        ? IconLibrary.expand('currentColor', 16)
+        : IconLibrary.collapse('currentColor', 16),
       title: isCollapsed ? `Expand ${lineCount} lines` : 'Collapse code',
+      'aria-label': isCollapsed ? `Expand ${lineCount} lines of code` : 'Collapse code block',
+      'aria-expanded': !isCollapsed,
+      tabIndex: 0,
       style: {
         position: 'absolute',
         top: '8px',
@@ -194,11 +230,22 @@ class CodeBlockFolder {
 
     button.addEventListener('click', onClick);
 
+    // Keyboard: Enter/Space to toggle
+    const onKeyDown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggleCodeBlock(preEl);
+      }
+    };
+
+    button.addEventListener('keydown', onKeyDown);
+
     // Store cleanup functions
     this.module.unsubscribers.push(() => {
       preEl.removeEventListener('mouseenter', onMouseEnter);
       preEl.removeEventListener('mouseleave', onMouseLeave);
       button.removeEventListener('click', onClick);
+      button.removeEventListener('keydown', onKeyDown);
     });
   }
 
@@ -215,11 +262,19 @@ class CodeBlockFolder {
       await this.collapseCodeBlock(preEl);
     }
 
-    // Save state
+    // Update ARIA attributes
+    cached.button.setAttribute('aria-expanded', !cached.isCollapsed);
+    cached.button.setAttribute('aria-label',
+      cached.isCollapsed
+        ? `Expand ${cached.lineCount} lines of code`
+        : 'Collapse code block'
+    );
+
+    // Save state (debounced)
     if (await this.module.getSetting('rememberState')) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.codeBlocks[cached.id] = cached.isCollapsed;
-      await conversationStateStore.setCurrentState('folding', foldingState);
+      this.module.debouncedStateSave(foldingState);
     }
   }
 
@@ -231,13 +286,13 @@ class CodeBlockFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.button.textContent = '⬇️';
+    cached.button.innerHTML = IconLibrary.expand('currentColor', 16);
     cached.button.title = `Expand ${cached.lineCount} lines`;
     cached.button.style.opacity = '0.8'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
     const previewLines = await this.module.getSetting('codeBlocks.previewLines') || 5;
-    const lineHeight = parseInt(getComputedStyle(cached.codeEl).lineHeight) || 20;
+    const lineHeight = this.getComputedLineHeight(cached.codeEl);
     const previewHeight = previewLines * lineHeight;
 
     // Apply collapsed styles
@@ -266,7 +321,7 @@ class CodeBlockFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.button.textContent = '⬆️';
+    cached.button.innerHTML = IconLibrary.collapse('currentColor', 16);
     cached.button.title = 'Collapse code';
     cached.button.style.opacity = '0'; // Hidden when expanded (until hover)
 
@@ -288,37 +343,18 @@ class CodeBlockFolder {
    * Add fade gradient overlay
    */
   addFadeGradient(preEl) {
-    // Remove existing gradient
-    this.removeFadeGradient(preEl);
-
-    const theme = this.module.getTheme();
-    const gradient = DOMUtils.createElement('div', {
+    FadeGradientHelper.add(preEl, {
+      height: '60px',
       className: 'code-fold-gradient',
-      style: {
-        position: 'absolute',
-        bottom: '0',
-        left: '0',
-        right: '0',
-        height: '60px',
-        background: theme.isDark
-          ? 'linear-gradient(to bottom, transparent, #1e1e1e)'
-          : 'linear-gradient(to bottom, transparent, #ffffff)',
-        pointerEvents: 'none',
-        zIndex: '5',
-      }
+      zIndex: '5'
     });
-
-    preEl.appendChild(gradient);
   }
 
   /**
    * Remove fade gradient
    */
   removeFadeGradient(preEl) {
-    const gradient = preEl.querySelector('.code-fold-gradient');
-    if (gradient) {
-      gradient.remove();
-    }
+    FadeGradientHelper.remove(preEl, 'code-fold-gradient');
   }
 
   /**
@@ -386,6 +422,16 @@ class CodeBlockFolder {
    * Clean up all buttons and styles
    */
   cleanup() {
+    // Report failures if any
+    if (this.failures.blocks.length > 0) {
+      this.module.warn(`${this.failures.blocks.length} code blocks failed to process`);
+      if (this.failures.reasons.size > 0) {
+        this.module.log('Failure reasons:', Array.from(this.failures.reasons.values()));
+      }
+    }
+
+    // Reset state
+    this.failures = { blocks: [], reasons: new Map() };
     this.processedBlocks = new WeakSet();
     this.codeBlockCache = new WeakMap();
   }

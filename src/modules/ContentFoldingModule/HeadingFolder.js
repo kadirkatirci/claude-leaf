@@ -2,6 +2,7 @@
  * HeadingFolder - Handles heading collapse/expand with hierarchical folding
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { conversationStateStore } from '../../stores/index.js';
 
 class HeadingFolder {
@@ -9,6 +10,7 @@ class HeadingFolder {
     this.module = module;
     this.headingCache = new WeakMap(); // heading -> { chevron, isCollapsed, id, level }
     this.processedHeadings = new WeakSet();
+    this.failures = { headings: [], reasons: new Map() }; // Track failures
   }
 
   /**
@@ -27,8 +29,19 @@ class HeadingFolder {
         // Skip if already processed
         if (this.processedHeadings.has(heading)) continue;
 
-        await this.processHeading(heading, messageEl, messageIndex, index);
-        this.processedHeadings.add(heading);
+        try {
+          await this.processHeading(heading, messageEl, messageIndex, index);
+          this.processedHeadings.add(heading);
+        } catch (error) {
+          this.module.error(`Failed to process heading ${index}:`, error);
+
+          // Track failure
+          this.failures.headings.push({ messageIndex, headingIndex: index, heading });
+          this.failures.reasons.set(heading, error.message);
+
+          // Mark as processed to avoid retry loops
+          this.processedHeadings.add(heading);
+        }
       }
     } catch (error) {
       this.module.error('HeadingFolder scan error:', error);
@@ -97,18 +110,27 @@ class HeadingFolder {
    * Create chevron icon
    */
   createChevron(heading, isCollapsed) {
-    const chevron = DOMUtils.createElement('span', {
+    const chevron = DOMUtils.createElement('button', { // button for accessibility
       className: 'heading-fold-chevron',
-      innerHTML: isCollapsed ? '▶' : '▼',
+      type: 'button',
+      innerHTML: isCollapsed
+        ? IconLibrary.chevron('right', 'currentColor', 14)
+        : IconLibrary.chevron('down', 'currentColor', 14),
+      'aria-label': isCollapsed ? 'Expand section' : 'Collapse section',
+      'aria-expanded': !isCollapsed,
+      tabIndex: 0,
       style: {
         position: 'absolute',
         left: '-20px',
         cursor: 'pointer',
         fontSize: '14px',
-        opacity: isCollapsed ? '0.7' : '0', // Visible if collapsed, hidden if expanded
+        opacity: isCollapsed ? '0.7' : '0',
         transition: 'all 0.15s ease',
         userSelect: 'none',
         color: 'inherit',
+        background: 'none',
+        border: 'none',
+        padding: '0',
       }
     });
 
@@ -150,13 +172,24 @@ class HeadingFolder {
       this.toggleHeading(heading);
     };
 
-    heading.addEventListener('click', onClick);
+    chevron.addEventListener('click', onClick);
+
+    // Keyboard: Enter/Space to toggle
+    const onKeyDown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggleHeading(heading);
+      }
+    };
+
+    chevron.addEventListener('keydown', onKeyDown);
 
     // Store cleanup functions
     this.module.unsubscribers.push(() => {
       heading.removeEventListener('mouseenter', onMouseEnter);
       heading.removeEventListener('mouseleave', onMouseLeave);
-      heading.removeEventListener('click', onClick);
+      chevron.removeEventListener('click', onClick);
+      chevron.removeEventListener('keydown', onKeyDown);
     });
   }
 
@@ -173,11 +206,17 @@ class HeadingFolder {
       this.collapseHeading(heading);
     }
 
-    // Save state
+    // Update ARIA attributes
+    cached.chevron.setAttribute('aria-expanded', !cached.isCollapsed);
+    cached.chevron.setAttribute('aria-label',
+      cached.isCollapsed ? 'Expand section' : 'Collapse section'
+    );
+
+    // Save state (debounced)
     if (await this.module.getSetting('rememberState')) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.headings[cached.id] = cached.isCollapsed;
-      await conversationStateStore.setCurrentState('folding', foldingState);
+      this.module.debouncedStateSave(foldingState);
     }
   }
 
@@ -189,7 +228,7 @@ class HeadingFolder {
     if (!cached) return;
 
     cached.isCollapsed = true;
-    cached.chevron.textContent = '▶';
+    cached.chevron.innerHTML = IconLibrary.chevron('right', 'currentColor', 14);
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Find content to hide
@@ -226,7 +265,7 @@ class HeadingFolder {
     if (!cached) return;
 
     cached.isCollapsed = false;
-    cached.chevron.textContent = '▼';
+    cached.chevron.innerHTML = IconLibrary.chevron('down', 'currentColor', 14);
     cached.chevron.style.opacity = '0'; // Hidden when expanded (until hover)
 
     // Find content to show
@@ -289,6 +328,16 @@ class HeadingFolder {
    * Clean up all chevrons
    */
   cleanup() {
+    // Report failures if any
+    if (this.failures.headings.length > 0) {
+      this.module.warn(`${this.failures.headings.length} headings failed to process`);
+      if (this.failures.reasons.size > 0) {
+        this.module.log('Failure reasons:', Array.from(this.failures.reasons.entries()).map(([h, r]) => r));
+      }
+    }
+
+    // Reset state
+    this.failures = { headings: [], reasons: new Map() };
     this.processedHeadings = new WeakSet();
     this.headingCache = new WeakMap();
   }
