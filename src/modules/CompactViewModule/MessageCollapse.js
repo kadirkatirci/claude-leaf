@@ -16,11 +16,11 @@ class MessageCollapse {
   shouldCollapse(messageElement) {
     const settings = this.settings();
     const minLines = settings.minLines || 30;
-    
+
     // Satır sayısını hesapla (yaklaşık 24px per line)
     const lineHeight = 24;
     const lines = Math.floor(messageElement.scrollHeight / lineHeight);
-    
+
     return lines > minLines;
   }
 
@@ -35,19 +35,13 @@ class MessageCollapse {
     const settings = this.settings();
     const previewLines = settings.previewLines || 8;
     const fadeHeight = 120; // Daha uzun fade için
-    
+
     // Scroll position'u kaydet (scroll sorunu için)
     const scrollY = window.scrollY;
-    
-    // Arka plan rengini otomatik tespit et (light/dark mode için)
-    const bgColor = window.getComputedStyle(messageElement.parentElement).backgroundColor || 'rgb(255, 255, 255)';
-    
-    // RGB değerlerini parse et
-    const rgbMatch = bgColor.match(/\d+/g);
-    const r = rgbMatch ? rgbMatch[0] : 255;
-    const g = rgbMatch ? rgbMatch[1] : 255;
-    const b = rgbMatch ? rgbMatch[2] : 255;
-    
+
+    // Get computed background color from body for theme-aware gradient
+    const computedBg = window.getComputedStyle(document.body).backgroundColor || 'rgb(255, 255, 255)';
+
     // Wrapper oluştur
     const wrapper = DOMUtils.createElement('div', {
       className: 'claude-message-collapsed',
@@ -59,7 +53,7 @@ class MessageCollapse {
       }
     });
 
-    // Daha yumuşak ve şeffaf fade overlay - dinamik arka plan
+    // Theme-aware fade overlay using CSS variables (Claude native colors)
     const fadeOverlay = DOMUtils.createElement('div', {
       className: 'claude-collapse-fade',
       style: {
@@ -68,7 +62,13 @@ class MessageCollapse {
         left: '0',
         right: '0',
         height: `${fadeHeight}px`,
-        background: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0) 0%, rgba(${r}, ${g}, ${b}, 0.7) 50%, rgba(${r}, ${g}, ${b}, 0.95) 100%)`,
+        // Multi-stop gradient for smooth fade using computed body background
+        background: `linear-gradient(to bottom, 
+          transparent 0%, 
+          ${computedBg.replace('rgb', 'rgba').replace(')', ', 0.3)')} 40%, 
+          ${computedBg.replace('rgb', 'rgba').replace(')', ', 0.8)')} 70%, 
+          ${computedBg} 100%
+        )`,
         pointerEvents: 'none',
       }
     });
@@ -102,29 +102,29 @@ class MessageCollapse {
     if (!state) return;
 
     const { wrapper, fadeOverlay } = state;
-    
+
     // Scroll position'u kaydet
     const scrollY = window.scrollY;
 
     // Max height'ı kaldır
     wrapper.style.maxHeight = 'none';
-    
+
     // Fade'i kaldır
     fadeOverlay.style.opacity = '0';
-    
+
     setTimeout(() => {
       // Wrapper'ı kaldır, mesajı geri koy
       const parent = wrapper.parentElement;
       parent.insertBefore(messageElement, wrapper);
       wrapper.remove();
-      
+
       this.collapsedMessages.delete(messageElement);
-      
+
       // Scroll position'u geri yükle
       requestAnimationFrame(() => {
         window.scrollTo(0, scrollY);
       });
-      
+
       this.onStateChange?.(messageElement, false);
     }, 300);
   }
