@@ -3,6 +3,7 @@
  * Refactored to use only Claude native classes
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 
 class ExpandButton {
   constructor(getTheme, onToggle) {
@@ -19,10 +20,17 @@ class ExpandButton {
     container.className = 'claude-expand-button-container inline-flex gap-2';
 
     const button = DOMUtils.createElement('button');
-    button.textContent = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+    // Use collapse icon when expanded (shows what action will happen)
+    // Use expand icon when collapsed (shows what action will happen)
+    button.innerHTML = isCollapsed
+      ? IconLibrary.expand('currentColor', 12) // Reduced icon size
+      : IconLibrary.collapse('currentColor', 16); // Reduced icon size
 
-    // Claude's native button classes
-    button.className = 'claude-expand-btn px-3 py-1 rounded-md bg-accent-main-100 hover:bg-accent-main-200 text-white text-xs font-semibold cursor-pointer transition-all shadow-sm hover:shadow-md hover:scale-105';
+    // Match navigation button style (compact, icon-only) - half size
+    button.className = 'claude-expand-btn size-5 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-0.5 shadow-sm hover:shadow-md bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-all duration-200 border-border-300 cursor-pointer hover:scale-110';
+
+    // Add tooltip
+    button.title = isCollapsed ? 'Expand message' : 'Collapse message';
 
     // Click handler
     button.addEventListener('click', (e) => {

@@ -354,7 +354,10 @@ class CompactViewModule extends BaseModule {
     // Mevcut butonu güncelle
     const button = container.querySelector('.claude-expand-btn');
     if (button) {
-      button.textContent = isCollapsed ? '+ Daha fazla göster' : '− Daralt';
+      button.innerHTML = isCollapsed
+        ? IconLibrary.expand('currentColor', 12)
+        : IconLibrary.collapse('currentColor', 16);
+      button.title = isCollapsed ? 'Expand message' : 'Collapse message';
     }
   }
 
