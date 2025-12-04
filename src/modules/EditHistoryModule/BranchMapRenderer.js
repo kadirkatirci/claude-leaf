@@ -53,10 +53,10 @@ class BranchMapRenderer {
     this.buildColorMap();
     this.calculateRowPositions();
     this.calculateColumnLayoutsGroupedByRow();
-    
+
     const bounds = this.calculateBounds();
     this.createSVG(bounds.width, bounds.height);
-    
+
     this.renderColumns();
     this.renderStartNode();
     this.renderNodes();
@@ -100,10 +100,10 @@ class BranchMapRenderer {
 
       // Bu sütunun başladığı satır (ilk node'un satırı)
       const firstNodeRow = column.nodes[0].messageIndex;
-      
+
       // Bu sütunun kapsadığı tüm satırlar
       const coveredRows = column.nodes.map(n => n.messageIndex);
-      
+
       // Bu sütun için X pozisyonunu belirle:
       // Kapsadığı tüm satırlardaki maksimum X'in en büyüğü
       let columnX = 0;
@@ -119,14 +119,14 @@ class BranchMapRenderer {
           x: columnX + columnPadding,
           y: this.rowPositions.get(node.messageIndex)
         };
-        
+
         const nodeKey = `${node.containerId}:${node.version}`;
         this.nodePositionMap.set(nodeKey, {
           x: pos.x,
           y: pos.y,
           columnId: column.id
         });
-        
+
         return pos;
       });
 
@@ -221,6 +221,9 @@ class BranchMapRenderer {
     g.setAttribute('class', 'columns');
 
     this.columnLayouts.forEach(col => {
+      // Yalnızca 1'den fazla node varsa container oluştur
+      if (col.nodes.length <= 1) return;
+
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', col.x);
       rect.setAttribute('y', col.y);
@@ -324,7 +327,7 @@ class BranchMapRenderer {
       if (col.connectFrom) {
         const sourceNodeKey = `${col.connectFrom.node.containerId}:${col.connectFrom.node.version}`;
         const sourcePos = this.nodePositionMap.get(sourceNodeKey);
-        
+
         if (sourcePos) {
           g.appendChild(this.createConnection(
             sourcePos.x + nodeWidth,
@@ -447,7 +450,7 @@ class BranchMapRenderer {
       if (!isPanning) return;
       transform.x = e.clientX - startX;
       transform.y = e.clientY - startY;
-      this.mainGroup.setAttribute('transform', 
+      this.mainGroup.setAttribute('transform',
         `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`);
     });
 
