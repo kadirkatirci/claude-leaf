@@ -5,7 +5,7 @@
  * - Aynı mesaj numarası = Aynı yatay hiza (satır)
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
  * - Duplicate node'lar filtrelenmiş durumda
- * - Bağlantılar: connectFrom bilgisine göre çizilir
+ * - Aynı satırda başlayan sütunlar yan yana gruplanır
  */
 
 class BranchMapRenderer {
@@ -39,7 +39,7 @@ class BranchMapRenderer {
     this.rowPositions = new Map();
     this.columnLayouts = [];
     this.startNodePos = null;
-    this.nodePositionMap = new Map(); // "containerId:version" -> {x, y, columnId}
+    this.nodePositionMap = new Map();
   }
 
   render() {
@@ -52,7 +52,7 @@ class BranchMapRenderer {
 
     this.buildColorMap();
     this.calculateRowPositions();
-    this.calculateColumnLayouts();
+    this.calculateColumnLayoutsGroupedByRow();
     
     const bounds = this.calculateBounds();
     this.createSVG(bounds.width, bounds.height);
@@ -82,21 +82,44 @@ class BranchMapRenderer {
     });
   }
 
-  calculateColumnLayouts() {
+  /**
+   * Sütunları satıra göre grupla ve pozisyonla
+   * Aynı satırda başlayan sütunlar yan yana
+   */
+  calculateColumnLayoutsGroupedByRow() {
     const { startX, nodeWidth, horizontalGap, columnPadding, nodeHeight } = this.options;
-    let currentX = startX + nodeWidth + horizontalGap;
+
+    // Her satır için o satırda kullanılan maksimum X pozisyonunu takip et
+    const rowMaxX = new Map();
+    this.data.messageIndices.forEach(msgIndex => {
+      rowMaxX.set(msgIndex, startX + nodeWidth + horizontalGap);
+    });
 
     this.data.columns.forEach((column) => {
       if (!column.nodes || column.nodes.length === 0) return;
 
+      // Bu sütunun başladığı satır (ilk node'un satırı)
+      const firstNodeRow = column.nodes[0].messageIndex;
+      
+      // Bu sütunun kapsadığı tüm satırlar
+      const coveredRows = column.nodes.map(n => n.messageIndex);
+      
+      // Bu sütun için X pozisyonunu belirle:
+      // Kapsadığı tüm satırlardaki maksimum X'in en büyüğü
+      let columnX = 0;
+      coveredRows.forEach(row => {
+        const currentMaxX = rowMaxX.get(row) || (startX + nodeWidth + horizontalGap);
+        columnX = Math.max(columnX, currentMaxX);
+      });
+
+      // Node pozisyonlarını hesapla
       const nodePositions = column.nodes.map(node => {
         const pos = {
           ...node,
-          x: currentX + columnPadding,
+          x: columnX + columnPadding,
           y: this.rowPositions.get(node.messageIndex)
         };
         
-        // Node pozisyonunu kaydet (bağlantılar için)
         const nodeKey = `${node.containerId}:${node.version}`;
         this.nodePositionMap.set(nodeKey, {
           x: pos.x,
@@ -107,23 +130,29 @@ class BranchMapRenderer {
         return pos;
       });
 
+      // Sütun boyutlarını hesapla
       const ys = nodePositions.map(n => n.y);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
+      const colWidth = nodeWidth + columnPadding * 2;
 
       const layout = {
         id: column.id,
         type: column.type,
         connectFrom: column.connectFrom,
-        x: currentX,
+        x: columnX,
         y: minY - columnPadding,
-        width: nodeWidth + columnPadding * 2,
+        width: colWidth,
         height: (maxY - minY) + nodeHeight + columnPadding * 2,
         nodes: nodePositions
       };
 
       this.columnLayouts.push(layout);
-      currentX += layout.width + horizontalGap;
+
+      // Bu sütunun kapladığı tüm satırlar için maxX'i güncelle
+      coveredRows.forEach(row => {
+        rowMaxX.set(row, columnX + colWidth + horizontalGap);
+      });
     });
   }
 
@@ -270,27 +299,26 @@ class BranchMapRenderer {
     const { nodeWidth, nodeHeight } = this.options;
     const firstRowIndex = this.data.messageIndices[0];
 
-    // START'tan ilk sütunun ilk satırındaki node'a bağlantı
-    const firstColumn = this.columnLayouts[0];
-    if (firstColumn) {
-      const firstNode = firstColumn.nodes.find(n => n.messageIndex === firstRowIndex);
-      if (firstNode) {
+    // START'tan ilk satırdaki tüm node'lara bağlantı
+    this.columnLayouts.forEach(col => {
+      const firstRowNode = col.nodes.find(n => n.messageIndex === firstRowIndex);
+      if (firstRowNode) {
         g.appendChild(this.createConnection(
           this.startNodePos.x + this.startNodePos.width,
           this.startNodePos.y + this.startNodePos.height / 2,
-          firstNode.x,
-          firstNode.y + nodeHeight / 2
+          firstRowNode.x,
+          firstRowNode.y + nodeHeight / 2
         ));
       }
-    }
+    });
 
     // Her sütun için connectFrom bilgisine göre bağlantı
     this.columnLayouts.forEach((col, colIndex) => {
-      // İlk sütun START'a bağlı, zaten çizildi
-      if (colIndex === 0) return;
-      
       const firstNodeInColumn = col.nodes[0];
       if (!firstNodeInColumn) return;
+
+      // İlk satırdaki node'lar START'a bağlı, zaten çizildi
+      if (firstNodeInColumn.messageIndex === firstRowIndex) return;
 
       // connectFrom bilgisi varsa kullan
       if (col.connectFrom) {
@@ -308,35 +336,47 @@ class BranchMapRenderer {
         }
       }
 
-      // connectFrom yoksa, önceki sütundan aynı satıra veya en yakın node'a bağlan
-      const prevColumn = this.columnLayouts[colIndex - 1];
-      if (prevColumn) {
-        // Aynı satırda node var mı?
-        let sourceNode = prevColumn.nodes.find(n => n.messageIndex === firstNodeInColumn.messageIndex);
-        
-        // Yoksa en yakın (daha küçük messageIndex) node'u bul
-        if (!sourceNode) {
-          const candidates = prevColumn.nodes.filter(n => n.messageIndex < firstNodeInColumn.messageIndex);
-          if (candidates.length > 0) {
-            sourceNode = candidates.reduce((best, n) => 
-              n.messageIndex > best.messageIndex ? n : best
-            );
-          }
-        }
-        
-        // Hala yoksa ilk node'u kullan
-        if (!sourceNode) {
-          sourceNode = prevColumn.nodes[0];
-        }
+      // connectFrom yoksa, aynı satırda veya önceki satırda node ara
+      const targetRow = firstNodeInColumn.messageIndex;
+      let sourceNode = null;
 
-        if (sourceNode) {
-          g.appendChild(this.createConnection(
-            sourceNode.x + nodeWidth,
-            sourceNode.y + nodeHeight / 2,
-            firstNodeInColumn.x,
-            firstNodeInColumn.y + nodeHeight / 2
-          ));
+      // Önce aynı satırda, daha soldaki sütunlarda ara
+      for (let i = colIndex - 1; i >= 0; i--) {
+        const prevCol = this.columnLayouts[i];
+        const sameRowNode = prevCol.nodes.find(n => n.messageIndex === targetRow);
+        if (sameRowNode) {
+          sourceNode = sameRowNode;
+          break;
         }
+      }
+
+      // Aynı satırda yoksa, önceki satırlarda en yakın node'u bul
+      if (!sourceNode) {
+        let bestNode = null;
+        let bestDistance = Infinity;
+
+        for (let i = colIndex - 1; i >= 0; i--) {
+          const prevCol = this.columnLayouts[i];
+          prevCol.nodes.forEach(n => {
+            if (n.messageIndex < targetRow) {
+              const distance = targetRow - n.messageIndex;
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestNode = n;
+              }
+            }
+          });
+        }
+        sourceNode = bestNode;
+      }
+
+      if (sourceNode) {
+        g.appendChild(this.createConnection(
+          sourceNode.x + nodeWidth,
+          sourceNode.y + nodeHeight / 2,
+          firstNodeInColumn.x,
+          firstNodeInColumn.y + nodeHeight / 2
+        ));
       }
     });
 
