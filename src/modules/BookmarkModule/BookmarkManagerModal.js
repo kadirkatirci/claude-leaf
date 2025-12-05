@@ -543,20 +543,28 @@ export class BookmarkManagerModal {
 
         // Clean up content
         // Remove 'claude-expand-footer' and other specific artifacts
-        const toRemove = contentHtml.querySelectorAll('.claude-expand-footer, .absolute.bottom-0.right-2, button[aria-label="Copy"], button[aria-label="Give positive feedback"], button[aria-label="Give negative feedback"]');
+        // We use a comprehensive list of selectors to catch all unwanted UI elements
+        const selectors = [
+            '.claude-expand-footer',
+            '.claude-expand-button-container',
+            '.claude-expand-btn',
+            '.absolute.bottom-0.right-2',
+            '[data-testid="action-bar-copy"]',
+            'button[aria-label="Copy"]',
+            'button[aria-label="Give positive feedback"]',
+            'button[aria-label="Give negative feedback"]',
+            '.group\\/btn' // Matches the button group class seen in user snippet
+        ];
+
+        const toRemove = contentHtml.querySelectorAll(selectors.join(', '));
         toRemove.forEach(el => {
-            // Traverse up to find container if needed, or just remove specific elements
-            // The user provided structure shows these are specifically what he wants gone.
-            // For the bottom-right buttons (copy/feedback), they are often in absolute containers.
-            // Let's hide them or remove them.
             el.remove();
         });
 
-        // Also remove any empty parent containers effectively if they became empty
-        // But for now, direct removal based on class/aria is safest.
-
-        const overlays = contentHtml.querySelectorAll('.absolute.bottom-0.right-2');
-        overlays.forEach(el => el.remove());
+        // Also remove any elements purely for layout of these buttons if they are left empty or just specific containers
+        // The user snippet showed the copy button container has "absolute bottom-0 right-2"
+        const remainingOverlays = contentHtml.querySelectorAll('.absolute.bottom-0.right-2');
+        remainingOverlays.forEach(el => el.remove());
 
         container.appendChild(contentHtml);
     }

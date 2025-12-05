@@ -223,7 +223,32 @@ class BookmarkModule extends BaseModule {
     // Capture HTML content
     // We specifically want the message content div
     const messageContent = messageElement.querySelector('.font-claude-message');
-    const fullHtml = messageContent ? messageContent.innerHTML : messageElement.innerHTML;
+    let fullHtml = '';
+
+    if (messageContent) {
+      // Clone to avoid modifying live DOM
+      const clone = messageContent.cloneNode(true);
+
+      // Clean up unwanted elements before saving
+      const selectors = [
+        '.claude-expand-footer',
+        '.claude-expand-button-container',
+        '.claude-expand-btn',
+        '.absolute.bottom-0.right-2',
+        '[data-testid="action-bar-copy"]',
+        'button[aria-label="Copy"]',
+        'button[aria-label="Give positive feedback"]',
+        'button[aria-label="Give negative feedback"]',
+        '.group\\/btn'
+      ];
+
+      const toRemove = clone.querySelectorAll(selectors.join(', '));
+      toRemove.forEach(el => el.remove());
+
+      fullHtml = clone.innerHTML;
+    } else {
+      fullHtml = messageElement.innerHTML;
+    }
 
     const bookmark = {
       index: messageIndex,
