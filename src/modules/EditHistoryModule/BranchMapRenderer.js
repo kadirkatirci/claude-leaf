@@ -6,7 +6,7 @@
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
  * - Duplicate node'lar filtrelenmiş durumda
  * - Aynı satırda başlayan sütunlar yan yana gruplanır
- * - Bağlantılar: Her snapshot'taki ardışık node'ları bağla
+ * - Bağlantılar: Her snapshot'taki ardışık node'ları bağla + sütun içi dikey bağlantılar
  */
 
 class BranchMapRenderer {
@@ -344,8 +344,9 @@ class BranchMapRenderer {
   }
 
   /**
-   * Bağlantıları çiz - Snapshot bazlı
-   * Her snapshot'taki ardışık node'ları bağla
+   * Bağlantıları çiz - Snapshot bazlı + Sütun içi
+   * 1. Her snapshot'taki ardışık node'ları bağla
+   * 2. Aynı sütundaki ardışık node'ları bağla
    */
   renderConnections() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -356,7 +357,7 @@ class BranchMapRenderer {
     // Duplicate bağlantıları önlemek için Set kullan
     const drawnConnections = new Set();
 
-    // Her snapshot (path) için bağlantıları çiz
+    // 1. Her snapshot (path) için bağlantıları çiz
     if (this.data.paths && this.data.paths.length > 0) {
       this.data.paths.forEach(path => {
         const messages = path.messages;
@@ -408,13 +409,62 @@ class BranchMapRenderer {
       });
     }
 
+    // 2. Aynı sütundaki ardışık node'ları bağla (dikey bağlantılar)
+    this.columnLayouts.forEach(col => {
+      if (col.nodes.length <= 1) return;
+      
+      // Node'ları messageIndex'e göre sırala
+      const sortedNodes = [...col.nodes].sort((a, b) => a.messageIndex - b.messageIndex);
+      
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        const currentNode = sortedNodes[i];
+        const nextNode = sortedNodes[i + 1];
+        
+        const currentKey = `${currentNode.containerId}:${currentNode.version}`;
+        const nextKey = `${nextNode.containerId}:${nextNode.version}`;
+        const connectionKey = `${currentKey}->${nextKey}`;
+        
+        // Henüz çizilmemişse çiz
+        if (!drawnConnections.has(connectionKey)) {
+          // Dikey bağlantı: alt kenardan üst kenara
+          g.appendChild(this.createVerticalConnection(
+            currentNode.x + nodeWidth / 2,
+            currentNode.y + nodeHeight,
+            nextNode.x + nodeWidth / 2,
+            nextNode.y
+          ));
+          drawnConnections.add(connectionKey);
+        }
+      }
+    });
+
     this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
   }
 
+  /**
+   * Yatay bağlantı çiz (farklı sütunlar arası)
+   */
   createConnection(x1, y1, x2, y2) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const midX = (x1 + x2) / 2;
     const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', this.theme.border);
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-opacity', '0.6');
+
+    return path;
+  }
+
+  /**
+   * Dikey bağlantı çiz (aynı sütundaki node'lar için)
+   */
+  createVerticalConnection(x1, y1, x2, y2) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const midY = (y1 + y2) / 2;
+    const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
