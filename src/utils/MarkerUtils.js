@@ -26,7 +26,15 @@ import { hashString } from './HashUtils.js';
 export function getCleanMessageText(messageEl) {
   if (!messageEl) return '';
 
-  const clone = messageEl.cloneNode(true);
+  // 1. Try to find the specific content container first to avoid sidebar/avatar noise
+  // User messages usually have data-testid="user-message"
+  // Claude messages usually have .font-claude-message
+  const userContent = messageEl.querySelector('[data-testid="user-message"]');
+  const claudeContent = messageEl.querySelector('.font-claude-message');
+
+  // Use the specific content element if found, otherwise fallback to the whole element
+  const targetEl = userContent || claudeContent || messageEl;
+  const clone = targetEl.cloneNode(true);
 
   const selectorsToRemove = [
     '.emoji-marker-btn',
@@ -41,10 +49,13 @@ export function getCleanMessageText(messageEl) {
     'style',
     '[aria-label="Edit"]',
     '[aria-label="Copy"]',
+    '[aria-label="Retry"]', // Added based on user snippet
     '[role="button"]',
-    '.font-mono.text-xs',
+    '.font-mono.text-xs', // Model version text
     '.opacity-0', // Hidden accessibility text
-    '.sr-only'    // Screen reader only text
+    '.sr-only',    // Screen reader only text
+    '.gap-2 > .shrink-0', // Common avatar container pattern (fallback)
+    '.select-none.rounded-full' // Specific avatar circle (fallback)
   ];
 
   selectorsToRemove.forEach(selector => {
