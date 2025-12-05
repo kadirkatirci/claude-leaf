@@ -218,21 +218,22 @@ class BookmarkModule extends BaseModule {
   }
 
   async addBookmark(messageElement, messageIndex, categoryId = 'default') {
-    const fullText = getCleanMessageText(messageElement); // Currently returns truncated text? No, getCleanMessageText returns full text usually.
-    // Wait, let's verify getCleanMessageText. 
-    // Usually it returns full text. The previous code was doing .substring(0, 200) manually for preview.
+    const cleanText = getCleanMessageText(messageElement);
 
-    // We will save FULL text separately.
+    // Capture HTML content
+    // We specifically want the message content div
+    const messageContent = messageElement.querySelector('.font-claude-message');
+    const fullHtml = messageContent ? messageContent.innerHTML : messageElement.innerHTML;
 
     const bookmark = {
       index: messageIndex,
       contentSignature: generateSignature(messageElement),
-      previewText: fullText.substring(0, 200),
-      fullText: fullText, // Save full text
+      previewText: cleanText.substring(0, 200),
+      fullText: fullHtml, // Store HTML
       note: '',
       timestamp: Date.now(),
       conversationUrl: window.location.pathname,
-      categoryId: categoryId // Save category
+      categoryId: categoryId
     };
 
     await bookmarkStore.add(bookmark);

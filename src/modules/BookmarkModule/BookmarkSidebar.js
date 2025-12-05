@@ -99,8 +99,10 @@ export class BookmarkSidebar {
     // Add click handler
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      const bookmarksUrl = chrome.runtime.getURL('bookmarks/bookmarks.html');
-      window.open(bookmarksUrl, '_blank');
+      // Open in-app modal
+      import('./BookmarkManagerModal.js').then(({ BookmarkManagerModal }) => {
+        new BookmarkManagerModal().show();
+      });
     });
 
     // Create the empty hover container (for consistency with native items)
