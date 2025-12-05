@@ -46,6 +46,7 @@ class BranchMapRenderer {
     this.columnLayouts = [];
     this.startNodePos = null;
     this.nodePositionMap = new Map();
+    this.tooltip = null;
 
     // Theme detection - use Claude's data-mode attribute
     this.isDarkMode = this.detectClaudeTheme();
@@ -75,7 +76,9 @@ class BranchMapRenderer {
         textSecondary: '#a3a3a3',
         textTertiary: '#737373',
         border: '#404040',
-        connection: '#6b7280', // Daha belirgin gri - bağlantılar için
+        connection: '#6b7280',
+        tooltipBg: '#2a2a2a',
+        tooltipBorder: '#4a4a4a',
       };
     } else {
       return {
@@ -86,7 +89,9 @@ class BranchMapRenderer {
         textSecondary: '#525252',
         textTertiary: '#737373',
         border: '#d4d4d4',
-        connection: '#9ca3af', // Daha belirgin gri - bağlantılar için
+        connection: '#9ca3af',
+        tooltipBg: '#ffffff',
+        tooltipBorder: '#e5e5e5',
       };
     }
   }
@@ -111,6 +116,7 @@ class BranchMapRenderer {
 
     const bounds = this.calculateBounds();
     this.createSVG(bounds.width, bounds.height);
+    this.createTooltip();
 
     // Render sırası önemli! (z-index)
     // 1. Columns (arka plan)
@@ -243,6 +249,136 @@ class BranchMapRenderer {
     this.container.appendChild(this.svg);
   }
 
+  /**
+   * Custom tooltip oluştur
+   */
+  createTooltip() {
+    this.tooltip = document.createElement('div');
+    this.tooltip.className = 'branch-map-tooltip';
+    this.tooltip.style.cssText = `
+      position: fixed;
+      z-index: 10010;
+      max-width: 400px;
+      max-height: 300px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: ${this.theme.tooltipBg};
+      border: 1px solid ${this.theme.tooltipBorder};
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    `;
+    
+    this.container.appendChild(this.tooltip);
+  }
+
+  /**
+   * Tooltip'i göster
+   */
+  showTooltip(node, event) {
+    const color = this.colorMap.get(node.containerId) || '#6366f1';
+    const content = node.contentPreview || 'No content preview available';
+    
+    this.tooltip.innerHTML = `
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid ${this.theme.border};
+        flex-shrink: 0;
+      ">
+        <div style="
+          width: 12px;
+          height: 12px;
+          border-radius: 3px;
+          background: ${color};
+          flex-shrink: 0;
+        "></div>
+        <span style="
+          font-weight: 600;
+          font-size: 13px;
+          color: ${this.theme.textPrimary};
+        ">Message #${node.messageIndex}</span>
+        <span style="
+          font-size: 12px;
+          color: ${this.theme.textTertiary};
+          margin-left: auto;
+        ">${node.version}</span>
+      </div>
+      <div style="
+        font-size: 13px;
+        line-height: 1.5;
+        color: ${this.theme.textSecondary};
+        overflow-y: auto;
+        flex: 1;
+        white-space: pre-wrap;
+        word-break: break-word;
+      ">${this.escapeHtml(content)}</div>
+    `;
+
+    // Pozisyonu hesapla
+    this.positionTooltip(event);
+    this.tooltip.style.opacity = '1';
+  }
+
+  /**
+   * Tooltip pozisyonunu ayarla (ekran kenarlarına taşmaz)
+   */
+  positionTooltip(event) {
+    const padding = 15;
+    const tooltipRect = this.tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let x = event.clientX + padding;
+    let y = event.clientY + padding;
+
+    // Sağ kenara taşarsa sola al
+    if (x + tooltipRect.width > viewportWidth - padding) {
+      x = event.clientX - tooltipRect.width - padding;
+    }
+
+    // Alt kenara taşarsa yukarı al
+    if (y + tooltipRect.height > viewportHeight - padding) {
+      y = event.clientY - tooltipRect.height - padding;
+    }
+
+    // Sol kenara taşarsa düzelt
+    if (x < padding) {
+      x = padding;
+    }
+
+    // Üst kenara taşarsa düzelt
+    if (y < padding) {
+      y = padding;
+    }
+
+    this.tooltip.style.left = `${x}px`;
+    this.tooltip.style.top = `${y}px`;
+  }
+
+  /**
+   * Tooltip'i gizle
+   */
+  hideTooltip() {
+    this.tooltip.style.opacity = '0';
+  }
+
+  /**
+   * HTML escape
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   renderStartNode() {
     const { startX, nodeWidth, nodeHeight } = this.options;
     const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || this.options.startY;
@@ -318,7 +454,7 @@ class BranchMapRenderer {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
     g.setAttribute('class', 'node');
-    g.style.cursor = 'pointer';
+    g.style.cursor = 'default';
 
     const color = this.colorMap.get(node.containerId) || '#6366f1';
 
@@ -338,18 +474,23 @@ class BranchMapRenderer {
     text.setAttribute('font-weight', '600');
     text.textContent = node.version;
 
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = `Message #${node.messageIndex}\n${node.contentPreview || ''}`;
-
     g.appendChild(rect);
     g.appendChild(text);
-    g.appendChild(title);
 
-    g.addEventListener('click', () => {
-      this.container.dispatchEvent(new CustomEvent('branchmap:nodeclick', { detail: { node } }));
+    // Hover efektleri ve tooltip
+    g.addEventListener('mouseenter', (e) => {
+      rect.style.filter = 'brightness(1.15)';
+      this.showTooltip(node, e);
     });
-    g.addEventListener('mouseenter', () => rect.style.filter = 'brightness(1.15)');
-    g.addEventListener('mouseleave', () => rect.style.filter = '');
+
+    g.addEventListener('mousemove', (e) => {
+      this.positionTooltip(e);
+    });
+
+    g.addEventListener('mouseleave', () => {
+      rect.style.filter = '';
+      this.hideTooltip();
+    });
 
     return g;
   }

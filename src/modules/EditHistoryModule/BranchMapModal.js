@@ -11,6 +11,7 @@ import BranchMapRenderer from './BranchMapRenderer.js';
  * - Aynı mesaj numarası = aynı yatay hiza
  * - Devam eden path'ler aynı sütunda
  * - Yalnız kalanlar kendi sütununda
+ * - Hover ile mesaj içeriği tooltip'te gösterilir
  */
 class BranchMapModal {
     constructor() {
@@ -107,7 +108,7 @@ class BranchMapModal {
         // Help text
         const helpText = DOMUtils.createElement('div');
         helpText.className = 'absolute bottom-4 left-4 text-xs text-text-400 bg-bg-100/80 px-3 py-1.5 rounded-full backdrop-blur-sm';
-        helpText.textContent = '🖱️ Drag to pan • Scroll to zoom • Click node to navigate';
+        helpText.textContent = '🖱️ Drag to pan • Scroll to zoom • Hover to see content';
 
         this.modal.appendChild(header);
         this.modal.appendChild(content);
@@ -217,51 +218,7 @@ class BranchMapModal {
         this.renderer = new BranchMapRenderer(container, data);
         this.renderer.render();
 
-        // Node click handler
-        container.addEventListener('branchmap:nodeclick', (e) => {
-            const node = e.detail.node;
-            console.log('[BranchMapModal] Node clicked:', node);
-            
-            if (node.containerId) {
-                this.scrollToMessage(node.containerId);
-                this.hide();
-            }
-        });
-
         console.log('[BranchMapModal] Render complete');
-    }
-
-    /**
-     * Mesaja scroll yap
-     * @param {string} containerId - Container ID (edit-index-X)
-     */
-    scrollToMessage(containerId) {
-        if (!containerId.startsWith('edit-index-')) {
-            console.warn('[BranchMapModal] Invalid containerId:', containerId);
-            return;
-        }
-
-        const index = parseInt(containerId.replace('edit-index-', ''));
-        const userMessages = document.querySelectorAll('[data-testid="user-message"]');
-        
-        if (userMessages[index]) {
-            userMessages[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Highlight effect
-            const el = userMessages[index].closest('.font-user-message') || userMessages[index];
-            el.style.transition = 'background-color 0.5s, box-shadow 0.5s';
-            el.style.backgroundColor = 'rgba(99, 102, 241, 0.2)';
-            el.style.boxShadow = '0 0 0 2px rgba(99, 102, 241, 0.4)';
-            
-            setTimeout(() => {
-                el.style.backgroundColor = '';
-                el.style.boxShadow = '';
-            }, 2500);
-            
-            return;
-        }
-
-        console.warn('[BranchMapModal] Could not find message element for', containerId);
     }
 }
 
