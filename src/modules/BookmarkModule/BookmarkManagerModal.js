@@ -9,6 +9,7 @@ export class BookmarkManagerModal {
             bookmarks: [],
             categories: [],
             activeCategory: 'all',
+            activeSenderFilter: 'all', // 'all', 'user', 'assistant'
             searchQuery: ''
         };
     }
@@ -135,6 +136,34 @@ export class BookmarkManagerModal {
             textContent: 'All Bookmarks'
         });
         titleArea.appendChild(title);
+
+        // Sender Filter
+        const senderFilter = DOMUtils.createElement('div', {
+            className: 'flex bg-bg-100 rounded-lg p-1 ml-4 border border-border-200'
+        });
+
+        const filterOptions = [
+            { id: 'all', label: 'All' },
+            { id: 'user', label: 'User' },
+            { id: 'assistant', label: 'Claude' }
+        ];
+
+        filterOptions.forEach(opt => {
+            const btn = DOMUtils.createElement('button', {
+                className: `px-3 py-1 text-xs rounded-md transition-all ${this.state.activeSenderFilter === opt.id ? 'bg-bg-000 text-text-000 shadow-sm font-medium' : 'text-text-300 hover:text-text-100'}`,
+                textContent: opt.label,
+                onclick: () => {
+                    this.state.activeSenderFilter = opt.id;
+                    // Update active state visual
+                    Array.from(senderFilter.children).forEach(child => {
+                        child.className = `px-3 py-1 text-xs rounded-md transition-all ${child.textContent === opt.label ? 'bg-bg-000 text-text-000 shadow-sm font-medium' : 'text-text-300 hover:text-text-100'}`;
+                    });
+                    this.renderBookmarks();
+                }
+            });
+            senderFilter.appendChild(btn);
+        });
+        titleArea.appendChild(senderFilter);
 
         // Search
         const searchWrapper = DOMUtils.createElement('div', {
@@ -307,6 +336,19 @@ export class BookmarkManagerModal {
 
         let filtered = this.state.bookmarks.filter(b => {
             if (this.state.activeCategory !== 'all' && b.categoryId !== this.state.activeCategory) return false;
+
+            // Sender Filter
+            if (this.state.activeSenderFilter !== 'all') {
+                // If existing bookmark doesn't have sender, we treat it as visible or try to guess? 
+                // Let's assume old ones are 'assistant' usually, or just don't filter them out aggressively?
+                // Actually, strict filtering is better.
+                // But wait, existing bookmarks don't have this field. 
+                // Simple fix: if no sender, show in 'all' only? 
+                // Or try to infer? 'assistant' is safe default for old bookmarks generally.
+                const sender = b.sender || 'assistant';
+                if (sender !== this.state.activeSenderFilter) return false;
+            }
+
             if (this.state.searchQuery) {
                 const q = this.state.searchQuery;
                 const content = b.fullText || '';

@@ -250,6 +250,16 @@ class BookmarkModule extends BaseModule {
       fullHtml = messageElement.innerHTML;
     }
 
+    // Determine sender
+    // User provided snippet shows: <div data-testid="user-message" class="... !font-user-message ...">
+    // Previous check for '.font-user-message' failed likely due to '!' prefix or DOM structure
+
+    const hasUserTestId = messageElement.querySelector('[data-testid="user-message"]') !== null;
+    const hasUserAvatar = messageElement.querySelector('.bg-text-200.text-bg-100.rounded-full') !== null; // Based on specific avatar classes in snippet
+
+    const isUser = hasUserTestId || hasUserAvatar;
+    const sender = isUser ? 'user' : 'assistant';
+
     const bookmark = {
       index: messageIndex,
       contentSignature: generateSignature(messageElement),
@@ -258,7 +268,8 @@ class BookmarkModule extends BaseModule {
       note: '',
       timestamp: Date.now(),
       conversationUrl: window.location.pathname,
-      categoryId: categoryId
+      categoryId: categoryId,
+      sender: sender
     };
 
     await bookmarkStore.add(bookmark);
