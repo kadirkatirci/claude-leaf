@@ -273,7 +273,7 @@ class BranchMapRenderer {
       flex-direction: column;
       gap: 8px;
     `;
-    
+
     this.container.appendChild(this.tooltip);
   }
 
@@ -282,8 +282,8 @@ class BranchMapRenderer {
    */
   showTooltip(node, event) {
     const color = this.colorMap.get(node.containerId) || '#6366f1';
-    const content = node.contentPreview || 'No content preview available';
-    
+    const content = node.content || node.contentPreview || 'No content available';
+
     this.tooltip.innerHTML = `
       <div style="
         display: flex;
@@ -505,16 +505,16 @@ class BranchMapRenderer {
     g.setAttribute('class', 'connections');
 
     const { nodeWidth, nodeHeight } = this.options;
-    
+
     // START node pozisyonunu hesapla (henüz renderStartNode çağrılmadı)
     const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || this.options.startY;
-    this.startNodePos = { 
-      x: this.options.startX, 
-      y: firstRowY, 
-      width: nodeWidth, 
-      height: nodeHeight 
+    this.startNodePos = {
+      x: this.options.startX,
+      y: firstRowY,
+      width: nodeWidth,
+      height: nodeHeight
     };
-    
+
     // Duplicate bağlantıları önlemek için Set kullan
     const drawnConnections = new Set();
 
@@ -522,13 +522,13 @@ class BranchMapRenderer {
     if (this.data.paths && this.data.paths.length > 0) {
       this.data.paths.forEach(path => {
         const messages = path.messages;
-        
+
         // İlk node'u START'a bağla
         if (messages.length > 0) {
           const firstMsg = messages[0];
           const firstNodeKey = `${firstMsg.containerId}:${firstMsg.version}`;
           const firstNodePos = this.nodePositionMap.get(firstNodeKey);
-          
+
           if (firstNodePos) {
             const connectionKey = `START->${firstNodeKey}`;
             if (!drawnConnections.has(connectionKey)) {
@@ -547,13 +547,13 @@ class BranchMapRenderer {
         for (let i = 0; i < messages.length - 1; i++) {
           const currentMsg = messages[i];
           const nextMsg = messages[i + 1];
-          
+
           const currentKey = `${currentMsg.containerId}:${currentMsg.version}`;
           const nextKey = `${nextMsg.containerId}:${nextMsg.version}`;
-          
+
           const currentPos = this.nodePositionMap.get(currentKey);
           const nextPos = this.nodePositionMap.get(nextKey);
-          
+
           if (currentPos && nextPos) {
             const connectionKey = `${currentKey}->${nextKey}`;
             if (!drawnConnections.has(connectionKey)) {
@@ -573,18 +573,18 @@ class BranchMapRenderer {
     // 2. Aynı sütundaki ardışık node'ları bağla (dikey bağlantılar)
     this.columnLayouts.forEach(col => {
       if (col.nodes.length <= 1) return;
-      
+
       // Node'ları messageIndex'e göre sırala
       const sortedNodes = [...col.nodes].sort((a, b) => a.messageIndex - b.messageIndex);
-      
+
       for (let i = 0; i < sortedNodes.length - 1; i++) {
         const currentNode = sortedNodes[i];
         const nextNode = sortedNodes[i + 1];
-        
+
         const currentKey = `${currentNode.containerId}:${currentNode.version}`;
         const nextKey = `${nextNode.containerId}:${nextNode.version}`;
         const connectionKey = `${currentKey}->${nextKey}`;
-        
+
         // Henüz çizilmemişse çiz
         if (!drawnConnections.has(connectionKey)) {
           // Dikey bağlantı: alt kenardan üst kenara

@@ -60,16 +60,40 @@ class BranchTreeBuilder {
     };
   }
 
+  /**
+   * Get full content from history for a specific message version
+   */
+  getFullContent(containerId, version) {
+    // Normalize version format (remove spaces) for matching
+    const normalizedVersion = version.replace(/\s+/g, '');
+
+    const historyEntry = this.history.find(h => {
+      const historyVersion = h.versionLabel ? h.versionLabel.replace(/\s+/g, '') : '';
+      return h.containerId === containerId && historyVersion === normalizedVersion;
+    });
+
+    return historyEntry ? historyEntry.content : null;
+  }
+
   extractPaths() {
     return this.snapshots.map(snapshot => {
       const messages = snapshot.messages
         .filter(m => m.version !== null)
-        .map(m => ({
-          containerId: m.containerId,
-          version: m.version.replace(/\s+/g, ''),
-          messageIndex: parseInt(m.containerId.replace('edit-index-', '')),
-          contentPreview: m.contentPreview
-        }))
+        .map(m => {
+          const containerId = m.containerId;
+          const version = m.version.replace(/\s+/g, '');
+          const messageIndex = parseInt(containerId.replace('edit-index-', ''));
+
+          // Get full content from history, fallback to preview
+          const fullContent = this.getFullContent(containerId, version);
+
+          return {
+            containerId,
+            version,
+            messageIndex,
+            content: fullContent || m.contentPreview || 'No content available'
+          };
+        })
         .sort((a, b) => a.messageIndex - b.messageIndex);
 
       return {
@@ -82,7 +106,7 @@ class BranchTreeBuilder {
 
   findMainPath(paths) {
     if (paths.length === 0) return { messages: [] };
-    return paths.reduce((longest, current) => 
+    return paths.reduce((longest, current) =>
       current.messages.length > longest.messages.length ? current : longest
     );
   }
@@ -93,7 +117,7 @@ class BranchTreeBuilder {
 
     paths.forEach(path => {
       const pathKey = this.pathToKey(path.messages);
-      
+
       if (pathKey !== mainPathKey) {
         const isLeft = this.isLeftBranch(mainPath.messages, path.messages);
         branches.push({
@@ -149,7 +173,7 @@ class BranchTreeBuilder {
     if (mainPath.messages.length > 0) {
       const columnId = 'main-path';
       const nodes = this.registerNodes(mainPath.messages, columnId);
-      
+
       mainColumn = {
         id: columnId,
         type: 'main',
@@ -166,7 +190,7 @@ class BranchTreeBuilder {
     leftBranches.forEach((branch, idx) => {
       const columnId = `left-branch-${idx}`;
       const nodes = this.filterAndRegisterNodes(branch.messages, columnId);
-      
+
       if (nodes.length > 0) {
         const connectInfo = this.findConnectionSource(nodes[0]);
         leftBranchColumns.push({
@@ -182,7 +206,7 @@ class BranchTreeBuilder {
     rightBranches.forEach((branch, idx) => {
       const columnId = `right-branch-${idx}`;
       const nodes = this.filterAndRegisterNodes(branch.messages, columnId);
-      
+
       if (nodes.length > 0) {
         const connectInfo = this.findConnectionSource(nodes[0]);
         rightBranchColumns.push({
@@ -197,7 +221,7 @@ class BranchTreeBuilder {
     // ========== 3. GÖRSEL SIRAYA GÖRE BİRLEŞTİR ==========
     // Sol dallar → Ana yol → Sağ dallar
     const columns = [];
-    
+
     leftBranchColumns.forEach(col => columns.push(col));
     if (mainColumn) columns.push(mainColumn);
     rightBranchColumns.forEach(col => columns.push(col));
@@ -213,14 +237,14 @@ class BranchTreeBuilder {
 
     messages.forEach(msg => {
       const nodeKey = `${msg.containerId}:${msg.version}`;
-      
+
       const node = {
         containerId: msg.containerId,
         messageIndex: msg.messageIndex,
         version: msg.version,
-        contentPreview: msg.contentPreview
+        content: msg.content
       };
-      
+
       nodes.push(node);
       this.shownNodes.add(nodeKey);
       this.nodeLocationMap.set(nodeKey, { columnId, node });
@@ -237,16 +261,16 @@ class BranchTreeBuilder {
 
     messages.forEach(msg => {
       const nodeKey = `${msg.containerId}:${msg.version}`;
-      
+
       // Daha önce gösterilmemişse ekle
       if (!this.shownNodes.has(nodeKey)) {
         const node = {
           containerId: msg.containerId,
           messageIndex: msg.messageIndex,
           version: msg.version,
-          contentPreview: msg.contentPreview
+          content: msg.content
         };
-        
+
         nodes.push(node);
         this.shownNodes.add(nodeKey);
         this.nodeLocationMap.set(nodeKey, { columnId, node });
@@ -269,7 +293,7 @@ class BranchTreeBuilder {
     this.nodeLocationMap.forEach((location, nodeKey) => {
       const [containerId] = nodeKey.split(':');
       const msgIndex = parseInt(containerId.replace('edit-index-', ''));
-      
+
       if (msgIndex < targetNode.messageIndex && msgIndex > bestMatchIndex) {
         bestMatch = location;
         bestMatchIndex = msgIndex;
