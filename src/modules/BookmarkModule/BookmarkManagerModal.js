@@ -176,9 +176,9 @@ export class BookmarkManagerModal {
             id: 'bm-grid-container'
         });
 
-        // Adjusted Grid: minmax(280px, 1fr) usually fits 2 columns comfortably in a ~900px space
+        // Adjusted Grid: Force 2 columns
         const grid = DOMUtils.createElement('div', {
-            className: 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6 pb-10',
+            className: 'grid grid-cols-2 gap-6 pb-10',
             id: 'bm-grid'
         });
         gridContainer.appendChild(grid);
@@ -540,6 +540,23 @@ export class BookmarkManagerModal {
         } else {
             contentHtml.textContent = text;
         }
+
+        // Clean up content
+        // Remove 'claude-expand-footer' and other specific artifacts
+        const toRemove = contentHtml.querySelectorAll('.claude-expand-footer, .absolute.bottom-0.right-2, button[aria-label="Copy"], button[aria-label="Give positive feedback"], button[aria-label="Give negative feedback"]');
+        toRemove.forEach(el => {
+            // Traverse up to find container if needed, or just remove specific elements
+            // The user provided structure shows these are specifically what he wants gone.
+            // For the bottom-right buttons (copy/feedback), they are often in absolute containers.
+            // Let's hide them or remove them.
+            el.remove();
+        });
+
+        // Also remove any empty parent containers effectively if they became empty
+        // But for now, direct removal based on class/aria is safest.
+
+        const overlays = contentHtml.querySelectorAll('.absolute.bottom-0.right-2');
+        overlays.forEach(el => el.remove());
 
         container.appendChild(contentHtml);
     }
