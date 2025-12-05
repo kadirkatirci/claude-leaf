@@ -218,16 +218,24 @@ export class BookmarkManagerModal {
             id: 'bm-full-view-container'
         });
 
-        // Header for Full View (Back button)
+        // Header for Full View (Back button + Go to Message)
         const fullViewHeader = DOMUtils.createElement('div', {
-            className: 'p-4 border-b border-border-100 bg-bg-50 flex items-center gap-3'
+            className: 'p-4 border-b border-border-100 bg-bg-50 flex justify-between items-center'
         });
         const backBtn = DOMUtils.createElement('button', {
             className: 'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
             innerHTML: '← Back to List',
             onclick: () => this.showGridView()
         });
+
+        const gotoMsgBtn = DOMUtils.createElement('button', {
+            className: 'px-3 py-1.5 bg-accent-main-100 text-white hover:opacity-90 rounded text-sm flex items-center gap-2 transition-colors',
+            innerHTML: 'Go to Message ↗️',
+            id: 'bm-full-view-goto-btn'
+        });
+
         fullViewHeader.appendChild(backBtn);
+        fullViewHeader.appendChild(gotoMsgBtn);
 
         const fullViewContent = DOMUtils.createElement('div', {
             className: 'flex-1 overflow-y-auto p-8',
@@ -575,6 +583,13 @@ export class BookmarkManagerModal {
 
     openFullText(bookmark) {
         this.showFullView();
+
+        // Update Go to Button action
+        const gotoBtn = this.activeModal.element.querySelector('#bm-full-view-goto-btn');
+        if (gotoBtn) {
+            gotoBtn.onclick = () => this.navigateToBookmark(bookmark);
+        }
+
         const container = this.activeModal.element.querySelector('#bm-full-view-content');
         if (!container) return;
 
