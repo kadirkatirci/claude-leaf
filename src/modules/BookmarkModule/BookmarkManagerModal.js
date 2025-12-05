@@ -1,8 +1,6 @@
-
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { bookmarkStore } from '../../stores/index.js';
-import { textClass } from '../../utils/ClassNames.js';
 
 export class BookmarkManagerModal {
     constructor() {
@@ -73,11 +71,7 @@ export class BookmarkManagerModal {
     // --- Data Loading ---
 
     async loadData() {
-        const data = await bookmarkStore.getAll(); // This gets bookmarks array
-        // Wait, bookmarkStore.getAll() returns just bookmarks array.
-        // We need categories too. BookmarkStore has getCategories() now?
-        // Let's check BookmarkStore.js. I previously added getCategories.
-
+        const data = await bookmarkStore.getAll();
         this.state.bookmarks = data || [];
         this.state.categories = await bookmarkStore.getCategories();
     }
@@ -111,7 +105,7 @@ export class BookmarkManagerModal {
         const newBtn = DOMUtils.createElement('button', {
             className: 'm-3 p-2 bg-bg-000 border border-border-300 border-dashed rounded-lg text-text-300 hover:text-accent-main-100 hover:border-accent-main-100 hover:bg-bg-000 transition-all flex items-center justify-center gap-2 text-sm',
             textContent: '+ New Category',
-            onclick: () => this.openNewCategoryModal()
+            onclick: () => this.showCategoryCreationModal()
         });
 
         sidebar.appendChild(header);
@@ -123,7 +117,7 @@ export class BookmarkManagerModal {
 
     createMainArea() {
         const main = DOMUtils.createElement('div', {
-            className: 'flex-1 flex flex-col bg-bg-000 min-w-0'
+            className: 'flex-1 flex flex-col bg-bg-000 min-w-0 relative' // relative for positioning overlays if needed
         });
 
         // Header
@@ -147,8 +141,8 @@ export class BookmarkManagerModal {
             className: 'relative w-[300px]'
         });
         searchWrapper.innerHTML = `
-      <div class="absolute left-3 top-1/2 -translate-y-1/2 text-text-300 text-lg">🔍</div>
-    `;
+            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-text-300 text-lg">🔍</div>
+        `;
         const searchInput = DOMUtils.createElement('input', {
             className: 'w-full pl-10 pr-4 py-2 bg-bg-100 border border-border-200 rounded-lg text-sm text-text-000 focus:border-accent-main-100 focus:outline-none transition-colors',
             placeholder: 'Search bookmarks...',
@@ -159,7 +153,7 @@ export class BookmarkManagerModal {
         });
         searchWrapper.appendChild(searchInput);
 
-        // Close Button (Top Right of main area)
+        // Close Button
         const closeBtn = DOMUtils.createElement('button', {
             className: 'ml-4 p-2 text-text-300 hover:text-text-000 hover:bg-bg-100 rounded-md transition-colors',
             innerHTML: IconLibrary.close('currentColor', 20),
@@ -174,23 +168,68 @@ export class BookmarkManagerModal {
 
         header.appendChild(rightSide);
 
-        // Grid Container
+        // --- Content Views ---
+
+        // 1. Grid View Container
         const gridContainer = DOMUtils.createElement('div', {
             className: 'flex-1 overflow-y-auto p-8',
             id: 'bm-grid-container'
         });
 
+        // Adjusted Grid: minmax(280px, 1fr) usually fits 2 columns comfortably in a ~900px space
         const grid = DOMUtils.createElement('div', {
-            className: 'grid grid-cols-[repeat(auto-fill,minmax(350px,1fr))] gap-6 pb-10',
+            className: 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6 pb-10',
             id: 'bm-grid'
         });
-
         gridContainer.appendChild(grid);
 
+        // 2. Full View Container (Hidden by default)
+        const fullViewContainer = DOMUtils.createElement('div', {
+            className: 'flex-1 flex flex-col overflow-hidden hidden', // Hidden initially
+            id: 'bm-full-view-container'
+        });
+
+        // Header for Full View (Back button)
+        const fullViewHeader = DOMUtils.createElement('div', {
+            className: 'p-4 border-b border-border-100 bg-bg-50 flex items-center gap-3'
+        });
+        const backBtn = DOMUtils.createElement('button', {
+            className: 'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
+            innerHTML: '← Back to List',
+            onclick: () => this.showGridView()
+        });
+        fullViewHeader.appendChild(backBtn);
+
+        const fullViewContent = DOMUtils.createElement('div', {
+            className: 'flex-1 overflow-y-auto p-8',
+            id: 'bm-full-view-content'
+        });
+
+        fullViewContainer.appendChild(fullViewHeader);
+        fullViewContainer.appendChild(fullViewContent);
+
+        // Append both views
         main.appendChild(header);
         main.appendChild(gridContainer);
+        main.appendChild(fullViewContainer);
 
         return main;
+    }
+
+    // --- View Switching ---
+
+    showGridView() {
+        const grid = this.activeModal.element.querySelector('#bm-grid-container');
+        const full = this.activeModal.element.querySelector('#bm-full-view-container');
+        if (grid) grid.classList.remove('hidden');
+        if (full) full.classList.add('hidden');
+    }
+
+    showFullView() {
+        const grid = this.activeModal.element.querySelector('#bm-grid-container');
+        const full = this.activeModal.element.querySelector('#bm-full-view-container');
+        if (grid) grid.classList.add('hidden');
+        if (full) full.classList.remove('hidden');
     }
 
     // --- Rendering ---
@@ -220,7 +259,8 @@ export class BookmarkManagerModal {
                 this.state.activeCategory = category.id;
                 const titleEl = this.activeModal.element.querySelector('#bm-current-category-title');
                 if (titleEl) titleEl.textContent = category.name;
-                this.renderCategories(); // Re-render to update active state
+                this.showGridView(); // Ensure we are on grid view
+                this.renderCategories();
                 this.renderBookmarks();
             }
         });
@@ -244,7 +284,6 @@ export class BookmarkManagerModal {
         item.appendChild(name);
         item.appendChild(badge);
 
-        // Delete Button (if not default/all)
         if (category.id !== 'all' && category.id !== 'default' && !category.isDefault) {
             const delBtn = DOMUtils.createElement('button', {
                 className: 'ml-2 p-1 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded opacity-0 group-hover:opacity-100 transition-opacity',
@@ -266,13 +305,10 @@ export class BookmarkManagerModal {
         if (!grid) return;
         grid.innerHTML = '';
 
-        // Filter
         let filtered = this.state.bookmarks.filter(b => {
             if (this.state.activeCategory !== 'all' && b.categoryId !== this.state.activeCategory) return false;
             if (this.state.searchQuery) {
                 const q = this.state.searchQuery;
-                // Search in full text (HTML stripped? or just text)
-                // Ideally we search in plain text representation
                 const content = b.fullText || '';
                 const preview = b.previewText || '';
                 return content.toLowerCase().includes(q) || preview.toLowerCase().includes(q);
@@ -280,17 +316,16 @@ export class BookmarkManagerModal {
             return true;
         });
 
-        // Sort Newest First
         filtered.sort((a, b) => (new Date(b.createdAt || b.timestamp).getTime()) - (new Date(a.createdAt || a.timestamp).getTime()));
 
         if (filtered.length === 0) {
             grid.innerHTML = `
-        <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-300">
-          <div class="text-4xl mb-4">🔖</div>
-          <div class="text-lg font-medium">No bookmarks found</div>
-          <div class="text-sm">Try changing filters or add some bookmarks.</div>
-        </div>
-      `;
+                <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-300">
+                    <div class="text-4xl mb-4">🔖</div>
+                    <div class="text-lg font-medium">No bookmarks found</div>
+                    <div class="text-sm">Try changing filters or add some bookmarks.</div>
+                </div>
+            `;
             return;
         }
 
@@ -311,29 +346,34 @@ export class BookmarkManagerModal {
             }
         });
 
-        // Header
         const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
         const header = DOMUtils.createElement('div', {
             className: 'p-4 border-b border-border-100 flex justify-between items-center bg-bg-50'
         });
         header.innerHTML = `
-      <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: ${category.color}20; color: ${category.color}">
-        ${category.name}
-      </span>
-      <span class="text-xs text-text-300">${dateStr}</span>
-    `;
+            <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: ${category.color}20; color: ${category.color}">
+                ${category.name}
+            </span>
+            <span class="text-xs text-text-300">${dateStr}</span>
+        `;
 
-        // Preview Body
         const body = DOMUtils.createElement('div', {
             className: 'p-4 flex-1 overflow-hidden relative'
         });
 
+        // Preview text extraction (strip HTML tags if fullText is HTML)
+        let preview = bookmark.previewText;
+        if (!preview && bookmark.fullText) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = bookmark.fullText;
+            preview = tmp.textContent.substring(0, 200);
+        }
+
         const previewText = DOMUtils.createElement('div', {
             className: 'text-sm text-text-200 line-clamp-[6]',
-            textContent: bookmark.previewText // Using textContent for safety in preview
+            textContent: preview || ''
         });
 
-        // Fade at bottom
         const fade = DOMUtils.createElement('div', {
             className: 'absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-bg-000 to-transparent pointer-events-none'
         });
@@ -341,12 +381,10 @@ export class BookmarkManagerModal {
         body.appendChild(previewText);
         body.appendChild(fade);
 
-        // Footer
         const footer = DOMUtils.createElement('div', {
             className: 'p-3 border-t border-border-100 bg-bg-50 flex justify-between items-center'
         });
 
-        // Conversation name
         let convoName = 'Conversation';
         try {
             const urlPart = bookmark.conversationUrl.split('/').pop();
@@ -358,7 +396,6 @@ export class BookmarkManagerModal {
             innerHTML: `<span class="opacity-50">📍</span> ${convoName}`
         });
 
-        // Actions
         const actions = DOMUtils.createElement('div', { className: 'flex gap-1' });
 
         const gotoBtn = DOMUtils.createElement('button', {
@@ -414,29 +451,16 @@ export class BookmarkManagerModal {
 
     navigateToBookmark(bookmark) {
         this.close();
-        // Use BookmarkModule's logic? Or duplicate?
-        // Ideally we dispatch an event or use the module reference if available.
-        // For now, let's just do URL navigation which BookmarkModule handles on load/check.
-
         if (bookmark.conversationUrl) {
-            let targetUrl;
             const baseUrl = 'https://claude.ai';
             const path = bookmark.conversationUrl.startsWith('/') ? bookmark.conversationUrl : '/' + bookmark.conversationUrl;
 
-            // Check if we are already on the page
             const currentPath = window.location.pathname;
             if (currentPath === path || currentPath === bookmark.conversationUrl) {
-                // Same page, just update param to trigger highlight
                 const url = new URL(window.location.href);
                 url.searchParams.set('bookmark', bookmark.id);
                 window.history.pushState({}, '', url.toString());
-                // Trigger a navigation check event or manually call module?
-                // Sending a window message might be easiest if Module listens?
-                // Or just reload if lazy.
-                // Better: BookmarkModule listens for URL changes or we can dispatch a custom event.
-                // Let's just set the URL and reload for reliability if we can't access module.
-                // But wait, if we are in Single Page App, pushState doesn't verify.
-                window.location.reload(); // Simplest forceful way to ensure scrolling happens
+                window.location.reload();
             } else {
                 window.location.href = `${baseUrl}${path}?bookmark=${bookmark.id}`;
             }
@@ -445,51 +469,70 @@ export class BookmarkManagerModal {
 
     // --- Sub-Modals ---
 
-    openNewCategoryModal() {
-        const name = prompt('Category Name:');
-        if (name) {
-            const color = '#667eea'; // Default color for now, simplicity
-            bookmarkStore.addCategory(name, color).then(() => this.refreshData());
-        }
+    showCategoryCreationModal() {
+        // Create a dialog overlay for adding category
+        const overlay = DOMUtils.createElement('div', {
+            className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-[5100]',
+            style: { animation: 'fadeIn 0.1s ease' }
+        });
+
+        const dialog = DOMUtils.createElement('div', {
+            className: 'bg-bg-000 p-6 rounded-lg shadow-xl w-[350px]',
+            style: { animation: 'scaleIn 0.1s ease' }
+        });
+
+        dialog.innerHTML = `
+            <h3 class="text-lg font-semibold mb-4">New Category</h3>
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-text-300 mb-1">Name</label>
+                <input type="text" id="new-cat-name" class="w-full px-3 py-2 bg-bg-100 border border-border-200 rounded text-sm focus:border-accent-main-100 outline-none" placeholder="e.g. Ideas">
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-medium text-text-300 mb-1">Color</label>
+                <input type="color" id="new-cat-color" class="w-full h-10 p-1 bg-bg-100 border border-border-200 rounded cursor-pointer" value="#667eea">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button id="btn-cat-cancel" class="px-3 py-1.5 text-text-300 hover:bg-bg-100 rounded text-sm">Cancel</button>
+                <button id="btn-cat-save" class="px-3 py-1.5 bg-accent-main-100 text-white rounded text-sm hover:opacity-90">Create</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const input = dialog.querySelector('#new-cat-name');
+        input.focus();
+
+        const close = () => overlay.remove();
+
+        dialog.querySelector('#btn-cat-cancel').onclick = close;
+        dialog.querySelector('#btn-cat-save').onclick = async () => {
+            const name = input.value.trim();
+            const color = dialog.querySelector('#new-cat-color').value;
+            if (name) {
+                await bookmarkStore.addCategory(name, color);
+                await this.refreshData();
+                close();
+            }
+        };
+
+        // Close on click outside
+        overlay.onclick = (e) => {
+            if (e.target === overlay) close();
+        };
     }
 
     openFullText(bookmark) {
-        // Content View Modal (Nested or separate?)
-        // Let's create a full-screen-ish overlay on top of the manager
+        this.showFullView();
+        const container = this.activeModal.element.querySelector('#bm-full-view-content');
+        if (!container) return;
 
-        const viewer = DOMUtils.createElement('div', {
-            className: 'absolute inset-0 bg-bg-000 z-10 flex flex-col',
-            style: { animation: 'fadeIn 0.2s ease' }
-        });
+        container.innerHTML = '';
 
-        // Header
-        const header = DOMUtils.createElement('div', {
-            className: 'p-4 border-b border-border-200 flex justify-between items-center bg-bg-50 shrink-0'
-        });
-        header.innerHTML = `
-        <div class="font-medium text-lg text-text-000">Parsed Content</div>
-    `;
-        const closeBtn = DOMUtils.createElement('button', {
-            className: 'px-3 py-1 bg-bg-200 hover:bg-bg-300 rounded text-sm',
-            textContent: 'Back',
-            onclick: () => viewer.remove()
-        });
-        header.appendChild(closeBtn);
-
-        // Content
-        const contentContainer = DOMUtils.createElement('div', {
-            className: 'flex-1 overflow-y-auto p-8'
-        });
-
-        // We render actual HTML here!
+        // Render Content
         const contentHtml = DOMUtils.createElement('div', {
             className: 'prose max-w-3xl mx-auto font-claude-message text-text-000 whitespace-pre-wrap break-words'
         });
-
-        // Apply Claude message styles mostly
-        // We interpret string. If it's HTML (future), innerHTML.
-        // If it's text (legacy), textContent.
-        // We'll detect if it looks like HTML.
 
         const text = bookmark.fullText || bookmark.previewText || '';
         if (text.trim().startsWith('<') && text.includes('>')) {
@@ -498,11 +541,6 @@ export class BookmarkManagerModal {
             contentHtml.textContent = text;
         }
 
-        contentContainer.appendChild(contentHtml);
-        viewer.appendChild(header);
-        viewer.appendChild(contentContainer);
-
-        // Append to the modal content (not body, so it stays inside modal bounds)
-        this.activeModal.element.querySelector('.bg-bg-000').appendChild(viewer);
+        container.appendChild(contentHtml);
     }
 }
