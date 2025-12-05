@@ -281,6 +281,28 @@ export default class IconLibrary {
   }
 
   /**
+   * Get simple check icon (NEW)
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 16)
+   * @returns {string} SVG markup
+   */
+  static check(color = 'currentColor', size = 16) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
+      <path d="M20 6L9 17L4 12" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  /**
+   * Get trash icon (NEW - alias for deleteIcon)
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 16)
+   * @returns {string} SVG markup
+   */
+  static trash(color = 'currentColor', size = 16) {
+    return this.deleteIcon(color, size);
+  }
+
+  /**
    * Get icon by name (convenience method)
    * @param {string} name - Icon name
    * @param {Object} options - Options {color, size, filled, direction}
@@ -330,6 +352,10 @@ export default class IconLibrary {
         return this.refresh(color, size);
       case 'checkmark':
         return this.checkmark(color, size);
+      case 'check':
+        return this.check(color, size);
+      case 'trash':
+        return this.trash(color, size);
       default:
         console.warn(`[IconLibrary] Unknown icon: ${name}`);
         return '';

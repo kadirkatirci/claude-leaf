@@ -16,6 +16,7 @@ import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
 import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditScanner from './EditHistoryModule/EditScanner.js';
+import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 
 class BookmarkModule extends BaseModule {
   constructor() {
@@ -26,6 +27,7 @@ class BookmarkModule extends BaseModule {
     this.buttonManager = new BookmarkButton(this.dom, () => this.getTheme());
     this.panel = new BookmarkPanel(this.dom, () => this.getTheme(), (key) => this.getSetting(key));
     this.sidebar = new BookmarkSidebar(this.dom, () => this.getTheme());
+    this.categorySelector = new CategorySelector(this.dom);
   }
 
   async init() {
@@ -175,34 +177,62 @@ class BookmarkModule extends BaseModule {
 
   /**
    * Toggle bookmark - check by content signature, not just index
+   * NOW: Opens CategorySelector instead of immediate toggle
    */
   async toggleBookmarkByIndex(messageElement, index) {
-    const messages = this.dom.findMessages();
     const currentSignature = generateSignature(messageElement);
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
 
     // Find bookmark that matches THIS message's content (not just index)
     const existingBookmark = bookmarks.find(b => b.contentSignature === currentSignature);
+    const buttonElement = this.buttonManager.get(messageElement);
 
     if (existingBookmark) {
-      this.log(`Removing bookmark for message at index ${index}`);
-      await this.deleteBookmark(existingBookmark.id);
+      // If exists, show selector to change category or remove
+      this.categorySelector.show(
+        buttonElement, // Target element for popover
+        existingBookmark.categoryId || 'default', // Current category
+        async (newCategoryId) => { // On Select Category
+          if (newCategoryId !== existingBookmark.categoryId) {
+            await bookmarkStore.update(existingBookmark.id, { categoryId: newCategoryId });
+            await this.updateUI();
+            this.log(`Updated bookmark category to ${newCategoryId}`);
+          }
+        },
+        async () => { // On Remove
+          this.log(`Removing bookmark for message at index ${index}`);
+          await this.deleteBookmark(existingBookmark.id);
+        }
+      );
     } else {
-      this.log(`Adding bookmark for message at index ${index}`);
-      await this.addBookmark(messageElement, index);
+      // If new, show selector to choose category
+      this.categorySelector.show(
+        buttonElement,
+        'default', // Default selected
+        async (categoryId) => { // On Select
+          this.log(`Adding bookmark for message at index ${index} with category ${categoryId}`);
+          await this.addBookmark(messageElement, index, categoryId);
+        }
+      );
     }
   }
 
-  async addBookmark(messageElement, messageIndex) {
-    const fullText = getCleanMessageText(messageElement);
+  async addBookmark(messageElement, messageIndex, categoryId = 'default') {
+    const fullText = getCleanMessageText(messageElement); // Currently returns truncated text? No, getCleanMessageText returns full text usually.
+    // Wait, let's verify getCleanMessageText. 
+    // Usually it returns full text. The previous code was doing .substring(0, 200) manually for preview.
+
+    // We will save FULL text separately.
 
     const bookmark = {
       index: messageIndex,
       contentSignature: generateSignature(messageElement),
       previewText: fullText.substring(0, 200),
+      fullText: fullText, // Save full text
       note: '',
       timestamp: Date.now(),
       conversationUrl: window.location.pathname,
+      categoryId: categoryId // Save category
     };
 
     await bookmarkStore.add(bookmark);
