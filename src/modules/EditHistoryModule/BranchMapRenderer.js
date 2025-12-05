@@ -7,6 +7,11 @@
  * - Duplicate node'lar filtrelenmiş durumda
  * - Aynı satırda başlayan sütunlar yan yana gruplanır
  * - Bağlantılar: Her snapshot'taki ardışık node'ları bağla + sütun içi dikey bağlantılar
+ * 
+ * Render sırası (z-index):
+ * 1. Columns (en altta)
+ * 2. Connections (ortada)
+ * 3. Nodes (en üstte)
  */
 
 class BranchMapRenderer {
@@ -70,6 +75,7 @@ class BranchMapRenderer {
         textSecondary: '#a3a3a3',
         textTertiary: '#737373',
         border: '#404040',
+        connection: '#6b7280', // Daha belirgin gri - bağlantılar için
       };
     } else {
       return {
@@ -80,6 +86,7 @@ class BranchMapRenderer {
         textSecondary: '#525252',
         textTertiary: '#737373',
         border: '#d4d4d4',
+        connection: '#9ca3af', // Daha belirgin gri - bağlantılar için
       };
     }
   }
@@ -105,10 +112,14 @@ class BranchMapRenderer {
     const bounds = this.calculateBounds();
     this.createSVG(bounds.width, bounds.height);
 
+    // Render sırası önemli! (z-index)
+    // 1. Columns (arka plan)
+    // 2. Connections (çizgiler - columns üstünde, nodes altında)
+    // 3. Start node & Nodes (en üstte)
     this.renderColumns();
+    this.renderConnections();
     this.renderStartNode();
     this.renderNodes();
-    this.renderConnections();
     this.renderLegend(bounds.height);
     this.addInteractivity();
 
@@ -354,6 +365,15 @@ class BranchMapRenderer {
 
     const { nodeWidth, nodeHeight } = this.options;
     
+    // START node pozisyonunu hesapla (henüz renderStartNode çağrılmadı)
+    const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || this.options.startY;
+    this.startNodePos = { 
+      x: this.options.startX, 
+      y: firstRowY, 
+      width: nodeWidth, 
+      height: nodeHeight 
+    };
+    
     // Duplicate bağlantıları önlemek için Set kullan
     const drawnConnections = new Set();
 
@@ -438,7 +458,7 @@ class BranchMapRenderer {
       }
     });
 
-    this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
+    this.mainGroup.appendChild(g);
   }
 
   /**
@@ -451,9 +471,9 @@ class BranchMapRenderer {
 
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', this.theme.border);
+    path.setAttribute('stroke', this.theme.connection);
     path.setAttribute('stroke-width', '2');
-    path.setAttribute('stroke-opacity', '0.6');
+    path.setAttribute('stroke-opacity', '0.8');
 
     return path;
   }
@@ -468,9 +488,9 @@ class BranchMapRenderer {
 
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', this.theme.border);
+    path.setAttribute('stroke', this.theme.connection);
     path.setAttribute('stroke-width', '2');
-    path.setAttribute('stroke-opacity', '0.6');
+    path.setAttribute('stroke-opacity', '0.8');
 
     return path;
   }
