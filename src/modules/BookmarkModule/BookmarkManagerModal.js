@@ -392,10 +392,19 @@ export class BookmarkManagerModal {
         const header = DOMUtils.createElement('div', {
             className: 'p-4 border-b border-border-100 flex justify-between items-center bg-bg-50'
         });
+
+        const isUser = bookmark.sender === 'user';
+        const senderBadge = isUser
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-text-500/10 text-text-500 border border-text-500/20">User</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20">Claude</span>`;
+
         header.innerHTML = `
-            <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: ${category.color}20; color: ${category.color}">
-                ${category.name}
-            </span>
+            <div class="flex items-center gap-2">
+                ${senderBadge}
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: ${category.color}20; color: ${category.color}">
+                    ${category.name}
+                </span>
+            </div>
             <span class="text-xs text-text-300">${dateStr}</span>
         `;
 
