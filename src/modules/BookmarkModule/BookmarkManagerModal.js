@@ -312,15 +312,10 @@ export class BookmarkManagerModal {
             textContent: category.name
         });
 
-        const badge = DOMUtils.createElement('span', {
-            className: 'text-xs opacity-60 ml-2',
-            textContent: count
-        });
-
         item.appendChild(dot);
         item.appendChild(name);
-        item.appendChild(badge);
 
+        // Delete Button (Before Badge)
         if (category.id !== 'all' && category.id !== 'default' && !category.isDefault) {
             const delBtn = DOMUtils.createElement('button', {
                 className: 'ml-2 p-1 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded opacity-0 group-hover:opacity-100 transition-opacity',
@@ -333,6 +328,13 @@ export class BookmarkManagerModal {
             });
             item.appendChild(delBtn);
         }
+
+        // Badge (Last element to align right)
+        const badge = DOMUtils.createElement('span', {
+            className: 'text-xs opacity-60 ml-2',
+            textContent: count
+        });
+        item.appendChild(badge);
 
         return item;
     }
