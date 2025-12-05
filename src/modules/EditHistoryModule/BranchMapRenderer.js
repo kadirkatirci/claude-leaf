@@ -40,13 +40,60 @@ class BranchMapRenderer {
     this.columnLayouts = [];
     this.startNodePos = null;
     this.nodePositionMap = new Map();
+
+    // Theme detection - use Claude's data-mode attribute
+    this.isDarkMode = this.detectClaudeTheme();
+    this.theme = this.getThemeColors();
+  }
+
+  /**
+   * Detect Claude's active theme from data-mode attribute
+   * @returns {boolean} True if dark mode, false if light mode
+   */
+  detectClaudeTheme() {
+    const htmlElement = document.documentElement;
+    const dataMode = htmlElement.getAttribute('data-mode');
+    return dataMode === 'dark';
+  }
+
+  /**
+   * Get theme colors based on dark/light mode
+   */
+  getThemeColors() {
+    if (this.isDarkMode) {
+      return {
+        bgPrimary: '#1a1a1a',
+        bgSecondary: '#2a2a2a',
+        bgTertiary: '#3a3a3a',
+        textPrimary: '#e5e5e5',
+        textSecondary: '#a3a3a3',
+        textTertiary: '#737373',
+        border: '#404040',
+      };
+    } else {
+      return {
+        bgPrimary: '#ffffff',
+        bgSecondary: '#f5f5f5',
+        bgTertiary: '#e5e5e5',
+        textPrimary: '#171717',
+        textSecondary: '#525252',
+        textTertiary: '#737373',
+        border: '#d4d4d4',
+      };
+    }
   }
 
   render() {
     console.log('[BranchMapRenderer] Starting render with data:', this.data);
 
     if (!this.data.columns || this.data.columns.length === 0) {
-      this.container.innerHTML = '<div class="p-8 text-center text-text-300">No data to display</div>';
+      const noDataDiv = document.createElement('div');
+      noDataDiv.style.padding = '2rem';
+      noDataDiv.style.textAlign = 'center';
+      noDataDiv.style.color = this.theme.textTertiary;
+      noDataDiv.textContent = 'No data to display';
+      this.container.innerHTML = '';
+      this.container.appendChild(noDataDiv);
       return;
     }
 
@@ -174,7 +221,7 @@ class BranchMapRenderer {
     this.svg.setAttribute('width', '100%');
     this.svg.setAttribute('height', '100%');
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    this.svg.style.background = 'var(--bg-000)';
+    this.svg.style.background = this.theme.bgPrimary;
     this.svg.style.minWidth = `${width}px`;
     this.svg.style.minHeight = `${height}px`;
 
@@ -197,8 +244,8 @@ class BranchMapRenderer {
     rect.setAttribute('width', nodeWidth);
     rect.setAttribute('height', nodeHeight);
     rect.setAttribute('rx', '8');
-    rect.setAttribute('fill', 'var(--bg-300)');
-    rect.setAttribute('stroke', 'var(--border-300)');
+    rect.setAttribute('fill', this.theme.bgTertiary);
+    rect.setAttribute('stroke', this.theme.border);
     rect.setAttribute('stroke-width', '1');
 
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -206,7 +253,7 @@ class BranchMapRenderer {
     text.setAttribute('y', nodeHeight / 2);
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('fill', 'var(--text-200)');
+    text.setAttribute('fill', this.theme.textSecondary);
     text.setAttribute('font-size', '12');
     text.setAttribute('font-weight', '600');
     text.textContent = 'START';
@@ -230,8 +277,8 @@ class BranchMapRenderer {
       rect.setAttribute('width', col.width);
       rect.setAttribute('height', col.height);
       rect.setAttribute('rx', '12');
-      rect.setAttribute('fill', 'var(--bg-100)');
-      rect.setAttribute('stroke', 'var(--border-300)');
+      rect.setAttribute('fill', this.theme.bgSecondary);
+      rect.setAttribute('stroke', this.theme.border);
       rect.setAttribute('stroke-width', '1');
       rect.setAttribute('stroke-opacity', '0.5');
       g.appendChild(rect);
@@ -393,7 +440,7 @@ class BranchMapRenderer {
 
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'var(--border-300)');
+    path.setAttribute('stroke', this.theme.border);
     path.setAttribute('stroke-width', '2');
     path.setAttribute('stroke-opacity', '0.6');
 
@@ -420,7 +467,7 @@ class BranchMapRenderer {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', x + 20);
       text.setAttribute('y', 11);
-      text.setAttribute('fill', 'var(--text-300)');
+      text.setAttribute('fill', this.theme.textTertiary);
       text.setAttribute('font-size', '11');
       text.textContent = `msg#${msgIndex}`;
 
