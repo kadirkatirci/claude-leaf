@@ -22,7 +22,7 @@ class BranchTreeBuilder {
     console.log('[BranchTreeBuilder] Building from', this.snapshots.length, 'snapshots');
 
     if (this.snapshots.length === 0) {
-      return { columns: [], messageIndices: [], containerIds: [] };
+      return { columns: [], messageIndices: [], containerIds: [], paths: [] };
     }
 
     // Reset
@@ -55,7 +55,8 @@ class BranchTreeBuilder {
       messageIndices,
       containerIds,
       mainPath,
-      nodeLocationMap: this.nodeLocationMap
+      nodeLocationMap: this.nodeLocationMap,
+      paths // Snapshot'ların mesaj listeleri (bağlantılar için)
     };
   }
 
