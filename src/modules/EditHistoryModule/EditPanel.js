@@ -20,7 +20,7 @@ class EditPanel extends BasePanel {
 
     this.getTheme = getTheme;
     this.onItemClick = onItemClick;
-    this.lastEditIds = []; // Track edit container IDs to detect changes
+    this.lastEditSignature = ''; // Track edit signature to detect changes
   }
 
   /**
@@ -91,14 +91,15 @@ class EditPanel extends BasePanel {
     }
 
     // Check if edits changed
-    const currentIds = editedMessages.map(e => e.containerId).join(',');
-    const lastIds = this.lastEditIds.join(',');
+    // Check if edits changed (include version info to detect version swaps)
+    const currentSignature = editedMessages.map(e => `${e.containerId}-${e.versionInfo}`).join('|');
+    const lastSignature = this.lastEditSignature;
 
-    if (currentIds === lastIds) {
+    if (currentSignature === lastSignature) {
       return; // Nothing changed, skip update
     }
 
-    this.lastEditIds = editedMessages.map(e => e.containerId);
+    this.lastEditSignature = currentSignature;
 
     // Clear content
     this.content.textContent = '';
