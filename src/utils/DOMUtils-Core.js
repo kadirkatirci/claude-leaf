@@ -47,7 +47,7 @@ const DOMUtilsCore = {
 
     // Find main content area (excluding sidebar)
     let mainContent = document.querySelector('main') ||
-                     document.querySelector('[role="main"]');
+      document.querySelector('[role="main"]');
 
     // If no main, search entire document (Claude.ai sometimes removes main element)
     if (!mainContent) {
@@ -65,25 +65,7 @@ const DOMUtilsCore = {
       messages = mainContent.querySelectorAll('[data-testid*="message"], [data-testid*="conversation-turn"]');
     }
 
-    // Strategy 3: Look for message containers by class patterns
-    if (messages.length === 0) {
-      const allDivs = mainContent.querySelectorAll('div');
-      messages = Array.from(allDivs).filter(div => {
-        const depth = this.getElementDepth(div);
-        if (depth < 3 || depth > 20) return false;
 
-        const hasUserIndicator = div.querySelector('[data-testid="user-message"]') ||
-                                 div.querySelector('.font-user-message') ||
-                                 div.textContent.trim().length > 0 && div.querySelector('p, pre, code');
-
-        const hasAssistantIndicator = div.querySelector('[data-is-streaming]') ||
-                                     div.querySelector('.font-claude-message') ||
-                                     div.querySelector('.font-claude-response') ||
-                                     div.querySelector('[class*="claude"]');
-
-        return hasUserIndicator || hasAssistantIndicator;
-      });
-    }
 
     // Strategy 4: Fallback - find message pairs
     if (messages.length === 0) {
@@ -143,9 +125,9 @@ const DOMUtilsCore = {
    */
   getChatContainer() {
     return document.querySelector('main') ||
-           document.querySelector('[role="main"]') ||
-           document.querySelector('#chat-container') ||
-           document.body;
+      document.querySelector('[role="main"]') ||
+      document.querySelector('#chat-container') ||
+      document.body;
   },
 
   /**
