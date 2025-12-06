@@ -185,7 +185,7 @@ class BranchMapRenderer {
           y: this.rowPositions.get(node.messageIndex)
         };
 
-        const nodeKey = `${node.containerId}:${node.version}`;
+        const nodeKey = node.uniqueId;
         this.nodePositionMap.set(nodeKey, {
           x: pos.x,
           y: pos.y,
@@ -526,7 +526,7 @@ class BranchMapRenderer {
         // İlk node'u START'a bağla
         if (messages.length > 0) {
           const firstMsg = messages[0];
-          const firstNodeKey = `${firstMsg.containerId}:${firstMsg.version}`;
+          const firstNodeKey = firstMsg.uniqueId;
           const firstNodePos = this.nodePositionMap.get(firstNodeKey);
 
           if (firstNodePos) {
@@ -548,8 +548,8 @@ class BranchMapRenderer {
           const currentMsg = messages[i];
           const nextMsg = messages[i + 1];
 
-          const currentKey = `${currentMsg.containerId}:${currentMsg.version}`;
-          const nextKey = `${nextMsg.containerId}:${nextMsg.version}`;
+          const currentKey = currentMsg.uniqueId;
+          const nextKey = nextMsg.uniqueId;
 
           const currentPos = this.nodePositionMap.get(currentKey);
           const nextPos = this.nodePositionMap.get(nextKey);
@@ -581,8 +581,8 @@ class BranchMapRenderer {
         const currentNode = sortedNodes[i];
         const nextNode = sortedNodes[i + 1];
 
-        const currentKey = `${currentNode.containerId}:${currentNode.version}`;
-        const nextKey = `${nextNode.containerId}:${nextNode.version}`;
+        const currentKey = currentNode.uniqueId;
+        const nextKey = nextNode.uniqueId;
         const connectionKey = `${currentKey}->${nextKey}`;
 
         // Henüz çizilmemişse çiz

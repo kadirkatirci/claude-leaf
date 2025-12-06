@@ -16,6 +16,7 @@ class BranchTreeBuilder {
     this.history = history || [];
     this.shownNodes = new Set();
     this.nodeLocationMap = new Map();
+    this.containerMaxVersions = new Map(); // Container ID -> Max total versions
   }
 
   build() {
@@ -28,6 +29,10 @@ class BranchTreeBuilder {
     // Reset
     this.shownNodes.clear();
     this.nodeLocationMap.clear();
+    this.containerMaxVersions.clear();
+
+    // 0. Tüm snapshotları tara ve her mesaj için maksimum versiyon sayısını bul
+    this.calculateMaxVersions();
 
     // 1. Snapshot'lardan path'leri çıkar
     const paths = this.extractPaths();
@@ -63,43 +68,161 @@ class BranchTreeBuilder {
   /**
    * Get full content from history for a specific message version
    */
-  getFullContent(containerId, version) {
+  getFullContent(containerId, version, previewText) {
     // Normalize version format (remove spaces) for matching
     const normalizedVersion = version.replace(/\s+/g, '');
 
-    const historyEntry = this.history.find(h => {
+    // Find all matching history entries
+    const matches = this.history.filter(h => {
       const historyVersion = h.versionLabel ? h.versionLabel.replace(/\s+/g, '') : '';
       return h.containerId === containerId && historyVersion === normalizedVersion;
     });
 
-    return historyEntry ? historyEntry.content : null;
+    if (matches.length === 0) return null;
+    // Removed early return for single match to allow preview verification logic to run
+    // if (matches.length === 1) return matches[0].content;
+
+    // Disambiguate using previewText if we have multiple matches
+    if (previewText) {
+      // Clean preview text (remove ellipses, whitespace) for looser matching
+      const cleanPreview = previewText.replace(/\.{3}$/, '').trim();
+
+      const bestMatch = matches.find(m => {
+        return m.content && m.content.includes(cleanPreview);
+      });
+
+      if (bestMatch) return bestMatch.content;
+
+      // CRITICAL FIX: If we have a preview but NO match in history contains it,
+      // it means the history is stale or incomplete. 
+      // Instead of showing the WRONG content (from the fallback match),
+      // we show the preview itself (which we know is correct for this node).
+      if (cleanPreview.length > 5) { // Only if preview is substantial
+        return previewText;
+      }
+    }
+
+    // Fallback: return the last match (often the most recent)
+    return matches[matches.length - 1].content;
+  }
+
+  /**
+   * Her container için maksimum versiyon sayısını hesapla
+   * Örn: Bir mesajın 1/2, 2/2 versiyonları var, sonra 1/3, 2/3, 3/3 oldu.
+   * Max versiyon sayısı 3 olmalı.
+   */
+  calculateMaxVersions() {
+    // History'den kontrol et
+    this.history.forEach(h => {
+      if (h.versionLabel) {
+        const parts = h.versionLabel.split('/');
+        if (parts.length === 2) {
+          const total = parseInt(parts[1]);
+          const currentMax = this.containerMaxVersions.get(h.containerId) || 0;
+          if (total > currentMax) {
+            this.containerMaxVersions.set(h.containerId, total);
+          }
+        }
+      }
+    });
+
+    // Snapshotlardan kontrol et
+    this.snapshots.forEach(snapshot => {
+      snapshot.messages.forEach(m => {
+        if (m.version) {
+          const parts = m.version.split('/');
+          if (parts.length === 2) {
+            const total = parseInt(parts[1]);
+            const currentMax = this.containerMaxVersions.get(m.containerId) || 0;
+            if (total > currentMax) {
+              this.containerMaxVersions.set(m.containerId, total);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * Generate a simple hash from content string
+   */
+  generateContentHash(content) {
+    if (!content) return 'empty';
+    let hash = 0;
+    const str = content.substring(0, 100); // Only hash start for performance
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  }
+
+  /**
+   * Generate a stable unique ID based on content lineage
+   * Format: hash(parentId + containerId + versionIndex + contentHash)
+   */
+  generateUniqueId(containerId, versionIndex, parentId, content) {
+    const contentHash = this.generateContentHash(content);
+    return `${parentId || 'root'}>${containerId}:v${versionIndex}:${contentHash}`;
   }
 
   extractPaths() {
     return this.snapshots.map(snapshot => {
-      const messages = snapshot.messages
+      // 1. Raw parsing and sorting
+      const parsedMessages = snapshot.messages
         .filter(m => m.version !== null)
         .map(m => {
           const containerId = m.containerId;
-          const version = m.version.replace(/\s+/g, '');
+          const versionParts = m.version.split('/');
+          const currentVer = parseInt(versionParts[0]);
+          // Use raw version from snapshot for display (e.g. "2/2")
+          // We will update it dynamically later if we find a higher total on a shared node
+          const displayVersion = m.version;
           const messageIndex = parseInt(containerId.replace('edit-index-', ''));
-
-          // Get full content from history, fallback to preview
-          const fullContent = this.getFullContent(containerId, version);
 
           return {
             containerId,
-            version,
+            version: displayVersion,
+            versionIndex: currentVer,
             messageIndex,
-            content: fullContent || m.contentPreview || 'No content available'
+            contentPreview: m.contentPreview,
+            rawVersion: m.version // Keep original for lookups
           };
         })
         .sort((a, b) => a.messageIndex - b.messageIndex);
 
+      // 2. Sequential unique ID generation (lineage-based)
+      let lastNodeId = null;
+
+      const messagesWithIds = parsedMessages.map(m => {
+        // Get full content - use preview for disambiguation
+        const fullContent = this.getFullContent(
+          m.containerId,
+          m.rawVersion.replace(/\s+/g, ''),
+          m.contentPreview
+        );
+
+        // Include content in ID generation
+        const uniqueId = this.generateUniqueId(m.containerId, m.versionIndex, lastNodeId, fullContent || m.contentPreview);
+        const currentParentId = lastNodeId; // Store parentId before updating lastNodeId
+        lastNodeId = uniqueId; // Update lastNodeId for the next iteration
+
+        return {
+          uniqueId, // Lineage-based unique ID
+          parentId: currentParentId, // This is the uniqueId of the node that came before this one
+          containerId: m.containerId,
+          version: m.version,
+          versionIndex: m.versionIndex,
+          messageIndex: m.messageIndex,
+          content: fullContent || m.contentPreview || 'No content available'
+        };
+      });
+
       return {
         snapshotId: snapshot.id,
         timestamp: snapshot.timestamp,
-        messages
+        messages: messagesWithIds
       };
     });
   }
@@ -120,19 +243,44 @@ class BranchTreeBuilder {
 
       if (pathKey !== mainPathKey) {
         const isLeft = this.isLeftBranch(mainPath.messages, path.messages);
+
+        // Find the divergence point (parent ID)
+        // The first message in the branch that is DIFFERENT from main path
+        // Its parent is the divergence point.
+        let divergenceParentId = 'root';
+        if (path.messages.length > 0) {
+          // Since messages are sequential and include parentId, we can just look at the first message's parent
+          // However, the first message might BE the divergence point or it might be shared.
+
+          // Actually, we want to know "where did this branch split off from the main path?"
+          // We iterate until we find a message NOT in main path.
+          const firstUniqueMsg = path.messages.find(pm => !mainPath.messages.some(mm => mm.uniqueId === pm.uniqueId));
+          if (firstUniqueMsg) {
+            divergenceParentId = firstUniqueMsg.parentId || 'root';
+          }
+        }
+
         branches.push({
           snapshotId: path.snapshotId,
           messages: path.messages,
-          isLeftBranch: isLeft
+          isLeftBranch: isLeft,
+          divergenceParentId
         });
       }
     });
 
-    // Sol dalları mesaj sayısına göre sırala (kısa olanlar önce)
-    // Sağ dalları da aynı şekilde
+    // Sol dalları sırala:
+    // 1. Divergence Parent ID (kardeşleri bir arada tutmak için)
+    // 2. Mesaj sayısı (uzunluk)
     branches.sort((a, b) => {
       if (a.isLeftBranch && !b.isLeftBranch) return -1;
       if (!a.isLeftBranch && b.isLeftBranch) return 1;
+
+      // Group siblings locally
+      if (a.divergenceParentId !== b.divergenceParentId) {
+        return a.divergenceParentId.localeCompare(b.divergenceParentId);
+      }
+
       return a.messages.length - b.messages.length;
     });
 
@@ -140,17 +288,21 @@ class BranchTreeBuilder {
   }
 
   isLeftBranch(mainMessages, branchMessages) {
-    const mainMap = new Map();
-    mainMessages.forEach(m => mainMap.set(m.containerId, m));
-
     for (const branchMsg of branchMessages) {
-      const mainMsg = mainMap.get(branchMsg.containerId);
-      if (mainMsg && mainMsg.version !== branchMsg.version) {
-        const branchV = parseInt(branchMsg.version.split('/')[0]);
-        const mainV = parseInt(mainMsg.version.split('/')[0]);
-        return branchV < mainV;
-      }
+      // Find matching message in main path by Unique ID
+      const mainMsg = mainMessages.find(m => m.uniqueId === branchMsg.uniqueId);
+
+      // If no exact match (same lineage), check if it's a version divergence
       if (!mainMsg) {
+        // Find main message with same container ID to compare versions
+        const correspondingMainMsg = mainMessages.find(m => m.containerId === branchMsg.containerId);
+
+        if (correspondingMainMsg) {
+          // Divergence point found: compare versions
+          return branchMsg.versionIndex < correspondingMainMsg.versionIndex;
+        }
+
+        // No ID match and no Container ID match -> This message is unique to branch
         return true;
       }
     }
@@ -158,7 +310,8 @@ class BranchTreeBuilder {
   }
 
   pathToKey(messages) {
-    return messages.map(m => `${m.containerId}:${m.version}`).join('|');
+    // Unique key: Sequence of Unique IDs
+    return messages.map(m => m.uniqueId).join('|');
   }
 
   /**
@@ -236,12 +389,16 @@ class BranchTreeBuilder {
     const nodes = [];
 
     messages.forEach(msg => {
-      const nodeKey = `${msg.containerId}:${msg.version}`;
+      // Node Key uses Lineage ID
+      const nodeKey = msg.uniqueId;
 
       const node = {
+        uniqueId: msg.uniqueId,
+        parentId: msg.parentId,
         containerId: msg.containerId,
         messageIndex: msg.messageIndex,
         version: msg.version,
+        versionIndex: msg.versionIndex,
         content: msg.content
       };
 
@@ -256,24 +413,49 @@ class BranchTreeBuilder {
   /**
    * Dallar için: Duplicate kontrolü yap
    */
+  /**
+   * Dallar için: Duplicate kontrolü yap
+   */
   filterAndRegisterNodes(messages, columnId) {
     const nodes = [];
 
     messages.forEach(msg => {
-      const nodeKey = `${msg.containerId}:${msg.version}`;
+      // Node Key uses Lineage ID
+      const nodeKey = msg.uniqueId;
 
       // Daha önce gösterilmemişse ekle
       if (!this.shownNodes.has(nodeKey)) {
         const node = {
+          uniqueId: msg.uniqueId,
+          parentId: msg.parentId,
           containerId: msg.containerId,
           messageIndex: msg.messageIndex,
           version: msg.version,
+          versionIndex: msg.versionIndex,
           content: msg.content
         };
 
         nodes.push(node);
         this.shownNodes.add(nodeKey);
         this.nodeLocationMap.set(nodeKey, { columnId, node });
+      } else {
+        // Node exists -> Check if we need to update the version label (e.g. 1/2 -> 1/3)
+        const location = this.nodeLocationMap.get(nodeKey);
+        if (location) {
+          const existingNode = location.node;
+          const existingParts = existingNode.version.split('/');
+          const newParts = msg.version.split('/');
+
+          if (existingParts.length === 2 && newParts.length === 2) {
+            const existingTotal = parseInt(existingParts[1]);
+            const newTotal = parseInt(newParts[1]);
+
+            if (newTotal > existingTotal) {
+              // Upgrade the version label to show higher total
+              existingNode.version = msg.version;
+            }
+          }
+        }
       }
     });
 
@@ -286,28 +468,16 @@ class BranchTreeBuilder {
   findConnectionSource(targetNode) {
     if (!targetNode) return null;
 
-    // Bu node'un messageIndex'inden küçük olan en büyük messageIndex'li node'u bul
+    // Strict Parent-Child Connection
+    // Instead of guessing based on index, we look for the EXACT parent node.
     let bestMatch = null;
-    let bestMatchIndex = -1;
 
-    this.nodeLocationMap.forEach((location, nodeKey) => {
-      const [containerId] = nodeKey.split(':');
-      const msgIndex = parseInt(containerId.replace('edit-index-', ''));
-
-      if (msgIndex < targetNode.messageIndex && msgIndex > bestMatchIndex) {
+    // Use loop for performance instead of forEach
+    for (const [nodeKey, location] of this.nodeLocationMap) {
+      if (location.node.uniqueId === targetNode.parentId) {
         bestMatch = location;
-        bestMatchIndex = msgIndex;
+        break; // Found the exact parent, stop searching
       }
-    });
-
-    // Yoksa aynı mesajın farklı versiyonunu ara
-    if (!bestMatch) {
-      this.nodeLocationMap.forEach((location, nodeKey) => {
-        const [containerId] = nodeKey.split(':');
-        if (containerId === targetNode.containerId) {
-          bestMatch = location;
-        }
-      });
     }
 
     return bestMatch;
