@@ -223,7 +223,7 @@ class ThemeManager {
 
       .claude-edit-highlighted {
         background-color: transparent !important;
-        border: 1px dashed #ff500442 !important;
+        border: 1px dashed #fe914642 !important;
         padding: 10px !important;
         border-radius: 6px !important;
         transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
