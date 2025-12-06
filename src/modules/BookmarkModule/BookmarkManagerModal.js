@@ -25,7 +25,7 @@ export class BookmarkManagerModal {
         });
 
         const content = DOMUtils.createElement('div', {
-            className: 'bg-bg-000 rounded-xl overflow-hidden shadow-2xl flex flex-row w-[90vw] h-[85vh] max-w-[1200px]',
+            className: 'bg-bg-000 rounded-xl overflow-hidden shadow-2xl flex flex-row w-full h-[85vh] max-w-[1200px]',
             style: { animation: 'slideUp 0.3s ease' }
         });
 
