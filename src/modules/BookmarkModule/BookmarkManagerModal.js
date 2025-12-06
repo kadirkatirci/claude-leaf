@@ -92,7 +92,7 @@ export class BookmarkManagerModal {
 
         // Header
         const header = DOMUtils.createElement('div', {
-            className: 'p-4 border-b border-border-200 flex items-center gap-2'
+            className: 'p-4 border-border-200 flex items-center gap-2'
         });
         header.innerHTML = `${IconLibrary.bookmark(false, 'currentColor', 20)} <span class="font-semibold text-lg">Bookmarks</span>`;
 
