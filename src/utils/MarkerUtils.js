@@ -202,9 +202,11 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
       const msgPreview = normalizeForComparison(generatePreview(messageAtIndex, 300), 300);
       const normalizedSavedPreview = normalizeForComparison(savedPreview, 300);
 
-      // Allow up to 20% difference or 10 characters (increased for longer preview)
+      // Allow up to 5% difference or 5 characters (increased precision to 95%)
       const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
-      const maxDist = Math.max(10, Math.floor(normalizedSavedPreview.length * 0.2));
+      // Allow up to 5% difference strictly (minimum 1 char for very short texts if needed, but keeping it strict)
+      // For "hiiiiiii" (8 chars) -> 0.4 -> 0 edits allowed. Perfect for strictness.
+      const maxDist = Math.floor(normalizedSavedPreview.length * 0.05);
 
       if (distance <= maxDist) {
         // Update signature to match new UI state
@@ -245,7 +247,9 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
 
       // Use Levenshtein for search as well
       const distance = levenshteinDistance(msgPreview, normalizedSavedPreview);
-      const maxDist = Math.max(10, Math.floor(normalizedSavedPreview.length * 0.2));
+      // Allow up to 5% difference or 5 characters (increased precision to 95%)
+      // Allow up to 5% difference strictly
+      const maxDist = Math.floor(normalizedSavedPreview.length * 0.05);
 
       if (distance <= maxDist) {
         const newSignature = generateSignature(msg);
