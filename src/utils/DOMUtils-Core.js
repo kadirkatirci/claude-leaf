@@ -1,42 +1,38 @@
 /**
  * DOMUtils-Core - Core DOM utilities for Claude interface
- * Handles message finding, visibility checks, and page detection
+ * 
+ * v2.1.0 - Refactored to use NavigationInterceptor
+ * 
+ * Handles message finding, visibility checks, and page detection.
+ * Uses NavigationInterceptor for consistent page type detection.
  */
 
-// Import VisibilityManager for centralized page checking
-let visibilityManager = null;
+import navigationInterceptor from '../core/NavigationInterceptor.js';
 
 const DOMUtilsCore = {
   /**
-   * Initialize with VisibilityManager
-   * Returns a promise to ensure VisibilityManager is loaded before use
+   * Initialize - now minimal as NavigationInterceptor handles most setup
    */
   async init() {
-    // Lazy load to avoid circular dependency
-    if (!visibilityManager) {
-      try {
-        const module = await import('./VisibilityManager.js');
-        visibilityManager = module.default;
-      } catch (error) {
-        console.error('Failed to load VisibilityManager:', error);
-      }
-    }
+    // Nothing to initialize - NavigationInterceptor is already running
+    console.log('[DOMUtils-Core] Initialized with NavigationInterceptor');
   },
 
   /**
    * Check if we're on a conversation page
-   * Uses VisibilityManager for centralized checking
+   * Uses NavigationInterceptor for centralized checking
    * @returns {boolean}
    */
   isOnConversationPage() {
-    // Use VisibilityManager if available, otherwise fallback to direct check
-    if (visibilityManager) {
-      return visibilityManager.isOnConversationPage();
-    }
+    return navigationInterceptor.isConversationPage();
+  },
 
-    // Fallback to direct check
-    const path = window.location.pathname;
-    return (path.includes('/chat/') || path.includes('/project/')) && !path.includes('/new');
+  /**
+   * Get current page type
+   * @returns {string}
+   */
+  getPageType() {
+    return navigationInterceptor.getState().pageType;
   },
 
   /**
@@ -50,11 +46,10 @@ const DOMUtilsCore = {
     }
 
     // Find main content area (excluding sidebar)
-    // Strategy 1: Look for main element
     let mainContent = document.querySelector('main') ||
                      document.querySelector('[role="main"]');
 
-    // Strategy 2: If no main, search entire document (Claude.ai removed main element)
+    // If no main, search entire document (Claude.ai sometimes removes main element)
     if (!mainContent) {
       mainContent = document.body;
     }
@@ -62,24 +57,21 @@ const DOMUtilsCore = {
     // Try multiple selector strategies (Claude.ai's structure changes frequently)
     let messages = [];
 
-    // Strategy 1: Old selector (for backward compatibility)
+    // Strategy 1: data-test-render-count (most reliable)
     messages = mainContent.querySelectorAll('[data-test-render-count]');
 
-    // Strategy 2: New selector based on data-testid
+    // Strategy 2: data-testid selectors
     if (messages.length === 0) {
       messages = mainContent.querySelectorAll('[data-testid*="message"], [data-testid*="conversation-turn"]');
     }
 
     // Strategy 3: Look for message containers by class patterns
     if (messages.length === 0) {
-      // Find divs that contain either user messages or assistant responses
       const allDivs = mainContent.querySelectorAll('div');
       messages = Array.from(allDivs).filter(div => {
-        // Must have reasonable depth (not too shallow, not too deep)
         const depth = this.getElementDepth(div);
         if (depth < 3 || depth > 20) return false;
 
-        // Check for message indicators
         const hasUserIndicator = div.querySelector('[data-testid="user-message"]') ||
                                  div.querySelector('.font-user-message') ||
                                  div.textContent.trim().length > 0 && div.querySelector('p, pre, code');
@@ -93,37 +85,33 @@ const DOMUtilsCore = {
       });
     }
 
-    // Strategy 4: Fallback - find message pairs (user + assistant pattern)
+    // Strategy 4: Fallback - find message pairs
     if (messages.length === 0) {
-      // Look for the typical chat pattern: alternating messages
       const chatMessages = mainContent.querySelectorAll('div[class*="group"], div[class*="message"]');
       if (chatMessages.length > 0) {
         messages = chatMessages;
       }
     }
 
-    // Filter: Extract real messages (simplified - trust data-test-render-count selector)
+    // Filter: Extract real messages
     return Array.from(messages).filter(msg => {
-      // ONLY exclude obvious non-message elements
-
       // Skip sidebar elements
       if (msg.closest('nav')) return false;
       if (msg.closest('[aria-label="Sidebar"]')) return false;
 
-      // Skip if it IS an input/textarea (not just contains one)
+      // Skip if it IS an input/textarea/button
       if (msg.tagName === 'TEXTAREA') return false;
       if (msg.tagName === 'INPUT') return false;
       if (msg.tagName === 'BUTTON') return false;
 
-      // Skip if it's the chat input container (but not message containers that contain chat input)
+      // Skip chat input container
       if (msg.getAttribute('data-testid') === 'chat-input') return false;
       if (msg.getAttribute('data-testid') === 'prompt-input') return false;
 
-      // Must have some content (allow even single characters like "i", "a", etc.)
+      // Must have some content
       const text = msg.textContent?.trim() || '';
       if (text.length === 0) return false;
 
-      // If it has data-test-render-count and passed above checks, it's a message
       return true;
     });
   },
@@ -146,7 +134,6 @@ const DOMUtilsCore = {
    * @returns {HTMLElement[]} Message elements
    */
   findMessages() {
-    // Use new function - backward compatibility maintained
     return this.findActualMessages();
   },
 
@@ -169,7 +156,6 @@ const DOMUtilsCore = {
   isUserMessage(element) {
     if (!element) return false;
 
-    // Check for user message indicators
     return !!(
       element.querySelector('[data-testid="user-message"]') ||
       element.querySelector('[class*="user" i]') ||
@@ -179,7 +165,7 @@ const DOMUtilsCore = {
   },
 
   /**
-   * Check if element is visible
+   * Check if element is visible in viewport
    * @param {HTMLElement} element
    * @returns {boolean}
    */
@@ -230,19 +216,16 @@ const DOMUtilsCore = {
 
   /**
    * Get current visible message index
-   * @returns {number} Message index
+   * @param {HTMLElement[]} messages - Optional message array
+   * @returns {number} Message index (-1 if none)
    */
   getCurrentVisibleMessageIndex(messages = null) {
-    // Use provided messages array or find them
     const msgArray = messages || this.findMessages();
 
-    // Return -1 if no messages
     if (!msgArray || msgArray.length === 0) {
       return -1;
     }
 
-    // Find the topmost visible message in viewport
-    // We check which message's top is closest to viewport top (within viewport)
     const viewportTop = window.scrollY;
     const viewportBottom = viewportTop + window.innerHeight;
 
@@ -255,15 +238,13 @@ const DOMUtilsCore = {
       const msgTop = rect.top + window.scrollY;
       const msgBottom = msgTop + rect.height;
 
-      // Skip messages that are completely out of viewport
+      // Skip messages completely out of viewport
       if (msgBottom < viewportTop || msgTop > viewportBottom) {
         continue;
       }
 
-      // Calculate distance from message top to viewport top
+      // Find message closest to viewport top
       const distance = Math.abs(msgTop - viewportTop);
-
-      // Find the message closest to viewport top
       if (distance < minDistance) {
         minDistance = distance;
         closestIndex = i;

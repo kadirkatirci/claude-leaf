@@ -10,6 +10,7 @@
  * - Centralized DOM observation (single observer for all modules)
  * - Consistent message list across all modules
  * - Edit version change detection
+ * - Navigation-aware with automatic restart on page change
  * 
  * StableId Strategy:
  * - Based on user message content hash + occurrence index
@@ -20,6 +21,8 @@
 import { hashString } from '../utils/HashUtils.js';
 import DOMUtilsCore from '../utils/DOMUtils-Core.js';
 import ObserverManager from '../managers/ObserverManager.js';
+import navigationInterceptor, { PageType } from './NavigationInterceptor.js';
+import domReadyChecker from '../utils/DOMReadyChecker.js';
 
 // Singleton instance
 let registryInstance = null;
@@ -37,6 +40,8 @@ class MessageRegistry {
     this.observerTimeout = null;
     this.lastScanTime = 0;
     this.isStarted = false;
+    this.isStarting = false; // Prevent concurrent start attempts
+    this.debugMode = false;
     
     // Callbacks for different event types
     this.changeCallbacks = new Set();
@@ -44,6 +49,14 @@ class MessageRegistry {
     
     // Track edit versions for change detection
     this.editVersions = new Map(); // stableId -> versionInfo
+    
+    // Navigation subscription
+    this.navigationUnsubscribe = null;
+    
+    // Retry state
+    this.startRetryCount = 0;
+    this.maxStartRetries = 10;
+    this.startRetryTimer = null;
     
     registryInstance = this;
     
@@ -62,50 +75,175 @@ class MessageRegistry {
   }
   
   /**
-   * Initialize and start observing
+   * Initialize and start observing with robust retry mechanism
    */
-  start() {
+  async start() {
     if (this.isStarted) {
+      this.log('Already started, skipping');
       return;
     }
     
-    // Initial scan
-    this.scan();
+    if (this.isStarting) {
+      this.log('Start already in progress, skipping');
+      return;
+    }
     
-    // Setup DOM observer using ObserverManager
-    const chatContainer = DOMUtilsCore.getChatContainer();
+    this.isStarting = true;
+    this.log('Starting MessageRegistry...');
     
-    if (chatContainer) {
-      ObserverManager.observe(
-        this.observerId,
-        chatContainer,
-        () => {
-          clearTimeout(this.observerTimeout);
-          this.observerTimeout = setTimeout(() => this.scan(), 150);
-        },
-        {
-          childList: true,
-          subtree: true,
-          attributes: false,
-          throttle: 100
-        }
-      );
+    try {
+      // Subscribe to navigation events first
+      this.setupNavigationListener();
       
-      this.isStarted = true;
-    } else {
-      // Retry after a short delay
-      setTimeout(() => {
-        if (!this.isStarted) {
-          this.start();
-        }
-      }, 500);
+      // Check if we're on a conversation page
+      const state = navigationInterceptor.getState();
+      
+      if (!state.isConversationPage) {
+        this.log(`Not on conversation page (${state.pageType}), waiting for navigation`);
+        this.isStarting = false;
+        return;
+      }
+      
+      // Wait for DOM to be ready
+      const isReady = await domReadyChecker.waitForConversationReady({
+        maxWait: 5000,
+        requireMessages: false
+      });
+      
+      if (!isReady) {
+        this.log('DOM not ready after waiting, will retry on next navigation');
+        this.isStarting = false;
+        return;
+      }
+      
+      // Try to start observer with retry
+      await this.startObserverWithRetry();
+      
+    } catch (error) {
+      console.error('[MessageRegistry] Error during start:', error);
+      this.isStarting = false;
     }
   }
   
   /**
-   * Stop observing
+   * Start observer with exponential backoff retry
    */
-  stop() {
+  async startObserverWithRetry() {
+    const maxRetries = this.maxStartRetries;
+    let delay = 100;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      this.startRetryCount = attempt;
+      
+      const chatContainer = DOMUtilsCore.getChatContainer();
+      
+      if (chatContainer) {
+        // Initial scan
+        this.scan();
+        
+        // Setup DOM observer
+        ObserverManager.observe(
+          this.observerId,
+          chatContainer,
+          () => {
+            clearTimeout(this.observerTimeout);
+            this.observerTimeout = setTimeout(() => this.scan(), 150);
+          },
+          {
+            childList: true,
+            subtree: true,
+            attributes: false,
+            throttle: 100
+          }
+        );
+        
+        this.isStarted = true;
+        this.isStarting = false;
+        this.startRetryCount = 0;
+        
+        this.log(`Started successfully after ${attempt + 1} attempts, found ${this.messages.length} messages`);
+        return;
+      }
+      
+      this.log(`Chat container not found, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * 1.5, 1000); // Exponential backoff, max 1s
+    }
+    
+    this.log(`Failed to start after ${maxRetries} retries`);
+    this.isStarting = false;
+  }
+  
+  /**
+   * Setup navigation listener for automatic restart on page change
+   */
+  setupNavigationListener() {
+    // Clean up existing subscription
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
+    }
+    
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+      this.handleNavigationEvent(event);
+    });
+    
+    this.log('Navigation listener setup');
+  }
+  
+  /**
+   * Handle navigation events
+   */
+  async handleNavigationEvent(event) {
+    // Skip initial events (handled by start())
+    if (event.type === 'initial' && this.isStarted) {
+      return;
+    }
+    
+    this.log(`Navigation event: ${event.type}, pageType: ${event.pageType}`);
+    
+    // Leaving conversation page
+    if (event.wasConversationPage && !event.isConversationPage) {
+      this.log('Left conversation page, clearing messages');
+      this.clearAndStop();
+      return;
+    }
+    
+    // Entering conversation page
+    if (event.isConversationPage) {
+      // If coming from /new page, this is a new conversation
+      if (event.wasNewChatPage) {
+        this.log('Navigated from /new to conversation, restarting');
+      } else if (event.wasConversationPage) {
+        this.log('Navigated between conversations, restarting');
+      } else {
+        this.log('Entered conversation page, starting');
+      }
+      
+      // Stop current observation
+      this.stopObserver();
+      
+      // Wait for new page DOM to be ready
+      const isReady = await domReadyChecker.waitForConversationReady({
+        maxWait: 5000,
+        requireMessages: false
+      });
+      
+      if (isReady) {
+        // Restart observer for new conversation
+        this.isStarted = false;
+        this.isStarting = false;
+        await this.startObserverWithRetry();
+      } else {
+        this.log('New conversation DOM not ready, will retry');
+      }
+    }
+  }
+  
+  /**
+   * Stop observer only (keep navigation listener)
+   */
+  stopObserver() {
     ObserverManager.disconnect(this.observerId);
     
     if (this.observerTimeout) {
@@ -113,16 +251,71 @@ class MessageRegistry {
       this.observerTimeout = null;
     }
     
+    if (this.startRetryTimer) {
+      clearTimeout(this.startRetryTimer);
+      this.startRetryTimer = null;
+    }
+    
+    this.isStarted = false;
+    this.isStarting = false;
+  }
+  
+  /**
+   * Clear messages and stop observer
+   */
+  clearAndStop() {
+    this.stopObserver();
+    
+    // Clear messages
+    if (this.messages.length > 0) {
+      this.messages = [];
+      this.messageMap.clear();
+      this.editVersions.clear();
+      this.notifyChange('page_changed', []);
+    }
+  }
+  
+  /**
+   * Stop observing completely (including navigation listener)
+   */
+  stop() {
+    this.stopObserver();
+    
+    // Clean up navigation listener
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
+      this.navigationUnsubscribe = null;
+    }
+    
     this.changeCallbacks.clear();
     this.versionCallbacks.clear();
+    
+    this.log('Stopped completely');
+  }
+  
+  /**
+   * Restart the registry (full stop and start)
+   */
+  async restart() {
+    this.log('Restarting...');
+    this.stopObserver();
+    
+    // Brief delay to allow DOM to settle
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     this.isStarted = false;
+    this.isStarting = false;
+    await this.start();
   }
   
   /**
    * Scan DOM and update message registry
    */
   scan() {
-    if (!DOMUtilsCore.isOnConversationPage()) {
+    // Check if we're on a conversation page using NavigationInterceptor
+    const state = navigationInterceptor.getState();
+    
+    if (!state.isConversationPage) {
       if (this.messages.length > 0) {
         this.messages = [];
         this.messageMap.clear();
@@ -317,6 +510,8 @@ class MessageRegistry {
   }
   
   notifyChange(reason, messages) {
+    this.log(`Change: ${reason}, ${messages.length} messages`);
+    
     this.changeCallbacks.forEach(callback => {
       try {
         callback(reason, messages);
@@ -422,6 +617,38 @@ class MessageRegistry {
   
   rescan() {
     this.scan();
+  }
+  
+  /**
+   * Set debug mode
+   */
+  setDebugMode(enabled) {
+    this.debugMode = enabled;
+  }
+  
+  /**
+   * Log helper
+   */
+  log(...args) {
+    if (this.debugMode) {
+      console.log('[MessageRegistry]', ...args);
+    }
+  }
+  
+  /**
+   * Get status for debugging
+   */
+  getStatus() {
+    return {
+      isStarted: this.isStarted,
+      isStarting: this.isStarting,
+      messageCount: this.messages.length,
+      callbackCount: this.changeCallbacks.size,
+      versionCallbackCount: this.versionCallbacks.size,
+      lastScanTime: this.lastScanTime,
+      startRetryCount: this.startRetryCount,
+      hasNavigationListener: !!this.navigationUnsubscribe
+    };
   }
 }
 

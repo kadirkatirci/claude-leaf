@@ -1,118 +1,187 @@
 /**
  * VisibilityManager - Centralized visibility management for all UI elements
- * Prevents infinite loops and cascading mutations
+ * 
+ * v2.3.0 - Improved navigation event handling
  */
+
+// Singleton instance
+let instance = null;
 
 class VisibilityManager {
   constructor() {
-    this.isConversationPage = false;
+    if (instance) {
+      return instance;
+    }
+    
+    this.isConversationPageCached = false;
     this.lastPath = null;
     this.listeners = new Set();
-    this.isChecking = false;
     this.debugMode = false;
-    this.observer = null;
-
-    // Start monitoring URL changes
-    this.startMonitoring();
+    this.navigationUnsubscribe = null;
+    this.initialized = false;
+    
+    instance = this;
+    
+    // Debug access
+    if (typeof window !== 'undefined') {
+      window.__visibilityManager = this;
+    }
+    
+    // Initialize
+    this.initialize();
   }
 
   /**
-   * Start monitoring URL changes
-   * Enhanced with multiple detection methods for reliability
+   * Initialize - connect to NavigationInterceptor
    */
-  startMonitoring() {
-    // Initial check
-    this.checkPageType();
-
-    // Method 1: Monitor History API changes
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-
-    history.pushState = function(...args) {
-      originalPushState.apply(history, args);
-      setTimeout(() => VisibilityManager.getInstance().checkPageType(), 50);
-    };
-
-    history.replaceState = function(...args) {
-      originalReplaceState.apply(history, args);
-      setTimeout(() => VisibilityManager.getInstance().checkPageType(), 50);
-    };
-
-    // Method 2: Monitor popstate for browser back/forward
-    window.addEventListener('popstate', () => {
-      setTimeout(() => this.checkPageType(), 50);
-    });
-
-    // Method 3: Enhanced DOM observation for soft navigation
-    // Instead of polling, we'll use more targeted observers
-
-    // Method 4: Observe DOM for main content changes (catches soft navigation)
-    this.observeMainContent();
-  }
-
-  /**
-   * Check current page type and notify listeners if changed
-   */
-  checkPageType() {
-    // Prevent recursive checks
-    if (this.isChecking) return;
-    this.isChecking = true;
-
-    const path = window.location.pathname;
-    const wasConversationPage = this.isConversationPage;
-    const wasNewPage = this.lastPath && this.lastPath.includes('/new');
-
-    // Check if we're on a conversation page
-    // More specific: /chat/UUID or /project/UUID patterns
-    this.isConversationPage = (path.includes('/chat/') || path.includes('/project/')) && !path.includes('/new');
-
-    // Force notification if transitioning from /new to conversation
-    const isTransitionFromNew = wasNewPage && this.isConversationPage;
-
-    // Notify if state changed, first check, or specific transitions
-    if (this.lastPath === null ||
-        wasConversationPage !== this.isConversationPage ||
-        path !== this.lastPath ||
-        isTransitionFromNew) {
-
-      if (this.debugMode || isTransitionFromNew) {
-        console.log(`[VisibilityManager] Page type: ${this.isConversationPage ? 'CONVERSATION' : 'NON-CONVERSATION'} (${path})`);
-        if (isTransitionFromNew) {
-          console.log(`[VisibilityManager] Special transition: /new -> conversation detected`);
-        }
+  initialize() {
+    // Try to get NavigationInterceptor from window
+    const tryConnect = () => {
+      if (window.__navigationInterceptor) {
+        this.connectToNavigationInterceptor(window.__navigationInterceptor);
+        return true;
       }
+      return false;
+    };
+    
+    // Try immediately
+    if (tryConnect()) {
+      return;
+    }
+    
+    // Fallback: initialize from URL and retry connection
+    this.initializeFromUrl();
+    
+    // Keep trying to connect
+    const retryInterval = setInterval(() => {
+      if (tryConnect()) {
+        clearInterval(retryInterval);
+        this.log('Connected to NavigationInterceptor (delayed)');
+      }
+    }, 100);
+    
+    // Stop trying after 5 seconds
+    setTimeout(() => clearInterval(retryInterval), 5000);
+  }
 
-      this.lastPath = path;
-      this.notifyListeners();
+  /**
+   * Connect to NavigationInterceptor
+   */
+  connectToNavigationInterceptor(navigationInterceptor) {
+    // Clean up existing subscription
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
     }
 
-    this.isChecking = false;
+    // Get initial state
+    const state = navigationInterceptor.getState();
+    this.isConversationPageCached = state.isConversationPage;
+    this.lastPath = state.path;
+    
+    this.log('Initial state from NavigationInterceptor:', {
+      isConversationPage: this.isConversationPageCached,
+      path: this.lastPath
+    });
+
+    // Subscribe to navigation events
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+      this.handleNavigationEvent(event);
+    });
+    
+    this.initialized = true;
+    
+    // Notify listeners of initial state
+    this.notifyListeners();
+  }
+
+  /**
+   * Initialize from URL directly (fallback)
+   */
+  initializeFromUrl() {
+    const path = window.location.pathname;
+    this.isConversationPageCached = this.checkConversationPath(path);
+    this.lastPath = path;
+    this.initialized = true;
+    
+    this.log('Initialized from URL (fallback):', {
+      isConversationPage: this.isConversationPageCached,
+      path: this.lastPath
+    });
+  }
+
+  /**
+   * Check if path is a conversation page
+   */
+  checkConversationPath(path) {
+    if (!path) return false;
+    
+    // Not a conversation if it's /new
+    if (path === '/new' || path.endsWith('/new')) {
+      return false;
+    }
+    
+    // Is a conversation if it matches /chat/{id}
+    return /\/chat\/[^/]+/.test(path);
+  }
+
+  /**
+   * Handle navigation events from NavigationInterceptor
+   */
+  handleNavigationEvent(event) {
+    const wasConversationPage = this.isConversationPageCached;
+    const wasPath = this.lastPath;
+    
+    // Update state
+    this.isConversationPageCached = event.isConversationPage;
+    this.lastPath = event.path;
+
+    this.log('Navigation event received:', {
+      type: event.type,
+      from: `${wasPath} (conv: ${wasConversationPage})`,
+      to: `${event.path} (conv: ${event.isConversationPage})`
+    });
+
+    // Always notify on path change or conversation state change
+    const stateChanged = wasConversationPage !== this.isConversationPageCached;
+    const pathChanged = wasPath !== this.lastPath;
+    
+    if (stateChanged || pathChanged) {
+      this.log('State changed, notifying listeners');
+      this.notifyListeners();
+    }
   }
 
   /**
    * Register a listener for visibility changes
-   * @param {Function} callback - Function to call with (isConversationPage) parameter
-   * @returns {Function} Unsubscribe function
    */
   onVisibilityChange(callback) {
     this.listeners.add(callback);
 
+    this.log(`Listener added, total: ${this.listeners.size}`);
+
     // Immediately call with current state
-    callback(this.isConversationPage);
+    try {
+      callback(this.isConversationPageCached);
+    } catch (error) {
+      console.error('[VisibilityManager] Error in immediate callback:', error);
+    }
 
     // Return unsubscribe function
     return () => {
       this.listeners.delete(callback);
+      this.log(`Listener removed, total: ${this.listeners.size}`);
     };
   }
 
   /**
-   * Notify all listeners of visibility change
+   * Notify all listeners
    */
   notifyListeners() {
+    this.log(`Notifying ${this.listeners.size} listeners, isConversation: ${this.isConversationPageCached}`);
+
     this.listeners.forEach(callback => {
       try {
-        callback(this.isConversationPage);
+        callback(this.isConversationPageCached);
       } catch (error) {
         console.error('[VisibilityManager] Error in listener callback:', error);
       }
@@ -121,40 +190,60 @@ class VisibilityManager {
 
   /**
    * Get current conversation page status
-   * @returns {boolean}
    */
   isOnConversationPage() {
-    return this.isConversationPage;
+    // Always check live if NavigationInterceptor available
+    if (window.__navigationInterceptor) {
+      return window.__navigationInterceptor.getState().isConversationPage;
+    }
+    return this.isConversationPageCached;
   }
 
   /**
-   * Update UI element visibility with complete hiding
-   * Uses all 4 properties for robust visibility control
-   * @param {HTMLElement} element
-   * @param {boolean} visible
+   * Force refresh state
+   */
+  refresh() {
+    const wasConversationPage = this.isConversationPageCached;
+    
+    if (window.__navigationInterceptor) {
+      const state = window.__navigationInterceptor.getState();
+      this.isConversationPageCached = state.isConversationPage;
+      this.lastPath = state.path;
+    } else {
+      const path = window.location.pathname;
+      this.isConversationPageCached = this.checkConversationPath(path);
+      this.lastPath = path;
+    }
+    
+    this.log('Refreshed:', {
+      isConversationPage: this.isConversationPageCached,
+      path: this.lastPath
+    });
+    
+    // Always notify on refresh
+    this.notifyListeners();
+  }
+
+  /**
+   * Update UI element visibility
    */
   setElementVisibility(element, visible) {
     if (!element) return;
 
-    // Use all 4 properties for complete and robust visibility control
-    // This matches FixedButtonMixin's approach for consistency
     if (visible) {
-      // Restore display based on element type or stored value
       const displayValue = element.dataset.originalDisplay || 'flex';
       element.style.display = displayValue;
       element.style.visibility = 'visible';
       element.style.opacity = element.dataset.originalOpacity || '1';
       element.style.pointerEvents = 'auto';
     } else {
-      // Store original values before hiding
-      if (!element.dataset.originalOpacity) {
-        element.dataset.originalOpacity = element.style.opacity || '1';
+      if (!element.dataset.originalOpacity && element.style.opacity) {
+        element.dataset.originalOpacity = element.style.opacity;
       }
       if (!element.dataset.originalDisplay && element.style.display && element.style.display !== 'none') {
         element.dataset.originalDisplay = element.style.display;
       }
 
-      // Use all 4 properties for complete hiding (same as FixedButtonMixin)
       element.style.display = 'none';
       element.style.visibility = 'hidden';
       element.style.opacity = '0';
@@ -164,10 +253,8 @@ class VisibilityManager {
 
   /**
    * Batch update multiple elements
-   * @param {Array<{element: HTMLElement, visible: boolean}>} updates
    */
   batchUpdateVisibility(updates) {
-    // Use requestAnimationFrame to batch DOM updates
     requestAnimationFrame(() => {
       updates.forEach(({ element, visible }) => {
         this.setElementVisibility(element, visible);
@@ -175,113 +262,50 @@ class VisibilityManager {
     });
   }
 
-  /**
-   * Observe main content area for changes
-   * This catches soft navigation that doesn't trigger URL change events
-   */
-  observeMainContent() {
-    // Clean up existing observer
-    if (this.observer) {
-      this.observer.disconnect();
-    }
-
-    // Create observer for main content changes and URL monitoring
-    this.observer = new MutationObserver((mutations) => {
-      // First check: URL might have changed (sidebar navigation)
-      const currentPath = window.location.pathname;
-      if (currentPath !== this.lastPath) {
-        if (this.debugMode) {
-          console.log(`[VisibilityManager] DOM observer detected URL change: ${this.lastPath} -> ${currentPath}`);
-        }
-        this.checkPageType();
-        return;
-      }
-
-      // Second check: Significant DOM changes that might indicate navigation
-      const hasSignificantChange = mutations.some(mutation => {
-        // Look for specific Claude UI changes
-        if (mutation.type === 'childList') {
-          // Check for main content replacement
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              // Check for conversation/chat elements
-              if (node.querySelector?.('[data-testid="messages"]') ||
-                  node.classList?.contains('conversation-content') ||
-                  node.tagName === 'MAIN') {
-                return true;
-              }
-            }
-          }
-
-          // Large content changes
-          return mutation.addedNodes.length > 5 ||
-                 mutation.removedNodes.length > 5;
-        }
-        return false;
-      });
-
-      if (hasSignificantChange) {
-        // Delay check to let DOM and URL settle
-        setTimeout(() => {
-          const newPath = window.location.pathname;
-          if (newPath !== this.lastPath) {
-            if (this.debugMode) {
-              console.log(`[VisibilityManager] DOM change led to navigation: ${this.lastPath} -> ${newPath}`);
-            }
-            this.checkPageType();
-          }
-        }, 100);
-      }
-    });
-
-    // Observe both body for comprehensive changes
-    const targetNode = document.body;
-    const config = {
-      childList: true,
-      subtree: true,
-      attributes: false // Don't need attribute changes
-    };
-
-    this.observer.observe(targetNode, config);
-
-    if (this.debugMode) {
-      console.log('[VisibilityManager] DOM observer started');
-    }
-  }
-
-  /**
-   * Set debug mode
-   */
   setDebugMode(enabled) {
     this.debugMode = enabled;
+    if (enabled) {
+      console.log('[VisibilityManager] Debug mode enabled');
+      console.log('[VisibilityManager] Status:', this.getStatus());
+    }
   }
 
-  /**
-   * Cleanup
-   */
+  log(...args) {
+    if (this.debugMode) {
+      console.log('[VisibilityManager]', ...args);
+    }
+  }
+
+  getStatus() {
+    return {
+      initialized: this.initialized,
+      isConversationPage: this.isConversationPageCached,
+      path: this.lastPath,
+      listenerCount: this.listeners.size,
+      hasNavigationSubscription: !!this.navigationUnsubscribe,
+      liveCheck: this.isOnConversationPage()
+    };
+  }
+
   destroy() {
-    // Clear listeners
     this.listeners.clear();
 
-    // Stop observer
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
+      this.navigationUnsubscribe = null;
     }
+    
+    this.initialized = false;
+    this.log('Destroyed');
   }
 
-  /**
-   * Singleton instance
-   */
-  static instance = null;
-
   static getInstance() {
-    if (!VisibilityManager.instance) {
-      VisibilityManager.instance = new VisibilityManager();
+    if (!instance) {
+      instance = new VisibilityManager();
     }
-    return VisibilityManager.instance;
+    return instance;
   }
 }
 
-// Export singleton instance
+// Export singleton
 export default VisibilityManager.getInstance();
