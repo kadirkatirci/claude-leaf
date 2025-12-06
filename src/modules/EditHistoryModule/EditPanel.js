@@ -58,9 +58,9 @@ class EditPanel extends BasePanel {
     footer.className = 'p-2 border-t border-border-200 bg-bg-100';
 
     const mapBtn = DOMUtils.createElement('button', {
-      textContent: '🗺️ Show Chat Branch Map',
       className: 'w-full px-3 py-2 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors font-medium flex items-center justify-center gap-2'
     });
+    mapBtn.innerHTML = `${IconLibrary.map('currentColor', 16)} Show Chat Branch Map`;
 
     mapBtn.addEventListener('click', () => {
       // Dispatch event to open Branch Map Modal

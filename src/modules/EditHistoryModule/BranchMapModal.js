@@ -2,6 +2,7 @@ import DOMUtils from '../../utils/DOMUtils.js';
 import { editHistoryStore } from '../../stores/index.js';
 import BranchTreeBuilder from './BranchTreeBuilder.js';
 import BranchMapRenderer from './BranchMapRenderer.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 
 /**
  * BranchMapModal - Conversation branch haritasını gösteren modal
@@ -148,7 +149,7 @@ class BranchMapModal {
 
         const title = DOMUtils.createElement('h2');
         title.className = 'text-lg font-semibold text-text-100 flex items-center gap-2';
-        title.innerHTML = '🗺️ Chat Branch Map';
+        title.innerHTML = `${IconLibrary.map('currentColor', 20)} Chat Branch Map`;
 
         // Stats badges
         const statsContainer = DOMUtils.createElement('div');
