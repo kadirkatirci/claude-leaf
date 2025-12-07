@@ -10,6 +10,9 @@ import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';
 import MessageFolder from './ContentFoldingModule/MessageFolder.js';
 import { conversationStateStore } from '../stores/index.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const FOLDING_CONFIG = MODULE_CONSTANTS.contentFolding;
 
 class ContentFoldingModule extends BaseModule {
   constructor() {
@@ -119,7 +122,7 @@ class ContentFoldingModule extends BaseModule {
       this.log(`📊 Scanning ${messages.length} messages...`);
 
       // Scan for message-level folding (before content scanning)
-      if (await this.getSetting('messages.enabled')) {
+      if (FOLDING_CONFIG.messages.enabled) {
         await this.messageFolder.scanMessages(messages);
       }
 
@@ -131,12 +134,12 @@ class ContentFoldingModule extends BaseModule {
         }
 
         // Scan for headings
-        if (await this.getSetting('headings.enabled')) {
+        if (FOLDING_CONFIG.headings.enabled) {
           await this.headingFolder.scanMessage(message, index);
         }
 
         // Scan for code blocks
-        if (await this.getSetting('codeBlocks.enabled')) {
+        if (FOLDING_CONFIG.codeBlocks.enabled) {
           await this.codeBlockFolder.scanMessage(message, index);
         }
       }
