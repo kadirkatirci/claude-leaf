@@ -59,7 +59,7 @@ export const MODULE_CONSTANTS = {
             enabled: false,
             previewLines: 3
         },
-        rememberState: true
+        rememberState: false
     },
 
     general: {
