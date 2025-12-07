@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Productivity - Ayarlar</title>
+  <title>Claude Productivity</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 
@@ -12,701 +12,709 @@
   <div class="popup-container">
     <!-- Header -->
     <header class="popup-header">
-      <h1>⚡ Claude Productivity</h1>
-      <p class="version">v1.0.0</p>
+      <div class="header-content">
+        <h1>Claude Productivity</h1>
+        <span class="version">v1.0.0</span>
+      </div>
     </header>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" data-tab="navigation" title="Navigation">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
-          <path
-            d="M9.3 8.5V15.5M9.3 8.5C8.58465 8.5 7.5 10.25 7.5 10.25M9.3 8.5C10.004 8.5 11.1 10.25 11.1 10.25M14.7 15.5V8.5M14.7 15.5C13.996 15.5 12.9 13.75 12.9 13.75M14.7 15.5C15.404 15.5 16.5 13.75 16.5 13.75"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <nav class="tabs">
+      <button class="tab active" data-tab="features">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5Z"/>
+          <path d="M14 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5Z"/>
+          <path d="M4 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4Z"/>
+          <path d="M14 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4Z"/>
         </svg>
+        <span>Features</span>
       </button>
-      <button class="tab" data-tab="editHistory" title="Edit History">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path
-            d="M15.2141 5.98239L16.6158 4.58063C17.39 3.80646 18.6452 3.80646 19.4194 4.58063C20.1935 5.3548 20.1935 6.60998 19.4194 7.38415L18.0176 8.78591M15.2141 5.98239L6.98023 14.2163C5.93493 15.2616 5.41226 15.7842 5.05637 16.4211C4.70047 17.058 4.3424 18.5619 4 20C5.43809 19.6576 6.94199 19.2995 7.57889 18.9436C8.21579 18.5877 8.73844 18.0651 9.78375 17.0198L18.0176 8.78591M15.2141 5.98239L18.0176 8.78591"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M11 20H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      <button class="tab" data-tab="shortcuts">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="4" width="20" height="16" rx="2"/>
+          <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h8M6 16h.01M18 16h.01"/>
         </svg>
+        <span>Shortcuts</span>
       </button>
-      <button class="tab" data-tab="compactView" title="Compact View">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path
-            d="M6.50232 13.2635C7.34673 13.2515 10.1432 12.6706 10.7361 13.2635C11.329 13.8564 10.7481 16.6529 10.7361 17.4973M13.2685 6.49733C13.2565 7.34173 12.6756 10.1382 13.2685 10.7311C13.8614 11.324 16.6579 10.7431 17.5023 10.7311M20.9991 2.99902L13.6103 10.3812M10.3691 13.6237L3 21.001"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <button class="tab" data-tab="data">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
+        <span>Data</span>
       </button>
-      <button class="tab" data-tab="bookmarks" title="Bookmarks">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path
-            d="M12 17.5L19.5 21.5V4.5C19.5 3.39543 18.6046 2.5 17.5 2.5H6.5C5.39543 2.5 4.5 3.39543 4.5 4.5V21.5L12 17.5Z"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <button class="tab" data-tab="settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
         </svg>
+        <span>Settings</span>
       </button>
-      <button class="tab" data-tab="emojiMarkers" title="Emoji Markers">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path
-            d="M5 16C3.7492 16.6327 3 17.4385 3 18.3158C3 20.3505 7.02944 22 12 22C16.9706 22 21 20.3505 21 18.3158C21 17.4385 20.2508 16.6327 19 16"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M12 10V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button class="tab" data-tab="sidebarCollapse" title="Sidebar Collapse">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path d="M20 16.5H4L12 7.5L20 16.5Z" fill="currentColor" />
-        </svg>
-      </button>
-      <button class="tab" data-tab="contentFolding" title="Content Folding">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path d="M3 6H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M3 12H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M3 18H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path
-            d="M21 8L19.8462 8.87652C17.9487 10.318 17 11.0388 17 12C17 12.9612 17.9487 13.682 19.8462 15.1235L21 16"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button class="tab" data-tab="general" title="Genel Ayarlar">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          style="display: inline-block; vertical-align: middle;">
-          <path
-            d="M15.5 11.5C15.5 13.433 13.933 15 12 15C10.067 15 8.5 13.433 8.5 11.5C8.5 9.567 10.067 8 12 8C13.933 8 15.5 9.567 15.5 11.5Z"
-            stroke="currentColor" stroke-width="1.5" />
-          <path
-            d="M21 13.5995C21.3155 13.5134 21.6503 13.4669 22 13.4669V9.53324C19.1433 9.53324 17.2857 6.43041 18.732 3.96691L15.2679 2.0001C13.8038 4.49405 10.1978 4.49395 8.73363 2L5.26953 3.96681C6.71586 6.43035 4.85673 9.53324 2 9.53324V13.4669C4.85668 13.4669 6.71425 16.5697 5.26795 19.0332L8.73205 21C9.46434 19.7527 10.7321 19.1289 12 19.1286"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path
-            d="M18.5 15L18.7579 15.697C19.0961 16.611 19.2652 17.068 19.5986 17.4014C19.932 17.7348 20.389 17.9039 21.303 18.2421L22 18.5L21.303 18.7579C20.389 19.0961 19.932 19.2652 19.5986 19.5986C19.2652 19.932 19.0961 20.389 18.7579 21.303L18.5 22L18.2421 21.303C17.9039 20.389 17.7348 19.932 17.4014 19.5986C17.068 19.2652 16.611 19.0961 15.697 18.7579L15 18.5L15.697 18.2421C16.611 17.9039 17.068 17.7348 17.4014 17.4014C17.7348 17.068 17.9039 16.611 18.2421 15.697L18.5 15Z"
-            stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-        </svg>
-      </button>
-    </div>
+    </nav>
 
     <!-- Tab Contents -->
-    <div class="tab-content" id="tab-navigation">
-      <div class="section">
-        <div class="section-header">
-          <h2>Navigation Buttons</h2>
-          <label class="toggle">
-            <input type="checkbox" id="navigation-enabled" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="nav-position">Pozisyon</label>
-            <select id="nav-position">
-              <option value="right">Sağ</option>
-              <option value="left">Sol</option>
-            </select>
+    <main class="tab-contents">
+      
+      <!-- Features Tab -->
+      <div class="tab-content active" id="tab-features">
+        <div class="feature-list">
+          
+          <!-- Navigation -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M9.3 8.5V15.5M9.3 8.5C8.58465 8.5 7.5 10.25 7.5 10.25M9.3 8.5C10.004 8.5 11.1 10.25 11.1 10.25M14.7 15.5V8.5M14.7 15.5C13.996 15.5 12.9 13.75 12.9 13.75M14.7 15.5C15.404 15.5 16.5 13.75 16.5 13.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Navigation</span>
+              <button class="info-btn" data-tooltip="Quick navigation between messages with counter and keyboard shortcuts">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="navigation-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="navigation" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="nav-counter">Mesaj Sayacı</label>
-            <label class="toggle">
-              <input type="checkbox" id="nav-counter" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <!-- Edit History -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M15.2141 5.98239L16.6158 4.58063C17.39 3.80646 18.6452 3.80646 19.4194 4.58063C20.1935 5.3548 20.1935 6.60998 19.4194 7.38415L18.0176 8.78591M15.2141 5.98239L6.98023 14.2163C5.93493 15.2616 5.41226 15.7842 5.05637 16.4211C4.70047 17.058 4.3424 18.5619 4 20C5.43809 19.6576 6.94199 19.2995 7.57889 18.9436C8.21579 18.5877 8.73844 18.0651 9.78375 17.0198L18.0176 8.78591M15.2141 5.98239L18.0176 8.78591" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M11 20H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Edit History</span>
+              <button class="info-btn" data-tooltip="Detects and lists edited prompts in your conversation">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="editHistory-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="editHistory" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="nav-smooth">Smooth Scroll</label>
-            <label class="toggle">
-              <input type="checkbox" id="nav-smooth" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <!-- Compact View -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M6.50232 13.2635C7.34673 13.2515 10.1432 12.6706 10.7361 13.2635C11.329 13.8564 10.7481 16.6529 10.7361 17.4973M13.2685 6.49733C13.2565 7.34173 12.6756 10.1382 13.2685 10.7311C13.8614 11.324 16.6579 10.7431 17.5023 10.7311M20.9991 2.99902L13.6103 10.3812M10.3691 13.6237L3 21.001" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Compact View</span>
+              <button class="info-btn" data-tooltip="Automatically collapses long Claude responses">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="compactView-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="compactView" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="nav-keyboard">Klavye Kısayolları</label>
-            <label class="toggle">
-              <input type="checkbox" id="nav-keyboard" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <!-- Bookmarks -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 17.5L19.5 21.5V4.5C19.5 3.39543 18.6046 2.5 17.5 2.5H6.5C5.39543 2.5 4.5 3.39543 4.5 4.5V21.5L12 17.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Bookmarks</span>
+              <button class="info-btn" data-tooltip="Mark important messages for quick access">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="bookmarks-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="bookmarks" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="nav-highlight">Vurgulama Süresi (ms)</label>
-            <input type="number" id="nav-highlight" value="2000" min="0" max="5000" step="100">
+          <!-- Emoji Markers -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M5 16C3.7492 16.6327 3 17.4385 3 18.3158C3 20.3505 7.02944 22 12 22C16.9706 22 21 20.3505 21 18.3158C21 17.4385 20.2508 16.6327 19 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 10V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="6" r="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Emoji Markers</span>
+              <button class="info-btn" data-tooltip="Categorize messages with emoji tags">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="emojiMarkers-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="emojiMarkers" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="nav-opacity">Opaklık</label>
-            <input type="range" id="nav-opacity" min="0.3" max="1" step="0.1" value="0.7">
-            <span id="nav-opacity-value">0.7</span>
+          <!-- Sidebar Collapse -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M20 16.5H4L12 7.5L20 16.5Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Sidebar Collapse</span>
+              <button class="info-btn" data-tooltip="Make Starred and Recents sections collapsible">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="sidebarCollapse-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="sidebarCollapse" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div class="keyboard-shortcuts">
-          <h3>⌨️ Klavye Kısayolları</h3>
-          <ul>
-            <li><kbd>Alt</kbd> + <kbd>↑</kbd> - Önceki mesaj</li>
-            <li><kbd>Alt</kbd> + <kbd>↓</kbd> - Sonraki mesaj</li>
-            <li><kbd>Alt</kbd> + <kbd>Home</kbd> - En üste git</li>
-          </ul>
+          <!-- Content Folding -->
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 12H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 18H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 8L19.8462 8.87652C17.9487 10.318 17 11.0388 17 12C17 12.9612 17.9487 13.682 19.8462 15.1235L21 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">Content Folding</span>
+              <button class="info-btn" data-tooltip="Fold headings, code blocks, and messages">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+              </button>
+            </div>
+            <div class="feature-actions">
+              <label class="toggle">
+                <input type="checkbox" id="contentFolding-enabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="settings-btn" data-module="contentFolding" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
-    </div>
 
-    <div class="tab-content hidden" id="tab-editHistory">
-      <div class="section">
-        <div class="section-header">
-          <h2>Edit History</h2>
-          <label class="toggle">
-            <input type="checkbox" id="editHistory-enabled">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="edit-badges">Edit Badge'leri Göster</label>
-            <label class="toggle">
-              <input type="checkbox" id="edit-badges" checked>
-              <span class="toggle-slider"></span>
-            </label>
+      <!-- Shortcuts Tab -->
+      <div class="tab-content" id="tab-shortcuts">
+        <div class="shortcuts-list">
+          
+          <div class="shortcut-group">
+            <h3 class="shortcut-group-title">Navigation</h3>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>↑</kbd></span>
+              <span class="shortcut-desc">Previous message</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>↓</kbd></span>
+              <span class="shortcut-desc">Next message</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>Home</kbd></span>
+              <span class="shortcut-desc">Go to top</span>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="edit-highlight">Mesajları Vurgula</label>
-            <label class="toggle">
-              <input type="checkbox" id="edit-highlight" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <div class="shortcut-group">
+            <h3 class="shortcut-group-title">Compact View</h3>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>E</kbd></span>
+              <span class="shortcut-desc">Expand/collapse message</span>
+            </div>
           </div>
-        </div>
 
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li>Edit yapılmış promptlar otomatik tespit edilir</li>
-            <li>Header'da "Edit Points" butonu görünür</li>
-            <li>Butona tıklayarak edit listesini görün</li>
-            <li>Renk teması Genel ayarlardan değiştirilir</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #e3f2fd; border-left: 4px solid #2196f3;">
-          <h3>💾 Yedekleme</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            <strong>Export/Import:</strong> Edit geçmişinizi JSON dosyası olarak yedekleyebilir ve geri
-            yükleyebilirsiniz.
-          </p>
-          <div style="display: flex; gap: 8px;">
-            <button id="editHistory-export-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M15.5 10.5C15.5 10.5 12.9223 14 12 14C11.0777 14 8.5 10.5 8.5 10.5M12 13.5V6.99997M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Export History</button>
-            <button id="editHistory-import-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M15.5 10.5C15.5 10.5 12.9223 7.00001 12 7C11.0777 6.99999 8.5 10.5 8.5 10.5M12 7.5V14M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Import History</button>
+          <div class="shortcut-group">
+            <h3 class="shortcut-group-title">Bookmarks</h3>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>B</kbd></span>
+              <span class="shortcut-desc">Toggle bookmark</span>
+            </div>
+            <div class="shortcut-item">
+              <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd></span>
+              <span class="shortcut-desc">Open bookmarks panel</span>
+            </div>
           </div>
-        </div>
 
-        <div class="info-box" style="margin-top: 16px; background: #ffebee; border-left: 4px solid #f44336;">
-          <h3>🗑️ Tüm Geçmişi Temizle</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            Tüm edit geçmişini kalıcı olarak sil. <strong>Bu işlem geri alınamaz!</strong>
-          </p>
-          <button id="editHistory-clear-btn" class="btn btn-danger" style="width: 100%;"><svg
-              xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <path
-                d="M19.5 5.5L18.8803 15.5251C18.7219 18.0864 18.6428 19.3671 18.0008 20.2879C17.6833 20.7431 17.2747 21.1273 16.8007 21.416C15.8421 22 14.559 22 11.9927 22C9.42312 22 8.1383 22 7.17905 21.4149C6.7048 21.1257 6.296 20.7408 5.97868 20.2848C5.33688 19.3626 5.25945 18.0801 5.10461 15.5152L4.5 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M9 11.7349H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M10.5 15.6543H13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path
-                d="M3 5.5H21M16.0555 5.5L15.3729 4.09173C14.9194 3.15626 14.6926 2.68852 14.3015 2.39681C14.2148 2.3321 14.1229 2.27454 14.0268 2.2247C13.5937 2 13.0739 2 12.0343 2C10.9686 2 10.4358 2 9.99549 2.23412C9.89791 2.28601 9.80479 2.3459 9.7171 2.41317C9.32145 2.7167 9.10044 3.20155 8.65842 4.17126L8.05273 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg> Clear All History</button>
         </div>
       </div>
-    </div>
 
-    <div class="tab-content hidden" id="tab-compactView">
-      <div class="section">
-        <div class="section-header">
-          <h2>Compact View</h2>
-          <label class="toggle">
-            <input type="checkbox" id="compactView-enabled">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="compact-autoCollapse">Otomatik Collapse</label>
-            <label class="toggle">
-              <input type="checkbox" id="compact-autoCollapse" checked>
-              <span class="toggle-slider"></span>
-            </label>
+      <!-- Data Tab -->
+      <div class="tab-content" id="tab-data">
+        <div class="data-section">
+          
+          <div class="data-group">
+            <h3 class="data-group-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Export
+            </h3>
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" id="export-editHistory" checked>
+                <span>Edit History</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="export-bookmarks" checked>
+                <span>Bookmarks</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="export-emojiMarkers" checked>
+                <span>Emoji Markers</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="export-settings" checked>
+                <span>Settings</span>
+              </label>
+            </div>
+            <button class="btn btn-primary" id="export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Export Selected
+            </button>
           </div>
 
-          <div class="setting-item">
-            <label for="compact-keyboard">Klavye Kısayolları</label>
-            <label class="toggle">
-              <input type="checkbox" id="compact-keyboard" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <div class="data-group">
+            <h3 class="data-group-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Import
+            </h3>
+            <button class="btn btn-secondary" id="import-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Import from File
+            </button>
           </div>
 
-          <div class="setting-item">
-            <label for="compact-minLines">Minimum Satır Sayısı (Collapse için)</label>
-            <input type="number" id="compact-minLines" value="30" min="5" max="100" step="1">
+          <div class="data-group data-group-danger">
+            <h3 class="data-group-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Clear Data
+            </h3>
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" id="clear-editHistory">
+                <span>Edit History</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="clear-bookmarks">
+                <span>Bookmarks</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="clear-emojiMarkers">
+                <span>Emoji Markers</span>
+              </label>
+            </div>
+            <button class="btn btn-danger" id="clear-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Clear Selected
+            </button>
           </div>
 
-          <div class="setting-item">
-            <label for="compact-previewLines">Collapsed Durumda Gösterilecek Satır Sayısı</label>
-            <input type="number" id="compact-previewLines" value="8" min="1" max="20" step="1">
-          </div>
-        </div>
-
-        <div class="keyboard-shortcuts">
-          <h3>⌚️ Klavye Kısayolları</h3>
-          <ul>
-            <li><kbd>Alt</kbd> + <kbd>E</kbd> - Odaklanmış mesajı expand/collapse et</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li>Uzun Claude yanıtları otomatik olarak collapse edilir</li>
-            <li>Her mesajın yanında expand butonu görünür</li>
-            <li>Minimum satır sayısını aşan mesajlar collapse edilebilir</li>
-            <li>Collapsed durumda ilk birkaç satır gösterilir</li>
-          </ul>
         </div>
       </div>
-    </div>
 
-    <div class="tab-content hidden" id="tab-bookmarks">
-      <div class="section">
-        <div class="section-header">
-          <h2>Bookmarks</h2>
-          <label class="toggle">
-            <input type="checkbox" id="bookmarks-enabled" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="bookmarks-keyboard">Klavye Kısayolları</label>
-            <label class="toggle">
-              <input type="checkbox" id="bookmarks-keyboard" checked>
-              <span class="toggle-slider"></span>
-            </label>
+      <!-- Settings Tab -->
+      <div class="tab-content" id="tab-settings">
+        <div class="settings-accordion">
+          
+          <!-- Navigation Settings -->
+          <div class="accordion-item" data-module="navigation">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Navigation</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Position</label>
+                <select id="nav-position">
+                  <option value="right">Right</option>
+                  <option value="left">Left</option>
+                </select>
+              </div>
+              <div class="setting-row">
+                <label>Show message counter</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="nav-counter">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Smooth scroll</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="nav-smooth">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Keyboard shortcuts</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="nav-keyboard">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Highlight duration (ms)</label>
+                <input type="number" id="nav-highlight" min="0" max="5000" step="100">
+              </div>
+              <div class="setting-row">
+                <label>Opacity</label>
+                <div class="range-wrapper">
+                  <input type="range" id="nav-opacity" min="0.3" max="1" step="0.1">
+                  <span id="nav-opacity-value">0.7</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="bookmarks-showOnHover">Butonları Hover'da Göster</label>
-            <label class="toggle">
-              <input type="checkbox" id="bookmarks-showOnHover" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="keyboard-shortcuts">
-          <h3>⌨️ Klavye Kısayolları</h3>
-          <ul>
-            <li><kbd>Alt</kbd> + <kbd>B</kbd> - Görünür mesajı bookmark'la/çıkar</li>
-            <li><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> - Bookmark panelini aç/kapat</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li>Mesajların üzerine geldiğinizde bookmark butonu görünür</li>
-            <li>Bookmark'lanmış mesajlar panelde ve sidebar'da listelenir</li>
-            <li>Bookmark'a tıklayarak o mesaja hızlıca gidebilirsiniz</li>
-            <li>Export/Import ile bookmark'larınızı yedekleyebilirsiniz</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #e3f2fd; border-left: 4px solid #2196f3;">
-          <h3>💾 Yedekleme</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            <strong>Export/Import:</strong> Bookmark'larınızı JSON dosyası olarak yedekleyebilir ve geri
-            yükleyebilirsiniz. Chrome sıfırlandığında bookmark'larınızı kaybetmezsiniz!
-          </p>
-          <div style="display: flex; gap: 8px;">
-            <button id="bookmarks-export-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M15.5 10.5C15.5 10.5 12.9223 14 12 14C11.0777 14 8.5 10.5 8.5 10.5M12 13.5V6.99997M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Export Bookmarks</button>
-            <button id="bookmarks-import-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M15.5 10.5C15.5 10.5 12.9223 7.00001 12 7C11.0777 6.99999 8.5 10.5 8.5 10.5M12 7.5V14M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Import Bookmarks</button>
-          </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #ffebee; border-left: 4px solid #f44336;">
-          <h3>🗑️ Tüm Bookmark'ları Temizle</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            Tüm bookmark'ları kalıcı olarak sil. <strong>Bu işlem geri alınamaz!</strong>
-          </p>
-          <button id="bookmarks-clear-btn" class="btn btn-danger" style="width: 100%;"><svg
-              xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <path
-                d="M19.5 5.5L18.8803 15.5251C18.7219 18.0864 18.6428 19.3671 18.0008 20.2879C17.6833 20.7431 17.2747 21.1273 16.8007 21.416C15.8421 22 14.559 22 11.9927 22C9.42312 22 8.1383 22 7.17905 21.4149C6.7048 21.1257 6.296 20.7408 5.97868 20.2848C5.33688 19.3626 5.25945 18.0801 5.10461 15.5152L4.5 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M9 11.7349H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M10.5 15.6543H13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path
-                d="M3 5.5H21M16.0555 5.5L15.3729 4.09173C14.9194 3.15626 14.6926 2.68852 14.3015 2.39681C14.2148 2.3321 14.1229 2.27454 14.0268 2.2247C13.5937 2 13.0739 2 12.0343 2C10.9686 2 10.4358 2 9.99549 2.23412C9.89791 2.28601 9.80479 2.3459 9.7171 2.41317C9.32145 2.7167 9.10044 3.20155 8.65842 4.17126L8.05273 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg> Clear All Bookmarks</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-content hidden" id="tab-emojiMarkers">
-      <div class="section">
-        <div class="section-header">
-          <h2>Emoji Markers</h2>
-          <label class="toggle">
-            <input type="checkbox" id="emojiMarkers-enabled" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="emojiMarkers-showBadges">Badge'leri Göster</label>
-            <label class="toggle">
-              <input type="checkbox" id="emojiMarkers-showBadges" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <!-- Edit History Settings -->
+          <div class="accordion-item" data-module="editHistory">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Edit History</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Show edit badges</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="edit-badges">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Highlight edited messages</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="edit-highlight">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
           </div>
 
-          <div class="setting-item">
-            <label for="emojiMarkers-showOnHover">Butonları Hover'da Göster</label>
-            <label class="toggle">
-              <input type="checkbox" id="emojiMarkers-showOnHover" checked>
-              <span class="toggle-slider"></span>
-            </label>
+          <!-- Compact View Settings -->
+          <div class="accordion-item" data-module="compactView">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Compact View</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Auto-collapse</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="compact-autoCollapse">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Keyboard shortcuts</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="compact-keyboard">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Min lines to collapse</label>
+                <input type="number" id="compact-minLines" min="5" max="100" step="1">
+              </div>
+              <div class="setting-row">
+                <label>Preview lines shown</label>
+                <input type="number" id="compact-previewLines" min="1" max="20" step="1">
+              </div>
+            </div>
           </div>
+
+          <!-- Bookmarks Settings -->
+          <div class="accordion-item" data-module="bookmarks">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Bookmarks</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Keyboard shortcuts</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="bookmarks-keyboard">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Show buttons on hover</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="bookmarks-showOnHover">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Emoji Markers Settings -->
+          <div class="accordion-item" data-module="emojiMarkers">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Emoji Markers</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Show badges</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="emojiMarkers-showBadges">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <label>Show buttons on hover</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="emojiMarkers-showOnHover">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="setting-row setting-row-vertical">
+                <label>Favorite Emojis</label>
+                <div class="emoji-favorites" id="emojiMarkers-favorites-container"></div>
+                <button class="btn btn-secondary btn-sm" id="emojiMarkers-add-favorite-btn">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Add Emoji
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar Collapse Settings -->
+          <div class="accordion-item" data-module="sidebarCollapse">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Sidebar Collapse</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-row">
+                <label>Remember state</label>
+                <label class="toggle toggle-sm">
+                  <input type="checkbox" id="sidebarCollapse-rememberState">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content Folding Settings -->
+          <div class="accordion-item" data-module="contentFolding">
+            <button class="accordion-header">
+              <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <span>Content Folding</span>
+            </button>
+            <div class="accordion-content">
+              <div class="setting-subgroup">
+                <h4>Headings</h4>
+                <div class="setting-row">
+                  <label>Enable</label>
+                  <label class="toggle toggle-sm">
+                    <input type="checkbox" id="contentFolding-headings-enabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-subgroup">
+                <h4>Code Blocks</h4>
+                <div class="setting-row">
+                  <label>Enable</label>
+                  <label class="toggle toggle-sm">
+                    <input type="checkbox" id="contentFolding-codeBlocks-enabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="setting-row">
+                  <label>Min lines</label>
+                  <input type="number" id="contentFolding-minLines" min="5" max="50" step="1">
+                </div>
+                <div class="setting-row">
+                  <label>Preview lines</label>
+                  <input type="number" id="contentFolding-previewLines" min="1" max="10" step="1">
+                </div>
+                <div class="setting-row">
+                  <label>Auto-collapse</label>
+                  <label class="toggle toggle-sm">
+                    <input type="checkbox" id="contentFolding-autoCollapse">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-subgroup">
+                <h4>Messages</h4>
+                <div class="setting-row">
+                  <label>Enable</label>
+                  <label class="toggle toggle-sm">
+                    <input type="checkbox" id="contentFolding-messages-enabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="setting-row">
+                  <label>Preview lines</label>
+                  <input type="number" id="contentFolding-messages-previewLines" min="1" max="10" step="1">
+                </div>
+              </div>
+              <div class="setting-subgroup">
+                <h4>General</h4>
+                <div class="setting-row">
+                  <label>Remember fold states</label>
+                  <label class="toggle toggle-sm">
+                    <input type="checkbox" id="contentFolding-rememberState">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <div class="settings-group" style="margin-top: 20px;">
-          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">⭐ Favori Emojiler</h3>
-          <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
-            İşaretleme yaparken hızlı erişim için favori emojilerinizi seçin. Sürükle-bırak ile sıralayın.
-          </p>
-
-          <div id="emojiMarkers-favorites-container"
-            style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #f5f5f5; border-radius: 8px; min-height: 60px;">
-            <!-- Favorite emojis will be dynamically inserted here -->
-          </div>
-
-          <button id="emojiMarkers-add-favorite-btn" class="btn btn-secondary" style="margin-top: 12px; width: 100%;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <path
-                d="M2.5 12.0001C2.5 7.52171 2.5 5.28254 3.89124 3.8913C5.28249 2.50005 7.52166 2.50005 12 2.50005C16.4783 2.50005 18.7175 2.50005 20.1088 3.8913C21.5 5.28254 21.5 7.52171 21.5 12.0001C21.5 16.4784 21.5 18.7176 20.1088 20.1088C18.7175 21.5001 16.4783 21.5001 12 21.5001C7.52166 21.5001 5.28249 21.5001 3.89124 20.1088C2.5 18.7176 2.5 16.4784 2.5 12.0001Z"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M12 8.00005V16.0001M16 12.0001L8 12.0001" stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round" />
+        <div class="settings-footer">
+          <button class="btn btn-secondary" id="reset-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
             </svg>
-            Favori Emoji Ekle
+            Reset All to Defaults
           </button>
         </div>
-
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li>Mesajların üzerine geldiğinizde marker butonu görünür</li>
-            <li>Favori emojileriniz hızlı seçim için gösterilir</li>
-            <li>"..." butonuna tıklayarak tüm emojilere erişebilirsiniz</li>
-            <li>Marker'lanmış mesajlar badge ile işaretlenir</li>
-            <li>Sabit buton (📍) ile tüm marker'ları görüntüleyin</li>
-            <li>Export/Import ile marker'larınızı yedekleyebilirsiniz</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #e3f2fd; border-left: 4px solid #2196f3;">
-          <h3>💾 Yedekleme</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            <strong>Export/Import:</strong> Emoji marker'larınızı JSON dosyası olarak yedekleyebilir ve geri
-            yükleyebilirsiniz.
-          </p>
-          <div style="display: flex; gap: 8px;">
-            <button id="emojiMarkers-export-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M15.5 10.5C15.5 10.5 12.9223 14 12 14C11.0777 14 8.5 10.5 8.5 10.5M12 13.5V6.99997M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Export Markers</button>
-            <button id="emojiMarkers-import-btn" class="btn btn-secondary" style="flex: 1;"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-                <path
-                  d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M15.5 10.5C15.5 10.5 12.9223 7.00001 12 7C11.0777 6.99999 8.5 10.5 8.5 10.5M12 7.5V14M8.5 17H15.5"
-                  stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg> Import Markers</button>
-          </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #ffebee; border-left: 4px solid #f44336;">
-          <h3>🗑️ Tüm Marker'ları Temizle</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px; margin-bottom: 12px;">
-            Tüm emoji marker'ları kalıcı olarak sil. <strong>Bu işlem geri alınamaz!</strong>
-          </p>
-          <button id="emojiMarkers-clear-btn" class="btn btn-danger" style="width: 100%;"><svg
-              xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <path
-                d="M19.5 5.5L18.8803 15.5251C18.7219 18.0864 18.6428 19.3671 18.0008 20.2879C17.6833 20.7431 17.2747 21.1273 16.8007 21.416C15.8421 22 14.559 22 11.9927 22C9.42312 22 8.1383 22 7.17905 21.4149C6.7048 21.1257 6.296 20.7408 5.97868 20.2848C5.33688 19.3626 5.25945 18.0801 5.10461 15.5152L4.5 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M9 11.7349H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M10.5 15.6543H13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path
-                d="M3 5.5H21M16.0555 5.5L15.3729 4.09173C14.9194 3.15626 14.6926 2.68852 14.3015 2.39681C14.2148 2.3321 14.1229 2.27454 14.0268 2.2247C13.5937 2 13.0739 2 12.0343 2C10.9686 2 10.4358 2 9.99549 2.23412C9.89791 2.28601 9.80479 2.3459 9.7171 2.41317C9.32145 2.7167 9.10044 3.20155 8.65842 4.17126L8.05273 5.5"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg> Clear All Markers</button>
-        </div>
       </div>
-    </div>
 
-    <div class="tab-content hidden" id="tab-sidebarCollapse">
-      <div class="section">
-        <div class="section-header">
-          <h2>Sidebar Collapse</h2>
-          <label class="toggle">
-            <input type="checkbox" id="sidebarCollapse-enabled" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="settings-group">
-          <div class="setting-item">
-            <label for="sidebarCollapse-rememberState">Durumu Hatırla (Expand/Collapse)</label>
-            <label class="toggle">
-              <input type="checkbox" id="sidebarCollapse-rememberState" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li>Sidebar'daki <strong>Starred</strong> ve <strong>Recents</strong> section'larına chevron (▶/▼) ikonu
-              ekler</li>
-            <li>Section başlığına veya chevron'a tıklayarak listeyi açıp-kapatabilirsiniz</li>
-            <li>Collapsed durumda sadece başlık görünür, tüm liste gizlenir</li>
-            <li>Çok fazla yıldızlı mesaj veya recent conversation olduğunda sidebar daha düzenli görünür</li>
-            <li>"Durumu Hatırla" seçeneği ile tercihleriniz kaydedilir</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #e3f2fd; border-left: 4px solid #2196f3;">
-          <h3>💡 İpucu</h3>
-          <p style="font-size: 13px; color: #1565c0; margin-top: 8px;">
-            Bu özellik sidebar'ı daha temiz ve organize tutar. İhtiyacınız olmayan section'ları kapatarak sadece
-            ilgilendiğiniz alana odaklanabilirsiniz!
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-content hidden" id="tab-contentFolding">
-      <div class="section">
-        <div class="section-header">
-          <h2>Content Folding</h2>
-          <label class="toggle">
-            <input type="checkbox" id="contentFolding-enabled" checked>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <!-- Headings Section -->
-        <div class="settings-group">
-          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">📋 Heading Folding</h3>
-
-          <div class="setting-item">
-            <label for="contentFolding-headings-enabled">Enable Heading Folding</label>
-            <label class="toggle">
-              <input type="checkbox" id="contentFolding-headings-enabled" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Code Blocks Section -->
-        <div class="settings-group" style="margin-top: 20px;">
-          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">💻 Code Block Folding</h3>
-
-          <div class="setting-item">
-            <label for="contentFolding-codeBlocks-enabled">Enable Code Block Folding</label>
-            <label class="toggle">
-              <input type="checkbox" id="contentFolding-codeBlocks-enabled" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-item">
-            <label for="contentFolding-minLines">Minimum Lines (Show collapse button if longer)</label>
-            <input type="number" id="contentFolding-minLines" min="5" max="50" step="1" value="15">
-          </div>
-
-          <div class="setting-item">
-            <label for="contentFolding-previewLines">Preview Lines (Lines shown when collapsed)</label>
-            <input type="number" id="contentFolding-previewLines" min="1" max="10" step="1" value="5">
-          </div>
-
-          <div class="setting-item">
-            <label for="contentFolding-autoCollapse">Auto-Collapse Long Code Blocks</label>
-            <label class="toggle">
-              <input type="checkbox" id="contentFolding-autoCollapse">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Messages Section -->
-        <div class="settings-group" style="margin-top: 20px;">
-          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">💬 Message Folding</h3>
-
-          <div class="setting-item">
-            <label for="contentFolding-messages-enabled">Enable Message Folding</label>
-            <label class="toggle">
-              <input type="checkbox" id="contentFolding-messages-enabled" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-item">
-            <label for="contentFolding-messages-previewLines">Preview Lines (Lines shown when collapsed)</label>
-            <input type="number" id="contentFolding-messages-previewLines" min="1" max="10" step="1" value="3">
-          </div>
-        </div>
-
-        <!-- General Settings -->
-        <div class="settings-group" style="margin-top: 20px;">
-          <h3 style="margin-bottom: 12px; font-size: 14px; color: #333;">⚙️ General</h3>
-
-          <div class="setting-item">
-            <label for="contentFolding-rememberState">Remember Fold States</label>
-            <label class="toggle">
-              <input type="checkbox" id="contentFolding-rememberState" checked>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px;">
-          <h3>ℹ️ Nasıl Çalışır?</h3>
-          <ul style="font-size: 13px; color: #666; list-style-position: inside;">
-            <li><strong>Message Folding:</strong> Hem user hem Claude mesajlarına chevron (▶/▼) ikonu ekler (sol üst
-              köşe)</li>
-            <li>Mesajları katlamak için chevron'a tıklayın - ilk N satır + "Show full message" görünür</li>
-            <li><strong>Heading Folding:</strong> Claude response'lardaki başlıklara (h1-h6) chevron (▶/▼) ikonu ekler
-            </li>
-            <li>Başlığa tıklayarak altındaki içeriği gizleyip gösterebilirsiniz (Obsidian tarzı)</li>
-            <li>Hiyerarşik folding: Üst seviye başlık kapatılınca alt başlıklar da kapanır</li>
-            <li><strong>Code Block Folding:</strong> Uzun kod bloklarına collapse butonu ekler (sağ üstte)</li>
-            <li>Collapsed durumda ilk birkaç satır + "Show X more lines" butonu görünür</li>
-            <li>Chevronlar ve butonlar sadece <strong>hover'da görünür</strong> (collapsed olmadıkça)</li>
-            <li>State'ler conversation bazında hatırlanır (opsiyonel)</li>
-          </ul>
-        </div>
-
-        <div class="info-box" style="margin-top: 16px; background: #e8f5e9; border-left: 4px solid #4caf50;">
-          <h3>✨ Obsidian/VSCode Tarzı Folding</h3>
-          <p style="font-size: 13px; color: #2e7d32; margin-top: 8px;">
-            Bu özellik Obsidian ve VSCode'daki fold/unfold sistemini Claude'a getiriyor. Uzun response'ları organize
-            etmek ve sadece ilgilendiğiniz bölüme odaklanmak için mükemmel!
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-content hidden" id="tab-general">
-      <div class="section">
-        <h2>Genel Ayarlar</h2>
-
-        <div class="info-box">
-          <h3>ℹ️ Tema Hakkında</h3>
-          <p style="font-size: 13px; color: #666; margin-top: 8px;">
-            Extension artık sadece <strong>Claude Native</strong> tasarım sistemini kullanıyor.
-            Tüm bileşenler otomatik olarak Claude.ai'nin renk temasına uyum sağlar ve
-            dark/light mode değişikliklerine otomatik adapte olur.
-          </p>
-        </div>
-      </div>
-    </div>
+    </main>
 
     <!-- Footer -->
     <footer class="popup-footer">
-      <button id="reset-btn" class="btn btn-secondary"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-          viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-          <path
-            d="M20.0092 2V5.13219C20.0092 5.42605 19.6418 5.55908 19.4537 5.33333C17.6226 3.2875 14.9617 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg> Sıfırla</button>
-      <button id="save-btn" class="btn btn-primary"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-          viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-          <path
-            d="M17 3.33782C15.5291 2.48697 13.8214 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 11.3151 21.9311 10.6462 21.8 10"
-            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          <path d="M8 12.5C8 12.5 9.5 12.5 11.5 16C11.5 16 17.0588 6.83333 22 5" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg> Kaydet</button>
+      <button class="btn btn-primary" id="save-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Save
+      </button>
     </footer>
 
     <!-- Toast notification -->
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="tooltip hidden"></div>
   </div>
 
   <script src="popup.js"></script>
