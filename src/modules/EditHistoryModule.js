@@ -163,7 +163,7 @@ class EditHistoryModule extends BaseModule {
 
     const checkForEdits = async () => {
       // Trigger a scan
-      this.scanner.scan();
+      await versionManager.scan();
 
       // Check if we found any edits
       if (this.editedMessages.length > 0 || retryCount >= maxRetries) {
