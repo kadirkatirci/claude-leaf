@@ -90,9 +90,14 @@ class EditHistoryModule extends BaseModule {
         this.error('Failed to create panel:', error);
       }
 
-      // Taramayı başlat
+      // Taramayı başlat ve ilk scan'i bekle
       try {
         this.scanner.start();
+        // DOM'un hazır olması için biraz bekle
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Manuel scan yap
+        const edits = this.scanner.scan();
+        this.log(`Initial scan found ${edits?.length || 0} edits`);
       } catch (error) {
         this.error('Failed to start scanner:', error);
       }
@@ -115,6 +120,12 @@ class EditHistoryModule extends BaseModule {
         }
       } catch (error) {
         this.error('Failed to create collapse button:', error);
+      }
+
+      // Manuel panel update (initial edits'i göster)
+      if (this.editedMessages.length > 0) {
+        this.log(`Updating panel with ${this.editedMessages.length} initial edits`);
+        this.panel.updateContent(this.editedMessages);
       }
 
       this.log('✅ Edit History aktif');
@@ -258,13 +269,16 @@ class EditHistoryModule extends BaseModule {
    * Edit'ler bulunduğunda
    */
   async handleEditsFound(editedPrompts) {
-    // Don't process if not on conversation page
-    // If lastConversationState is null (not initialized), check manually
+    // Don't process if explicitly NOT on conversation page
+    // During initialization (lastConversationState === null), allow processing
     const isConversationPage = this.lastConversationState !== null
       ? this.lastConversationState
-      : this.dom.isOnConversationPage();
+      : true; // Allow during initialization
 
-    if (!isConversationPage) return;
+    if (!isConversationPage) {
+      this.log('Not on conversation page, skipping edit processing');
+      return;
+    }
 
     const oldCount = this.editedMessages.length;
 
