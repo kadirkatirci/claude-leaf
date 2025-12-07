@@ -1,0 +1,279 @@
+{
+  "version": "1.0.0",
+  
+  "modules": {
+    "navigation": {
+      "name": "Navigation",
+      "tooltip": "Quick navigation between messages with counter and keyboard shortcuts",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "circle", "cx": 12, "cy": 12, "r": 10 },
+          { "type": "path", "d": "M9.3 8.5V15.5M9.3 8.5C8.58465 8.5 7.5 10.25 7.5 10.25M9.3 8.5C10.004 8.5 11.1 10.25 11.1 10.25M14.7 15.5V8.5M14.7 15.5C13.996 15.5 12.9 13.75 12.9 13.75M14.7 15.5C15.404 15.5 16.5 13.75 16.5 13.75" }
+        ]
+      },
+      "hasSettings": true
+    },
+    "editHistory": {
+      "name": "Edit History",
+      "tooltip": "Detects and lists edited prompts in your conversation",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M15.2141 5.98239L16.6158 4.58063C17.39 3.80646 18.6452 3.80646 19.4194 4.58063C20.1935 5.3548 20.1935 6.60998 19.4194 7.38415L18.0176 8.78591M15.2141 5.98239L6.98023 14.2163C5.93493 15.2616 5.41226 15.7842 5.05637 16.4211C4.70047 17.058 4.3424 18.5619 4 20C5.43809 19.6576 6.94199 19.2995 7.57889 18.9436C8.21579 18.5877 8.73844 18.0651 9.78375 17.0198L18.0176 8.78591M15.2141 5.98239L18.0176 8.78591" },
+          { "type": "path", "d": "M11 20H17" }
+        ]
+      },
+      "hasSettings": true
+    },
+    "compactView": {
+      "name": "Compact View",
+      "tooltip": "Automatically collapses long Claude responses",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M6.50232 13.2635C7.34673 13.2515 10.1432 12.6706 10.7361 13.2635C11.329 13.8564 10.7481 16.6529 10.7361 17.4973M13.2685 6.49733C13.2565 7.34173 12.6756 10.1382 13.2685 10.7311C13.8614 11.324 16.6579 10.7431 17.5023 10.7311M20.9991 2.99902L13.6103 10.3812M10.3691 13.6237L3 21.001" }
+        ]
+      },
+      "hasSettings": true
+    },
+    "bookmarks": {
+      "name": "Bookmarks",
+      "tooltip": "Mark important messages for quick access",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M12 17.5L19.5 21.5V4.5C19.5 3.39543 18.6046 2.5 17.5 2.5H6.5C5.39543 2.5 4.5 3.39543 4.5 4.5V21.5L12 17.5Z" }
+        ]
+      },
+      "hasSettings": true
+    },
+    "emojiMarkers": {
+      "name": "Emoji Markers",
+      "tooltip": "Categorize messages with emoji tags",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M5 16C3.7492 16.6327 3 17.4385 3 18.3158C3 20.3505 7.02944 22 12 22C16.9706 22 21 20.3505 21 18.3158C21 17.4385 20.2508 16.6327 19 16" },
+          { "type": "path", "d": "M12 10V17" },
+          { "type": "circle", "cx": 12, "cy": 6, "r": 4 }
+        ]
+      },
+      "hasSettings": true
+    },
+    "sidebarCollapse": {
+      "name": "Sidebar Collapse",
+      "tooltip": "Make Starred and Recents sections collapsible",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M20 16.5H4L12 7.5L20 16.5Z", "fill": true }
+        ]
+      },
+      "hasSettings": true
+    },
+    "contentFolding": {
+      "name": "Content Folding",
+      "tooltip": "Fold headings, code blocks, and messages",
+      "icon": {
+        "viewBox": "0 0 24 24",
+        "paths": [
+          { "type": "path", "d": "M3 6H17" },
+          { "type": "path", "d": "M3 12H13" },
+          { "type": "path", "d": "M3 18H17" },
+          { "type": "path", "d": "M21 8L19.8462 8.87652C17.9487 10.318 17 11.0388 17 12C17 12.9612 17.9487 13.682 19.8462 15.1235L21 16" }
+        ]
+      },
+      "hasSettings": true
+    }
+  },
+
+  "defaultSettings": {
+    "navigation": {
+      "enabled": true,
+      "position": "right",
+      "showCounter": true,
+      "smoothScroll": true,
+      "highlightDuration": 2000,
+      "keyboardShortcuts": true
+    },
+    "editHistory": {
+      "enabled": false,
+      "showBadges": true,
+      "highlightEdited": true
+    },
+    "compactView": {
+      "enabled": false,
+      "autoCollapse": true,
+      "keyboardShortcuts": true,
+      "minLines": 30,
+      "previewLines": 8
+    },
+    "bookmarks": {
+      "enabled": true,
+      "keyboardShortcuts": true,
+      "showOnHover": true
+    },
+    "emojiMarkers": {
+      "enabled": true,
+      "favoriteEmojis": ["⚠️", "❓", "💡", "⭐", "📌", "🔥"],
+      "showBadges": true,
+      "showOnHover": true
+    },
+    "sidebarCollapse": {
+      "enabled": true,
+      "rememberState": true
+    },
+    "contentFolding": {
+      "enabled": true,
+      "headings": {
+        "enabled": true
+      },
+      "codeBlocks": {
+        "enabled": true,
+        "minLines": 15,
+        "previewLines": 5,
+        "autoCollapse": false
+      },
+      "messages": {
+        "enabled": true,
+        "previewLines": 3
+      },
+      "rememberState": true
+    },
+    "general": {
+      "opacity": 0.7
+    }
+  },
+
+  "shortcuts": [
+    {
+      "group": "Navigation",
+      "module": "navigation",
+      "items": [
+        { "keys": ["Alt", "↑"], "description": "Previous message" },
+        { "keys": ["Alt", "↓"], "description": "Next message" },
+        { "keys": ["Alt", "Home"], "description": "Go to top" }
+      ]
+    },
+    {
+      "group": "Compact View",
+      "module": "compactView",
+      "items": [
+        { "keys": ["Alt", "E"], "description": "Expand/collapse message" }
+      ]
+    },
+    {
+      "group": "Bookmarks",
+      "module": "bookmarks",
+      "items": [
+        { "keys": ["Alt", "B"], "description": "Toggle bookmark" },
+        { "keys": ["Alt", "Shift", "B"], "description": "Open bookmarks panel" }
+      ]
+    }
+  ],
+
+  "emojiCategories": {
+    "Common": ["⚠️", "❓", "💡", "⭐", "📌", "🔥", "✅", "❌", "⚡", "🎯", "🏆", "💯"],
+    "Status": ["🟢", "🟡", "🔴", "🔵", "⏳", "✓", "✗", "⏸️", "▶️", "🔄"],
+    "Priority": ["🔺", "🔻", "➡️", "⬆️", "⬇️", "1️⃣", "2️⃣", "3️⃣"],
+    "Category": ["📝", "📋", "📁", "🗂️", "📊", "💼", "🔧", "🎨", "🧪", "📚"]
+  },
+
+  "settingsSchema": {
+    "navigation": {
+      "title": "Navigation",
+      "fields": [
+        { "id": "nav-position", "key": "position", "type": "select", "label": "Position", "options": [{"value": "right", "label": "Right"}, {"value": "left", "label": "Left"}] },
+        { "id": "nav-counter", "key": "showCounter", "type": "toggle", "label": "Show message counter" },
+        { "id": "nav-smooth", "key": "smoothScroll", "type": "toggle", "label": "Smooth scroll" },
+        { "id": "nav-keyboard", "key": "keyboardShortcuts", "type": "toggle", "label": "Keyboard shortcuts" },
+        { "id": "nav-highlight", "key": "highlightDuration", "type": "number", "label": "Highlight duration (ms)", "min": 0, "max": 5000, "step": 100 },
+        { "id": "nav-opacity", "key": "general.opacity", "type": "range", "label": "Opacity", "min": 0.3, "max": 1, "step": 0.1, "displayId": "nav-opacity-value" }
+      ]
+    },
+    "editHistory": {
+      "title": "Edit History",
+      "fields": [
+        { "id": "edit-badges", "key": "showBadges", "type": "toggle", "label": "Show edit badges" },
+        { "id": "edit-highlight", "key": "highlightEdited", "type": "toggle", "label": "Highlight edited messages" }
+      ]
+    },
+    "compactView": {
+      "title": "Compact View",
+      "fields": [
+        { "id": "compact-autoCollapse", "key": "autoCollapse", "type": "toggle", "label": "Auto-collapse" },
+        { "id": "compact-keyboard", "key": "keyboardShortcuts", "type": "toggle", "label": "Keyboard shortcuts" },
+        { "id": "compact-minLines", "key": "minLines", "type": "number", "label": "Min lines to collapse", "min": 5, "max": 100, "step": 1 },
+        { "id": "compact-previewLines", "key": "previewLines", "type": "number", "label": "Preview lines shown", "min": 1, "max": 20, "step": 1 }
+      ]
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "fields": [
+        { "id": "bookmarks-keyboard", "key": "keyboardShortcuts", "type": "toggle", "label": "Keyboard shortcuts" },
+        { "id": "bookmarks-showOnHover", "key": "showOnHover", "type": "toggle", "label": "Show buttons on hover" }
+      ]
+    },
+    "emojiMarkers": {
+      "title": "Emoji Markers",
+      "fields": [
+        { "id": "emojiMarkers-showBadges", "key": "showBadges", "type": "toggle", "label": "Show badges" },
+        { "id": "emojiMarkers-showOnHover", "key": "showOnHover", "type": "toggle", "label": "Show buttons on hover" },
+        { "id": "emojiMarkers-favorites", "key": "favoriteEmojis", "type": "emoji-list", "label": "Favorite Emojis" }
+      ]
+    },
+    "sidebarCollapse": {
+      "title": "Sidebar Collapse",
+      "fields": [
+        { "id": "sidebarCollapse-rememberState", "key": "rememberState", "type": "toggle", "label": "Remember state" }
+      ]
+    },
+    "contentFolding": {
+      "title": "Content Folding",
+      "subgroups": [
+        {
+          "title": "Headings",
+          "fields": [
+            { "id": "contentFolding-headings-enabled", "key": "headings.enabled", "type": "toggle", "label": "Enable" }
+          ]
+        },
+        {
+          "title": "Code Blocks",
+          "fields": [
+            { "id": "contentFolding-codeBlocks-enabled", "key": "codeBlocks.enabled", "type": "toggle", "label": "Enable" },
+            { "id": "contentFolding-minLines", "key": "codeBlocks.minLines", "type": "number", "label": "Min lines", "min": 5, "max": 50, "step": 1 },
+            { "id": "contentFolding-previewLines", "key": "codeBlocks.previewLines", "type": "number", "label": "Preview lines", "min": 1, "max": 10, "step": 1 },
+            { "id": "contentFolding-autoCollapse", "key": "codeBlocks.autoCollapse", "type": "toggle", "label": "Auto-collapse" }
+          ]
+        },
+        {
+          "title": "Messages",
+          "fields": [
+            { "id": "contentFolding-messages-enabled", "key": "messages.enabled", "type": "toggle", "label": "Enable" },
+            { "id": "contentFolding-messages-previewLines", "key": "messages.previewLines", "type": "number", "label": "Preview lines", "min": 1, "max": 10, "step": 1 }
+          ]
+        },
+        {
+          "title": "General",
+          "fields": [
+            { "id": "contentFolding-rememberState", "key": "rememberState", "type": "toggle", "label": "Remember fold states" }
+          ]
+        }
+      ]
+    }
+  },
+
+  "dataExportOptions": [
+    { "id": "export-editHistory", "key": "editHistory", "storageKey": "editHistory", "dataPath": "history", "label": "Edit History" },
+    { "id": "export-bookmarks", "key": "bookmarks", "storageKey": "bookmarks", "dataPath": "bookmarks", "label": "Bookmarks" },
+    { "id": "export-emojiMarkers", "key": "emojiMarkers", "storageKey": "markers", "dataPath": "markers", "label": "Emoji Markers" },
+    { "id": "export-settings", "key": "settings", "label": "Settings" }
+  ],
+
+  "dataClearOptions": [
+    { "id": "clear-editHistory", "storageKey": "editHistory", "label": "Edit History" },
+    { "id": "clear-bookmarks", "storageKey": "bookmarks", "label": "Bookmarks" },
+    { "id": "clear-emojiMarkers", "storageKey": "markers", "label": "Emoji Markers" }
+  ]
+}
