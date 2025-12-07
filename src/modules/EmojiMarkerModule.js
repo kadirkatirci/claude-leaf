@@ -293,7 +293,9 @@ class EmojiMarkerModule extends BaseModule {
     this.badge.removeAll();
     this.panel.remove();
     this.emojiPicker.removePicker();
-    this.destroyMessageObserver();
+    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
+      this.destroyMessageObserver();
+    }
     super.destroy();
   }
 }

@@ -513,7 +513,9 @@ class CompactViewModule extends BaseModule {
 
       // Destroy message observer
       try {
-        this.destroyMessageObserver();
+        if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
+          this.destroyMessageObserver();
+        }
       } catch (error) {
         this.error('Error destroying message observer:', error);
       }

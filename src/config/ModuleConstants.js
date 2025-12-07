@@ -45,7 +45,10 @@ export const MODULE_CONSTANTS = {
     },
 
     contentFolding: {
-        headings: { enabled: true },
+        headings: {
+            enabled: true,
+            levels: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+        },
         codeBlocks: {
             enabled: true,
             minLines: 15,

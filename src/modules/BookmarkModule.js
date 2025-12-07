@@ -389,7 +389,9 @@ class BookmarkModule extends BaseModule {
   async destroy() {
     this.versionChangeUnsubscribe?.();
     if (this.chromeMessageListener) chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
-    this.destroyMessageObserver();
+    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
+      this.destroyMessageObserver();
+    }
     this.buttonManager?.removeAll?.();
     this.panel.destroy();
     this.sidebar.destroy();

@@ -121,9 +121,22 @@ class ContentFoldingModule extends BaseModule {
 
       this.log(`📊 Scanning ${messages.length} messages...`);
 
+      // Get latest settings
+      const settings = await this.getSettings();
+      const config = {
+        messages: { ...FOLDING_CONFIG.messages, ...settings.messages },
+        headings: { ...FOLDING_CONFIG.headings, ...settings.headings },
+        codeBlocks: { ...FOLDING_CONFIG.codeBlocks, ...settings.codeBlocks }
+      };
+
+      // Update config on helpers
+      this.headingFolder.config = config;
+      this.codeBlockFolder.config = config;
+      this.messageFolder.config = config;
+
       // Scan for message-level folding (before content scanning)
-      if (FOLDING_CONFIG.messages.enabled) {
-        await this.messageFolder.scanMessages(messages);
+      if (config.messages.enabled) {
+        await this.messageFolder.scanMessages(messages, config);
       }
 
       // Scan each message for headings and code blocks
@@ -134,13 +147,13 @@ class ContentFoldingModule extends BaseModule {
         }
 
         // Scan for headings
-        if (FOLDING_CONFIG.headings.enabled) {
-          await this.headingFolder.scanMessage(message, index);
+        if (config.headings.enabled) {
+          await this.headingFolder.scanMessage(message, index, config);
         }
 
         // Scan for code blocks
-        if (FOLDING_CONFIG.codeBlocks.enabled) {
-          await this.codeBlockFolder.scanMessage(message, index);
+        if (config.codeBlocks.enabled) {
+          await this.codeBlockFolder.scanMessage(message, index, config);
         }
       }
 
@@ -190,8 +203,10 @@ class ContentFoldingModule extends BaseModule {
   destroy() {
     this.log('🛑 Content Folding durduruluyor...');
 
-    // Destroy message observer
-    this.destroyMessageObserver();
+    // Destroy message observer if it exists
+    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
+      this.destroyMessageObserver();
+    }
 
     this.cleanup();
 

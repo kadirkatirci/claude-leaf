@@ -19,8 +19,9 @@ class MessageFolder {
   /**
    * Scan all messages and add collapse functionality
    */
-  async scanMessages(messages) {
+  async scanMessages(messages, configArg) {
     try {
+      this.config = configArg || this.config;
       this.module.log(`📬 MessageFolder scanning ${messages.length} messages...`);
 
       // Filter out non-message elements (footer, input area, etc.)
@@ -354,7 +355,8 @@ class MessageFolder {
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = FOLDING_CONFIG.messages.previewLines;
+    const config = this.config || FOLDING_CONFIG;
+    const previewLines = config.messages.previewLines;
     const lineHeight = this.getComputedLineHeight(cached.contentContainer);
     const previewHeight = previewLines * lineHeight;
 

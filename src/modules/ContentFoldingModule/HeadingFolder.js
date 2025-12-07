@@ -19,10 +19,13 @@ class HeadingFolder {
   /**
    * Scan message for headings and add chevrons
    */
-  async scanMessage(messageEl, messageIndex) {
+  async scanMessage(messageEl, messageIndex, configArg) {
     try {
-      // Get enabled heading levels from settings
-      const enabledLevels = FOLDING_CONFIG.headings.levels;
+      this.config = configArg || this.config;
+      const config = this.config || FOLDING_CONFIG;
+
+      // Get enabled heading levels from config
+      const enabledLevels = config.headings.levels || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
       const selector = enabledLevels.join(', ');
 
       // Find all headings
