@@ -4,6 +4,9 @@
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { conversationStateStore } from '../../stores/index.js';
+import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
+
+const FOLDING_CONFIG = MODULE_CONSTANTS.contentFolding;
 
 class HeadingFolder {
   constructor(module) {
@@ -19,7 +22,7 @@ class HeadingFolder {
   async scanMessage(messageEl, messageIndex) {
     try {
       // Get enabled heading levels from settings
-      const enabledLevels = await this.module.getSetting('headings.levels') || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+      const enabledLevels = FOLDING_CONFIG.headings.levels;
       const selector = enabledLevels.join(', ');
 
       // Find all headings
@@ -213,7 +216,7 @@ class HeadingFolder {
     );
 
     // Save state (debounced)
-    if (await this.module.getSetting('rememberState')) {
+    if (FOLDING_CONFIG.rememberState) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.headings[cached.id] = cached.isCollapsed;
       this.module.debouncedStateSave(foldingState);

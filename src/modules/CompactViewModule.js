@@ -66,26 +66,6 @@ class CompactViewModule extends BaseModule {
         this.error('Failed to process messages:', error);
       }
 
-      // Auto collapse açıksa tüm mesajları daralt
-      try {
-        const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
-        this.log(`[Auto Collapse] Durum: ${autoCollapseEnabled ? '✅ ACIK' : '❌ KAPALI'}`);
-
-        if (autoCollapseEnabled) {
-          const timeoutId = setTimeout(() => {
-            try {
-              const count = this.collapseAllMessages();
-              this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
-            } catch (error) {
-              this.error('Error in auto-collapse:', error);
-            }
-          }, 500);
-          this.timeouts.push(timeoutId);
-        }
-      } catch (error) {
-        this.error('Error setting up auto-collapse:', error);
-      }
-
       // Setup message observer
       try {
         this.setupMessageObserver(() => {
@@ -498,14 +478,11 @@ class CompactViewModule extends BaseModule {
     // Process new messages
     this.processMessages();
 
-    // Auto collapse if enabled
-    const autoCollapseEnabled = await this.getSetting('autoCollapseEnabled');
-    if (autoCollapseEnabled) {
-      setTimeout(() => {
-        const count = this.collapseAllMessages();
-        this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
-      }, 500);
-    }
+    // Auto-collapse is handled by MessageCollapse component
+    setTimeout(() => {
+      const count = this.collapseAllMessages();
+      this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
+    }, 500);
 
     this.log('✅ CompactView reinitialized');
   }

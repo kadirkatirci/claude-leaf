@@ -1,11 +1,12 @@
 /**
- * MessageFolder - Handles message-level collapse/expand
- * Collapses entire messages (both user and Claude) with preview mode
+ * MessageFolder - Handles folding/unfolding of entire messages
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
+import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
+
+const FOLDING_CONFIG = MODULE_CONSTANTS.contentFolding;
 
 class MessageFolder {
   constructor(module) {
@@ -333,7 +334,7 @@ class MessageFolder {
     );
 
     // Save state (debounced)
-    if (await this.module.getSetting('rememberState')) {
+    if (FOLDING_CONFIG.rememberState) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.messages[cached.id] = cached.isCollapsed;
       this.module.debouncedStateSave(foldingState);
@@ -353,7 +354,7 @@ class MessageFolder {
     cached.chevron.style.opacity = '0.7'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = await this.module.getSetting('messages.previewLines') || 3;
+    const previewLines = FOLDING_CONFIG.messages.previewLines;
     const lineHeight = this.getComputedLineHeight(cached.contentContainer);
     const previewHeight = previewLines * lineHeight;
 

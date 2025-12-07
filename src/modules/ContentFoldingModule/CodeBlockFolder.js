@@ -1,10 +1,12 @@
 /**
- * CodeBlockFolder - Handles code block collapse/expand for long code
+ * CodeBlockFolder - Handles folding/unfolding of code blocks
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
+import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
+
+const FOLDING_CONFIG = MODULE_CONSTANTS.contentFolding;
 
 class CodeBlockFolder {
   constructor(module) {
@@ -33,7 +35,7 @@ class CodeBlockFolder {
         const lineCount = this.countLines(codeEl);
 
         // Get min lines threshold
-        const minLines = await this.module.getSetting('codeBlocks.minLines') || 15;
+        const minLines = FOLDING_CONFIG.codeBlocks.minLines;
 
         // Only process if longer than threshold
         if (lineCount >= minLines) {
@@ -89,7 +91,7 @@ class CodeBlockFolder {
     const blockId = this.generateBlockId(messageIndex, blockIndex, codeEl);
 
     // Check if should auto-collapse
-    const autoCollapse = await this.module.getSetting('codeBlocks.autoCollapse') || false;
+    const autoCollapse = FOLDING_CONFIG.codeBlocks.autoCollapse;
 
     // Check saved state or use auto-collapse setting
     const foldingState = await conversationStateStore.getCurrentState('folding');
@@ -271,7 +273,7 @@ class CodeBlockFolder {
     );
 
     // Save state (debounced)
-    if (await this.module.getSetting('rememberState')) {
+    if (FOLDING_CONFIG.rememberState) {
       const foldingState = await conversationStateStore.getCurrentState('folding');
       foldingState.codeBlocks[cached.id] = cached.isCollapsed;
       this.module.debouncedStateSave(foldingState);
@@ -291,7 +293,7 @@ class CodeBlockFolder {
     cached.button.style.opacity = '0.8'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = await this.module.getSetting('codeBlocks.previewLines') || 5;
+    const previewLines = FOLDING_CONFIG.codeBlocks.previewLines;
     const lineHeight = this.getComputedLineHeight(cached.codeEl);
     const previewHeight = previewLines * lineHeight;
 

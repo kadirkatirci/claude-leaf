@@ -3,7 +3,13 @@
  * Adds chevron icons to section headers for simple expand/collapse
  */
 import BaseModule from './BaseModule.js';
+import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import IconLibrary from '../components/primitives/IconLibrary.js';
+import { conversationStateStore } from '../stores/index.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const SIDEBAR_CONFIG = MODULE_CONSTANTS.sidebarCollapse;
 
 class SidebarCollapseModule extends BaseModule {
   constructor() {
@@ -154,8 +160,8 @@ class SidebarCollapseModule extends BaseModule {
     }
 
     // Get saved state or default to expanded
-    const defaultState = await this.getSetting('defaultState') || 'expanded';
-    const rememberState = await this.getSetting('rememberState');
+    const defaultState = SIDEBAR_CONFIG.defaultState;
+    const rememberState = SIDEBAR_CONFIG.rememberState;
 
     let isCollapsed;
     if (rememberState && this.sectionStates[sectionKey] !== undefined) {
@@ -246,7 +252,7 @@ class SidebarCollapseModule extends BaseModule {
     this.applyCollapseState(sectionKey);
 
     // Save state if remember is enabled
-    if (await this.getSetting('rememberState')) {
+    if (SIDEBAR_CONFIG.rememberState) {
       this.saveStates();
     }
 

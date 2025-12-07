@@ -775,7 +775,7 @@ class NavigationModule extends BaseModule {
 
       // Klavye kısayolları değişti mi?
       try {
-        if (settings.navigation && settings.navigation.keyboardShortcuts !== await this.getSetting('keyboardShortcuts')) {
+        if (settings.navigation && settings.navigation.keyboardShortcuts !== NAV_CONFIG.keyboardShortcuts) {
           if (settings.navigation.keyboardShortcuts) {
             this.setupKeyboardShortcuts();
           } else if (this.keydownHandler) {
