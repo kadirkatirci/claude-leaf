@@ -57,7 +57,8 @@ class NavigationModule extends BaseModule {
       // Setup message observer
       this.setupMessageObserver(() => {
         const messages = this.dom.findMessages();
-        this.updateCounter(messages.length);
+        this.messages = messages;
+        this.updateCounter();
         this.emit(Events.MESSAGES_UPDATED, messages);
       }, {
         throttleDelay: 500,
@@ -73,6 +74,9 @@ class NavigationModule extends BaseModule {
       if (NAV_CONFIG.keyboardShortcuts) {
         this.setupKeyboardShortcuts();
       }
+
+      // Setup scroll listener for manual scrolling detection
+      this.setupScrollListener();
 
       this.log('✅ Navigation aktif');
     } catch (error) {
@@ -196,6 +200,12 @@ class NavigationModule extends BaseModule {
     this.currentIndex = -1;
     this.hasInitialLoadCompleted = false;
 
+    // Stop scroll tracking to avoid updating when messages aren't visible
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
+      this.scrollDebounceTimer = null;
+    }
+
     // Update counter to show 0/0
     this.updateCounter();
 
@@ -222,7 +232,9 @@ class NavigationModule extends BaseModule {
     }
 
     // Destroy message observer
-    this.destroyMessageObserver();
+    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
+      this.destroyMessageObserver();
+    }
 
     super.destroy();
   }
