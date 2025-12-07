@@ -113,13 +113,69 @@ class EditModal {
   }
 
   /**
+   * Normalize version labels to show maximum total count
+   * Example: ["1/2", "2/2", "3/3"] -> ["1/3", "2/3", "3/3"]
+   */
+  normalizeVersionLabels(history) {
+    if (!history || history.length === 0) return history;
+
+    // Find maximum total version count
+    let maxTotal = 0;
+    history.forEach(item => {
+      if (item.versionLabel) {
+        const parts = item.versionLabel.split('/');
+        if (parts.length === 2) {
+          const total = parseInt(parts[1].trim());
+          if (total > maxTotal) {
+            maxTotal = total;
+          }
+        }
+      }
+    });
+
+    // Update all version labels to use max total
+    const normalized = history.map(item => {
+      if (item.versionLabel) {
+        const parts = item.versionLabel.split('/');
+        if (parts.length === 2) {
+          const current = parts[0].trim();
+          return {
+            ...item,
+            versionLabel: `${current} / ${maxTotal}`
+          };
+        }
+      }
+      return item;
+    });
+
+    // Deduplicate: Keep only the most recent entry for each version number
+    const versionMap = new Map();
+    normalized.forEach(item => {
+      const existing = versionMap.get(item.versionLabel);
+      if (!existing || item.timestamp > existing.timestamp) {
+        versionMap.set(item.versionLabel, item);
+      }
+    });
+
+    return Array.from(versionMap.values()).sort((a, b) => {
+      // Sort by version number (descending)
+      const aNum = parseInt(a.versionLabel.split('/')[0].trim());
+      const bNum = parseInt(b.versionLabel.split('/')[0].trim());
+      return bNum - aNum;
+    });
+  }
+
+  /**
    * Modal content oluştur
    */
   createContent(messageText, history = [], currentVersion) {
     const container = DOMUtils.createElement('div');
 
+    // Normalize version labels to show maximum total count
+    const normalizedHistory = this.normalizeVersionLabels(history);
+
     // History List (if available)
-    if (history.length > 0) {
+    if (normalizedHistory.length > 0) {
       const historyBox = DOMUtils.createElement('div');
       historyBox.className = 'mb-5';
 
@@ -130,7 +186,7 @@ class EditModal {
       const historyList = DOMUtils.createElement('div');
       historyList.className = 'flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1';
 
-      history.forEach(item => {
+      normalizedHistory.forEach(item => {
         const isCurrent = item.versionLabel === currentVersion;
         const itemEl = DOMUtils.createElement('div');
         itemEl.className = `p-3 rounded-lg border ${isCurrent ? 'bg-accent-main-100/10 border-accent-main-100' : 'bg-bg-100 border-border-200'} cursor-pointer hover:bg-bg-200 transition-colors`;
