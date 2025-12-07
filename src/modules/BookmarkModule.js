@@ -17,6 +17,9 @@ import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditScanner from './EditHistoryModule/EditScanner.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const BOOKMARK_CONFIG = MODULE_CONSTANTS.bookmarks;
 
 class BookmarkModule extends BaseModule {
   constructor() {
@@ -39,7 +42,7 @@ class BookmarkModule extends BaseModule {
     FixedButtonMixin.enhance(this);
     MessageObserverMixin.enhance(this);
 
-    await bookmarkStore.setStorageType('local');
+    await bookmarkStore.setStorageType(BOOKMARK_CONFIG.storageType);
     const bookmarks = await bookmarkStore.getAll();
     this.log(`Loaded ${bookmarks.length} bookmarks`);
 
@@ -52,7 +55,7 @@ class BookmarkModule extends BaseModule {
       await this.updateUI();
     }, { throttleDelay: 500, trackMessageCount: true, checkConversationPage: true });
 
-    if (await this.getSetting('keyboardShortcuts')) {
+    if (BOOKMARK_CONFIG.keyboardShortcuts) {
       this.setupKeyboardShortcuts();
     }
 

@@ -1,7 +1,10 @@
 /**
- * MessageCollapse - Mesaj collapse/expand mantığı
+ * MessageCollapse - Handles collapsing/expanding of messages
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
+
+const COMPACT_CONFIG = MODULE_CONSTANTS.compactView;
 
 class MessageCollapse {
   constructor(settings, onStateChange) {
@@ -14,10 +17,9 @@ class MessageCollapse {
    * Mesajın collapse edilip edilmeyeceğini kontrol et
    */
   shouldCollapse(messageElement) {
-    const settings = this.settings();
-    const minLines = settings.minLines || 30;
+    const minLines = COMPACT_CONFIG.minLines;
 
-    // Satır sayısını hesapla (yaklaşık 24px per line)
+    // Get message contentı hesapla (yaklaşık 24px per line)
     const lineHeight = 24;
     const lines = Math.floor(messageElement.scrollHeight / lineHeight);
 

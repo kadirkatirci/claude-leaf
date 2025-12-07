@@ -11,30 +11,30 @@ let currentSettings = null;
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[Popup] Initializing...');
-  
+
   try {
     // Load config first
     config = await loadConfig();
     console.log('[Popup] Config loaded');
-    
+
     // Set version
     document.getElementById('version').textContent = `v${config.version}`;
-    
+
     // Generate UI from config
     renderTabs();
     renderFeatures();
     renderShortcuts();
     renderDataSection();
     renderSettingsAccordion();
-    
+
     // Load settings and update UI
     await loadSettings();
-    
+
     // Setup interactions
     setupTabListeners();
     setupTooltips();
     setupActionButtons();
-    
+
     console.log('[Popup] Initialized successfully');
   } catch (error) {
     console.error('[Popup] Initialization failed:', error);
@@ -98,7 +98,7 @@ function renderFeatures() {
       </div>
     </div>
   `).join('');
-  
+
   // Setup feature toggle listeners
   Object.keys(config.modules).forEach(id => {
     const toggle = document.getElementById(`${id}-enabled`);
@@ -109,7 +109,7 @@ function renderFeatures() {
       });
     }
   });
-  
+
   // Setup settings button listeners
   document.querySelectorAll('.settings-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -142,7 +142,7 @@ function renderShortcuts() {
 function renderDataSection() {
   const container = document.getElementById('data-section');
   const { export: exportOpts, clear: clearOpts } = config.dataOptions;
-  
+
   container.innerHTML = `
     <!-- Export Section -->
     <div class="data-group">
@@ -213,45 +213,18 @@ function renderDataSection() {
 // --- Settings Tab ---
 function renderSettingsAccordion() {
   const container = document.getElementById('settings-accordion');
-  
-  container.innerHTML = Object.entries(config.settingsSchema).map(([moduleId, schema]) => `
-    <div class="accordion-item" data-module="${moduleId}">
-      <button class="accordion-header">
-        <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="${config.icons.chevron}"/>
-        </svg>
-        <span>${schema.title}</span>
-      </button>
-      <div class="accordion-content">
-        ${schema.fields ? renderFields(schema.fields, moduleId) : ''}
-        ${schema.subgroups ? schema.subgroups.map(sub => `
-          <div class="setting-subgroup">
-            <h4>${sub.title}</h4>
-            ${renderFields(sub.fields, moduleId)}
-          </div>
-        `).join('') : ''}
-      </div>
+
+  // Settings have been simplified - show informational message
+  container.innerHTML = `
+    <div style="padding: 40px 20px; text-align: center; color: var(--text-secondary);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
+        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM12 16v-4m0-4h.01"/>
+      </svg>
+      <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Settings Simplified</h3>
+      <p style="font-size: 13px; line-height: 1.5;">Module settings have been simplified.</p>
+      <p style="font-size: 13px; line-height: 1.5;">Use the <strong>Features</strong> tab to enable/disable modules.</p>
     </div>
-  `).join('');
-  
-  // Setup accordion listeners
-  document.querySelectorAll('.accordion-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const item = header.parentElement;
-      const isOpen = item.classList.contains('open');
-      document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('open'));
-      if (!isOpen) item.classList.add('open');
-    });
-  });
-  
-  // Setup field listeners
-  Object.entries(config.settingsSchema).forEach(([moduleId, schema]) => {
-    const allFields = schema.fields || [];
-    if (schema.subgroups) {
-      schema.subgroups.forEach(sub => allFields.push(...sub.fields));
-    }
-    setupFieldListeners(allFields, moduleId);
-  });
+  `;
 }
 
 function renderFields(fields, moduleId) {
@@ -317,7 +290,7 @@ function setupFieldListeners(fields, moduleId) {
   fields.forEach(field => {
     const el = document.getElementById(field.id);
     if (!el) return;
-    
+
     const setValue = (value) => {
       if (field.global) {
         setSettingValue(field.key, value);
@@ -325,7 +298,7 @@ function setupFieldListeners(fields, moduleId) {
         setSettingValue(field.key, value, moduleId);
       }
     };
-    
+
     switch (field.type) {
       case 'toggle':
         el.addEventListener('change', (e) => setValue(e.target.checked));
@@ -346,7 +319,7 @@ function setupFieldListeners(fields, moduleId) {
         break;
     }
   });
-  
+
   // Emoji favorites special handling
   const addEmojiBtn = document.getElementById('emojiMarkers-add-favorite-btn');
   if (addEmojiBtn) {
@@ -366,7 +339,7 @@ function setupTabListeners() {
 function switchToTab(tabId) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
-  
+
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById(`tab-${tabId}`)?.classList.add('active');
 }
@@ -385,28 +358,28 @@ function openAccordion(moduleId) {
 // ============================================
 function setupTooltips() {
   const tooltip = document.getElementById('tooltip');
-  
+
   document.querySelectorAll('.info-btn').forEach(btn => {
     btn.addEventListener('mouseenter', () => {
       const text = btn.dataset.tooltip;
       if (!text) return;
-      
+
       tooltip.textContent = text;
       tooltip.classList.remove('hidden');
-      
+
       const rect = btn.getBoundingClientRect();
       let left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
       let top = rect.bottom + 8;
-      
+
       if (left < 8) left = 8;
       if (left + tooltip.offsetWidth > window.innerWidth - 8) {
         left = window.innerWidth - tooltip.offsetWidth - 8;
       }
-      
+
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
     });
-    
+
     btn.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
   });
 }
@@ -422,19 +395,34 @@ async function loadSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
       let savedSettings = {};
-      
+      let isFirstTime = false;
+
       if (result.settings) {
         if (result.settings.data?.settings) {
           savedSettings = result.settings.data.settings;
         } else if (typeof result.settings === 'object' && !result.settings.data) {
           savedSettings = result.settings;
         }
+      } else {
+        // First time - no settings in storage
+        isFirstTime = true;
       }
-      
+
       currentSettings = deepMerge(getDefaultSettings(), savedSettings);
       console.log('[Popup] Settings loaded:', currentSettings);
       updateUI();
-      resolve();
+
+      // Auto-save defaults on first load
+      if (isFirstTime) {
+        console.log('[Popup] First time - saving defaults to storage');
+        const storeData = { version: 1, data: { settings: currentSettings } };
+        chrome.storage.sync.set({ settings: storeData }, () => {
+          console.log('[Popup] Default settings saved');
+          resolve();
+        });
+      } else {
+        resolve();
+      }
     });
   });
 }
@@ -464,7 +452,7 @@ function getSettingValue(key, moduleId = null) {
 function setSettingValue(key, value, moduleId = null) {
   const parts = key.split('.');
   let target = moduleId ? (currentSettings[moduleId] || (currentSettings[moduleId] = {})) : currentSettings;
-  
+
   for (let i = 0; i < parts.length - 1; i++) {
     if (!target[parts[i]]) target[parts[i]] = {};
     target = target[parts[i]];
@@ -478,24 +466,24 @@ function updateUI() {
     const toggle = document.getElementById(`${id}-enabled`);
     if (toggle) toggle.checked = currentSettings[id]?.enabled ?? false;
   });
-  
+
   // Update all setting fields
   Object.entries(config.settingsSchema).forEach(([moduleId, schema]) => {
     const allFields = schema.fields || [];
     if (schema.subgroups) {
       schema.subgroups.forEach(sub => allFields.push(...sub.fields));
     }
-    
+
     allFields.forEach(field => {
       const el = document.getElementById(field.id);
       if (!el) return;
-      
-      const value = field.global 
+
+      const value = field.global
         ? getSettingValue(field.key)
         : getSettingValue(field.key, moduleId);
-      
+
       if (value === undefined) return;
-      
+
       switch (field.type) {
         case 'toggle':
           el.checked = !!value;
@@ -512,7 +500,7 @@ function updateUI() {
       }
     });
   });
-  
+
   // Update emoji favorites
   renderFavoriteEmojis();
 }
@@ -520,17 +508,17 @@ function updateUI() {
 async function saveSettings() {
   return new Promise((resolve) => {
     const storeData = { version: 1, data: { settings: currentSettings } };
-    
+
     chrome.storage.sync.set({ settings: storeData }, () => {
       console.log('[Popup] Settings saved');
       showToast('Settings saved!', 'success');
-      
+
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
           chrome.tabs.sendMessage(tabs[0].id, {
             type: 'SETTINGS_UPDATED',
             settings: currentSettings
-          }).catch(() => {});
+          }).catch(() => { });
         }
       });
       resolve();
@@ -564,23 +552,23 @@ function setupActionButtons() {
 function renderFavoriteEmojis() {
   const container = document.getElementById('emojiMarkers-favorites-container');
   if (!container) return;
-  
+
   const emojis = currentSettings.emojiMarkers?.favoriteEmojis || [];
   container.innerHTML = '';
-  
+
   emojis.forEach((emoji, index) => {
     const chip = document.createElement('div');
     chip.className = 'emoji-chip';
     chip.draggable = true;
     chip.dataset.index = index;
     chip.innerHTML = `<span>${emoji}</span><button title="Remove">×</button>`;
-    
+
     chip.querySelector('button').addEventListener('click', (e) => {
       e.stopPropagation();
       currentSettings.emojiMarkers.favoriteEmojis.splice(index, 1);
       renderFavoriteEmojis();
     });
-    
+
     // Drag & drop
     chip.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', index);
@@ -599,7 +587,7 @@ function renderFavoriteEmojis() {
         renderFavoriteEmojis();
       }
     });
-    
+
     container.appendChild(chip);
   });
 }
@@ -612,7 +600,7 @@ function showEmojiPicker() {
     background: rgba(0,0,0,0.4); display: flex;
     align-items: center; justify-content: center; z-index: 10000;
   `;
-  
+
   const picker = document.createElement('div');
   picker.style.cssText = `
     background: white; border-radius: 12px; padding: 16px;
@@ -620,14 +608,14 @@ function showEmojiPicker() {
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   `;
   picker.innerHTML = '<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;">Select Emoji</h3>';
-  
+
   Object.entries(config.emojiCategories).forEach(([name, emojis]) => {
     const section = document.createElement('div');
     section.innerHTML = `<div style="font-size:11px;color:#86868b;margin:12px 0 8px;font-weight:500;">${name}</div>`;
-    
+
     const grid = document.createElement('div');
     grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
-    
+
     emojis.forEach(emoji => {
       const btn = document.createElement('button');
       btn.textContent = emoji;
@@ -640,7 +628,7 @@ function showEmojiPicker() {
       btn.addEventListener('click', () => {
         if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
         if (!currentSettings.emojiMarkers.favoriteEmojis) currentSettings.emojiMarkers.favoriteEmojis = [];
-        
+
         if (currentSettings.emojiMarkers.favoriteEmojis.includes(emoji)) {
           showToast('Already in favorites', 'warning');
         } else {
@@ -652,11 +640,11 @@ function showEmojiPicker() {
       });
       grid.appendChild(btn);
     });
-    
+
     section.appendChild(grid);
     picker.appendChild(section);
   });
-  
+
   modal.appendChild(picker);
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
   document.body.appendChild(modal);
@@ -667,10 +655,10 @@ function showEmojiPicker() {
 // ============================================
 async function handleExport() {
   const exportData = {};
-  
+
   for (const opt of config.dataOptions.export) {
     if (!document.getElementById(opt.id)?.checked) continue;
-    
+
     if (opt.key === 'settings') {
       exportData.settings = currentSettings;
     } else {
@@ -679,12 +667,12 @@ async function handleExport() {
       if (data) exportData[opt.key] = data;
     }
   }
-  
+
   if (Object.keys(exportData).length === 0) {
     showToast('Nothing selected', 'warning');
     return;
   }
-  
+
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -692,7 +680,7 @@ async function handleExport() {
   a.download = `claude-productivity-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  
+
   showToast('Exported successfully!', 'success');
 }
 
@@ -700,24 +688,24 @@ async function handleImport() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
-  
+
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       let count = 0;
-      
+
       for (const opt of config.dataOptions.export) {
         if (!data[opt.key] || opt.key === 'settings') continue;
-        
+
         const existing = await chrome.storage.local.get([opt.storageKey]);
         const existingData = existing[opt.storageKey]?.[opt.dataPath] || [];
         const existingIds = new Set(existingData.map(i => i.id));
         const newItems = data[opt.key].filter(i => !existingIds.has(i.id));
-        
+
         if (newItems.length > 0) {
           await chrome.storage.local.set({
             [opt.storageKey]: {
@@ -728,24 +716,24 @@ async function handleImport() {
           count += newItems.length;
         }
       }
-      
+
       if (data.settings) {
         currentSettings = deepMerge(getDefaultSettings(), data.settings);
         await saveSettings();
         updateUI();
       }
-      
+
       showToast(`Imported ${count} items`, 'success');
-      
+
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => {});
+        if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => { });
       });
     } catch (err) {
       console.error('[Popup] Import error:', err);
       showToast('Invalid file', 'error');
     }
   };
-  
+
   input.click();
 }
 
@@ -753,14 +741,14 @@ async function handleClear() {
   const keys = config.dataOptions.clear
     .filter(opt => document.getElementById(opt.id)?.checked)
     .map(opt => opt.storageKey);
-  
+
   if (keys.length === 0) {
     showToast('Nothing selected', 'warning');
     return;
   }
-  
+
   if (!confirm('⚠️ Permanently delete selected data?')) return;
-  
+
   try {
     await chrome.storage.local.remove(keys);
     config.dataOptions.clear.forEach(opt => {
@@ -768,9 +756,9 @@ async function handleClear() {
       if (cb) cb.checked = false;
     });
     showToast('Data cleared', 'success');
-    
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => {});
+      if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => { });
     });
   } catch (err) {
     showToast('Failed to clear', 'error');

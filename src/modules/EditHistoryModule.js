@@ -1,21 +1,23 @@
 /**
- * EditHistoryModule - Edit yapılmış promptları gösterir
+ * EditHistoryModule - Mesaj düzenleme geçmişini takip eder
  * BaseModule'den türetilir
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
-import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
+import MessageObserverMixin from '../core/MessageObserverMixin.js';
+import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-
-// Alt bileşenler
 import EditScanner from './EditHistoryModule/EditScanner.js';
 import EditBadge from './EditHistoryModule/EditBadge.js';
+import EditUI from './EditHistoryModule/EditUI.js';
 import EditPanel from './EditHistoryModule/EditPanel.js';
 import EditModal from './EditHistoryModule/EditModal.js';
-import EditUI from './EditHistoryModule/EditUI.js';
 import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
 import { editHistoryStore } from '../stores/index.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const EDIT_CONFIG = MODULE_CONSTANTS.editHistory;
 
 class EditHistoryModule extends BaseModule {
   constructor() {
@@ -282,8 +284,8 @@ class EditHistoryModule extends BaseModule {
     }
 
     // UI güncelle
-    this.badge.updateAll(editedPrompts, await this.getSetting('showBadges'));
-    this.ui.updateHighlights(editedPrompts, await this.getSetting('highlightEdited'));
+    this.badge.updateAll(editedPrompts, EDIT_CONFIG.showBadges);
+    this.ui.updateHighlights(editedPrompts, EDIT_CONFIG.highlightEdited);
 
     // State güncelle
     this.editedMessages = editedPrompts.map((editInfo, index) => ({
@@ -388,7 +390,7 @@ class EditHistoryModule extends BaseModule {
 
     // Badge'leri yeniden oluştur
     this.badge.removeAll();
-    this.badge.updateAll(DOMUtils.getEditedPrompts(), await this.getSetting('showBadges'));
+    this.badge.updateAll(DOMUtils.getEditedPrompts(), EDIT_CONFIG.showBadges);
 
     // Panel içeriği güncelle
     this.panel.updateContent(this.editedMessages);

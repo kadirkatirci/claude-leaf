@@ -18,6 +18,9 @@ import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditScanner from './EditHistoryModule/EditScanner.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const EMOJI_CONFIG = MODULE_CONSTANTS.emojiMarkers;
 
 class EmojiMarkerModule extends BaseModule {
   constructor() {
@@ -142,12 +145,12 @@ class EmojiMarkerModule extends BaseModule {
 
     this.updateButtonCounter(resolvedMarkers.length);
 
-    const showBadges = await this.getSetting('showBadges');
+    const showBadges = EMOJI_CONFIG.showBadges;
     if (showBadges) {
       this.badge.updateAll(messages, resolvedMarkers);
     }
 
-    const showOnHover = await this.getSetting('showOnHover');
+    const showOnHover = EMOJI_CONFIG.showOnHover;
     if (showOnHover) {
       this.button.addToMessages(messages, resolvedMarkers);
     }
@@ -223,7 +226,7 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   async getFavoriteEmojis() {
-    return await this.getSetting('favoriteEmojis') || ['⚠️', '❓', '💡', '⭐', '📌', '🔥'];
+    return EMOJI_CONFIG.favoriteEmojis;
   }
 
   async exportMarkers() {

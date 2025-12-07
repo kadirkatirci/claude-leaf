@@ -14,6 +14,9 @@ import VisibilityManager from './utils/VisibilityManager.js';
 
 // Rest of imports
 import { settingsStore, bookmarkStore, markerStore, conversationStateStore } from './stores/index.js';
+import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
+
+const GENERAL_CONFIG = MODULE_CONSTANTS.general;
 import { eventBus, Events } from './utils/EventBus.js';
 import DOMUtils from './utils/DOMUtils.js';
 import ThemeManager from './managers/ThemeManager.js';
@@ -52,7 +55,7 @@ class ClaudeProductivityApp {
       messageRegistry: null
     };
     this.moduleMetadata = new Map();
-    
+
     // Navigation handling
     this.navigationUnsubscribe = null;
     this.restartDebounceTimer = null;
@@ -124,7 +127,7 @@ class ClaudeProductivityApp {
     console.log(`  - NavigationInterceptor ready: ${!!window.__navigationInterceptor}`);
     console.log(`  - Current page: ${navState.pageType}`);
     console.log(`  - Is conversation: ${navState.isConversationPage}`);
-    
+
     // Setup App's navigation listener
     this.setupNavigationListener();
     console.log('✅ [STEP 0/7] NavigationInterceptor verified');
@@ -145,7 +148,7 @@ class ClaudeProductivityApp {
 
     // STEP 2: Wait for DOM
     console.log('📍 [STEP 2/7] Waiting for DOM...');
-    
+
     if (navState.isConversationPage) {
       console.log('  - Waiting for conversation DOM...');
       const isReady = await domReadyChecker.waitForConversationReady({ maxWait: 5000 });
@@ -187,36 +190,56 @@ class ClaudeProductivityApp {
     }
     await messageRegistry.start();
     this.managers.messageRegistry = messageRegistry;
-    console.log('✅ [STEP 3/7] Core infrastructure ready');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('✅ [STEP 3/7] Core infrastructure ready');
+    }
 
     // STEP 4: Initialize managers
-    console.log('📍 [STEP 4/7] Initializing managers...');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('📍 [STEP 4/7] Initializing managers...');
+    }
     this.initializeManagers();
     this.applySettingsToManagers(settings);
-    console.log('✅ [STEP 4/7] Managers ready');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('✅ [STEP 4/7] Managers ready');
+    }
 
     // STEP 5: Cross-tab sync
-    console.log('📍 [STEP 5/7] Setting up cross-tab sync...');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('📍 [STEP 5/7] Setting up cross-tab sync...');
+    }
     this.initializeCrossTabSync();
-    console.log('✅ [STEP 5/7] Cross-tab sync ready');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('✅ [STEP 5/7] Cross-tab sync ready');
+    }
 
     // STEP 6: Initialize modules
-    console.log('📍 [STEP 6/7] Initializing modules...');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('📍 [STEP 6/7] Initializing modules...');
+    }
     this.registerModulesWithDependencies();
     await this.initializeModules();
-    console.log('✅ [STEP 6/7] Modules ready:', Array.from(this.modules.keys()));
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('✅ [STEP 6/7] Modules ready:', Array.from(this.modules.keys()));
+    }
 
     // STEP 7: Global listeners
-    console.log('📍 [STEP 7/7] Setting up global listeners...');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('📍 [STEP 7/7] Setting up global listeners...');
+    }
     this.setupGlobalListeners();
-    console.log('✅ [STEP 7/7] Global listeners ready');
+    if (GENERAL_CONFIG.debugMode) {
+      console.log('✅ [STEP 7/7] Global listeners ready');
+    }
 
     if (settings.general?.debugMode) {
       this.enableDebugMode();
     }
 
     const totalTime = Math.round(performance.now() - startTime);
-    console.log(`🎉 Initialization complete in ${totalTime}ms`);
+    if (GENERAL_CONFIG.debugMode) {
+      console.log(`🎉 Initialization complete in ${totalTime}ms`);
+    }
   }
 
   setupNavigationListener() {
@@ -271,9 +294,9 @@ class ClaudeProductivityApp {
 
     this.restartDebounceTimer = setTimeout(async () => {
       this.restartDebounceTimer = null;
-      
+
       const isReady = await domReadyChecker.waitForNavigationComplete({ maxWait: 3000 });
-      
+
       if (isReady) {
         console.log('[App] DOM ready, restarting modules...');
         await this.restartModules();
@@ -313,7 +336,7 @@ class ClaudeProductivityApp {
   notifyModulesOfPageChange(event) {
     // Refresh VisibilityManager - this will notify all listeners
     VisibilityManager.refresh();
-    
+
     eventBus.emit(Events.URL_CHANGED, event.url);
   }
 
@@ -354,7 +377,7 @@ class ClaudeProductivityApp {
 
   applySettingsToManagers(settings) {
     ThemeManager.init(settings);
-    const debugMode = settings.general?.debugMode || false;
+    const debugMode = GENERAL_CONFIG.debugMode;
     if (debugMode) {
       VisibilityManager.setDebugMode(true);
       KeyboardManager.setDebugMode(true);
@@ -417,9 +440,13 @@ class ClaudeProductivityApp {
       const module = this.modules.get(moduleName);
 
       try {
-        console.log(`🚀 Initializing: ${moduleName}`);
+        if (GENERAL_CONFIG.debugMode) {
+          console.log(`🚀 Initializing: ${moduleName}`);
+        }
         await module.init();
-        console.log(`✅ ${moduleName} ready`);
+        if (GENERAL_CONFIG.debugMode) {
+          console.log(`✅ ${moduleName} ready`);
+        }
       } catch (error) {
         console.error(`❌ Failed to initialize ${moduleName}:`, error);
         this.initState.failedModules.push({
@@ -444,10 +471,9 @@ class ClaudeProductivityApp {
 
     eventBus.on(Events.SETTINGS_CHANGED, async (settings) => {
       this.applySettingsToManagers(settings);
-      if (settings.general) {
-        ThemeManager.setTheme(settings.general.colorTheme, settings.general.customColor);
-        ThemeManager.setOpacity(settings.general.opacity);
-      }
+      // Apply theme settings
+      ThemeManager.setTheme(GENERAL_CONFIG.colorTheme, GENERAL_CONFIG.customColor);
+      ThemeManager.setOpacity(GENERAL_CONFIG.opacity);
     });
 
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
@@ -551,7 +577,7 @@ class ClaudeProductivityApp {
     const navState = navigationInterceptor.getState();
     const visState = VisibilityManager.getStatus();
     const msgRegStatus = this.managers.messageRegistry?.getStatus() || null;
-    
+
     return {
       status: this.initState.status,
       initialized: this.initialized,
@@ -564,30 +590,30 @@ class ClaudeProductivityApp {
 
   async verifyArchitecture() {
     console.log('🔍 Architecture Verification\n');
-    
+
     const navState = navigationInterceptor.getState();
     const visState = VisibilityManager.getStatus();
-    
+
     console.log('NavigationInterceptor:');
     console.log(`  - Path: ${navState.path}`);
     console.log(`  - Page type: ${navState.pageType}`);
     console.log(`  - Is conversation: ${navState.isConversationPage}`);
     console.log(`  - Listeners: ${navigationInterceptor.getListenerCount()}`);
-    
+
     console.log('\nVisibilityManager:');
     console.log(`  - Initialized: ${visState.initialized}`);
     console.log(`  - Is conversation: ${visState.isConversationPage}`);
     console.log(`  - Listeners: ${visState.listenerCount}`);
     console.log(`  - Has nav subscription: ${visState.hasNavigationSubscription}`);
     console.log(`  - Live check: ${visState.liveCheck}`);
-    
+
     console.log('\nButton States:');
     const buttonIds = {
       'Navigation': 'claude-nav-container',
       'Bookmarks': 'claude-bookmark-button',
       'EmojiMarkers': 'claude-marker-button'
     };
-    
+
     for (const [name, id] of Object.entries(buttonIds)) {
       const el = document.getElementById(id);
       if (el) {
@@ -598,7 +624,7 @@ class ClaudeProductivityApp {
         console.log(`  - ${name}: ❓ NOT FOUND`);
       }
     }
-    
+
     return { navState, visState };
   }
 

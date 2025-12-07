@@ -1,15 +1,18 @@
 /**
- * NavigationModule - Mesajlar arası navigasyon
- * BaseModule'den türetilir
+ * NavigationModule - Message navigation with buttons and counter
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
+import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import tokens from '../components/theme/tokens.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
 class NavigationModule extends BaseModule {
   constructor() {
@@ -87,7 +90,7 @@ class NavigationModule extends BaseModule {
 
       // Klavye kısayolları
       try {
-        if (await this.getSetting('keyboardShortcuts')) {
+        if (NAV_CONFIG.keyboardShortcuts) {
           this.setupKeyboardShortcuts();
         }
       } catch (error) {
@@ -256,9 +259,9 @@ class NavigationModule extends BaseModule {
 
   async createUI() {
     // Container oluştur
-    const position = await this.getSetting('position') || 'right';
-    const showCounter = await this.getSetting('showCounter');
-    this.cachedOpacity = await this.getSetting('opacity') || 0.7;
+    const position = NAV_CONFIG.position;
+    const showCounter = NAV_CONFIG.showCounter;
+    this.cachedOpacity = NAV_CONFIG.opacity;
 
     // Determine initial visibility state
     const isConversationPage = VisibilityManager.isOnConversationPage();
@@ -482,7 +485,7 @@ class NavigationModule extends BaseModule {
     message.style.scrollMarginTop = '20px';
 
     // Scroll to message
-    const smoothScroll = await this.getSetting('smoothScroll');
+    const smoothScroll = NAV_CONFIG.smoothScroll;
 
     if (smoothScroll) {
       this.dom.scrollToElement(message, 'start');
@@ -496,7 +499,7 @@ class NavigationModule extends BaseModule {
     }, smoothScroll ? 500 : 100);
 
     // Highlight
-    const duration = await this.getSetting('highlightDuration') || 2000;
+    const duration = NAV_CONFIG.highlightDuration;
     this.dom.flashClass(message, 'claude-nav-highlight', duration);
 
     this.updateCounter();

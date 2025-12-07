@@ -7,71 +7,29 @@ import { stateManager } from '../core/StateManager.js';
 
 export class SettingsStore {
   constructor() {
-    // Default settings structure
+    // Default settings structure - ONLY enabled/disabled
+    // All other settings are in ModuleConstants.js
     this.defaults = {
       navigation: {
-        enabled: true,
-        position: 'right',
-        showCounter: true,
-        smoothScroll: true,
-        highlightDuration: 2000,
-        keyboardShortcuts: true,
+        enabled: true
       },
       editHistory: {
-        enabled: true,
-        showBadges: true,
-        highlightEdited: true,
+        enabled: true
       },
       compactView: {
-        enabled: true,
-        minHeight: 300,
-        previewLines: 10,
-        fadeHeight: 50,
-        autoCollapse: true,
-        autoCollapseEnabled: false,
-        keyboardShortcuts: true,
+        enabled: true
       },
       bookmarks: {
-        enabled: true,
-        keyboardShortcuts: true,
-        showOnHover: true,
-        storageType: 'local',
+        enabled: true
       },
       emojiMarkers: {
-        enabled: true,
-        favoriteEmojis: ['⚠️', '❓', '💡', '⭐', '📌', '🔥'],
-        showBadges: true,
-        showOnHover: true,
-        storageType: 'sync',
+        enabled: true
       },
       sidebarCollapse: {
-        enabled: true,
-        defaultState: 'expanded',
-        rememberState: true,
+        enabled: true
       },
       contentFolding: {
-        enabled: true,
-        headings: {
-          enabled: true,
-          levels: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
-        },
-        codeBlocks: {
-          enabled: true,
-          minLines: 15,
-          previewLines: 5,
-          autoCollapse: false,
-        },
-        messages: {
-          enabled: true,
-          previewLines: 3,
-        },
-        rememberState: true,
-      },
-      general: {
-        opacity: 0.7,
-        colorTheme: 'native',
-        customColor: '#667eea',
-        debugMode: false,
+        enabled: true
       }
     };
 

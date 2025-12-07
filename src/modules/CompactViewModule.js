@@ -8,6 +8,9 @@ import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
+import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+
+const COMPACT_CONFIG = MODULE_CONSTANTS.compactView;
 
 // Alt bileşenler
 import MessageCollapse from './CompactViewModule/MessageCollapse.js';
@@ -102,7 +105,7 @@ class CompactViewModule extends BaseModule {
 
       // Klavye kısayolu
       try {
-        if (await this.getSetting('keyboardShortcuts')) {
+        if (COMPACT_CONFIG.keyboardShortcuts) {
           this.setupKeyboardShortcuts();
         }
       } catch (error) {
