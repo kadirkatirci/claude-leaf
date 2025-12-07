@@ -38,76 +38,45 @@ class NavigationModule extends BaseModule {
 
   async init() {
     await super.init();
-
     if (!this.enabled) return;
 
     try {
       this.log('Navigation başlatılıyor...');
 
-      // Enhance with MessageObserverMixin
+      // Enhance with mixins
+      FixedButtonMixin.enhance(this);
       MessageObserverMixin.enhance(this);
 
-      // UI oluştur
+      // Create UI (buttons + panel)
       await this.createUI();
 
-      // Subscribe to visibility changes
-      // DO NOT search for messages here - let observer handle it when messages appear
-      this.visibilityUnsubscribe = VisibilityManager.onVisibilityChange((isConversationPage) => {
-        try {
-          this.handleVisibilityChange(isConversationPage);
-        } catch (error) {
-          console.error(`❌ Error in visibility change handler:`, error);
-        }
-      });
+      // Setup visibility listener (from mixin)
+      this.setupVisibilityListener();
 
       // Setup message observer
-      // Observer will fire whenever DOM mutations occur (messages added, removed, etc.)
-      // Combined with visibility tracking, this gives us full coverage
       this.setupMessageObserver(() => {
-        try {
-          const oldLength = this.messages.length;
-          this.messages = this.dom.findMessages();
-
-          // Update if count changed OR if this is the first successful load
-          if (this.messages.length !== oldLength || !this.hasInitialLoadCompleted) {
-            this.updateCounter();
-            this.emit(Events.MESSAGES_UPDATED, this.messages);
-
-            // Mark initial load as complete if we found messages
-            if (!this.hasInitialLoadCompleted && this.messages.length > 0) {
-              this.hasInitialLoadCompleted = true;
-              this.log(`✅ Initial load from observer: ${this.messages.length} messages`);
-            }
-          }
-        } catch (error) {
-          console.error(`❌ Error in message observer callback:`, error);
-        }
+        const messages = this.dom.findMessages();
+        this.updateCounter(messages.length);
+        this.emit(Events.MESSAGES_UPDATED, messages);
       }, {
         throttleDelay: 500,
-        trackMessageCount: false, // We handle this manually
-        checkConversationPage: true
+        trackMessageCount: true,
+        checkConversationPage: false
       });
 
-      // Klavye kısayolları
-      try {
-        if (NAV_CONFIG.keyboardShortcuts) {
-          this.setupKeyboardShortcuts();
-        }
-      } catch (error) {
-        this.error('Failed to setup keyboard shortcuts:', error);
+      // Initial counter update
+      const initialMessages = this.dom.findMessages();
+      this.updateCounter(initialMessages.length);
+
+      // Setup keyboard shortcuts if enabled
+      if (NAV_CONFIG.keyboardShortcuts) {
+        this.setupKeyboardShortcuts();
       }
 
-      // Scroll listener
-      try {
-        this.setupScrollListener();
-      } catch (error) {
-        this.error('Failed to setup scroll listener:', error);
-      }
-
-      this.log(`✅ ${this.messages.length} mesaj bulundu`);
+      this.log('✅ Navigation aktif');
     } catch (error) {
       this.error('Navigation initialization failed:', error);
-      throw error; // Re-throw for App.js to track
+      throw error;
     }
   }
 

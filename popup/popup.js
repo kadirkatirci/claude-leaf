@@ -99,13 +99,14 @@ function renderFeatures() {
     </div>
   `).join('');
 
-  // Setup feature toggle listeners
+  // Setup feature toggle listeners (NO AUTO-SAVE)
   Object.keys(config.modules).forEach(id => {
     const toggle = document.getElementById(`${id}-enabled`);
     if (toggle) {
       toggle.addEventListener('change', (e) => {
         if (!currentSettings[id]) currentSettings[id] = {};
         currentSettings[id].enabled = e.target.checked;
+        console.log(`[Popup] Toggle changed: ${id}.enabled =`, e.target.checked);
       });
     }
   });
@@ -297,6 +298,7 @@ function setupFieldListeners(fields, moduleId) {
       } else {
         setSettingValue(field.key, value, moduleId);
       }
+      console.log(`[Popup] Setting changed: ${field.key} =`, value, `(Module: ${moduleId || 'global'})`);
     };
 
     switch (field.type) {
@@ -506,24 +508,34 @@ function updateUI() {
 }
 
 async function saveSettings() {
-  return new Promise((resolve) => {
-    const storeData = { version: 1, data: { settings: currentSettings } };
+  console.log('[Popup] 💾 Saving settings to chrome.storage.sync...');
+  console.log('[Popup] 📦 Settings to save:', JSON.stringify(currentSettings, null, 2));
 
-    chrome.storage.sync.set({ settings: storeData }, () => {
-      console.log('[Popup] Settings saved');
-      showToast('Settings saved!', 'success');
+  try {
+    // Save directly matching the Store structure (flat object matching defaults)
+    // Store.js will add __meta automatically on next load/save if missing
+    await chrome.storage.sync.set({ settings: currentSettings });
+    console.log('[Popup] ✅ Settings saved successfully');
 
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            type: 'SETTINGS_UPDATED',
-            settings: currentSettings
-          }).catch(() => { });
-        }
-      });
-      resolve();
+    // Verify what was saved
+    const saved = await chrome.storage.sync.get(null);
+    console.log('[Popup] 🔍 Verification - storage contents:', saved);
+
+    showToast('Settings saved!', 'success');
+
+    // Notify content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'SETTINGS_UPDATED',
+          settings: currentSettings
+        });
+      }
     });
-  });
+  } catch (error) {
+    console.error('[Popup] ❌ Failed to save settings:', error);
+    showToast('Failed to save settings', 'error');
+  }
 }
 
 async function resetSettings() {
@@ -539,7 +551,10 @@ async function resetSettings() {
 // Action Buttons
 // ============================================
 function setupActionButtons() {
-  document.getElementById('save-btn')?.addEventListener('click', saveSettings);
+  document.getElementById('save-btn')?.addEventListener('click', async () => {
+    console.log('[Popup] 💾 Save button clicked');
+    await saveSettings();
+  });
   document.getElementById('reset-btn')?.addEventListener('click', resetSettings);
   document.getElementById('export-btn')?.addEventListener('click', handleExport);
   document.getElementById('import-btn')?.addEventListener('click', handleImport);

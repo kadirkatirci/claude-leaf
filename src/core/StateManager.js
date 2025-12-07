@@ -74,6 +74,15 @@ export class StateManager {
       console.log(`[StateManager] Created store: ${namespace} (adapter: ${adapterType})`);
     }
 
+    // Connect adapter changes to store if adapter supports it
+    if (adapter.setChangeListener) {
+      adapter.setChangeListener((changes) => {
+        if (changes[namespace]) {
+          store.onStorageChanged(changes[namespace]);
+        }
+      });
+    }
+
     return store;
   }
 

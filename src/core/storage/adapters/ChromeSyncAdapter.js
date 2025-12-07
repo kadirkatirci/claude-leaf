@@ -13,7 +13,31 @@ export class ChromeSyncAdapter extends BaseAdapter {
     this.QUOTA_BYTES = 102400; // 100KB
     this.QUOTA_BYTES_PER_ITEM = 8192; // 8KB
     this.MAX_ITEMS = 512;
+
+    // Listen for changes
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'sync') {
+          // Convert to simpler format if needed or pass raw
+          // Provide callback mechanism via StateManager or direct event
+          // Ideally StateManager should inject a callback
+          if (this.onChangeListener) {
+            // Find which keys changed
+            const changedData = {};
+            Object.keys(changes).forEach(key => {
+              changedData[key] = changes[key].newValue;
+            });
+            this.onChangeListener(changedData);
+          }
+        }
+      });
+    }
   }
+
+  setChangeListener(callback) {
+    this.onChangeListener = callback;
+  }
+
 
   /**
    * Get Chrome storage API with fallback

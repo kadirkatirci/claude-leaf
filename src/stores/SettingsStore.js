@@ -56,8 +56,21 @@ export class SettingsStore {
    * @returns {Promise<any>}
    */
   async get(path = null) {
-    const settings = await this.store.get();
+    let settings = await this.store.get();
+
+    // DEBUG LOGGING
+    console.log('[SettingsStore] 📥 Raw data from store:', JSON.stringify(settings, null, 2));
+
+    // AUTO-CORRECT: If data is wrapped in a 'data' property (legacy/popup error), unwrap it
+    if (settings && settings.data && settings.version && !settings.navigation) {
+      console.log('[SettingsStore] ⚠️ Detected wrapped data structure, unwrapping...');
+      settings = settings.data;
+      // Optionally save back the corrected structure?
+      // await this.store.set(settings); 
+    }
+
     const merged = this.mergeWithDefaults(settings);
+    console.log('[SettingsStore] 🔄 Merged with defaults:', JSON.stringify(merged, null, 2));
 
     if (!path) {
       return merged;

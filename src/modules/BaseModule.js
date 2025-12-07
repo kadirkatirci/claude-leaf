@@ -34,21 +34,26 @@ class BaseModule {
     console.log(`🔧 ${this.name} modülü başlatılıyor...`);
 
     try {
-      // Settings'i yükle (5 second timeout)
-      await Promise.race([
-        this.loadSettings(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Settings load timeout for ${this.name}`)), 5000)
-        )
-      ]);
+      // ✅ CHECK ENABLED FIRST - before ANY initialization
+      console.log(`[${this.name}] 📥 Loading settings from storage...`);
+      await settingsStore.load();
 
-      // Eğer disabled ise başlatma
-      const enabled = await this.isEnabled();
-      if (!enabled) {
-        console.log(`⏸️ ${this.name} modülü devre dışı`);
-        return;
+      const enabled = await settingsStore.get(`${this.name}.enabled`);
+      console.log(`[${this.name}] 🔍 Enabled check: ${this.name}.enabled =`, enabled);
+
+      if (enabled !== true) {
+        console.log(`⏸️ ${this.name} modülü devre dışı (enabled=${enabled})`);
+        this.enabled = false;
+        this.initialized = false;
+
+        // Still subscribe to settings to detect re-enabling
+        this.subscribeToSettings();
+        return;  // Exit immediately - no initialization
       }
 
+      console.log(`[${this.name}] ✅ Module is enabled, proceeding with initialization`);
+
+      // Now safe to initialize
       this.initialized = true;
       this.enabled = true;
 
