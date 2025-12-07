@@ -17,7 +17,7 @@ import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
 import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import EditScanner from './EditHistoryModule/EditScanner.js';
+import { versionManager } from '../core/VersionManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
 const EMOJI_CONFIG = MODULE_CONSTANTS.emojiMarkers;
@@ -83,6 +83,7 @@ class EmojiMarkerModule extends BaseModule {
         await this.updateUI();
       });
 
+      // Use shared VersionManager
       this.registerForVersionChanges();
 
       this.setupMessageObserver(async () => {
@@ -101,17 +102,9 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   registerForVersionChanges() {
-    const tryRegister = () => {
-      const scanner = EditScanner.getInstance();
-      if (scanner) {
-        this.versionChangeUnsubscribe = scanner.onVersionChange(async () => {
-          await this.updateUI();
-        });
-      } else {
-        setTimeout(tryRegister, 100);
-      }
-    };
-    tryRegister();
+    this.versionChangeUnsubscribe = versionManager.onVersionChange(async () => {
+      await this.updateUI();
+    });
   }
 
   clearUIElements() {

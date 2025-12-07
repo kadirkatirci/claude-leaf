@@ -8,7 +8,6 @@ import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import EditScanner from './EditHistoryModule/EditScanner.js';
 import EditBadge from './EditHistoryModule/EditBadge.js';
 import EditUI from './EditHistoryModule/EditUI.js';
 import EditPanel from './EditHistoryModule/EditPanel.js';
@@ -16,6 +15,10 @@ import EditModal from './EditHistoryModule/EditModal.js';
 import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
 import { editHistoryStore } from '../stores/index.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+// New imports
+import { versionManager } from '../core/VersionManager.js';
+import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
+import { panelManager } from '../components/PanelManager.js';
 
 const EDIT_CONFIG = MODULE_CONSTANTS.editHistory;
 
@@ -25,8 +28,8 @@ class EditHistoryModule extends BaseModule {
 
     this.editedMessages = [];
 
-    // Alt bileşenler
-    this.scanner = new EditScanner((edits) => this.handleEditsFound(edits));
+    // Components
+    // No more EditScanner here
     this.badge = new EditBadge(() => this.getTheme(), (el, data) => {
       // data is now the editInfo object
       this.modal.show(el, data?.versionInfo, data?.containerId);
@@ -44,6 +47,8 @@ class EditHistoryModule extends BaseModule {
     document.addEventListener('claude:open_branch_map', (e) => {
       this.branchMapModal.show(e.detail.conversationUrl);
     });
+
+    this.versionChangeUnsubscribe = null;
   }
 
   async init() {
@@ -57,86 +62,64 @@ class EditHistoryModule extends BaseModule {
       FixedButtonMixin.enhance(this);
 
       // Create fixed button
-      try {
-        await Promise.race([
-          this.createFixedButton({
-            id: 'claude-edit-fixed-btn',
-            icon: IconLibrary.edit('currentColor', 20),
-            tooltip: 'Edit History',
-            position: { right: '30px', transform: 'translateY(-100px)' },
-            onClick: () => this.panel.toggle(),
-            showCounter: true
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Create fixed button timeout')), 5000)
-          )
-        ]);
-      } catch (error) {
-        this.error('Failed to create fixed button:', error);
-        throw error;
-      }
-
-      // Setup visibility listener (from mixin)
-      try {
-        this.setupVisibilityListener();
-      } catch (error) {
-        this.error('Failed to setup visibility listener:', error);
-      }
-
-      // Panel creation
-      try {
-        this.panel.create();
-      } catch (error) {
-        this.error('Failed to create panel:', error);
-      }
-
-      // Taramayı başlat ve ilk scan'i bekle
-      try {
-        this.scanner.start();
-        // DOM'un hazır olması için biraz bekle
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Manuel scan yap
-        const edits = this.scanner.scan();
-        this.log(`Initial scan found ${edits?.length || 0} edits`);
-      } catch (error) {
-        this.error('Failed to start scanner:', error);
-      }
-
-      // Listen to MESSAGES_UPDATED event from NavigationModule to trigger immediate scan
-      this.subscribe(Events.MESSAGES_UPDATED, () => {
-        try {
-          this.log('🔄 Messages updated, scanning for edits...');
-          this.scanner.scan();
-        } catch (error) {
-          this.error('Error in message update handler:', error);
-        }
+      await this.createFixedButton({
+        id: 'claude-edit-fixed-btn',
+        icon: IconLibrary.edit('currentColor', 20),
+        tooltip: 'Edit History',
+        position: { right: '30px', transform: 'translateY(-100px)' },
+        onClick: () => this.panel.toggle(),
+        showCounter: true
       });
 
+      this.setupVisibilityListener();
+      this.panel.create();
+
+      // Register for version changes via Manager
+      this.versionChangeUnsubscribe = versionManager.onVersionChange((data) => {
+        this.handleVersionChange(data);
+      });
+
+      // Initial manual check (ask VersionManager to scan or just scan ourselves?)
+      // VersionManager is already running
+
+      // Wait a bit for initial scan to complete if just started, or trigger manual scan
+      setTimeout(() => {
+        versionManager.scan();
+      }, 500);
+
       // Create collapse button (only if CompactView is enabled)
-      try {
-        const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
-        if (compactViewEnabled) {
-          this.createCollapseButton(this.getTheme());
-        }
-      } catch (error) {
-        this.error('Failed to create collapse button:', error);
+      const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+      if (compactViewEnabled) {
+        this.createCollapseButton(this.getTheme());
       }
 
-      // Manuel panel update (initial edits'i göster)
+      // Update panel if data exists
       if (this.editedMessages.length > 0) {
-        this.log(`Updating panel with ${this.editedMessages.length} initial edits`);
         this.panel.updateContent(this.editedMessages);
       }
 
-      this.log('✅ Edit History aktif');
+      this.log('✅ Edit History aktif (VersionManager integrated)');
     } catch (error) {
       this.error('Edit History initialization failed:', error);
-      throw error; // Re-throw for App.js to track
+      throw error;
     }
   }
 
   /**
-   * Clear UI elements on page change (required for FixedButtonMixin)
+   * Handle version change from manager
+   */
+  async handleVersionChange(data) {
+    const edits = data.edits || [];
+
+    // 1. Update UI
+    this.handleEditsFound(edits);
+
+    // 2. Capture History (using new service)
+    await historyCaptureService.captureHistory(edits);
+  }
+
+  /**
+   * Clear UI elements (mixin requirement)
    */
   clearUIElements() {
     this.log('Clearing edit history UI elements');
@@ -166,8 +149,8 @@ class EditHistoryModule extends BaseModule {
    */
   updateUI() {
     this.log('Updating edit history UI');
-    // Re-scan on conversation page
-    this.scanner.scan();
+    // Request scan from manager
+    versionManager.scan();
   }
 
   /**
@@ -212,14 +195,7 @@ class EditHistoryModule extends BaseModule {
   createCollapseButton(theme) {
     this.isAllCollapsed = false;
 
-    // Find navigation container (use data attribute for reliability, fallback to ID)
-    const navContainer = document.querySelector('[data-nav-container="true"]')
-      || document.getElementById('claude-nav-container');
-    if (!navContainer) {
-      this.warn('Navigation container not found, collapse button will not be created');
-      return;
-    }
-
+    // Use PanelManager
     // Use native class background (neutral background)
     const collapseBg = 'var(--claude-productivity-neutral)';
 
@@ -258,11 +234,11 @@ class EditHistoryModule extends BaseModule {
       collapseBtn.style.transform = 'scale(1.1)';
     });
 
-    // Append to navigation container (below down button)
-    navContainer.appendChild(collapseBtn);
+    // Add to shared panel (Order 50 = bottom)
+    panelManager.addButton(collapseBtn, 50);
     this.elements.collapseBtn = collapseBtn;
 
-    this.log('✅ Collapse button added to navigation container');
+    this.log('✅ Collapse button added to panel');
   }
 
   /**
@@ -377,7 +353,7 @@ class EditHistoryModule extends BaseModule {
     }
 
     // Yeniden tara
-    this.scanner.scan();
+    versionManager.scan();
   }
 
   /**
@@ -430,7 +406,7 @@ class EditHistoryModule extends BaseModule {
       // Remove collapse button
       try {
         if (this.elements.collapseBtn) {
-          this.elements.collapseBtn.remove();
+          panelManager.removeButton(this.elements.collapseBtn.id);
           this.elements.collapseBtn = null;
         }
       } catch (error) {
@@ -438,10 +414,9 @@ class EditHistoryModule extends BaseModule {
       }
 
       // Alt bileşenleri temizle
-      try {
-        if (this.scanner) this.scanner.stop();
-      } catch (error) {
-        this.error('Error stopping scanner:', error);
+      if (this.versionChangeUnsubscribe) {
+        this.versionChangeUnsubscribe();
+        this.versionChangeUnsubscribe = null;
       }
 
       try {

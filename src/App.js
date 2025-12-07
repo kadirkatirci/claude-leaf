@@ -26,6 +26,10 @@ import { storageSync } from './core/StorageSync.js';
 import MessageRegistry from './core/MessageRegistry.js';
 import domReadyChecker from './utils/DOMReadyChecker.js';
 
+// Core Services
+import { panelManager } from './components/PanelManager.js';
+import { versionManager } from './core/VersionManager.js';
+
 // Import feature modules
 import NavigationModule from './modules/NavigationModule.js';
 import EditHistoryModule from './modules/EditHistoryModule.js';
@@ -190,6 +194,11 @@ class ClaudeProductivityApp {
     }
     await messageRegistry.start();
     this.managers.messageRegistry = messageRegistry;
+
+    // Initialize Core Services (Panel & Version)
+    panelManager.init();
+    versionManager.start();
+
     if (GENERAL_CONFIG.debugMode) {
       console.log('✅ [STEP 3/7] Core infrastructure ready');
     }
@@ -538,7 +547,13 @@ class ClaudeProductivityApp {
     if (this.managers.visibility) this.managers.visibility.destroy();
     if (this.managers.theme) this.managers.theme.destroy();
     if (this.managers.keyboard) this.managers.keyboard.destroy();
+    if (this.managers.theme) this.managers.theme.destroy();
+    if (this.managers.keyboard) this.managers.keyboard.destroy();
     if (this.managers.observer) this.managers.observer.destroy();
+
+    // Stop Core Services
+    panelManager.destroy();
+    versionManager.stop();
 
     try {
       const { default: asyncManager } = await import('./managers/AsyncManager.js');

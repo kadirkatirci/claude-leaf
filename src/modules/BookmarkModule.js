@@ -15,7 +15,7 @@ import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
 import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import EditScanner from './EditHistoryModule/EditScanner.js';
+import { versionManager } from '../core/VersionManager.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
@@ -92,18 +92,19 @@ class BookmarkModule extends BaseModule {
   }
 
   registerForVersionChanges() {
-    const tryRegister = () => {
-      const scanner = EditScanner.getInstance();
-      if (scanner) {
-        this.versionChangeUnsubscribe = scanner.onVersionChange(async () => {
-          await this.addBookmarkButtons();
-          await this.updateUI();
-        });
-      } else {
-        setTimeout(tryRegister, 100);
-      }
-    };
-    tryRegister();
+    try {
+      // Use shared VersionManager
+      // Since we are using ES modules, better to add import at top
+
+      this.versionChangeUnsubscribe = versionManager.onVersionChange(async () => {
+        await this.addBookmarkButtons();
+        await this.updateUI();
+      });
+
+      this.log('✅ Registered for version changes via VersionManager');
+    } catch (error) {
+      this.error('Failed to register for version edits:', error);
+    }
   }
 
   clearUIElements() {

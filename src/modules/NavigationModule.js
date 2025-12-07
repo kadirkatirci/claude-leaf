@@ -10,6 +10,7 @@ import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import tokens from '../components/theme/tokens.js';
+import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
@@ -92,8 +93,8 @@ class NavigationModule extends BaseModule {
     }
 
     if (!isConversationPage) {
-      this.log('📵 Page changed to non-conversation, hiding navigation');
-      // Use standard clearUIElements method
+      this.log('📵 Page changed to non-conversation');
+      // Just clear internal state, don't hide container explicitly (PanelManager does it)
       this.clearUIElements();
     } else {
       this.log('💬 Page changed to conversation, showing navigation');
@@ -227,58 +228,38 @@ class NavigationModule extends BaseModule {
   }
 
   async createUI() {
-    // Container oluştur
-    const position = NAV_CONFIG.position;
-    const showCounter = NAV_CONFIG.showCounter;
     this.cachedOpacity = NAV_CONFIG.opacity;
 
-    // Determine initial visibility state
-    const isConversationPage = VisibilityManager.isOnConversationPage();
-
-    const container = this.dom.createElement('div', {
-      id: 'claude-nav-container',
-      className: 'claude-nav-buttons',
-      'data-nav-container': 'true', // Add data attribute for reliable finding by other modules
-      style: {
-        position: 'fixed',
-        [position]: '30px',
-        bottom: '100px',
-        zIndex: '9999',
-        display: isConversationPage ? 'flex' : 'none', // Initialize visibility
-        flexDirection: 'column',
-        gap: '8px',
-        opacity: this.cachedOpacity,
-        transition: 'opacity 0.2s ease',
-        visibility: isConversationPage ? 'visible' : 'hidden', // Add visibility property
-      }
-    });
+    // Use PanelManager to get/create container
+    // PanelManager handles visibility and creation logic
+    // We just register our buttons
 
     // Top button
     const topBtn = this.createButton(IconLibrary.arrowUpDouble('currentColor', 20), 'En üste git (Alt+Home)', () => this.navigateToTop());
     topBtn.id = 'claude-nav-top';
-    // Initialize button as disabled (will be enabled when messages found)
     topBtn.disabled = true;
     topBtn.style.opacity = '0.3';
     topBtn.style.cursor = 'not-allowed';
+    panelManager.addButton(topBtn, 10); // Order 10
 
     // Previous button
     const prevBtn = this.createButton(IconLibrary.arrowUp('currentColor', 20), 'Önceki mesaj (Alt+↑)', () => this.navigatePrevious());
     prevBtn.id = 'claude-nav-prev';
-    // Initialize button as disabled (will be enabled when messages found)
     prevBtn.disabled = true;
     prevBtn.style.opacity = '0.3';
     prevBtn.style.cursor = 'not-allowed';
+    panelManager.addButton(prevBtn, 20); // Order 20
 
     // Next button
     const nextBtn = this.createButton(IconLibrary.arrowDown('currentColor', 20), 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
     nextBtn.id = 'claude-nav-next';
-    // Initialize button as disabled (will be enabled when messages found)
     nextBtn.disabled = true;
     nextBtn.style.opacity = '0.3';
     nextBtn.style.cursor = 'not-allowed';
+    panelManager.addButton(nextBtn, 30); // Order 30
 
-    // Counter badge using CounterBadge component
-    if (showCounter) {
+    // Counter badge attachment (logic remains same)
+    if (NAV_CONFIG.showCounter) {
       CounterBadge.attachTo(prevBtn, {
         id: 'claude-nav-counter',
         content: '0/0',
@@ -291,24 +272,14 @@ class NavigationModule extends BaseModule {
       });
     }
 
-    container.appendChild(topBtn);
-    container.appendChild(prevBtn);
-    container.appendChild(nextBtn);
-
-    // Hover effect
-    container.addEventListener('mouseenter', () => {
-      container.style.opacity = '1';
-    });
-    container.addEventListener('mouseleave', () => {
-      container.style.opacity = this.cachedOpacity;
-    });
-
-    document.body.appendChild(container);
-    this.elements.container = container;
+    // Keep reference for visibility management mixin (if used)
+    // But mostly handled by PanelManager now
+    this.elements.container = document.getElementById('claude-nav-container');
     this.elements.topBtn = topBtn;
     this.elements.prevBtn = prevBtn;
     this.elements.nextBtn = nextBtn;
-  }
+  } // End of createUI
+
 
   createButton(icon, tooltip, onClick) {
     // Use Button component for consistent styling (size-9 = 36px from theme.buttonClasses)

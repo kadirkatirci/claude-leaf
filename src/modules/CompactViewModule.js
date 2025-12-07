@@ -9,6 +9,7 @@ import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+import { panelManager } from '../components/PanelManager.js'; // Shared panel
 
 const COMPACT_CONFIG = MODULE_CONSTANTS.compactView;
 
@@ -125,31 +126,27 @@ class CompactViewModule extends BaseModule {
   /**
    * Collapse/Expand All butonlarını oluştur
    */
+  /**
+   * Collapse/Expand All butonlarını oluştur
+   */
   createCollapseButtons() {
-    // Navigation container'ı bul (NavigationModule tarafından oluşturulur)
-    const waitForNavigation = setInterval(() => {
-      try {
-        const navContainer = document.getElementById('claude-nav-container');
-        if (navContainer) {
-          clearInterval(waitForNavigation);
-          this.intervals = this.intervals.filter(id => id !== waitForNavigation);
-          this.addButtonsToNavigation(navContainer);
-        }
-      } catch (error) {
-        this.error('Error in navigation container search:', error);
-      }
-    }, 100);
+    // Use PanelManager to add toggle button
+    // No waiting/polling needed as PanelManager is always available
 
-    // Track interval for cleanup
-    this.intervals.push(waitForNavigation);
+    // Toggle butonu - duruma göre collapse veya expand yapar
+    const toggleBtn = this.createNavButton(IconLibrary.collapse('currentColor', 20), 'Tümünü Daralt (Alt+←)', () => {
+      this.toggleAllMessages();
+    });
+    toggleBtn.id = 'claude-compact-toggle-all';
 
-    // 5 saniye sonra timeout
-    const timeoutId = setTimeout(() => {
-      clearInterval(waitForNavigation);
-      this.intervals = this.intervals.filter(id => id !== waitForNavigation);
-    }, 5000);
+    // Add to shared panel (Order 40 = below nav buttons)
+    panelManager.addButton(toggleBtn, 40);
 
-    this.timeouts.push(timeoutId);
+    this.elements = this.elements || {};
+    this.elements.toggleBtn = toggleBtn;
+    this.isAllCollapsed = false; // Track state
+
+    this.log('📦 Collapse/Expand All butonu oluşturuldu (PanelManager via)');
   }
 
   /**
@@ -531,7 +528,8 @@ class CompactViewModule extends BaseModule {
       // Collapse/Expand All butonunu kaldır
       try {
         if (this.elements && this.elements.toggleBtn) {
-          this.elements.toggleBtn.remove();
+          panelManager.removeButton(this.elements.toggleBtn.id);
+          this.elements.toggleBtn = null;
         }
       } catch (error) {
         this.error('Error removing toggle button:', error);
