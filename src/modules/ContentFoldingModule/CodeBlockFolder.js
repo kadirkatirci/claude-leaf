@@ -3,6 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
+import FadeGradientHelper from "../../utils/FadeGradientHelper.js";
 import { conversationStateStore } from '../../stores/index.js';
 import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
 
@@ -19,9 +20,8 @@ class CodeBlockFolder {
   /**
    * Scan message for code blocks
    */
-  async scanMessage(messageEl, messageIndex, configArg) {
+  async scanMessage(messageEl, messageIndex) {
     try {
-      this.config = configArg || this.config;
       // Find all code blocks (pre > code pattern)
       const codeBlocks = messageEl.querySelectorAll('pre');
 
@@ -36,7 +36,7 @@ class CodeBlockFolder {
         const lineCount = this.countLines(codeEl);
 
         // Get min lines threshold
-        const minLines = config.codeBlocks.minLines;
+        const minLines = FOLDING_CONFIG.codeBlocks.minLines;
 
         // Only process if longer than threshold
         if (lineCount >= minLines) {
@@ -92,15 +92,209 @@ class CodeBlockFolder {
     const blockId = this.generateBlockId(messageIndex, blockIndex, codeEl);
 
     // Check if should auto-collapse
-    const config = this.config || FOLDING_CONFIG;
-    const autoCollapse = config.codeBlocks.autoCollapse;
+    const autoCollapse = FOLDING_CONFIG.codeBlocks.autoCollapse;
 
     // Check saved state or use auto-collapse setting
     const foldingState = await conversationStateStore.getCurrentState('folding');
-    // ... (lines 97-285 unchanged mostly)
+    const savedState = foldingState.codeBlocks[blockId];
+    const isCollapsed = savedState !== undefined ? savedState : autoCollapse;
+
+    // Ensure pre element is positioned for absolute button
+    if (getComputedStyle(preEl).position === 'static') {
+      preEl.style.position = 'relative';
+    }
+
+    // Create collapse button
+    const button = this.createCollapseButton(preEl, isCollapsed, lineCount);
+
+    // Store in cache
+    this.codeBlockCache.set(preEl, {
+      button,
+      isCollapsed,
+      id: blockId,
+      lineCount,
+      codeEl,
+      originalMaxHeight: preEl.style.maxHeight,
+      originalOverflow: preEl.style.overflow,
+    });
+
+    // Apply initial state
+    if (isCollapsed) {
+      await this.collapseCodeBlock(preEl, false); // false = no animation
+    }
+
+    // Setup event listeners
+    this.setupEventListeners(preEl, button);
+  }
+
+  /**
+   * Generate unique block ID
+   */
+  generateBlockId(messageIndex, blockIndex, codeEl) {
+    // Create ID from message index + block index + code hash
+    const code = codeEl.textContent.trim().substring(0, 100);
+    return `cb-${messageIndex}-${blockIndex}-${this.simpleHash(code)}`;
+  }
+
+  /**
+   * Simple hash function
+   */
+  simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * Create collapse button
+   */
+  createCollapseButton(preEl, isCollapsed, lineCount) {
+    const theme = this.module.getTheme();
+
+    const button = DOMUtils.createElement('button', {
+      className: 'code-fold-button',
+      type: 'button',
+      innerHTML: isCollapsed
+        ? IconLibrary.expand('currentColor', 16)
+        : IconLibrary.collapse('currentColor', 16),
+      title: isCollapsed ? `Expand ${lineCount} lines` : 'Collapse code',
+      'aria-label': isCollapsed ? `Expand ${lineCount} lines of code` : 'Collapse code block',
+      'aria-expanded': !isCollapsed,
+      tabIndex: 0,
+      style: {
+        position: 'absolute',
+        top: '8px',
+        right: '8px',
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        border: 'none',
+        background: theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+        cursor: 'pointer',
+        fontSize: '14px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: isCollapsed ? '0.8' : '0', // Visible if collapsed, hidden if expanded
+        transition: 'all 0.15s ease',
+        zIndex: '10',
+        padding: '0',
+      }
+    });
+
+    // Hover effect on button itself
+    button.addEventListener('mouseenter', () => {
+      button.style.background = theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+      button.style.transform = 'scale(1.05)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.background = theme.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+      button.style.transform = 'scale(1)';
+    });
+
+    preEl.appendChild(button);
+
+    return button;
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners(preEl, button) {
+    const cached = this.codeBlockCache.get(preEl);
+
+    // Hover on code block: Show/hide button
+    const onMouseEnter = () => {
+      if (!cached.isCollapsed) {
+        button.style.opacity = '0.8';
+      }
+    };
+
+    const onMouseLeave = () => {
+      if (!cached.isCollapsed) {
+        button.style.opacity = '0';
+      }
+    };
+
+    preEl.addEventListener('mouseenter', onMouseEnter);
+    preEl.addEventListener('mouseleave', onMouseLeave);
+
+    // Click button: Toggle collapse
+    const onClick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.toggleCodeBlock(preEl);
+    };
+
+    button.addEventListener('click', onClick);
+
+    // Keyboard: Enter/Space to toggle
+    const onKeyDown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.toggleCodeBlock(preEl);
+      }
+    };
+
+    button.addEventListener('keydown', onKeyDown);
+
+    // Store cleanup functions
+    this.module.unsubscribers.push(() => {
+      preEl.removeEventListener('mouseenter', onMouseEnter);
+      preEl.removeEventListener('mouseleave', onMouseLeave);
+      button.removeEventListener('click', onClick);
+      button.removeEventListener('keydown', onKeyDown);
+    });
+  }
+
+  /**
+   * Toggle code block collapse/expand
+   */
+  async toggleCodeBlock(preEl) {
+    const cached = this.codeBlockCache.get(preEl);
+    if (!cached) return;
+
+    if (cached.isCollapsed) {
+      this.expandCodeBlock(preEl);
+    } else {
+      await this.collapseCodeBlock(preEl);
+    }
+
+    // Update ARIA attributes
+    cached.button.setAttribute('aria-expanded', !cached.isCollapsed);
+    cached.button.setAttribute('aria-label',
+      cached.isCollapsed
+        ? `Expand ${cached.lineCount} lines of code`
+        : 'Collapse code block'
+    );
+
+    // Save state (debounced)
+    if (FOLDING_CONFIG.rememberState) {
+      const foldingState = await conversationStateStore.getCurrentState('folding');
+      foldingState.codeBlocks[cached.id] = cached.isCollapsed;
+      this.module.debouncedStateSave(foldingState);
+    }
+  }
+
+  /**
+   * Collapse code block (show preview + expand button)
+   */
+  async collapseCodeBlock(preEl, animate = true) {
+    const cached = this.codeBlockCache.get(preEl);
+    if (!cached) return;
+
+    cached.isCollapsed = true;
+    cached.button.innerHTML = IconLibrary.expand('currentColor', 16);
+    cached.button.title = `Expand ${cached.lineCount} lines`;
+    cached.button.style.opacity = '0.8'; // Always visible when collapsed
 
     // Calculate preview height (previewLines * line height)
-    const previewLines = config.codeBlocks.previewLines;
+    const previewLines = FOLDING_CONFIG.codeBlocks.previewLines;
     const lineHeight = this.getComputedLineHeight(cached.codeEl);
     const previewHeight = previewLines * lineHeight;
 

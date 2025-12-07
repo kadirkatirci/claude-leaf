@@ -3,6 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
+import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
 import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
 

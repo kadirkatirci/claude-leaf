@@ -56,7 +56,7 @@ export const MODULE_CONSTANTS = {
             autoCollapse: false
         },
         messages: {
-            enabled: true,
+            enabled: false,
             previewLines: 3
         },
         rememberState: true
