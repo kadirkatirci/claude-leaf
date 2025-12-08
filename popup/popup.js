@@ -90,11 +90,6 @@ function renderFeatures() {
           <input type="checkbox" id="${id}-enabled">
           <span class="toggle-slider"></span>
         </label>
-        <button class="settings-btn" data-module="${id}" title="Settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="${config.icons.settings}"/>
-          </svg>
-        </button>
       </div>
     </div>
   `).join('');
