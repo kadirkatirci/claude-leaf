@@ -75,11 +75,18 @@ class ContentFoldingModule extends BaseModule {
       setTimeout(() => this.scanContent(), 1000);
 
       // Setup message observer
+      // Observe DOM changes (not only message count) so final content
+      // updates (e.g. streaming -> completed) also trigger a scan.
       this.setupMessageObserver(() => {
-        this.scanContent();
+        // Force a rescan when the observer fires due to DOM changes so that
+        // in-place content updates (same message count) are processed.
+        this.scanContent(true);
       }, {
         throttleDelay: 500,
-        trackMessageCount: true,
+        // See note above: we disable strict message-count-only checks so the
+        // observer will fire on DOM updates; we then call scanContent with
+        // `force=true` to ensure content changes are handled.
+        trackMessageCount: false,
         checkConversationPage: false
       });
 
@@ -93,7 +100,7 @@ class ContentFoldingModule extends BaseModule {
   /**
    * Scan all messages for foldable content
    */
-  async scanContent() {
+  async scanContent(force = false) {
     try {
       // Check if we're on a conversation page
       if (!this.dom.isOnConversationPage()) {
@@ -113,8 +120,12 @@ class ContentFoldingModule extends BaseModule {
 
       const messages = this.dom.findMessages();
 
-      if (messages.length === this.lastMessageCount) {
-        return; // No new messages
+      // If there are no changes in message count and caller didn't force a
+      // rescan (e.g. observer detected in-place content updates), skip heavy
+      // scanning. When `force` is true we always proceed to scan, which is
+      // useful for platforms that update message contents in-place.
+      if (messages.length === this.lastMessageCount && !force) {
+        return; // No new messages and not forced
       }
 
       this.lastMessageCount = messages.length;
