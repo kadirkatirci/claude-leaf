@@ -149,11 +149,40 @@ class SidebarCollapseModule extends BaseModule {
     if (!list) return;
 
     // Special handling for Recents section: Hide the native "Show/Hide" text
+    // and observe header for dynamic re-inserts of the native toggle.
+    let headerObserver = null;
     if (sectionKey === 'recent') {
-      const nativeToggle = header.querySelector('span');
-      if (nativeToggle) {
-        nativeToggle.style.display = 'none';
-      }
+      const hideToggleIfMatches = (el) => {
+        if (!el || !el.textContent) return;
+        const txt = el.textContent.trim();
+        // Match common native toggle labels (case-insensitive). If needed,
+        // expand this regex to include localized words.
+        if (/\b(hide|show)\b/i.test(txt)) {
+          try {
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+          } catch (e) {
+            // ignore style mutation errors
+          }
+        }
+      };
+
+      // Hide any existing candidates (spans/buttons) inside the header
+      header.querySelectorAll('span,button').forEach(hideToggleIfMatches);
+
+      // Also watch for dynamic re-rendering that may re-insert the native toggle.
+      headerObserver = new MutationObserver((mutations) => {
+        mutations.forEach((m) => {
+          m.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              hideToggleIfMatches(node);
+              if (node.querySelectorAll) node.querySelectorAll('span,button').forEach(hideToggleIfMatches);
+            }
+          });
+        });
+      });
+      headerObserver.observe(header, { childList: true, subtree: true });
+
       // Fix layout to match Starred (remove justify-between spacing)
       header.style.justifyContent = 'flex-start';
       header.style.gap = '4px';
@@ -226,6 +255,7 @@ class SidebarCollapseModule extends BaseModule {
       list,
       chevron,
       isCollapsed,
+      observer: headerObserver,
     });
 
     // Apply initial state
@@ -332,6 +362,14 @@ class SidebarCollapseModule extends BaseModule {
   cleanupUI() {
     // Remove chevrons and restore list visibility
     this.sections.forEach((section, key) => {
+      // Disconnect any observer watching the header for native toggles
+      if (section.observer) {
+        try {
+          section.observer.disconnect();
+        } catch (e) {
+          // ignore
+        }
+      }
       if (section.chevron) {
         section.chevron.remove();
       }
