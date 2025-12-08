@@ -12,7 +12,7 @@ export class MarkerPanel extends BasePanel {
     super({
       id: 'claude-marker-panel',
       title: 'Emoji Markers', // Icon added via updateContent
-      width: '320px',
+      width: '280px',
       height: '500px',
       position: { right: '80px', top: '160px' }
     });
