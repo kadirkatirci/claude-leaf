@@ -83,7 +83,7 @@ class SettingsCache {
                 codeBlockThreshold: 15
             },
             general: {
-                opacity: 0.9,
+                opacity: 0.7,
                 colorTheme: 'purple',
                 customColor: '#667eea',
                 debugMode: false,
@@ -376,7 +376,7 @@ class SettingsCache {
     }
 
     getOpacity() {
-        return this.get('general.opacity', 0.9);
+        return this.get('general.opacity', 0.7);
     }
 
     isDebugMode() {

@@ -42,7 +42,7 @@ export default class FixedButtonMixin {
           // Make visible - use multiple properties for robustness
           this.fixedButton.style.display = 'flex';
           this.fixedButton.style.visibility = 'visible';
-          this.fixedButton.style.opacity = '0.9';
+          this.fixedButton.style.opacity = '0.7';
           this.fixedButton.style.pointerEvents = 'auto';
         } else {
           // Hide completely - use display:none for guaranteed hiding
@@ -108,7 +108,7 @@ export default class FixedButtonMixin {
       // Determine opacity: use provided, then setting, then default
       const buttonOpacity = opacity !== null
         ? opacity
-        : (this.getSetting ? (await this.getSetting('opacity') || 0.9) : 0.9);
+        : (this.getSetting ? (await this.getSetting('opacity') || 0.7) : 0.7);
 
       // Create button element
       const button = document.createElement('button');
