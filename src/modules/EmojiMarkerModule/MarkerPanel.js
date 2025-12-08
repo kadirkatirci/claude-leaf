@@ -14,7 +14,7 @@ export class MarkerPanel extends BasePanel {
       title: 'Emoji Markers', // Icon added via updateContent
       width: '320px',
       height: '500px',
-      position: { right: '20px', top: '60px' }
+      position: { right: '80px', top: '160px' }
     });
 
     this.getTheme = getTheme;
