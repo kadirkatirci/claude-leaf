@@ -52,7 +52,7 @@ export class BookmarkButton {
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
-      'z-10',
+      'z-1',
       'size-8', // Match MarkerButton size
       'rounded-md',
       bgClass,
@@ -118,7 +118,7 @@ export class BookmarkButton {
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
-      'z-10',
+      'z-1',
       'size-8', // Match MarkerButton size
       'rounded-md',
       bgClass,

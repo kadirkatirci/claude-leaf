@@ -70,7 +70,7 @@ export class MarkerBadge {
     const badge = DOMUtils.createElement('div', {
       className: cn(
         'emoji-marker-badge',
-        'absolute z-[99]',
+        'absolute z-1',
         'size-7 flex items-center justify-center',
         'rounded-full cursor-pointer',
         'text-sm font-bold',
