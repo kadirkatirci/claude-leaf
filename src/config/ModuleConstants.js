@@ -29,7 +29,7 @@ export const MODULE_CONSTANTS = {
     },
 
     emojiMarkers: {
-        favoriteEmojis: ['⚠️', '❓', '💡', '⭐', '📌', '🔥'],
+        favoriteEmojis: ['‼️', '❓', '💡', '⭐', '📌', '🔥', '✅'],
         showBadges: true,
         showOnHover: true
     },
