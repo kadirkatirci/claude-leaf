@@ -23,6 +23,7 @@ class ContentFoldingModule extends BaseModule {
     this.messageFolder = null;
     this.observer = null;
     this.lastMessageCount = 0;
+    this.lastStreamingState = null; // Track last message streaming state
     this.debouncedStateSave = null; // Will be initialized in init()
   }
 
@@ -65,28 +66,44 @@ class ContentFoldingModule extends BaseModule {
         this.log('💾 Fold states saved (debounced)');
       }, 1000);
 
-      // Listen for messages updated
+      // Track last streaming state to detect when final message completes
+      this.lastStreamingState = null;
+
+      // Listen for messages updated (fired when count changes or system broadcasts)
       this.subscribe(Events.MESSAGES_UPDATED, () => {
-        this.log('🔄 Messages updated, scanning content...');
-        this.scanContent();
+        this.log('🔄 Messages updated, checking for content changes...');
+
+        // Check if last message finished streaming (switched from true to false)
+        const messages = this.dom.findMessages();
+        if (messages.length > 0) {
+          const lastMsg = messages[messages.length - 1];
+          const isStreaming = lastMsg.getAttribute('data-is-streaming');
+
+          // If last message just completed streaming, force a rescan
+          if (isStreaming === 'false' && this.lastStreamingState === 'true') {
+            this.log('✨ Last message completed streaming, forcing content scan...');
+            this.scanContent(true);
+          } else {
+            // Otherwise, normal scan for new messages
+            this.scanContent();
+          }
+
+          this.lastStreamingState = isStreaming;
+        }
       });
 
       // Initial scan
       setTimeout(() => this.scanContent(), 1000);
 
-      // Setup message observer
-      // Observe DOM changes (not only message count) so final content
-      // updates (e.g. streaming -> completed) also trigger a scan.
+      // Setup message observer with count-only tracking (avoids excessive DOM change noise)
       this.setupMessageObserver(() => {
-        // Force a rescan when the observer fires due to DOM changes so that
-        // in-place content updates (same message count) are processed.
-        this.scanContent(true);
+        this.scanContent();
       }, {
         throttleDelay: 500,
-        // See note above: we disable strict message-count-only checks so the
-        // observer will fire on DOM updates; we then call scanContent with
-        // `force=true` to ensure content changes are handled.
-        trackMessageCount: false,
+        // Only trigger on message count changes (new/removed messages), not on every
+        // DOM mutation (hover, scroll, animations). Content completion is handled via
+        // Events.MESSAGES_UPDATED which checks the data-is-streaming attribute.
+        trackMessageCount: true,
         checkConversationPage: false
       });
 
