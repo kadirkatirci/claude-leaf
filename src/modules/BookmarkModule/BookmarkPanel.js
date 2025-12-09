@@ -16,7 +16,7 @@ export class BookmarkPanel extends BasePanel {
       title: 'Bookmarks', // Icon added dynamically
       width: '280px',
       height: '500px',
-      position: { right: '80px', top: '160px' }
+      position: { right: '80px', top: '60px' }
     });
 
     this.dom = domUtils;

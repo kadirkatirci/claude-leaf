@@ -15,7 +15,7 @@ class EditPanel extends BasePanel {
       title: 'Edit Points', // Icon will be added dynamically
       width: '280px',
       height: '500px',
-      position: { right: '80px', top: '160px' }
+      position: { right: '80px', top: '60px' }
     });
 
     this.getTheme = getTheme;
