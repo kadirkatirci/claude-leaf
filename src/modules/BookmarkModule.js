@@ -1,12 +1,11 @@
 /**
  * BookmarkModule - Bookmark functionality for messages
- * 
+ *
  * Bookmarks are tied to specific messages via content signature.
  * If the message exists, show the bookmark. If not, don't show it.
  * NEVER auto-delete - only user can delete.
  */
 import BaseModule from './BaseModule.js';
-import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { getCleanMessageText, generateSignature, getValidMarkers, resolveMarkerIndex } from '../utils/MarkerUtils.js';
@@ -50,6 +49,8 @@ class BookmarkModule extends BaseModule {
     this.sidebar.inject();
     await this.addBookmarkButtons();
 
+    // Setup message observer for automatic updates
+    // NOTE: Removed duplicate MESSAGES_UPDATED subscription to prevent double updates
     this.setupMessageObserver(async () => {
       await this.addBookmarkButtons();
       await this.updateUI();
@@ -59,10 +60,8 @@ class BookmarkModule extends BaseModule {
       this.setupKeyboardShortcuts();
     }
 
-    this.subscribe(Events.MESSAGES_UPDATED, async () => {
-      await this.addBookmarkButtons();
-      await this.updateUI();
-    });
+    // Removed: this.subscribe(Events.MESSAGES_UPDATED, ...) - causes double updates
+    // MessageObserver already handles DOM changes efficiently
 
     this.registerForVersionChanges();
 

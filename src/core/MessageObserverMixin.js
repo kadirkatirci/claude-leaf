@@ -1,10 +1,14 @@
 /**
  * MessageObserverMixin - Reusable observer pattern for message tracking
  * Provides standardized DOM observation with throttling and message count tracking
- * 
+ *
+ * v2.1.1 - Added MessageCache invalidation for performance
+ *
  * Note: EditScanner handles version changes separately. This mixin checks
  * the _isUpdating flag to avoid race conditions during version change processing.
  */
+
+import messageCache from './MessageCache.js';
 
 const MessageObserverMixin = {
   /**
@@ -55,6 +59,12 @@ const MessageObserverMixin = {
         // This prevents race conditions between observer and version change handler
         if (this._isUpdating) {
           return;
+        }
+
+        // IMPORTANT: Invalidate message cache before fetching
+        // This ensures all modules get fresh data after DOM changes
+        if (typeof messageCache !== 'undefined' && messageCache.invalidate) {
+          messageCache.invalidate();
         }
 
         if (trackMessageCount) {

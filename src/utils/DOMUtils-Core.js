@@ -1,21 +1,31 @@
 /**
  * DOMUtils-Core - Core DOM utilities for Claude interface
- * 
+ *
  * v2.1.0 - Refactored to use NavigationInterceptor
- * 
+ * v2.1.1 - Added MessageCache for performance optimization
+ *
  * Handles message finding, visibility checks, and page detection.
  * Uses NavigationInterceptor for consistent page type detection.
+ * Uses MessageCache to prevent redundant DOM queries.
  */
 
 import navigationInterceptor from '../core/NavigationInterceptor.js';
+import messageCache from '../core/MessageCache.js';
 
 const DOMUtilsCore = {
   /**
    * Initialize - now minimal as NavigationInterceptor handles most setup
    */
   async init() {
-    // Nothing to initialize - NavigationInterceptor is already running
-    console.log('[DOMUtils-Core] Initialized with NavigationInterceptor');
+    // Setup MessageCache with our findActualMessages function
+    messageCache.setFindMessagesFunction(() => this._findActualMessagesInternal());
+
+    // Invalidate cache on page navigation
+    navigationInterceptor.onNavigate(() => {
+      messageCache.invalidate();
+    });
+
+    console.log('[DOMUtils-Core] Initialized with NavigationInterceptor and MessageCache');
   },
 
   /**
@@ -37,9 +47,20 @@ const DOMUtilsCore = {
 
   /**
    * Find actual messages (excluding sidebar and UI elements)
+   * Uses MessageCache to prevent redundant queries
    * @returns {HTMLElement[]} Message elements
    */
   findActualMessages() {
+    // Use cache for performance
+    return messageCache.get();
+  },
+
+  /**
+   * Internal method to actually find messages (called by cache)
+   * @private
+   * @returns {HTMLElement[]} Message elements
+   */
+  _findActualMessagesInternal() {
     // First verify we're on a conversation page
     if (!this.isOnConversationPage()) {
       return [];

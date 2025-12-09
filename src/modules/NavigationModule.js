@@ -35,6 +35,10 @@ class NavigationModule extends BaseModule {
     this.isNavigating = false; // Lock scroll tracking during button navigation
     this.scrollDebounceTimer = null; // Debounce timer for manual scroll updates
     this.navigationLockTimer = null; // Timer to unlock navigation after scroll completes
+
+    // Intersection Observer for efficient scroll tracking
+    this.intersectionObserver = null; // Observer for visible message detection
+    this.observedMessages = new WeakMap(); // Track which messages are being observed
   }
 
   async init() {
@@ -54,12 +58,15 @@ class NavigationModule extends BaseModule {
       // Setup visibility listener (from mixin)
       this.setupVisibilityListener();
 
-      // Setup message observer
+      // Setup message observer with 500ms throttle (optimized from 300ms)
       this.setupMessageObserver(() => {
         const messages = this.dom.findMessages();
         this.messages = messages;
         this.updateCounter();
         this.emit(Events.MESSAGES_UPDATED, messages);
+
+        // Re-setup intersection observer when messages change
+        this.setupIntersectionObserver();
       }, {
         throttleDelay: 500,
         trackMessageCount: true,
@@ -75,8 +82,8 @@ class NavigationModule extends BaseModule {
         this.setupKeyboardShortcuts();
       }
 
-      // Setup scroll listener for manual scrolling detection
-      this.setupScrollListener();
+      // Setup Intersection Observer for efficient scroll tracking
+      this.setupIntersectionObserver();
 
       this.log('✅ Navigation aktif');
     } catch (error) {
@@ -223,6 +230,12 @@ class NavigationModule extends BaseModule {
     if (this.scrollDebounceTimer) {
       clearTimeout(this.scrollDebounceTimer);
       this.scrollDebounceTimer = null;
+    }
+
+    // Disconnect Intersection Observer
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+      this.intersectionObserver = null;
     }
 
     // Unsubscribe from visibility changes
@@ -566,111 +579,78 @@ class NavigationModule extends BaseModule {
     this.log('Klavye kısayolları aktif');
   }
 
-  setupScrollListener() {
-    this.log('📜 Setting up scroll listener...');
+  /**
+   * Setup Intersection Observer for efficient scroll tracking
+   * Replaces old scroll listener with modern, performant approach
+   */
+  setupIntersectionObserver() {
+    // Cleanup existing observer
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+      this.intersectionObserver = null;
+    }
 
-    // Store references for cleanup
-    this.scrollContainers = new Set();
+    // Don't setup if no messages
+    if (!this.messages || this.messages.length === 0) {
+      return;
+    }
 
-    // Debug flag for scroll tracking (can be enabled via settings or console)
-    this.debugScroll = false; // Set to true for debugging
+    this.log('👁️ Setting up Intersection Observer for scroll tracking...');
 
-    // Debounced scroll handler - only updates after scroll settles
-    const handleScroll = () => {
-      // Ignore scroll events during button navigation
+    // Track which message is most visible
+    let mostVisibleMessage = null;
+    let maxVisibility = 0;
+
+    // Create observer with 50% threshold for better accuracy
+    this.intersectionObserver = new IntersectionObserver((entries) => {
+      // Ignore during button navigation
       if (this.isNavigating) {
-        if (this.debugScroll) {
-          console.log(`[NAV SCROLL DEBUG] Ignoring scroll (navigation in progress)`);
-        }
         return;
       }
 
-      // Clear existing debounce timer
-      if (this.scrollDebounceTimer) {
-        clearTimeout(this.scrollDebounceTimer);
-      }
+      // Reset tracking
+      mostVisibleMessage = null;
+      maxVisibility = 0;
 
-      // Wait 500ms after scroll stops before updating
-      this.scrollDebounceTimer = setTimeout(() => {
-        if (this.messages.length > 0) {
-          const newIndex = this.dom.getCurrentVisibleMessageIndex(this.messages);
-
-          if (newIndex !== this.currentIndex) {
-            if (this.debugScroll) {
-              console.log(`[NAV SCROLL DEBUG] Manual scroll settled: ${this.currentIndex} → ${newIndex}`);
-            }
-            this.currentIndex = newIndex;
-            this.updateCounter();
-          }
+      // Find most visible message
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
+          maxVisibility = entry.intersectionRatio;
+          mostVisibleMessage = entry.target;
         }
-      }, 500);
-    };
-
-    // Function to find and attach to scrollable containers
-    const attachScrollListeners = () => {
-      // Clear existing listeners first
-      this.scrollContainers.forEach(container => {
-        container.removeEventListener('scroll', handleScroll);
-      });
-      this.scrollContainers.clear();
-
-      // Always attach to window
-      window.addEventListener('scroll', handleScroll, { passive: true });
-      this.scrollContainers.add(window);
-
-      // Also attach to document for capturing
-      document.addEventListener('scroll', handleScroll, { passive: true, capture: true });
-      this.scrollContainers.add(document);
-
-      // Find scrollable containers in Claude's UI
-      const selectors = [
-        '[class*="overflow-y-auto"]',
-        '[class*="overflow-y-scroll"]',
-        '[class*="overflow-auto"]',
-        '[class*="overflow-scroll"]',
-        'main',
-        'article',
-        '[role="main"]'
-      ];
-
-      selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(element => {
-          if (element && element.scrollHeight > element.clientHeight) {
-            const style = getComputedStyle(element);
-            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-              element.addEventListener('scroll', handleScroll, { passive: true });
-              this.scrollContainers.add(element);
-            }
-          }
-        });
       });
 
-    };
+      // Update current index if we have a visible message
+      if (mostVisibleMessage) {
+        const newIndex = this.messages.indexOf(mostVisibleMessage);
 
-    // Attach listeners initially
-    attachScrollListeners();
-
-    // Re-attach listeners when DOM changes (in case scrollable containers are added dynamically)
-    this.scrollReattachObserver = new MutationObserver(this.dom.throttle(() => {
-      attachScrollListeners();
-    }, 5000)); // Increased to 5s for better performance
-
-    this.scrollReattachObserver.observe(document.body, {
-      childList: true,
-      subtree: true
+        if (newIndex !== -1 && newIndex !== this.currentIndex) {
+          this.log(`👁️ Intersection update: ${this.currentIndex} → ${newIndex} (visibility: ${(maxVisibility * 100).toFixed(0)}%)`);
+          this.currentIndex = newIndex;
+          this.updateCounter();
+        }
+      }
+    }, {
+      root: null, // viewport
+      threshold: [0, 0.25, 0.5, 0.75, 1.0], // Multiple thresholds for accuracy
+      rootMargin: '-10% 0px -10% 0px' // Ignore top/bottom 10% of viewport
     });
 
-    this.log('📜 Scroll listeners attached with debounced tracking');
+    // Observe all messages
+    this.messages.forEach(message => {
+      this.intersectionObserver.observe(message);
+      this.observedMessages.set(message, true);
+    });
 
+    this.log(`👁️ Intersection Observer setup complete (${this.messages.length} messages)`);
+
+    // Add cleanup
     this.unsubscribers.push(() => {
-      this.scrollContainers.forEach(container => {
-        container.removeEventListener('scroll', handleScroll);
-      });
-      if (this.scrollReattachObserver) {
-        this.scrollReattachObserver.disconnect();
+      if (this.intersectionObserver) {
+        this.intersectionObserver.disconnect();
+        this.intersectionObserver = null;
+        this.log('👁️ Intersection Observer disconnected');
       }
-      this.log('📜 All scroll listeners removed');
     });
   }
 
