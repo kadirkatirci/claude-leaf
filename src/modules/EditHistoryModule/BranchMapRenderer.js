@@ -695,13 +695,14 @@ class BranchMapRenderer {
       this.svg.style.cursor = 'default';
     });
 
+    // Note: passive:false is intentional - we need preventDefault() to block page scroll during SVG zoom
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       transform.scale = Math.min(Math.max(transform.scale * delta, 0.3), 3);
       this.mainGroup.setAttribute('transform',
         `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`);
-    });
+    }, { passive: false });
   }
 }
 
