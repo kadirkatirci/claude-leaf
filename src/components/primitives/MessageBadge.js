@@ -55,20 +55,24 @@ export default class MessageBadge {
     const theme = this.getTheme();
 
     // Create badge element
+    const baseStyle = {
+      position: 'absolute',
+      ...position,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.2s ease'
+    };
+
+    // Allow callers to override or provide zIndex via options.style.
+    // Do not force a hardcoded z-index here so CSS/classes can control stacking.
+    const mergedStyle = Object.assign({}, baseStyle, style || {});
+
     const badge = DOMUtils.createElement('div', {
       className,
       title,
-      style: {
-        position: 'absolute',
-        ...position,
-        cursor: 'pointer',
-        zIndex: '100',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 0.2s ease',
-        ...style
-      }
+      style: mergedStyle
     });
 
     // Set content

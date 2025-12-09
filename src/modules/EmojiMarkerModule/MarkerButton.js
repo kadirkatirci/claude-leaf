@@ -89,7 +89,7 @@ export class MarkerButton {
       top: 8px;
       right: ${buttonRight};
       display: ${existingMarker ? 'none' : 'flex'};
-      z-index: 100;
+      z-index: 1;
     `;
 
     button.innerHTML = IconLibrary.pin('currentColor', 16); // Use pin icon for marker

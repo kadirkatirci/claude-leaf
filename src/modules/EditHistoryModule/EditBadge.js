@@ -59,7 +59,7 @@ class EditBadge {
         'font-semibold',
         'gap-1',
         'shadow-md',
-        'z-[100]'
+        'z-1'
       ),
       content: `${IconLibrary.edit('currentColor', 11)} ${versionInfo}`,
       title: 'Click to see edit history',

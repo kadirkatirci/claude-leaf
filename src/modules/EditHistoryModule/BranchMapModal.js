@@ -89,7 +89,8 @@ class BranchMapModal {
     createModal(snapshots, history) {
         // Overlay
         this.overlay = DOMUtils.createElement('div');
-        this.overlay.className = 'fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-6 backdrop-blur-sm';
+        this.overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center p-6 backdrop-blur-sm';
+        this.overlay.style.zIndex = '999999';
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay) this.hide();
         });
