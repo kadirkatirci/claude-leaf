@@ -9,9 +9,10 @@ export class BookmarkButton {
   constructor(domUtils, getTheme) {
     this.dom = domUtils;
     this.getTheme = getTheme;
-    this.buttons = new Map(); // messageElement -> button
-    this.hoverCleanups = new Map(); // messageElement -> cleanup function
-    this.buttonStates = new Map(); // messageElement -> isBookmarked state
+    // Use WeakMap for automatic garbage collection when messages are removed
+    this.buttons = new WeakMap(); // messageElement -> button
+    this.hoverCleanups = new WeakMap(); // messageElement -> cleanup function
+    this.buttonStates = new WeakMap(); // messageElement -> isBookmarked state
   }
 
   /**

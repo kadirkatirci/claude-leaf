@@ -12,6 +12,7 @@ import IconLibrary from '../components/primitives/IconLibrary.js';
 import tokens from '../components/theme/tokens.js';
 import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+import { scheduleVisualUpdate } from '../utils/AnimationScheduler.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -521,29 +522,46 @@ class NavigationModule extends BaseModule {
 
     this.log(`Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${this.currentIndex}, total: ${this.messages.length})`);
 
+    // Batch style updates to minimize reflows
+    // Use requestAnimationFrame for smooth 60fps updates
     // Only update if states changed
     if (newStates.prev !== this.lastButtonStates.prev) {
-      prevBtn.disabled = newStates.prev;
-      prevBtn.style.opacity = newStates.prev ? '0.3' : '1';
-      prevBtn.style.cursor = newStates.prev ? 'not-allowed' : 'pointer';
-      this.lastButtonStates.prev = newStates.prev;
-      this.log(`Prev button ${newStates.prev ? 'disabled' : 'enabled'}`);
+      const shouldDisable = newStates.prev;
+      prevBtn.disabled = shouldDisable;
+      scheduleVisualUpdate(() => {
+        Object.assign(prevBtn.style, {
+          opacity: shouldDisable ? '0.3' : '1',
+          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+        });
+      }, 'nav-prev-btn');
+      this.lastButtonStates.prev = shouldDisable;
+      this.log(`Prev button ${shouldDisable ? 'disabled' : 'enabled'}`);
     }
 
     if (newStates.next !== this.lastButtonStates.next) {
-      nextBtn.disabled = newStates.next;
-      nextBtn.style.opacity = newStates.next ? '0.3' : '1';
-      nextBtn.style.cursor = newStates.next ? 'not-allowed' : 'pointer';
-      this.lastButtonStates.next = newStates.next;
-      this.log(`Next button ${newStates.next ? 'disabled' : 'enabled'}`);
+      const shouldDisable = newStates.next;
+      nextBtn.disabled = shouldDisable;
+      scheduleVisualUpdate(() => {
+        Object.assign(nextBtn.style, {
+          opacity: shouldDisable ? '0.3' : '1',
+          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+        });
+      }, 'nav-next-btn');
+      this.lastButtonStates.next = shouldDisable;
+      this.log(`Next button ${shouldDisable ? 'disabled' : 'enabled'}`);
     }
 
     if (newStates.top !== this.lastButtonStates.top) {
-      topBtn.disabled = newStates.top;
-      topBtn.style.opacity = newStates.top ? '0.3' : '1';
-      topBtn.style.cursor = newStates.top ? 'not-allowed' : 'pointer';
-      this.lastButtonStates.top = newStates.top;
-      this.log(`Top button ${newStates.top ? 'disabled' : 'enabled'}`);
+      const shouldDisable = newStates.top;
+      topBtn.disabled = shouldDisable;
+      scheduleVisualUpdate(() => {
+        Object.assign(topBtn.style, {
+          opacity: shouldDisable ? '0.3' : '1',
+          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+        });
+      }, 'nav-top-btn');
+      this.lastButtonStates.top = shouldDisable;
+      this.log(`Top button ${shouldDisable ? 'disabled' : 'enabled'}`);
     }
   }
 
