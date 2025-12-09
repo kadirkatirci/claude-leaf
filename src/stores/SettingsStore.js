@@ -7,6 +7,11 @@ import { stateManager } from '../core/StateManager.js';
 
 export class SettingsStore {
   constructor() {
+    // Cache for merged settings (performance optimization)
+    this.mergedCache = null;
+    this.mergedCacheTime = 0;
+    this.mergeCacheTTL = 30000; // 30 seconds
+
     // Default settings structure - ONLY enabled/disabled
     // All other settings are in ModuleConstants.js
     this.defaults = {
@@ -58,19 +63,22 @@ export class SettingsStore {
   async get(path = null) {
     let settings = await this.store.get();
 
-    // DEBUG LOGGING
-    console.log('[SettingsStore] 📥 Raw data from store:', JSON.stringify(settings, null, 2));
-
     // AUTO-CORRECT: If data is wrapped in a 'data' property (legacy/popup error), unwrap it
     if (settings && settings.data && settings.version && !settings.navigation) {
-      console.log('[SettingsStore] ⚠️ Detected wrapped data structure, unwrapping...');
       settings = settings.data;
-      // Optionally save back the corrected structure?
-      // await this.store.set(settings); 
     }
 
+    // Use cache if still valid (performance optimization)
+    const now = Date.now();
+    if (this.mergedCache && (now - this.mergedCacheTime) < this.mergeCacheTTL) {
+      const merged = this.mergedCache;
+      return path ? path.split('.').reduce((obj, key) => obj?.[key], merged) : merged;
+    }
+
+    // Cache expired - perform merge and cache result
     const merged = this.mergeWithDefaults(settings);
-    console.log('[SettingsStore] 🔄 Merged with defaults:', JSON.stringify(merged, null, 2));
+    this.mergedCache = merged;
+    this.mergedCacheTime = now;
 
     if (!path) {
       return merged;
@@ -95,6 +103,9 @@ export class SettingsStore {
    * @param {*} [value] - Value (if pathOrData is a path)
    */
   async set(pathOrData, value = undefined) {
+    // Invalidate merge cache when settings change
+    this.mergedCache = null;
+    this.mergedCacheTime = 0;
     if (typeof pathOrData === 'object' && value === undefined) {
       // Full update: set({ navigation: {...} })
       return this.store.set(pathOrData);

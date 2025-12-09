@@ -338,20 +338,65 @@ export function resolveAllMarkers(markers, messages, options = {}) {
 }
 
 /**
+ * Validation cache for getValidMarkers
+ * Prevents redundant validation when called multiple times with same data
+ */
+const validationCache = new Map();
+const VALIDATION_CACHE_TTL = 500; // 500ms TTL
+
+/**
+ * Generate cache key for validation
+ */
+function getValidationCacheKey(markers, messages) {
+  // Use message count + first/last message signature for quick comparison
+  if (messages.length === 0) return 'empty';
+
+  const firstSig = messages[0]?.textContent?.substring(0, 50) || '';
+  const lastSig = messages[messages.length - 1]?.textContent?.substring(0, 50) || '';
+  const markerIds = markers.map(m => m.id || m.contentSignature).join(',');
+
+  return `${messages.length}-${firstSig}-${lastSig}-${markerIds}`;
+}
+
+/**
  * Filter markers to only those that can be resolved
+ * Now with caching to prevent redundant validation
  */
 export function getValidMarkers(markers, messages, options = {}) {
-  return markers
+  // Check cache first
+  const cacheKey = getValidationCacheKey(markers, messages);
+  const cached = validationCache.get(cacheKey);
+
+  if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_TTL) {
+    return cached.result;
+  }
+
+  // Perform validation
+  const result = markers
     .map(marker => {
-      const result = resolveMarkerIndex(marker, messages, options);
+      const resolution = resolveMarkerIndex(marker, messages, options);
       return {
         marker,
-        resolvedIndex: result.index,
-        status: result.status,
-        message: result.message
+        resolvedIndex: resolution.index,
+        status: resolution.status,
+        message: resolution.message
       };
     })
     .filter(item => item.resolvedIndex !== null);
+
+  // Cache result
+  validationCache.set(cacheKey, {
+    result,
+    timestamp: Date.now()
+  });
+
+  // Auto-cleanup old cache entries (keep last 10)
+  if (validationCache.size > 10) {
+    const firstKey = validationCache.keys().next().value;
+    validationCache.delete(firstKey);
+  }
+
+  return result;
 }
 
 export default {

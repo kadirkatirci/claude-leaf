@@ -13,7 +13,7 @@ class MessageCache {
   constructor() {
     this.cache = null;
     this.cacheTime = 0;
-    this.cacheTTL = 100; // 100ms cache lifetime
+    this.cacheTTL = 500; // 500ms cache lifetime (optimized from 100ms)
     this.findMessagesFn = null;
     this.isEnabled = true;
 
