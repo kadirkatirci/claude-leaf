@@ -29,19 +29,16 @@ class EditHistoryModule extends BaseModule {
     this.editedMessages = [];
 
     // Components
-    // No more EditScanner here
     this.badge = new EditBadge(() => this.getTheme(), (el, data) => {
       // data is now the editInfo object
       this.modal.show(el, data?.versionInfo, data?.containerId);
     });
-    this.panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
-    this.modal = new EditModal();
-    this.branchMapModal = new BranchMapModal();
-    this.ui = new EditUI(
-      () => this.getTheme(),
-      () => this.panel.toggle(),
-      (shouldCollapse) => this.handleCollapseAll(shouldCollapse)
-    );
+
+    // Lazy initialization for panels and modals
+    this._panel = null;
+    this._modal = null;
+    this._branchMapModal = null;
+    this._ui = null;
 
     // Listen for Branch Map open event
     document.addEventListener('claude:open_branch_map', (e) => {
@@ -49,6 +46,39 @@ class EditHistoryModule extends BaseModule {
     });
 
     this.versionChangeUnsubscribe = null;
+  }
+
+  // Lazy getters
+  get panel() {
+    if (!this._panel) {
+      this._panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
+    }
+    return this._panel;
+  }
+
+  get modal() {
+    if (!this._modal) {
+      this._modal = new EditModal();
+    }
+    return this._modal;
+  }
+
+  get branchMapModal() {
+    if (!this._branchMapModal) {
+      this._branchMapModal = new BranchMapModal();
+    }
+    return this._branchMapModal;
+  }
+
+  get ui() {
+    if (!this._ui) {
+      this._ui = new EditUI(
+        () => this.getTheme(),
+        () => this.panel.toggle(),
+        (shouldCollapse) => this.handleCollapseAll(shouldCollapse)
+      );
+    }
+    return this._ui;
   }
 
   async init() {

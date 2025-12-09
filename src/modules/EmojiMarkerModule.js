@@ -42,13 +42,22 @@ class EmojiMarkerModule extends BaseModule {
       (markerId) => this.removeMarker(markerId),
       (markerId, newEmoji) => this.updateMarker(markerId, newEmoji)
     );
-    this.panel = new MarkerPanel(
-      () => this.getTheme(),
-      (marker) => this.scrollToMarker(marker),
-      (markerId) => this.removeMarker(markerId)
-    );
 
+    // Lazy initialization for panel (created on first use)
+    this._panel = null;
     this.versionChangeUnsubscribe = null;
+  }
+
+  // Lazy getter for panel
+  get panel() {
+    if (!this._panel) {
+      this._panel = new MarkerPanel(
+        () => this.getTheme(),
+        (marker) => this.scrollToMarker(marker),
+        (markerId) => this.removeMarker(markerId)
+      );
+    }
+    return this._panel;
   }
 
   async init() {

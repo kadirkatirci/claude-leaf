@@ -2,12 +2,14 @@
  * MessageCache - Shared cache for findMessages() results
  *
  * Prevents redundant DOM queries when multiple modules request messages
- * within a short time window. Provides 100ms TTL cache with automatic invalidation.
+ * within a short time window. Provides 500ms TTL cache with automatic invalidation.
  *
  * Usage:
  *   const messages = messageCache.get();
  *   messageCache.invalidate(); // Force refresh
  */
+
+import { DEBUG_FLAGS } from '../config/debug.js';
 
 class MessageCache {
   constructor() {
@@ -45,7 +47,7 @@ class MessageCache {
 
     // Return cached result if still valid
     if (this.cache && cacheAge < this.cacheTTL) {
-      if (typeof console !== 'undefined' && window.claudeProductivity?.settings?.general?.debugMode) {
+      if (DEBUG_FLAGS.cache) {
         console.log(`[MessageCache] Cache hit (age: ${cacheAge}ms)`);
       }
       return this.cache;
@@ -56,7 +58,7 @@ class MessageCache {
       this.cache = this.findMessagesFn();
       this.cacheTime = now;
 
-      if (typeof console !== 'undefined' && window.claudeProductivity?.settings?.general?.debugMode) {
+      if (DEBUG_FLAGS.cache) {
         console.log(`[MessageCache] Cache miss - fetched ${this.cache.length} messages`);
       }
 
@@ -73,7 +75,7 @@ class MessageCache {
     this.cache = null;
     this.cacheTime = 0;
 
-    if (typeof console !== 'undefined' && window.claudeProductivity?.settings?.general?.debugMode) {
+    if (DEBUG_FLAGS.cache) {
       console.log('[MessageCache] Cache invalidated');
     }
   }
@@ -88,7 +90,7 @@ class MessageCache {
       this.invalidate();
     }
 
-    if (typeof console !== 'undefined') {
+    if (DEBUG_FLAGS.cache) {
       console.log(`[MessageCache] Cache ${enabled ? 'enabled' : 'disabled'}`);
     }
   }

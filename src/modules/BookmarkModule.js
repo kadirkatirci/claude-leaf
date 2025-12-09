@@ -27,9 +27,32 @@ class BookmarkModule extends BaseModule {
     this.chromeMessageListener = null;
 
     this.buttonManager = new BookmarkButton(this.dom, () => this.getTheme());
-    this.panel = new BookmarkPanel(this.dom, () => this.getTheme(), (key) => this.getSetting(key));
-    this.sidebar = new BookmarkSidebar(this.dom, () => this.getTheme());
-    this.categorySelector = new CategorySelector(this.dom);
+    // Lazy initialization for panels (created on first use)
+    this._panel = null;
+    this._sidebar = null;
+    this._categorySelector = null;
+  }
+
+  // Lazy getters for panels
+  get panel() {
+    if (!this._panel) {
+      this._panel = new BookmarkPanel(this.dom, () => this.getTheme(), (key) => this.getSetting(key));
+    }
+    return this._panel;
+  }
+
+  get sidebar() {
+    if (!this._sidebar) {
+      this._sidebar = new BookmarkSidebar(this.dom, () => this.getTheme());
+    }
+    return this._sidebar;
+  }
+
+  get categorySelector() {
+    if (!this._categorySelector) {
+      this._categorySelector = new CategorySelector(this.dom);
+    }
+    return this._categorySelector;
   }
 
   async init() {
