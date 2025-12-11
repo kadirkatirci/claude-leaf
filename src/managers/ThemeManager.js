@@ -21,9 +21,13 @@ class ThemeManager {
     const colorTheme = generalSettings.colorTheme || 'native';
     const customColor = generalSettings.customColor || '#8B5CF6';
     const opacity = generalSettings.opacity || 0.9;
+    const highlightPadding = generalSettings.highlightPadding || { top: 0, right: 10, bottom: 0, left: 10 };
+    const highlightMargin = generalSettings.highlightMargin || { top: 5, right: 5, bottom: 10, left: 5 };
 
     this.setTheme(colorTheme, customColor);
     this.setOpacity(opacity);
+    this.setHighlightPadding(highlightPadding);
+    this.setHighlightMargin(highlightMargin);
     this.injectGlobalStyles();
   }
 
@@ -69,6 +73,30 @@ class ThemeManager {
   }
 
   /**
+   * Set highlight padding
+   */
+  setHighlightPadding(padding) {
+    const { top = 0, right = 10, bottom = 0, left = 10 } = padding;
+    this.customProperties.set('--claude-productivity-highlight-padding-top', `${top}px`);
+    this.customProperties.set('--claude-productivity-highlight-padding-right', `${right}px`);
+    this.customProperties.set('--claude-productivity-highlight-padding-bottom', `${bottom}px`);
+    this.customProperties.set('--claude-productivity-highlight-padding-left', `${left}px`);
+    this.updateCSSProperties();
+  }
+
+  /**
+   * Set highlight margin
+   */
+  setHighlightMargin(margin) {
+    const { top = 5, right = 5, bottom = 10, left = 5 } = margin;
+    this.customProperties.set('--claude-productivity-highlight-margin-top', `${top}px`);
+    this.customProperties.set('--claude-productivity-highlight-margin-right', `${right}px`);
+    this.customProperties.set('--claude-productivity-highlight-margin-bottom', `${bottom}px`);
+    this.customProperties.set('--claude-productivity-highlight-margin-left', `${left}px`);
+    this.updateCSSProperties();
+  }
+
+  /**
    * Inject global CSS styles
    */
   injectGlobalStyles() {
@@ -100,6 +128,14 @@ class ThemeManager {
         --claude-productivity-hover: ${theme.hover || theme.primary || '#CC785C'};
         --claude-productivity-active: ${theme.active || theme.primary || '#CC785C'};
         --claude-productivity-opacity: ${this.customProperties.get('--claude-productivity-opacity') || 0.9};
+        --claude-productivity-highlight-padding-top: ${this.customProperties.get('--claude-productivity-highlight-padding-top') || '0px'};
+        --claude-productivity-highlight-padding-right: ${this.customProperties.get('--claude-productivity-highlight-padding-right') || '10px'};
+        --claude-productivity-highlight-padding-bottom: ${this.customProperties.get('--claude-productivity-highlight-padding-bottom') || '0px'};
+        --claude-productivity-highlight-padding-left: ${this.customProperties.get('--claude-productivity-highlight-padding-left') || '10px'};
+        --claude-productivity-highlight-margin-top: ${this.customProperties.get('--claude-productivity-highlight-margin-top') || '5px'};
+        --claude-productivity-highlight-margin-right: ${this.customProperties.get('--claude-productivity-highlight-margin-right') || '5px'};
+        --claude-productivity-highlight-margin-bottom: ${this.customProperties.get('--claude-productivity-highlight-margin-bottom') || '10px'};
+        --claude-productivity-highlight-margin-left: ${this.customProperties.get('--claude-productivity-highlight-margin-left') || '5px'};
 
         /* Semantic colors */
         --claude-productivity-success: #10b981;
@@ -224,7 +260,14 @@ class ThemeManager {
       .claude-edit-highlighted {
         background-color: transparent !important;
         border: 1px dashed #fe914642 !important;
-        padding: 10px !important;
+        padding-top: var(--claude-productivity-highlight-padding-top) !important;
+        padding-right: var(--claude-productivity-highlight-padding-right) !important;
+        padding-bottom: var(--claude-productivity-highlight-padding-bottom) !important;
+        padding-left: var(--claude-productivity-highlight-padding-left) !important;
+        margin-top: var(--claude-productivity-highlight-margin-top) !important;
+        margin-right: var(--claude-productivity-highlight-margin-right) !important;
+        margin-bottom: var(--claude-productivity-highlight-margin-bottom) !important;
+        margin-left: var(--claude-productivity-highlight-margin-left) !important;
         border-radius: 6px !important;
         transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
       }
@@ -343,6 +386,28 @@ class ThemeManager {
     if (opacity !== undefined) {
       root.style.setProperty('--claude-productivity-opacity', opacity);
     }
+
+    // Update highlight padding if set
+    const paddingTop = this.customProperties.get('--claude-productivity-highlight-padding-top');
+    const paddingRight = this.customProperties.get('--claude-productivity-highlight-padding-right');
+    const paddingBottom = this.customProperties.get('--claude-productivity-highlight-padding-bottom');
+    const paddingLeft = this.customProperties.get('--claude-productivity-highlight-padding-left');
+
+    if (paddingTop !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-top', paddingTop);
+    if (paddingRight !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-right', paddingRight);
+    if (paddingBottom !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-bottom', paddingBottom);
+    if (paddingLeft !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-left', paddingLeft);
+
+    // Update highlight margin if set
+    const marginTop = this.customProperties.get('--claude-productivity-highlight-margin-top');
+    const marginRight = this.customProperties.get('--claude-productivity-highlight-margin-right');
+    const marginBottom = this.customProperties.get('--claude-productivity-highlight-margin-bottom');
+    const marginLeft = this.customProperties.get('--claude-productivity-highlight-margin-left');
+
+    if (marginTop !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-top', marginTop);
+    if (marginRight !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-right', marginRight);
+    if (marginBottom !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-bottom', marginBottom);
+    if (marginLeft !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-left', marginLeft);
   }
 
   /**
