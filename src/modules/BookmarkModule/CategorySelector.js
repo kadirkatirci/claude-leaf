@@ -9,7 +9,6 @@ export class CategorySelector {
     constructor(domUtils) {
         this.dom = domUtils;
         this.popover = null;
-        this.cleanup = null;
     }
 
     async show(targetElement, currentCategoryId, onSelect, onRemove = null, onEdit = null) {
@@ -122,8 +121,10 @@ export class CategorySelector {
         // Position popover
         this.position(targetElement);
 
-        // Click outside handler
-        this.cleanup = this.dom.onClickOutside(this.popover, () => this.close());
+        // Click outside handler (delayed to avoid immediate close)
+        setTimeout(() => {
+            document.addEventListener('click', this.handleOutsideClick);
+        }, 100);
     }
 
     position(targetElement) {
@@ -155,13 +156,19 @@ export class CategorySelector {
     }
 
     close() {
-        if (this.cleanup) {
-            this.cleanup();
-            this.cleanup = null;
-        }
         if (this.popover) {
             this.popover.remove();
             this.popover = null;
+        }
+        document.removeEventListener('click', this.handleOutsideClick);
+    }
+
+    /**
+     * Handle outside click
+     */
+    handleOutsideClick = (e) => {
+        if (this.popover && !this.popover.contains(e.target)) {
+            this.close();
         }
     }
 }
