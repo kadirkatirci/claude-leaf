@@ -11,7 +11,7 @@ export class BookmarkButton {
     this.getTheme = getTheme;
     // Use WeakMap for automatic garbage collection when messages are removed
     this.buttons = new WeakMap(); // messageElement -> button
-    this.hoverCleanups = new WeakMap(); // messageElement -> cleanup function
+    this.hoverCleanups = new Map(); // messageElement -> cleanup function (Map supports forEach)
     this.buttonStates = new WeakMap(); // messageElement -> isBookmarked state
   }
 
@@ -157,10 +157,12 @@ export class BookmarkButton {
     this.hoverCleanups.forEach(cleanup => cleanup());
     this.hoverCleanups.clear();
 
-    // Remove buttons
-    this.buttons.forEach(button => button.remove());
-    this.buttons.clear();
-    this.buttonStates.clear();
+    // Remove buttons from DOM (WeakMap doesn't support forEach, so we query DOM)
+    document.querySelectorAll('.claude-bookmark-btn').forEach(button => button.remove());
+
+    // Reset WeakMaps (they'll be garbage collected when elements are removed)
+    this.buttons = new WeakMap();
+    this.buttonStates = new WeakMap();
   }
 
   /**

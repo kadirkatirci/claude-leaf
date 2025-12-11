@@ -15,7 +15,7 @@ export class MarkerButton {
     this.onMarkerRemove = onMarkerRemove;
     this.onMarkerUpdate = onMarkerUpdate;
     this.buttonCache = new WeakMap(); // Track buttons by message element
-    this.hoverCleanups = new WeakMap(); // Track cleanup functions by message element
+    this.hoverCleanups = new Map(); // Track cleanup functions by message element (Map supports forEach)
   }
 
   /**
@@ -233,6 +233,11 @@ export class MarkerButton {
    * Remove all buttons
    */
   removeAll() {
+    // Clean up hover listeners
+    this.hoverCleanups.forEach(cleanup => cleanup());
+    this.hoverCleanups.clear();
+
+    // Remove buttons
     document.querySelectorAll('.emoji-marker-btn').forEach(btn => btn.remove());
     this.buttonCache = new WeakMap();
   }
