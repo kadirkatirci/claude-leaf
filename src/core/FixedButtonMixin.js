@@ -6,6 +6,7 @@
  */
 
 import VisibilityManager from '../utils/VisibilityManager.js';
+import navigationInterceptor from './NavigationInterceptor.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 
@@ -87,6 +88,17 @@ export default class FixedButtonMixin {
     // Listen to content change events
     eventBus.on(Events.HUB_CONTENT_CHANGED, markReady);
     eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
+
+    // Also listen for navigation events to handle /new → conversation transitions
+    module._navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+      // When entering a conversation page from /new or elsewhere, reset ready state
+      if (event.isConversationPage && !event.wasConversationPage) {
+        module._isButtonReady = false;
+        if (module.fixedButton && module.lastConversationState) {
+          module.fixedButton.style.opacity = LOADING_OPACITY.toString();
+        }
+      }
+    });
   }
 
   /**
@@ -340,6 +352,12 @@ export default class FixedButtonMixin {
       if (this.visibilityUnsubscribe) {
         this.visibilityUnsubscribe();
         this.visibilityUnsubscribe = null;
+      }
+
+      // Clean up navigation listener
+      if (this._navigationUnsubscribe) {
+        this._navigationUnsubscribe();
+        this._navigationUnsubscribe = null;
       }
 
       // Reset state

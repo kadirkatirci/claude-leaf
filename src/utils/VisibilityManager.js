@@ -130,7 +130,7 @@ class VisibilityManager {
   handleNavigationEvent(event) {
     const wasConversationPage = this.isConversationPageCached;
     const wasPath = this.lastPath;
-    
+
     // Update state
     this.isConversationPageCached = event.isConversationPage;
     this.lastPath = event.path;
@@ -144,10 +144,13 @@ class VisibilityManager {
     // Always notify on path change or conversation state change
     const stateChanged = wasConversationPage !== this.isConversationPageCached;
     const pathChanged = wasPath !== this.lastPath;
-    
+
     if (stateChanged || pathChanged) {
       this.log('State changed, notifying listeners');
-      this.notifyListeners();
+      // Use requestAnimationFrame to ensure DOM is ready before notifying
+      requestAnimationFrame(() => {
+        this.notifyListeners();
+      });
     }
   }
 

@@ -8,6 +8,7 @@
 
 import DOMUtils from '../utils/DOMUtils.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
+import navigationInterceptor from '../core/NavigationInterceptor.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 
@@ -23,6 +24,7 @@ class PanelManager {
         this.visible = false;
         this.cachedOpacity = NAV_CONFIG.opacity || 0.7;
         this.isReady = false; // Track if initial data has loaded
+        this.navigationUnsubscribe = null; // Navigation event listener cleanup
     }
 
     /**
@@ -91,6 +93,17 @@ class PanelManager {
         // Listen to both events - whichever fires first
         eventBus.on(Events.HUB_CONTENT_CHANGED, markReady);
         eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
+
+        // Also listen for navigation events to handle /new → conversation transitions
+        this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+            // When entering a conversation page from /new or elsewhere, reset ready state
+            if (event.isConversationPage && !event.wasConversationPage) {
+                this.isReady = false;
+                if (this.container) {
+                    this.container.style.opacity = LOADING_OPACITY.toString();
+                }
+            }
+        });
     }
 
     /**
@@ -231,6 +244,12 @@ class PanelManager {
         if (this.healthCheckInterval) {
             clearInterval(this.healthCheckInterval);
             this.healthCheckInterval = null;
+        }
+
+        // Clear navigation listener
+        if (this.navigationUnsubscribe) {
+            this.navigationUnsubscribe();
+            this.navigationUnsubscribe = null;
         }
 
         if (this.container) {
