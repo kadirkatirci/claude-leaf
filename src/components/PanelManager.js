@@ -9,8 +9,12 @@
 import DOMUtils from '../utils/DOMUtils.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+import { eventBus, Events } from '../utils/EventBus.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
+
+// Loading state opacity (dimmed until data loads)
+const LOADING_OPACITY = 0.3;
 
 class PanelManager {
     constructor() {
@@ -18,6 +22,7 @@ class PanelManager {
         this.buttons = new Map(); // id -> element
         this.visible = false;
         this.cachedOpacity = NAV_CONFIG.opacity || 0.7;
+        this.isReady = false; // Track if initial data has loaded
     }
 
     /**
@@ -25,6 +30,28 @@ class PanelManager {
      */
     init() {
         this.setupVisibilityListener();
+        this.setupReadyListener();
+    }
+
+    /**
+     * Listen for MessageHub events to know when data is ready
+     */
+    setupReadyListener() {
+        // When first content change comes, mark as ready
+        const markReady = () => {
+            if (this.isReady) return; // Already ready
+
+            this.isReady = true;
+
+            // Transition to normal opacity
+            if (this.container && this.visible) {
+                this.container.style.opacity = this.cachedOpacity;
+            }
+        };
+
+        // Listen to both events - whichever fires first
+        eventBus.subscribe(Events.HUB_CONTENT_CHANGED, markReady);
+        eventBus.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
     }
 
     /**
@@ -47,6 +74,9 @@ class PanelManager {
         const position = NAV_CONFIG.position || 'right';
         const isConversationPage = VisibilityManager.isOnConversationPage();
 
+        // Start with loading opacity until data is ready
+        const initialOpacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
+
         this.container = DOMUtils.createElement('div', {
             id: 'claude-nav-container',
             className: 'claude-nav-buttons',
@@ -59,8 +89,8 @@ class PanelManager {
                 display: isConversationPage ? 'flex' : 'none',
                 flexDirection: 'column',
                 gap: '8px',
-                opacity: this.cachedOpacity,
-                transition: 'opacity 0.2s ease',
+                opacity: initialOpacity,
+                transition: 'opacity 0.3s ease', // Smooth transition when ready
                 visibility: isConversationPage ? 'visible' : 'hidden',
             }
         });
@@ -129,9 +159,27 @@ class PanelManager {
      */
     setupVisibilityListener() {
         VisibilityManager.onVisibilityChange((isConversationPage) => {
+            this.visible = isConversationPage;
+
             if (this.container) {
-                VisibilityManager.setElementVisibility(this.container, isConversationPage);
-                this.visible = isConversationPage;
+                if (isConversationPage) {
+                    // Show container
+                    this.container.style.display = 'flex';
+                    this.container.style.visibility = 'visible';
+                    this.container.style.pointerEvents = 'auto';
+
+                    // Use loading opacity if not ready yet, otherwise cached opacity
+                    this.container.style.opacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
+
+                    // Reset ready state on new page (will be set again when data loads)
+                    this.isReady = false;
+                } else {
+                    // Hide container
+                    this.container.style.display = 'none';
+                    this.container.style.visibility = 'hidden';
+                    this.container.style.opacity = '0';
+                    this.container.style.pointerEvents = 'none';
+                }
             }
         });
     }

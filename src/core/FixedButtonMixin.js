@@ -1,10 +1,16 @@
 /**
  * FixedButtonMixin - Reusable mixin for modules with fixed sidebar buttons
  * Provides standardized visibility handling and button creation
+ *
+ * v2.3.0 - Added loading state (dimmed until data loads)
  */
 
 import VisibilityManager from '../utils/VisibilityManager.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
+import { eventBus, Events } from '../utils/EventBus.js';
+
+// Loading state opacity (dimmed until data loads)
+const LOADING_OPACITY = 0.3;
 
 export default class FixedButtonMixin {
   /**
@@ -16,6 +22,8 @@ export default class FixedButtonMixin {
     module.lastConversationState = null;
     module.fixedButton = null;
     module.buttonCounter = null;
+    module._isButtonReady = false; // Track if data has loaded
+    module._targetOpacity = 0.7; // Target opacity when ready
 
     // Add standard methods
     module.handleVisibilityChange = this.createVisibilityHandler(module);
@@ -23,6 +31,40 @@ export default class FixedButtonMixin {
     module.updateButtonCounter = this.createCounterUpdater(module);
     module.setupVisibilityListener = this.createVisibilitySetup(module);
     module.destroyFixedButton = this.createButtonDestroyer(module);
+    module._markButtonReady = this.createReadyMarker(module);
+
+    // Listen for MessageHub events to mark as ready
+    this.setupReadyListener(module);
+  }
+
+  /**
+   * Setup listener for MessageHub events
+   */
+  static setupReadyListener(module) {
+    const markReady = () => {
+      if (module._isButtonReady) return;
+      module._markButtonReady();
+    };
+
+    // Listen to content change events
+    eventBus.subscribe(Events.HUB_CONTENT_CHANGED, markReady);
+    eventBus.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
+  }
+
+  /**
+   * Create function to mark button as ready (transition to full opacity)
+   */
+  static createReadyMarker(module) {
+    return function () {
+      if (this._isButtonReady) return;
+
+      this._isButtonReady = true;
+
+      // Transition to target opacity
+      if (this.fixedButton && this.lastConversationState) {
+        this.fixedButton.style.opacity = this._targetOpacity.toString();
+      }
+    }.bind(module);
   }
 
   /**
@@ -42,8 +84,14 @@ export default class FixedButtonMixin {
           // Make visible - use multiple properties for robustness
           this.fixedButton.style.display = 'flex';
           this.fixedButton.style.visibility = 'visible';
-          this.fixedButton.style.opacity = '0.7';
           this.fixedButton.style.pointerEvents = 'auto';
+
+          // Use loading opacity if not ready, target opacity if ready
+          const opacity = this._isButtonReady ? this._targetOpacity : LOADING_OPACITY;
+          this.fixedButton.style.opacity = opacity.toString();
+
+          // Reset ready state on new page navigation
+          this._isButtonReady = false;
         } else {
           // Hide completely - use display:none for guaranteed hiding
           this.fixedButton.style.display = 'none';
@@ -105,10 +153,13 @@ export default class FixedButtonMixin {
 
       const theme = this.getTheme ? this.getTheme() : { primary: '#CC785C' };
 
-      // Determine opacity: use provided, then setting, then default
-      const buttonOpacity = opacity !== null
+      // Determine target opacity: use provided, then setting, then default
+      const targetOpacity = opacity !== null
         ? opacity
         : (this.getSetting ? (await this.getSetting('opacity') || 0.7) : 0.7);
+
+      // Store target opacity for later use
+      this._targetOpacity = targetOpacity;
 
       // Create button element
       const button = document.createElement('button');
@@ -128,6 +179,7 @@ export default class FixedButtonMixin {
       button.style.zIndex = '9999';
       // button.style.color = 'white'; // Commented to allow currentColor in SVGs to adapt
       button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
+      button.style.transition = 'opacity 0.3s ease'; // Smooth transition when ready
 
       // Native classes already have hover effects defined in buttonClasses
 
@@ -162,12 +214,13 @@ export default class FixedButtonMixin {
         button.style.pointerEvents = 'none';
         module.log(`Button created hidden (not on conversation page)`);
       } else {
-        // Start visible on conversation pages
+        // Start visible but dimmed (loading state) on conversation pages
         button.style.display = 'flex';
         button.style.visibility = 'visible';
-        button.style.opacity = buttonOpacity.toString();
         button.style.pointerEvents = 'auto';
-        module.log(`Button created visible (on conversation page)`);
+        // Use loading opacity - will transition to target when data loads
+        button.style.opacity = LOADING_OPACITY.toString();
+        module.log(`Button created in loading state (on conversation page)`);
       }
 
       // Append to body for persistence
