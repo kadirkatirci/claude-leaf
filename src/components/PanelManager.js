@@ -50,8 +50,8 @@ class PanelManager {
         };
 
         // Listen to both events - whichever fires first
-        eventBus.subscribe(Events.HUB_CONTENT_CHANGED, markReady);
-        eventBus.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
+        eventBus.on(Events.HUB_CONTENT_CHANGED, markReady);
+        eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
     }
 
     /**

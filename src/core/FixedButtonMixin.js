@@ -47,8 +47,8 @@ export default class FixedButtonMixin {
     };
 
     // Listen to content change events
-    eventBus.subscribe(Events.HUB_CONTENT_CHANGED, markReady);
-    eventBus.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
+    eventBus.on(Events.HUB_CONTENT_CHANGED, markReady);
+    eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
   }
 
   /**
