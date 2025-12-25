@@ -31,6 +31,45 @@ class PanelManager {
     init() {
         this.setupVisibilityListener();
         this.setupReadyListener();
+        this.setupHealthCheck();
+    }
+
+    /**
+     * Health check - periodically verify state consistency
+     * Fixes any state drift caused by timing issues
+     */
+    setupHealthCheck() {
+        // Check every 2 seconds for state consistency
+        this.healthCheckInterval = setInterval(() => {
+            if (!this.container || !document.body.contains(this.container)) {
+                // Container missing, recreate if we have buttons
+                if (this.buttons.size > 0) {
+                    console.log('[PanelManager] Health check: Container missing, recreating...');
+                    this.createContainer();
+                }
+                return;
+            }
+
+            // Verify visibility matches expected state
+            const isConversationPage = VisibilityManager.isOnConversationPage();
+            const currentDisplay = this.container.style.display;
+            const expectedDisplay = isConversationPage ? 'flex' : 'none';
+
+            if (currentDisplay !== expectedDisplay) {
+                console.log('[PanelManager] Health check: Fixing visibility mismatch');
+                if (isConversationPage) {
+                    this.container.style.display = 'flex';
+                    this.container.style.visibility = 'visible';
+                    this.container.style.pointerEvents = 'auto';
+                    this.container.style.opacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
+                } else {
+                    this.container.style.display = 'none';
+                    this.container.style.visibility = 'hidden';
+                    this.container.style.opacity = '0';
+                    this.container.style.pointerEvents = 'none';
+                }
+            }
+        }, 2000);
     }
 
     /**
@@ -188,11 +227,19 @@ class PanelManager {
      * Clear all (for cleanup)
      */
     destroy() {
+        // Clear health check interval
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
+        }
+
         if (this.container) {
             this.container.remove();
             this.container = null;
         }
         this.buttons.clear();
+        this.isReady = false;
+        this.visible = false;
     }
 }
 

@@ -45,6 +45,7 @@ class NavigationInterceptor {
     this.debugMode = false;
     this.intercepted = false;
     this.urlCheckInterval = null;
+    this.historyRewrapInterval = null; // Track history rewrap interval
     
     instance = this;
     
@@ -129,10 +130,10 @@ class NavigationInterceptor {
     history.replaceState = wrapMethod('replaceState', window.__originalHistoryReplaceState);
     
     // Re-wrap periodically to survive other scripts overriding
-    setInterval(() => {
+    this.historyRewrapInterval = setInterval(() => {
       const currentPush = history.pushState.toString();
       const currentReplace = history.replaceState.toString();
-      
+
       // Check if our wrapper is still in place (has our log call)
       if (!currentPush.includes('handleNavigation') && !currentPush.includes('__navigationInterceptor')) {
         this.log('pushState was overridden, re-wrapping...');
@@ -380,11 +381,27 @@ class NavigationInterceptor {
   }
   
   destroy() {
+    // Clear URL polling interval
     if (this.urlCheckInterval) {
       clearInterval(this.urlCheckInterval);
       this.urlCheckInterval = null;
     }
+
+    // Clear history rewrap interval
+    if (this.historyRewrapInterval) {
+      clearInterval(this.historyRewrapInterval);
+      this.historyRewrapInterval = null;
+    }
+
+    // Clear listeners
     this.listeners.clear();
+
+    // Reset state
+    this.intercepted = false;
+
+    // Clear singleton instance for proper re-initialization
+    instance = null;
+
     this.log('Destroyed');
   }
 }

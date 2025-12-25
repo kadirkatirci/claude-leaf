@@ -32,9 +32,47 @@ export default class FixedButtonMixin {
     module.setupVisibilityListener = this.createVisibilitySetup(module);
     module.destroyFixedButton = this.createButtonDestroyer(module);
     module._markButtonReady = this.createReadyMarker(module);
+    module._startHealthCheck = this.createHealthCheck(module);
 
     // Listen for MessageHub events to mark as ready
     this.setupReadyListener(module);
+  }
+
+  /**
+   * Create health check function - ensures button state consistency
+   */
+  static createHealthCheck(module) {
+    return function () {
+      // Clear existing interval if any
+      if (this._healthCheckInterval) {
+        clearInterval(this._healthCheckInterval);
+      }
+
+      // Check every 2 seconds for state consistency
+      this._healthCheckInterval = setInterval(() => {
+        if (!this.fixedButton) return;
+
+        // Check if button is still in DOM
+        if (!document.body.contains(this.fixedButton)) {
+          module.log('Health check: Button removed from DOM, cleaning up');
+          this.fixedButton = null;
+          this.buttonCounter = null;
+          clearInterval(this._healthCheckInterval);
+          this._healthCheckInterval = null;
+          return;
+        }
+
+        // Verify visibility matches expected state
+        const isConversationPage = VisibilityManager.isOnConversationPage();
+        const currentDisplay = this.fixedButton.style.display;
+        const expectedDisplay = isConversationPage ? 'flex' : 'none';
+
+        if (currentDisplay !== expectedDisplay) {
+          module.log('Health check: Fixing visibility mismatch');
+          this.handleVisibilityChange(isConversationPage);
+        }
+      }, 2000);
+    }.bind(module);
   }
 
   /**
@@ -234,6 +272,11 @@ export default class FixedButtonMixin {
         }
       }, 100);
 
+      // Start health check for state consistency
+      if (this._startHealthCheck) {
+        this._startHealthCheck();
+      }
+
       return button;
     }.bind(module);
   }
@@ -280,6 +323,12 @@ export default class FixedButtonMixin {
    */
   static createButtonDestroyer(module) {
     return function () {
+      // Clean up health check interval
+      if (this._healthCheckInterval) {
+        clearInterval(this._healthCheckInterval);
+        this._healthCheckInterval = null;
+      }
+
       // Clean up button
       if (this.fixedButton) {
         this.fixedButton.remove();
@@ -292,6 +341,9 @@ export default class FixedButtonMixin {
         this.visibilityUnsubscribe();
         this.visibilityUnsubscribe = null;
       }
+
+      // Reset state
+      this._isButtonReady = false;
 
       module.log('Fixed button and listeners destroyed');
     }.bind(module);

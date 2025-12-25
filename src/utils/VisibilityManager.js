@@ -294,8 +294,15 @@ class VisibilityManager {
       this.navigationUnsubscribe();
       this.navigationUnsubscribe = null;
     }
-    
+
+    // Reset state
     this.initialized = false;
+    this.isConversationPageCached = false;
+    this.lastPath = null;
+
+    // Clear singleton instance for proper re-initialization
+    instance = null;
+
     this.log('Destroyed');
   }
 
@@ -304,6 +311,13 @@ class VisibilityManager {
       instance = new VisibilityManager();
     }
     return instance;
+  }
+
+  /**
+   * Check if instance is valid (not destroyed)
+   */
+  static isValid() {
+    return instance !== null && instance.initialized;
   }
 }
 

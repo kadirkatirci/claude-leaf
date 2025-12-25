@@ -546,12 +546,21 @@ class ClaudeProductivityApp {
 
     this.modules.clear();
 
+    // Destroy managers (each only once)
     if (this.managers.visibility) this.managers.visibility.destroy();
     if (this.managers.theme) this.managers.theme.destroy();
     if (this.managers.keyboard) this.managers.keyboard.destroy();
-    if (this.managers.theme) this.managers.theme.destroy();
-    if (this.managers.keyboard) this.managers.keyboard.destroy();
     if (this.managers.observer) this.managers.observer.destroy();
+
+    // Destroy NavigationInterceptor
+    try {
+      const { default: navigationInterceptor } = await import('./core/NavigationInterceptor.js');
+      if (navigationInterceptor && navigationInterceptor.destroy) {
+        navigationInterceptor.destroy();
+      }
+    } catch (error) {
+      console.error('Error destroying NavigationInterceptor:', error);
+    }
 
     // Stop Core Services
     panelManager.destroy();
