@@ -85,7 +85,12 @@ const eventBus = new EventBus();
 
 // Event isimleri için constants
 const Events = {
-  // Message events
+  // MessageHub events (merkezi observer)
+  HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed',  // Mesaj sayısı değişti
+  HUB_VERSION_CHANGED: 'hub:version_changed',              // Edit version değişti
+  HUB_CONTENT_CHANGED: 'hub:content_changed',              // Herhangi bir içerik değişikliği
+
+  // Message events (legacy, geriye uyumluluk için)
   MESSAGES_UPDATED: 'messages:updated',
   MESSAGE_CLICKED: 'message:clicked',
   MESSAGE_SCROLLED: 'message:scrolled',

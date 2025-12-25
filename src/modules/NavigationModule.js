@@ -4,7 +4,6 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
@@ -49,9 +48,8 @@ class NavigationModule extends BaseModule {
     try {
       this.log('Navigation başlatılıyor...');
 
-      // Enhance with mixins
+      // Enhance with FixedButtonMixin
       FixedButtonMixin.enhance(this);
-      MessageObserverMixin.enhance(this);
 
       // Create UI (buttons + panel)
       await this.createUI();
@@ -59,24 +57,19 @@ class NavigationModule extends BaseModule {
       // Setup visibility listener (from mixin)
       this.setupVisibilityListener();
 
-      // Setup message observer with 500ms throttle (optimized from 300ms)
-      this.setupMessageObserver(() => {
-        const messages = this.dom.findMessages();
-        this.messages = messages;
+      // Subscribe to MessageHub for message count changes
+      this.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, (data) => {
+        this.messages = data.messages;
         this.updateCounter();
-        this.emit(Events.MESSAGES_UPDATED, messages);
 
         // Re-setup intersection observer when messages change
         this.setupIntersectionObserver();
-      }, {
-        throttleDelay: 500,
-        trackMessageCount: true,
-        checkConversationPage: false
       });
 
       // Initial counter update
       const initialMessages = this.dom.findMessages();
-      this.updateCounter(initialMessages.length);
+      this.messages = initialMessages;
+      this.updateCounter();
 
       // Setup keyboard shortcuts if enabled
       if (NAV_CONFIG.keyboardShortcuts) {
@@ -245,10 +238,7 @@ class NavigationModule extends BaseModule {
       this.visibilityUnsubscribe = null;
     }
 
-    // Destroy message observer
-    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
-      this.destroyMessageObserver();
-    }
+    // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
     super.destroy();
   }

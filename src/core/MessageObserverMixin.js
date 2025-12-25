@@ -2,6 +2,16 @@
  * MessageObserverMixin - Reusable observer pattern for message tracking
  * Provides standardized DOM observation with throttling and message count tracking
  *
+ * @deprecated Bu mixin artık kullanılmamalıdır. Bunun yerine MessageHub kullanın.
+ *
+ * Yeni kod için:
+ * - this.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, callback) - mesaj sayısı değiştiğinde
+ * - this.subscribe(Events.HUB_VERSION_CHANGED, callback) - edit version değiştiğinde
+ * - this.subscribe(Events.HUB_CONTENT_CHANGED, callback) - herhangi bir içerik değişikliğinde
+ *
+ * MessageHub tüm modüller için tek bir MutationObserver kullanır ve
+ * merkezi event dağıtımı sağlar.
+ *
  * v2.1.1 - Added MessageCache invalidation for performance
  *
  * Note: EditScanner handles version changes separately. This mixin checks
@@ -13,9 +23,15 @@ import messageCache from './MessageCache.js';
 const MessageObserverMixin = {
   /**
    * Enhance a module with message observer capabilities
+   * @deprecated Use MessageHub events instead (HUB_MESSAGE_COUNT_CHANGED, HUB_CONTENT_CHANGED)
    * @param {Object} module - Module instance to enhance
    */
   enhance(module) {
+    console.warn(
+      `[MessageObserverMixin] @deprecated - ${module.name || 'Unknown'} modülü hala MessageObserverMixin kullanıyor. ` +
+      'Bunun yerine MessageHub event\'lerini kullanın: HUB_MESSAGE_COUNT_CHANGED, HUB_CONTENT_CHANGED'
+    );
+
     // Add properties
     module.observer = null;
     module.observerTimeout = null;

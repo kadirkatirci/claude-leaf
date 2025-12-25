@@ -2,6 +2,8 @@
  * CounterBadge Component
  * Centralized badge/counter creation for all modules
  * Uses Claude native classes exclusively
+ *
+ * v2.2.0 - Added state cache to prevent unnecessary DOM updates
  */
 
 import { ClaudeClasses, cn } from '../../utils/ClassNames.js';
@@ -11,6 +13,8 @@ import { ClaudeClasses, cn } from '../../utils/ClassNames.js';
  * Creates consistent counter badges across all modules using Claude native classes
  */
 export class CounterBadge {
+  // Static state cache to prevent unnecessary DOM updates
+  static _stateCache = new Map();
   /**
    * Create a counter badge element
    * @param {Object} options - Badge configuration
@@ -51,22 +55,40 @@ export class CounterBadge {
   }
 
   /**
-   * Update badge content
+   * Update badge content with state caching
+   * Prevents unnecessary DOM updates if content hasn't changed
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    * @param {string|number} content - New content
+   * @returns {boolean} - True if DOM was updated, false if cached (no update needed)
    */
   static update(badgeOrId, content) {
     const badge = typeof badgeOrId === 'string'
       ? document.getElementById(badgeOrId)
       : badgeOrId;
 
-    if (!badge) return;
+    if (!badge) return false;
 
+    // Get cache key (use element ID or fallback to element reference)
+    const cacheKey = badge.id || badge;
+    const contentStr = String(content);
+
+    // Check cache - skip DOM update if content hasn't changed
+    const cachedContent = this._stateCache.get(cacheKey);
+    if (cachedContent === contentStr) {
+      return false; // No update needed
+    }
+
+    // Update cache
+    this._stateCache.set(cacheKey, contentStr);
+
+    // Update DOM
     badge.textContent = content;
 
     // Auto-hide if content is 0 or empty
     const shouldHide = !content || content === '0' || content === '0/0';
     badge.style.display = shouldHide ? 'none' : 'block';
+
+    return true;
   }
 
   /**
@@ -139,7 +161,7 @@ export class CounterBadge {
   }
 
   /**
-   * Remove badge
+   * Remove badge and clear from cache
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    */
   static remove(badgeOrId) {
@@ -148,8 +170,20 @@ export class CounterBadge {
       : badgeOrId;
 
     if (badge) {
+      // Clear from cache
+      const cacheKey = badge.id || badge;
+      this._stateCache.delete(cacheKey);
+
       badge.remove();
     }
+  }
+
+  /**
+   * Clear all cached states
+   * Useful when navigating to a new page
+   */
+  static clearCache() {
+    this._stateCache.clear();
   }
 
   /**

@@ -4,7 +4,6 @@
  */
 import BaseModule from './BaseModule.js';
 import DOMUtils from '../utils/DOMUtils.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { Events } from '../utils/EventBus.js';
 import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';
@@ -49,9 +48,6 @@ class ContentFoldingModule extends BaseModule {
 
       this.log('Content Folding başlatılıyor...');
 
-      // Enhance with MessageObserverMixin
-      MessageObserverMixin.enhance(this);
-
       // Set current conversation for state store
       conversationStateStore.setCurrentConversation(window.location.pathname);
 
@@ -69,9 +65,9 @@ class ContentFoldingModule extends BaseModule {
       // Track last streaming state to detect when final message completes
       this.lastStreamingState = null;
 
-      // Listen for messages updated (fired when count changes or system broadcasts)
-      this.subscribe(Events.MESSAGES_UPDATED, () => {
-        this.log('🔄 Messages updated, checking for content changes...');
+      // Subscribe to MessageHub for content changes
+      this.subscribe(Events.HUB_CONTENT_CHANGED, () => {
+        this.log('🔄 Content changed, checking for foldable content...');
 
         // Check if last message finished streaming (switched from true to false)
         const messages = this.dom.findMessages();
@@ -94,18 +90,6 @@ class ContentFoldingModule extends BaseModule {
 
       // Initial scan
       setTimeout(() => this.scanContent(), 1000);
-
-      // Setup message observer with count-only tracking (avoids excessive DOM change noise)
-      this.setupMessageObserver(() => {
-        this.scanContent();
-      }, {
-        throttleDelay: 500,
-        // Only trigger on message count changes (new/removed messages), not on every
-        // DOM mutation (hover, scroll, animations). Content completion is handled via
-        // Events.MESSAGES_UPDATED which checks the data-is-streaming attribute.
-        trackMessageCount: true,
-        checkConversationPage: false
-      });
 
       this.log('✅ Content Folding aktif');
     } catch (error) {
@@ -231,13 +215,9 @@ class ContentFoldingModule extends BaseModule {
   destroy() {
     this.log('🛑 Content Folding durduruluyor...');
 
-    // Destroy message observer if it exists
-    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
-      this.destroyMessageObserver();
-    }
-
     this.cleanup();
 
+    // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
     super.destroy();
   }
 }

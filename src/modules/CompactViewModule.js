@@ -4,7 +4,6 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
@@ -47,9 +46,6 @@ class CompactViewModule extends BaseModule {
     try {
       this.log('Compact View başlatılıyor...');
 
-      // Enhance with MessageObserverMixin
-      MessageObserverMixin.enhance(this);
-
       // Setup visibility listener for proper show/hide behavior
       this.setupVisibilityListener();
 
@@ -67,22 +63,14 @@ class CompactViewModule extends BaseModule {
         this.error('Failed to process messages:', error);
       }
 
-      // Setup message observer
-      try {
-        this.setupMessageObserver(() => {
-          try {
-            this.processMessages();
-          } catch (error) {
-            this.error('Error in message observer callback:', error);
-          }
-        }, {
-          throttleDelay: 500,
-          trackMessageCount: false, // Process on any change
-          checkConversationPage: false
-        });
-      } catch (error) {
-        this.error('Failed to setup message observer:', error);
-      }
+      // Subscribe to MessageHub for content changes
+      this.subscribe(Events.HUB_CONTENT_CHANGED, () => {
+        try {
+          this.processMessages();
+        } catch (error) {
+          this.error('Error in content change handler:', error);
+        }
+      });
 
       // Klavye kısayolu
       try {
@@ -511,14 +499,7 @@ class CompactViewModule extends BaseModule {
         this.error('Error clearing timeouts:', error);
       }
 
-      // Destroy message observer
-      try {
-        if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
-          this.destroyMessageObserver();
-        }
-      } catch (error) {
-        this.error('Error destroying message observer:', error);
-      }
+      // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
       // Collapse state cleanup
       try {

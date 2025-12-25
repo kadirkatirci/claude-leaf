@@ -6,15 +6,14 @@
  * NEVER auto-delete - only user can delete.
  */
 import BaseModule from './BaseModule.js';
+import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { getCleanMessageText, generateSignature, getValidMarkers, resolveMarkerIndex } from '../utils/MarkerUtils.js';
 import { bookmarkStore } from '../stores/index.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
 import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import { versionManager } from '../core/VersionManager.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
@@ -23,7 +22,6 @@ const BOOKMARK_CONFIG = MODULE_CONSTANTS.bookmarks;
 class BookmarkModule extends BaseModule {
   constructor() {
     super('bookmarks');
-    this.versionChangeUnsubscribe = null;
     this.chromeMessageListener = null;
 
     this.buttonManager = new BookmarkButton(this.dom, () => this.getTheme());
@@ -62,7 +60,6 @@ class BookmarkModule extends BaseModule {
     this.log('Bookmarks başlatılıyor...');
 
     FixedButtonMixin.enhance(this);
-    MessageObserverMixin.enhance(this);
 
     await bookmarkStore.setStorageType(BOOKMARK_CONFIG.storageType);
     const bookmarks = await bookmarkStore.getAll();
@@ -72,21 +69,15 @@ class BookmarkModule extends BaseModule {
     this.sidebar.inject();
     await this.addBookmarkButtons();
 
-    // Setup message observer for automatic updates
-    // NOTE: Removed duplicate MESSAGES_UPDATED subscription to prevent double updates
-    this.setupMessageObserver(async () => {
+    // Subscribe to MessageHub for content changes (replaces MessageObserver + VersionManager)
+    this.subscribe(Events.HUB_CONTENT_CHANGED, async () => {
       await this.addBookmarkButtons();
       await this.updateUI();
-    }, { throttleDelay: 500, trackMessageCount: true, checkConversationPage: true });
+    });
 
     if (BOOKMARK_CONFIG.keyboardShortcuts) {
       this.setupKeyboardShortcuts();
     }
-
-    // Removed: this.subscribe(Events.MESSAGES_UPDATED, ...) - causes double updates
-    // MessageObserver already handles DOM changes efficiently
-
-    this.registerForVersionChanges();
 
     this.chromeMessageListener = async (message) => {
       if (message.type === 'BOOKMARKS_UPDATED' || message.type === 'STORAGE_TYPE_CHANGED') {
@@ -111,22 +102,6 @@ class BookmarkModule extends BaseModule {
     this.checkBookmarkNavigation();
 
     this.log(`✅ Bookmarks ready`);
-  }
-
-  registerForVersionChanges() {
-    try {
-      // Use shared VersionManager
-      // Since we are using ES modules, better to add import at top
-
-      this.versionChangeUnsubscribe = versionManager.onVersionChange(async () => {
-        await this.addBookmarkButtons();
-        await this.updateUI();
-      });
-
-      this.log('✅ Registered for version changes via VersionManager');
-    } catch (error) {
-      this.error('Failed to register for version edits:', error);
-    }
   }
 
   clearUIElements() {
@@ -409,14 +384,11 @@ class BookmarkModule extends BaseModule {
   }
 
   async destroy() {
-    this.versionChangeUnsubscribe?.();
     if (this.chromeMessageListener) chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
-    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
-      this.destroyMessageObserver();
-    }
     this.buttonManager?.removeAll?.();
     this.panel.destroy();
     this.sidebar.destroy();
+    // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
     super.destroy();
   }
 }

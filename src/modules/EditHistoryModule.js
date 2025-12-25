@@ -5,7 +5,6 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditBadge from './EditHistoryModule/EditBadge.js';
@@ -15,10 +14,9 @@ import EditModal from './EditHistoryModule/EditModal.js';
 import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
 import { editHistoryStore } from '../stores/index.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
-// New imports
-import { versionManager } from '../core/VersionManager.js';
 import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
 import { panelManager } from '../components/PanelManager.js';
+import { messageHub } from '../core/MessageHub.js';
 
 const EDIT_CONFIG = MODULE_CONSTANTS.editHistory;
 
@@ -44,8 +42,6 @@ class EditHistoryModule extends BaseModule {
     document.addEventListener('claude:open_branch_map', (e) => {
       this.branchMapModal.show(e.detail.conversationUrl);
     });
-
-    this.versionChangeUnsubscribe = null;
   }
 
   // Lazy getters
@@ -104,18 +100,10 @@ class EditHistoryModule extends BaseModule {
       this.setupVisibilityListener();
       this.panel.create();
 
-      // Register for version changes via Manager
-      this.versionChangeUnsubscribe = versionManager.onVersionChange((data) => {
+      // Subscribe to MessageHub for version changes
+      this.subscribe(Events.HUB_VERSION_CHANGED, (data) => {
         this.handleVersionChange(data);
       });
-
-      // Initial manual check (ask VersionManager to scan or just scan ourselves?)
-      // VersionManager is already running
-
-      // Wait a bit for initial scan to complete if just started, or trigger manual scan
-      setTimeout(() => {
-        versionManager.scan();
-      }, 500);
 
       // Create collapse button (only if CompactView is enabled)
       const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
@@ -136,10 +124,10 @@ class EditHistoryModule extends BaseModule {
   }
 
   /**
-   * Handle version change from manager
+   * Handle version change from MessageHub
    */
   async handleVersionChange(data) {
-    const edits = data.edits || [];
+    const edits = data.editedPrompts || [];
 
     // 1. Update UI
     this.handleEditsFound(edits);
@@ -179,8 +167,8 @@ class EditHistoryModule extends BaseModule {
    */
   updateUI() {
     this.log('Updating edit history UI');
-    // Request scan from manager
-    versionManager.scan();
+    // Request scan from MessageHub
+    messageHub.refresh();
   }
 
   /**
@@ -193,7 +181,7 @@ class EditHistoryModule extends BaseModule {
 
     const checkForEdits = async () => {
       // Trigger a scan
-      await versionManager.scan();
+      messageHub.refresh();
 
       // Check if we found any edits
       if (this.editedMessages.length > 0 || retryCount >= maxRetries) {
@@ -383,7 +371,7 @@ class EditHistoryModule extends BaseModule {
     }
 
     // Yeniden tara
-    versionManager.scan();
+    messageHub.refresh();
   }
 
   /**
@@ -443,11 +431,7 @@ class EditHistoryModule extends BaseModule {
         this.error('Error removing collapse button:', error);
       }
 
-      // Alt bileşenleri temizle
-      if (this.versionChangeUnsubscribe) {
-        this.versionChangeUnsubscribe();
-        this.versionChangeUnsubscribe = null;
-      }
+      // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
       try {
         if (this.badge) this.badge.removeAll();

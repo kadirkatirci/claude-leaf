@@ -29,6 +29,7 @@ import domReadyChecker from './utils/DOMReadyChecker.js';
 // Core Services
 import { panelManager } from './components/PanelManager.js';
 import { versionManager } from './core/VersionManager.js';
+import { messageHub } from './core/MessageHub.js';
 
 // Import feature modules
 import NavigationModule from './modules/NavigationModule.js';
@@ -195,9 +196,10 @@ class ClaudeProductivityApp {
     await messageRegistry.start();
     this.managers.messageRegistry = messageRegistry;
 
-    // Initialize Core Services (Panel & Version)
+    // Initialize Core Services (Panel, MessageHub & Version)
     panelManager.init();
-    versionManager.start();
+    messageHub.start();  // Merkezi DOM observer
+    versionManager.start();  // Geriye uyumluluk için (artık MessageHub kullanacak)
 
     if (GENERAL_CONFIG.debugMode) {
       console.log('✅ [STEP 3/7] Core infrastructure ready');
@@ -553,6 +555,7 @@ class ClaudeProductivityApp {
 
     // Stop Core Services
     panelManager.destroy();
+    messageHub.stop();  // Merkezi DOM observer
     versionManager.stop();
 
     try {

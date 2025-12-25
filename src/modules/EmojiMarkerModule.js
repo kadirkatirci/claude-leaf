@@ -9,7 +9,6 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
-import MessageObserverMixin from '../core/MessageObserverMixin.js';
 import { getCleanMessageText, generateSignature, getValidMarkers } from '../utils/MarkerUtils.js';
 import { markerStore } from '../stores/index.js';
 import { EmojiPicker } from './EmojiMarkerModule/EmojiPicker.js';
@@ -17,7 +16,6 @@ import { MarkerButton } from './EmojiMarkerModule/MarkerButton.js';
 import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import { versionManager } from '../core/VersionManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
 const EMOJI_CONFIG = MODULE_CONSTANTS.emojiMarkers;
@@ -45,7 +43,6 @@ class EmojiMarkerModule extends BaseModule {
 
     // Lazy initialization for panel (created on first use)
     this._panel = null;
-    this.versionChangeUnsubscribe = null;
   }
 
   // Lazy getter for panel
@@ -73,7 +70,6 @@ class EmojiMarkerModule extends BaseModule {
       this.log(`${markers.length} marker yüklendi`);
 
       FixedButtonMixin.enhance(this);
-      MessageObserverMixin.enhance(this);
 
       await this.createFixedButton({
         id: 'claude-marker-fixed-btn',
@@ -88,19 +84,9 @@ class EmojiMarkerModule extends BaseModule {
       this.panel.create();
       await this.updateUI();
 
-      this.subscribe(Events.MESSAGES_UPDATED, async () => {
+      // Subscribe to MessageHub for content changes (replaces MessageObserver + VersionManager + MESSAGES_UPDATED)
+      this.subscribe(Events.HUB_CONTENT_CHANGED, async () => {
         await this.updateUI();
-      });
-
-      // Use shared VersionManager
-      this.registerForVersionChanges();
-
-      this.setupMessageObserver(async () => {
-        await this.updateUI();
-      }, {
-        throttleDelay: 500,
-        trackMessageCount: true,
-        checkConversationPage: true
       });
 
       this.log('✅ Emoji Markers aktif');
@@ -108,12 +94,6 @@ class EmojiMarkerModule extends BaseModule {
       this.error('❌ Emoji Markers init failed:', error);
       throw error;
     }
-  }
-
-  registerForVersionChanges() {
-    this.versionChangeUnsubscribe = versionManager.onVersionChange(async () => {
-      await this.updateUI();
-    });
   }
 
   clearUIElements() {
@@ -296,15 +276,12 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   destroy() {
-    this.versionChangeUnsubscribe?.();
     this.destroyFixedButton();
     this.button.removeAll();
     this.badge.removeAll();
     this.panel.remove();
     this.emojiPicker.removePicker();
-    if (this.destroyMessageObserver && typeof this.destroyMessageObserver === 'function') {
-      this.destroyMessageObserver();
-    }
+    // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
     super.destroy();
   }
 }
