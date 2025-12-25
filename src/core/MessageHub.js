@@ -14,6 +14,7 @@
 
 import DOMUtils from '../utils/DOMUtils.js';
 import ObserverManager from '../managers/ObserverManager.js';
+import navigationInterceptor from './NavigationInterceptor.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import messageCache from './MessageCache.js';
 
@@ -39,6 +40,9 @@ class MessageHub {
 
     // Debug
     this.debugMode = false;
+
+    // Navigation listener cleanup
+    this.navigationUnsubscribe = null;
   }
 
   /**
@@ -50,10 +54,52 @@ class MessageHub {
       return;
     }
 
+    // Setup navigation listener for page transitions
+    this.setupNavigationListener();
+
     const target = DOMUtils.getChatContainer();
     if (!target) {
       console.warn('[MessageHub] Chat container not found, retrying in 500ms');
       setTimeout(() => this.start(), 500);
+      return;
+    }
+
+    this.startObserver(target);
+  }
+
+  /**
+   * Setup navigation listener to handle page transitions
+   */
+  setupNavigationListener() {
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
+    }
+
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+      // When entering a conversation page, restart observer
+      if (event.isConversationPage && !event.wasConversationPage) {
+        this.log('Navigation: entering conversation page, restarting...');
+        this.restart();
+      }
+      // When leaving conversation page, reset state
+      else if (!event.isConversationPage && event.wasConversationPage) {
+        this.log('Navigation: leaving conversation page, resetting state...');
+        this.resetState();
+        this.stopObserver();
+      }
+    });
+  }
+
+  /**
+   * Start the MutationObserver
+   */
+  startObserver(target) {
+    if (!target) {
+      target = DOMUtils.getChatContainer();
+    }
+
+    if (!target) {
+      console.warn('[MessageHub] Chat container not found for observer');
       return;
     }
 
@@ -71,6 +117,42 @@ class MessageHub {
 
     // İlk tarama
     setTimeout(() => this.process(), 200);
+  }
+
+  /**
+   * Stop only the observer (keep navigation listener)
+   */
+  stopObserver() {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+
+    ObserverManager.disconnect('message-hub');
+    this.observer = null;
+    this.isStarted = false;
+    this.log('Observer stopped');
+  }
+
+  /**
+   * Restart the hub (for page transitions)
+   */
+  restart() {
+    this.log('Restarting...');
+    this.stopObserver();
+    this.resetState();
+
+    // Wait a bit for DOM to stabilize, then start
+    setTimeout(() => {
+      const target = DOMUtils.getChatContainer();
+      if (target) {
+        this.startObserver(target);
+      } else {
+        // Retry if container not ready yet
+        this.log('Container not ready, scheduling retry...');
+        setTimeout(() => this.restart(), 300);
+      }
+    }, 200);
   }
 
   /**
@@ -261,21 +343,17 @@ class MessageHub {
    * Hub'ı durdur
    */
   stop() {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+    // Stop observer
+    this.stopObserver();
+
+    // Clean up navigation listener
+    if (this.navigationUnsubscribe) {
+      this.navigationUnsubscribe();
+      this.navigationUnsubscribe = null;
     }
 
-    ObserverManager.disconnect('message-hub');
-    this.observer = null;
-    this.isStarted = false;
-
     // State'i sıfırla
-    this.lastState = {
-      messageCount: 0,
-      editedCount: 0,
-      editVersions: new Map()
-    };
+    this.resetState();
 
     this.log('🛑 Stopped');
   }
