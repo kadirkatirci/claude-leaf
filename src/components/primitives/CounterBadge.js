@@ -29,7 +29,8 @@ export class CounterBadge {
       id = 'counter-badge',
       content = '0',
       position = { top: '-8px', right: '-8px' },
-      className = ''
+      className = '',
+      style = {}
     } = options;
 
     // Create badge element
@@ -48,6 +49,11 @@ export class CounterBadge {
 
     // Apply position styles (minimal inline styles for positioning only)
     Object.assign(badge.style, this.getPositionStyles(position));
+
+    // Apply custom styles (e.g., display: 'none' for initially hidden badges)
+    if (style && typeof style === 'object') {
+      Object.assign(badge.style, style);
+    }
 
     badge.textContent = content;
 
@@ -82,10 +88,10 @@ export class CounterBadge {
     this._stateCache.set(cacheKey, contentStr);
 
     // Update DOM
-    badge.textContent = content;
+    badge.textContent = contentStr;
 
     // Auto-hide if content is 0 or empty
-    const shouldHide = !content || content === '0' || content === '0/0';
+    const shouldHide = !contentStr || contentStr === '0' || contentStr === '0/0';
     badge.style.display = shouldHide ? 'none' : 'block';
 
     return true;
