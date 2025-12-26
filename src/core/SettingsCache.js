@@ -12,7 +12,7 @@
  * - Memory-efficient caching
  */
 
-// Not needed - SettingsCache doesn't use EventBus
+import { debugLog } from '../config/debug.js';
 
 class SettingsCache {
   constructor() {
@@ -127,7 +127,7 @@ class SettingsCache {
       });
 
       if (this.debugMode) {
-        console.log('[SettingsCache] Settings loaded:', this.cache);
+        debugLog('settings', 'Settings loaded:', this.cache);
       }
 
       return this.cache;
@@ -182,7 +182,7 @@ class SettingsCache {
     this.notifyListeners(oldCache, this.cache);
 
     if (this.debugMode) {
-      console.log('[SettingsCache] Cache updated:', this.cache);
+      debugLog('settings', 'Cache updated:', this.cache);
     }
   }
 
@@ -425,7 +425,7 @@ class SettingsCache {
     this.listeners.clear();
 
     if (this.debugMode) {
-      console.log('[SettingsCache] Cache cleared');
+      debugLog('settings', 'Cache cleared');
     }
   }
 

@@ -9,6 +9,7 @@ import {
   ChromeSyncAdapter,
   IndexedDBAdapter,
 } from './storage/adapters/index.js';
+import { debugLog } from '../config/debug.js';
 
 export class StateManager {
   constructor() {
@@ -42,7 +43,7 @@ export class StateManager {
     // Return existing store if already created
     if (this.stores.has(namespace)) {
       if (this.debug) {
-        console.log(`[StateManager] Returning existing store: ${namespace}`);
+        debugLog('state', `Returning existing store: ${namespace}`);
       }
       return this.stores.get(namespace);
     }
@@ -71,7 +72,7 @@ export class StateManager {
     this.stores.set(namespace, store);
 
     if (this.debug) {
-      console.log(`[StateManager] Created store: ${namespace} (adapter: ${adapterType})`);
+      debugLog('state', `Created store: ${namespace} (adapter: ${adapterType})`);
     }
 
     // Connect adapter changes to store if adapter supports it
@@ -115,7 +116,7 @@ export class StateManager {
       this.stores.delete(namespace);
 
       if (this.debug) {
-        console.log(`[StateManager] Deleted store: ${namespace}`);
+        debugLog('state', `Deleted store: ${namespace}`);
       }
     }
   }
@@ -136,7 +137,7 @@ export class StateManager {
     await Promise.all(promises);
 
     if (this.debug) {
-      console.log('[StateManager] All stores cleared');
+      debugLog('state', 'All stores cleared');
     }
   }
 
@@ -212,7 +213,7 @@ export class StateManager {
     await Promise.all(promises);
 
     if (this.debug) {
-      console.log('[StateManager] All stores reset to defaults');
+      debugLog('state', 'All stores reset to defaults');
     }
   }
 }

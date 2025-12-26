@@ -3,6 +3,8 @@
  * Keeps stores synchronized across multiple tabs/windows
  */
 
+import { debugLog } from '../config/debug.js';
+
 export class StorageSync {
   constructor() {
     this.stores = new Map(); // Map of namespace -> store instance
@@ -16,7 +18,7 @@ export class StorageSync {
    */
   registerStore(namespace, store) {
     this.stores.set(namespace, store);
-    console.log(`[StorageSync] Registered store: ${namespace}`);
+    debugLog('sync', `Registered store: ${namespace}`);
   }
 
   /**
@@ -25,24 +27,24 @@ export class StorageSync {
    */
   initializeListener() {
     if (this.listenerInitialized) {
-      console.warn('[StorageSync] Listener already initialized');
+      debugLog('sync', 'Listener already initialized');
       return;
     }
 
     // Check if chrome storage API is available
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) {
-      console.warn('[StorageSync] chrome.storage.onChanged not available, cross-tab sync disabled');
+      debugLog('sync', 'chrome.storage.onChanged not available, cross-tab sync disabled');
       return;
     }
 
-    console.log('[StorageSync] Initializing chrome.storage.onChanged listener');
+    debugLog('sync', 'Initializing chrome.storage.onChanged listener');
 
     chrome.storage.onChanged.addListener((changes, areaName) => {
       this.handleStorageChange(changes, areaName);
     });
 
     this.listenerInitialized = true;
-    console.log('[StorageSync] Listener initialized for areas: local, sync');
+    debugLog('sync', 'Listener initialized for areas: local, sync');
   }
 
   /**
@@ -51,14 +53,14 @@ export class StorageSync {
    * @param {string} areaName - Storage area name ('local' or 'sync')
    */
   handleStorageChange(changes, areaName) {
-    console.log(`[StorageSync] Storage change detected in ${areaName}:`, Object.keys(changes));
+    debugLog('sync', `Storage change detected in ${areaName}:`, Object.keys(changes));
 
     for (const [key, change] of Object.entries(changes)) {
       const store = this.stores.get(key);
 
       if (!store) {
         // Not a registered store, might be backup or other data
-        console.log(`[StorageSync] Change for unregistered key: ${key}`);
+        debugLog('sync', `Change for unregistered key: ${key}`);
         continue;
       }
 
@@ -66,18 +68,18 @@ export class StorageSync {
       const newValue = change.newValue;
 
       if (!newValue) {
-        console.log(`[StorageSync] Store ${key} was cleared`);
+        debugLog('sync', `Store ${key} was cleared`);
         store.invalidateCache();
         store.emit('external-clear');
         continue;
       }
 
-      console.log(`[StorageSync] Updating store ${key} from external change`);
+      debugLog('sync', `Updating store ${key} from external change`);
 
       // Update store's cache and notify subscribers
       try {
         store.onStorageChanged(newValue);
-        console.log(`[StorageSync] Store ${key} updated successfully`);
+        debugLog('sync', `Store ${key} updated successfully`);
       } catch (error) {
         console.error(`[StorageSync] Failed to update store ${key}:`, error);
       }
