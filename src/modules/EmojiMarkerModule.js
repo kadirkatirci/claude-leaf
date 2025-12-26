@@ -293,6 +293,10 @@ class EmojiMarkerModule extends BaseModule {
     this.badge.removeAll();
     this.panel.remove();
     this.emojiPicker.removePicker();
+
+    // Reset lazy-initialized components for proper reinit
+    this._panel = null;
+
     // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
     super.destroy();
   }

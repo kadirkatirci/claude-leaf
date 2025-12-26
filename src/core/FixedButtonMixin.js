@@ -89,6 +89,9 @@ export default class FixedButtonMixin {
       module._markButtonReady();
     };
 
+    // Store the callback reference for cleanup
+    module._eventBusMarkReady = markReady;
+
     // Listen to content change events
     eventBus.on(Events.HUB_CONTENT_CHANGED, markReady);
     eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
@@ -371,6 +374,13 @@ export default class FixedButtonMixin {
       if (this._navigationUnsubscribe) {
         this._navigationUnsubscribe();
         this._navigationUnsubscribe = null;
+      }
+
+      // Clean up EventBus listeners
+      if (this._eventBusMarkReady) {
+        eventBus.off(Events.HUB_CONTENT_CHANGED, this._eventBusMarkReady);
+        eventBus.off(Events.HUB_MESSAGE_COUNT_CHANGED, this._eventBusMarkReady);
+        this._eventBusMarkReady = null;
       }
 
       // Reset state

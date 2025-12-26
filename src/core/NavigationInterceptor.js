@@ -158,19 +158,23 @@ class NavigationInterceptor {
    * Setup popstate and hashchange listeners
    */
   setupEventListeners() {
-    window.addEventListener('popstate', () => {
+    // Store handlers for cleanup
+    this.popstateHandler = () => {
       this.log('popstate event');
       setTimeout(() => {
         this.handleNavigation(NavigationEventType.POP_STATE);
       }, 0);
-    });
+    };
 
-    window.addEventListener('hashchange', () => {
+    this.hashchangeHandler = () => {
       this.log('hashchange event');
       setTimeout(() => {
         this.handleNavigation(NavigationEventType.HASH_CHANGE);
       }, 0);
-    });
+    };
+
+    window.addEventListener('popstate', this.popstateHandler);
+    window.addEventListener('hashchange', this.hashchangeHandler);
   }
 
   /**
@@ -202,28 +206,27 @@ class NavigationInterceptor {
    * Monitor link clicks for early navigation detection
    */
   setupLinkClickMonitor() {
-    document.addEventListener(
-      'click',
-      e => {
-        const link = e.target.closest('a[href]');
-        if (!link) {
-          return;
-        }
+    // Store handler for cleanup
+    this.clickHandler = e => {
+      const link = e.target.closest('a[href]');
+      if (!link) {
+        return;
+      }
 
-        const href = link.getAttribute('href');
-        if (!href) {
-          return;
-        }
+      const href = link.getAttribute('href');
+      if (!href) {
+        return;
+      }
 
-        // Only care about internal navigation links
-        if (href.startsWith('/chat/') || href.startsWith('/project/') || href === '/new') {
-          this.log('Navigation link clicked:', href);
-          // The actual navigation will be caught by other methods
-          // This is just for logging/debugging
-        }
-      },
-      true
-    ); // Capture phase
+      // Only care about internal navigation links
+      if (href.startsWith('/chat/') || href.startsWith('/project/') || href === '/new') {
+        this.log('Navigation link clicked:', href);
+        // The actual navigation will be caught by other methods
+        // This is just for logging/debugging
+      }
+    };
+
+    document.addEventListener('click', this.clickHandler, true); // Capture phase
   }
 
   /**
@@ -407,6 +410,22 @@ class NavigationInterceptor {
     if (this.historyRewrapInterval) {
       clearInterval(this.historyRewrapInterval);
       this.historyRewrapInterval = null;
+    }
+
+    // Remove event listeners
+    if (this.popstateHandler) {
+      window.removeEventListener('popstate', this.popstateHandler);
+      this.popstateHandler = null;
+    }
+
+    if (this.hashchangeHandler) {
+      window.removeEventListener('hashchange', this.hashchangeHandler);
+      this.hashchangeHandler = null;
+    }
+
+    if (this.clickHandler) {
+      document.removeEventListener('click', this.clickHandler, true);
+      this.clickHandler = null;
     }
 
     // Clear listeners

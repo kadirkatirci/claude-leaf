@@ -40,10 +40,11 @@ class EditHistoryModule extends BaseModule {
     this._branchMapModal = null;
     this._ui = null;
 
-    // Listen for Branch Map open event
-    document.addEventListener('claude:open_branch_map', e => {
+    // Listen for Branch Map open event (store handler for cleanup)
+    this._branchMapHandler = e => {
       this.branchMapModal.show(e.detail.conversationUrl);
-    });
+    };
+    document.addEventListener('claude:open_branch_map', this._branchMapHandler);
   }
 
   // Lazy getters
@@ -484,6 +485,18 @@ class EditHistoryModule extends BaseModule {
       } catch (error) {
         this.error('Error removing highlights:', error);
       }
+
+      // Remove document event listener
+      if (this._branchMapHandler) {
+        document.removeEventListener('claude:open_branch_map', this._branchMapHandler);
+        this._branchMapHandler = null;
+      }
+
+      // Reset lazy-initialized components for proper reinit
+      this._panel = null;
+      this._modal = null;
+      this._branchMapModal = null;
+      this._ui = null;
 
       super.destroy();
     } catch (error) {

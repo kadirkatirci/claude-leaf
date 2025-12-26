@@ -452,6 +452,12 @@ class BookmarkModule extends BaseModule {
     this.buttonManager?.removeAll?.();
     this.panel.destroy();
     this.sidebar.destroy();
+
+    // Reset lazy-initialized components for proper reinit
+    this._panel = null;
+    this._sidebar = null;
+    this._categorySelector = null;
+
     // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
     super.destroy();
   }

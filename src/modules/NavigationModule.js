@@ -246,6 +246,11 @@ class NavigationModule extends BaseModule {
       this.visibilityUnsubscribe = null;
     }
 
+    // Clean up fixed button and its listeners (FixedButtonMixin)
+    if (this.destroyFixedButton) {
+      this.destroyFixedButton();
+    }
+
     // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
     super.destroy();
