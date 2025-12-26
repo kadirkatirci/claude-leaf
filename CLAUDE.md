@@ -56,6 +56,7 @@ src/
 │   ├── debug.js            # Debug flags and debugLog utility
 │   ├── DevConfig.js        # Development feature flags
 │   ├── ModuleConstants.js  # Module-related constants
+│   ├── storeConfig.js      # Single source of truth for store definitions
 │   └── themes.js           # Theme definitions
 ├── core/                   # Core infrastructure
 │   ├── NavigationInterceptor.js  # SPA navigation handling
@@ -177,10 +178,33 @@ Store (src/core/storage/Store.js)
   └── IndexedDBAdapter     # IndexedDB for large data
 ```
 
+**Store Configuration:** All store definitions are centralized in `src/config/storeConfig.js`. This file is the single source of truth - rollup generates `popup/storeConfig.json` from it during build.
+
+**Current Storage Types:**
+- `settings` - `chrome.storage.sync` (syncs across devices)
+- `bookmarks`, `markers`, `editHistory` - IndexedDB (unlimited storage)
+- `conversation-states` - IndexedDB with cache TTL
+
 **Choosing an Adapter:**
-- `local` - Default, 5MB limit, fast
-- `sync` - Syncs across devices, 100KB limit
-- `indexeddb` - Large data, complex queries
+- `sync` - Settings that sync across devices, 100KB limit
+- `indexeddb` - Large data like bookmarks with full HTML content (recommended for data stores)
+- `local` - Legacy, 5MB limit (avoid for new stores)
+
+### Popup-Content Script Communication
+
+Popup and content script run in different contexts:
+- **Popup**: `chrome-extension://` origin
+- **Content script**: `https://claude.ai` origin
+
+IndexedDB is origin-specific, so popup cannot directly access content script's IndexedDB. Solution:
+
+1. **Content script** (App.js) registers message handlers in constructor via `setupChromeMessageListener()`
+2. **Popup** (dataService.js) sends messages via `chrome.tabs.sendMessage()`
+
+Message types:
+- `STORE_READ` - Read data from IndexedDB store
+- `STORE_WRITE` - Write data to IndexedDB store
+- `STORE_CLEAR` - Clear IndexedDB store
 
 ### Visibility & Navigation
 
@@ -290,17 +314,51 @@ window.__stateManager.getStorageInfo()          // Storage statistics
 3. Use in module: `this.getSetting('yourSetting')`
 
 ### Adding a New Store
+
+1. **Add to storeConfig.js** (single source of truth):
+```javascript
+// In src/config/storeConfig.js
+export const STORE_CONFIG = {
+  // ... existing stores
+  yourStore: {
+    storageType: 'indexeddb',  // or 'sync', 'local'
+    version: 1,
+    defaultData: { items: [] },
+    exportable: true,  // Include in export/import
+    label: 'Your Store',
+  },
+};
+```
+
+2. **Create the store file**:
 ```javascript
 // In src/stores/YourStore.js
 import { stateManager } from '../core/StateManager.js';
+import { getStoreConfig } from '../config/storeConfig.js';
 
-const store = stateManager.createStore('yourStore', {
-  adapter: 'local',  // or 'sync', 'indexeddb'
-  defaultData: { items: [] },
-  version: 1
-});
+const CONFIG = getStoreConfig('yourStore');
 
-export default store;
+export class YourStore {
+  constructor() {
+    this.store = stateManager.createStore('yourStore', {
+      adapter: CONFIG.storageType,
+      version: CONFIG.version,
+      defaultData: CONFIG.defaultData,
+    });
+  }
+  // Add your methods...
+}
+
+export const yourStore = new YourStore();
+```
+
+3. **If using IndexedDB**, add to App.js message handler:
+```javascript
+// In setupChromeMessageListener()
+const storeMap = {
+  // ... existing stores
+  yourStore: yourStore,
+};
 ```
 
 ### Handling SPA Navigation
