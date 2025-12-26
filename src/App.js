@@ -204,7 +204,7 @@ class ClaudeProductivityApp {
     });
   }
 
-  async handleNavigationEvent(event) {
+  handleNavigationEvent(event) {
     // Skip initial events
     if (event.type === 'initial') {
       return;
@@ -427,7 +427,7 @@ class ClaudeProductivityApp {
   setupGlobalListeners() {
     window.addEventListener('beforeunload', () => this.destroy());
 
-    eventBus.on(Events.SETTINGS_CHANGED, async settings => {
+    eventBus.on(Events.SETTINGS_CHANGED, settings => {
       this.applySettingsToManagers(settings);
       // Apply theme settings
       ThemeManager.setTheme(GENERAL_CONFIG.colorTheme, GENERAL_CONFIG.customColor);
@@ -542,7 +542,7 @@ class ClaudeProductivityApp {
     await this.init();
   }
 
-  async healthCheck() {
+  healthCheck() {
     const navState = navigationInterceptor.getState();
     const visState = VisibilityManager.getStatus();
 
@@ -559,7 +559,7 @@ class ClaudeProductivityApp {
    * Debug command to verify extension architecture state.
    * Call via: window.claudeProductivity.verifyArchitecture()
    */
-  async verifyArchitecture() {
+  verifyArchitecture() {
     console.log('[App] Architecture Verification\n');
 
     const navState = navigationInterceptor.getState();
