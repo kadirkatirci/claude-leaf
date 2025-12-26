@@ -1,17 +1,17 @@
 /**
  * MessageRegistry - Centralized message management
- * 
+ *
  * Single Source of Truth for all message-related operations.
  * All modules (Navigation, Bookmark, EmojiMarker, EditHistory) use this registry
  * instead of finding messages independently.
- * 
+ *
  * Key Features:
  * - Stable IDs that survive version changes and page reloads
  * - Centralized DOM observation (single observer for all modules)
  * - Consistent message list across all modules
  * - Edit version change detection
  * - Navigation-aware with automatic restart on page change
- * 
+ *
  * StableId Strategy:
  * - Based on user message content hash + occurrence index
  * - User message content never changes (even when edit version changes)
@@ -63,7 +63,7 @@ class MessageRegistry {
     // Debug: Make accessible from console
     window.__messageRegistry = this;
     // Measurement toggle (disabled by default to avoid console spam)
-    this.measurementEnabled = true;
+    this.measurementEnabled = false;
   }
 
   /**
@@ -109,7 +109,7 @@ class MessageRegistry {
       // Wait for DOM to be ready
       const isReady = await domReadyChecker.waitForConversationReady({
         maxWait: 5000,
-        requireMessages: false
+        requireMessages: false,
       });
 
       if (!isReady) {
@@ -120,7 +120,6 @@ class MessageRegistry {
 
       // Try to start observer with retry
       await this.startObserverWithRetry();
-
     } catch (error) {
       console.error('[MessageRegistry] Error during start:', error);
       this.isStarting = false;
@@ -147,7 +146,7 @@ class MessageRegistry {
         ObserverManager.observe(
           this.observerId,
           chatContainer,
-          (mutations) => {
+          mutations => {
             // Observer callback measurement + mutation count reporting
             const cbStart = this.measurementEnabled ? performance.now() : 0;
 
@@ -164,7 +163,12 @@ class MessageRegistry {
                   const cbMs = Math.round(cbEnd - cbStart);
                   const mCount = Array.isArray(mutations) ? mutations.length : 0;
 
-                  console.groupCollapsed('[MR] MessageRegistry scan', `${scanMs}ms`, `mutations:${mCount}`, `messages:${this.messages.length}`);
+                  console.groupCollapsed(
+                    '[MR] MessageRegistry scan',
+                    `${scanMs}ms`,
+                    `mutations:${mCount}`,
+                    `messages:${this.messages.length}`
+                  );
                   console.log('[MR] scan time:', `${scanMs}ms`);
                   console.log('[MR] observer callback overhead:', `${cbMs}ms`);
                   console.log('[MR] mutation count:', mCount);
@@ -185,7 +189,7 @@ class MessageRegistry {
             childList: true,
             subtree: true,
             attributes: false,
-            throttle: 100
+            throttle: 100,
           }
         );
 
@@ -193,7 +197,9 @@ class MessageRegistry {
         this.isStarting = false;
         this.startRetryCount = 0;
 
-        this.log(`Started successfully after ${attempt + 1} attempts, found ${this.messages.length} messages`);
+        this.log(
+          `Started successfully after ${attempt + 1} attempts, found ${this.messages.length} messages`
+        );
         return;
       }
 
@@ -216,7 +222,7 @@ class MessageRegistry {
       this.navigationUnsubscribe();
     }
 
-    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate(event => {
       this.handleNavigationEvent(event);
     });
 
@@ -258,7 +264,7 @@ class MessageRegistry {
       // Wait for new page DOM to be ready
       const isReady = await domReadyChecker.waitForConversationReady({
         maxWait: 5000,
-        requireMessages: false
+        requireMessages: false,
       });
 
       if (isReady) {
@@ -425,7 +431,7 @@ class MessageRegistry {
           versionChanges.push({
             stableId,
             from: lastVersion,
-            to: versionInfo
+            to: versionInfo,
           });
           changeReason = `Version changed: ${stableId} "${lastVersion}" → "${versionInfo}"`;
         }
@@ -446,7 +452,7 @@ class MessageRegistry {
         versionInfo,
         currentVersion,
         totalVersions,
-        hasEditHistory: totalVersions > 1
+        hasEditHistory: totalVersions > 1,
       };
 
       newMessages.push(messageData);
@@ -455,7 +461,8 @@ class MessageRegistry {
 
     if (!hasChanges && newMessages.length !== this.messages.length) {
       hasChanges = true;
-      changeReason = changeReason || `Message count: ${this.messages.length} → ${newMessages.length}`;
+      changeReason =
+        changeReason || `Message count: ${this.messages.length} → ${newMessages.length}`;
     }
 
     if (!hasChanges) {
@@ -497,7 +504,9 @@ class MessageRegistry {
    * Get clean text content from element
    */
   getCleanText(element) {
-    if (!element) return '';
+    if (!element) {
+      return '';
+    }
 
     const clone = element.cloneNode(true);
 
@@ -511,7 +520,7 @@ class MessageRegistry {
       '[class*="bookmark"]',
       'button',
       'script',
-      'style'
+      'style',
     ];
 
     selectorsToRemove.forEach(selector => {
@@ -585,9 +594,11 @@ class MessageRegistry {
 
   findByPreview(preview) {
     const normalized = preview.toLowerCase().trim().substring(0, 50);
-    return this.messages.find(m =>
-      m.contentPreview.toLowerCase().trim().substring(0, 50) === normalized
-    ) || null;
+    return (
+      this.messages.find(
+        m => m.contentPreview.toLowerCase().trim().substring(0, 50) === normalized
+      ) || null
+    );
   }
 
   /**
@@ -627,7 +638,7 @@ class MessageRegistry {
   resolveMarkers(markers) {
     return markers.map(marker => ({
       marker,
-      ...this.resolveMarker(marker)
+      ...this.resolveMarker(marker),
     }));
   }
 
@@ -692,7 +703,7 @@ class MessageRegistry {
       versionCallbackCount: this.versionCallbacks.size,
       lastScanTime: this.lastScanTime,
       startRetryCount: this.startRetryCount,
-      hasNavigationListener: !!this.navigationUnsubscribe
+      hasNavigationListener: !!this.navigationUnsubscribe,
     };
   }
 }

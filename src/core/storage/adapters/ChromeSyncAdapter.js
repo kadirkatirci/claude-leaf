@@ -38,7 +38,6 @@ export class ChromeSyncAdapter extends BaseAdapter {
     this.onChangeListener = callback;
   }
 
-
   /**
    * Get Chrome storage API with fallback
    */
@@ -47,7 +46,9 @@ export class ChromeSyncAdapter extends BaseAdapter {
       return chrome.storage.sync;
     }
 
-    console.warn('[ChromeSyncAdapter] chrome.storage.sync unavailable, using localStorage fallback');
+    console.warn(
+      '[ChromeSyncAdapter] chrome.storage.sync unavailable, using localStorage fallback'
+    );
     return this.createLocalStorageFallback();
   }
 
@@ -59,8 +60,8 @@ export class ChromeSyncAdapter extends BaseAdapter {
     const QUOTA_BYTES_PER_ITEM = 8192; // 8KB - defined here for use in closure
 
     return {
-      get: (keys) => {
-        return new Promise((resolve) => {
+      get: keys => {
+        return new Promise(resolve => {
           const result = {};
           const keyArray = Array.isArray(keys) ? keys : [keys];
 
@@ -77,7 +78,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
           resolve(result);
         });
       },
-      set: (items) => {
+      set: items => {
         return new Promise((resolve, reject) => {
           try {
             Object.entries(items).forEach(([key, value]) => {
@@ -100,15 +101,15 @@ export class ChromeSyncAdapter extends BaseAdapter {
           }
         });
       },
-      remove: (keys) => {
-        return new Promise((resolve) => {
+      remove: keys => {
+        return new Promise(resolve => {
           const keyArray = Array.isArray(keys) ? keys : [keys];
           keyArray.forEach(key => localStorage.removeItem(prefix + key));
           resolve();
         });
       },
       clear: () => {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           // Only clear sync-prefixed items
           Object.keys(localStorage)
             .filter(key => key.startsWith(prefix))
@@ -116,11 +117,15 @@ export class ChromeSyncAdapter extends BaseAdapter {
           resolve();
         });
       },
-      getBytesInUse: (keys) => {
-        return new Promise((resolve) => {
+      getBytesInUse: keys => {
+        return new Promise(resolve => {
           let totalBytes = 0;
-          const keyArray = keys === null ? Object.keys(localStorage).filter(k => k.startsWith(prefix)) :
-            (Array.isArray(keys) ? keys : [keys]);
+          const keyArray =
+            keys === null
+              ? Object.keys(localStorage).filter(k => k.startsWith(prefix))
+              : Array.isArray(keys)
+                ? keys
+                : [keys];
 
           keyArray.forEach(key => {
             const fullKey = key.startsWith(prefix) ? key : prefix + key;
@@ -132,7 +137,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
 
           resolve(totalBytes);
         });
-      }
+      },
     };
   }
 
@@ -146,7 +151,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
     if (bytes > this.QUOTA_BYTES_PER_ITEM) {
       throw new Error(
         `Value for key "${key}" exceeds chrome.storage.sync quota per item (${bytes} bytes > ${this.QUOTA_BYTES_PER_ITEM} bytes). ` +
-        `Consider using ChromeLocalAdapter instead.`
+          `Consider using ChromeLocalAdapter instead.`
       );
     }
 
@@ -158,7 +163,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
    */
   async get(key) {
     return new Promise((resolve, reject) => {
-      this.storageAPI.get([key], (result) => {
+      this.storageAPI.get([key], result => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -182,17 +187,23 @@ export class ChromeSyncAdapter extends BaseAdapter {
 
           // Provide helpful error messages
           if (error.includes('QUOTA_BYTES')) {
-            reject(new Error(
-              'chrome.storage.sync quota exceeded (100KB total). Consider using ChromeLocalAdapter for large data.'
-            ));
+            reject(
+              new Error(
+                'chrome.storage.sync quota exceeded (100KB total). Consider using ChromeLocalAdapter for large data.'
+              )
+            );
           } else if (error.includes('QUOTA_BYTES_PER_ITEM')) {
-            reject(new Error(
-              'Item exceeds 8KB limit for chrome.storage.sync. Consider splitting data or using ChromeLocalAdapter.'
-            ));
+            reject(
+              new Error(
+                'Item exceeds 8KB limit for chrome.storage.sync. Consider splitting data or using ChromeLocalAdapter.'
+              )
+            );
           } else if (error.includes('MAX_ITEMS')) {
-            reject(new Error(
-              'Maximum items (512) exceeded for chrome.storage.sync. Consider using ChromeLocalAdapter.'
-            ));
+            reject(
+              new Error(
+                'Maximum items (512) exceeded for chrome.storage.sync. Consider using ChromeLocalAdapter.'
+              )
+            );
           } else {
             reject(new Error(error));
           }
@@ -238,7 +249,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
    */
   async keys() {
     return new Promise((resolve, reject) => {
-      this.storageAPI.get(null, (result) => {
+      this.storageAPI.get(null, result => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -252,7 +263,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
    * Get storage info
    */
   async getInfo() {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.sync) {
         resolve({
           type: 'ChromeSyncAdapter (fallback)',
@@ -260,12 +271,12 @@ export class ChromeSyncAdapter extends BaseAdapter {
           quota: this.QUOTA_BYTES,
           quotaPerItem: this.QUOTA_BYTES_PER_ITEM,
           maxItems: this.MAX_ITEMS,
-          usage: 0
+          usage: 0,
         });
         return;
       }
 
-      this.storageAPI.getBytesInUse(null, (bytesInUse) => {
+      this.storageAPI.getBytesInUse(null, bytesInUse => {
         resolve({
           type: 'ChromeSyncAdapter',
           available: true,
@@ -273,7 +284,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
           quotaPerItem: this.QUOTA_BYTES_PER_ITEM,
           maxItems: this.MAX_ITEMS,
           usage: bytesInUse || 0,
-          usagePercent: ((bytesInUse || 0) / this.QUOTA_BYTES * 100).toFixed(2) + '%'
+          usagePercent: (((bytesInUse || 0) / this.QUOTA_BYTES) * 100).toFixed(2) + '%',
         });
       });
     });

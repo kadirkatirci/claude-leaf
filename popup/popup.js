@@ -48,14 +48,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============================================
 async function loadConfig() {
   const response = await fetch('./config.json');
-  if (!response.ok) throw new Error('Failed to load config.json');
+  if (!response.ok) {
+    throw new Error('Failed to load config.json');
+  }
   return response.json();
 }
 
 async function loadDevConfig() {
   try {
     const response = await fetch('./devConfig.json');
-    if (!response.ok) return { disabledModules: [] };
+    if (!response.ok) {
+      return { disabledModules: [] };
+    }
     return response.json();
   } catch {
     return { disabledModules: [] };
@@ -73,14 +77,18 @@ function isModuleDevDisabled(moduleId) {
 // --- Tabs ---
 function renderTabs() {
   const container = document.getElementById('tabs-nav');
-  container.innerHTML = config.tabs.map((tab, index) => `
+  container.innerHTML = config.tabs
+    .map(
+      (tab, index) => `
     <button class="tab ${index === 0 ? 'active' : ''}" data-tab="${tab.id}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="${tab.icon}"/>
       </svg>
       <span>${tab.label}</span>
     </button>
-  `).join('');
+  `
+    )
+    .join('');
 }
 
 // --- Features Tab ---
@@ -88,10 +96,11 @@ function renderFeatures() {
   const container = document.getElementById('feature-list');
 
   // Filter out dev-disabled modules
-  const enabledModules = Object.entries(config.modules)
-    .filter(([id]) => !isModuleDevDisabled(id));
+  const enabledModules = Object.entries(config.modules).filter(([id]) => !isModuleDevDisabled(id));
 
-  container.innerHTML = enabledModules.map(([id, module]) => `
+  container.innerHTML = enabledModules
+    .map(
+      ([id, module]) => `
     <div class="feature-item" data-module="${id}">
       <div class="feature-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="${module.iconFill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -113,14 +122,18 @@ function renderFeatures() {
         </label>
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 
   // Setup feature toggle listeners (NO AUTO-SAVE) - only for enabled modules
   enabledModules.forEach(([id]) => {
     const toggle = document.getElementById(`${id}-enabled`);
     if (toggle) {
-      toggle.addEventListener('change', (e) => {
-        if (!currentSettings[id]) currentSettings[id] = {};
+      toggle.addEventListener('change', e => {
+        if (!currentSettings[id]) {
+          currentSettings[id] = {};
+        }
         currentSettings[id].enabled = e.target.checked;
         console.log(`[Popup] Toggle changed: ${id}.enabled =`, e.target.checked);
       });
@@ -142,22 +155,31 @@ function renderShortcuts() {
   const container = document.getElementById('shortcuts-list');
 
   // Filter out shortcuts for dev-disabled modules
-  const enabledShortcuts = config.shortcuts
-    .filter(group => !group.module || !isModuleDevDisabled(group.module));
+  const enabledShortcuts = config.shortcuts.filter(
+    group => !group.module || !isModuleDevDisabled(group.module)
+  );
 
-  container.innerHTML = enabledShortcuts.map(group => `
+  container.innerHTML = enabledShortcuts
+    .map(
+      group => `
     <div class="shortcut-group">
       <h3 class="shortcut-group-title">${group.group}</h3>
-      ${group.items.map(item => `
+      ${group.items
+        .map(
+          item => `
         <div class="shortcut-item">
           <span class="shortcut-keys">
             ${item.keys.map(key => `<kbd>${key}</kbd>`).join(' + ')}
           </span>
           <span class="shortcut-desc">${item.description}</span>
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 }
 
 // --- Data Tab ---
@@ -175,12 +197,16 @@ function renderDataSection() {
         Export
       </h3>
       <div class="checkbox-group">
-        ${exportOpts.map(opt => `
+        ${exportOpts
+          .map(
+            opt => `
           <label class="checkbox-item">
             <input type="checkbox" id="${opt.id}" checked>
             <span>${opt.label}</span>
           </label>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       <button class="btn btn-primary" id="export-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -215,12 +241,16 @@ function renderDataSection() {
         Clear Data
       </h3>
       <div class="checkbox-group">
-        ${clearOpts.map(opt => `
+        ${clearOpts
+          .map(
+            opt => `
           <label class="checkbox-item">
             <input type="checkbox" id="${opt.id}">
             <span>${opt.label}</span>
           </label>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       <button class="btn btn-danger" id="clear-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -250,10 +280,11 @@ function renderSettingsAccordion() {
 }
 
 function renderFields(fields, moduleId) {
-  return fields.map(field => {
-    switch (field.type) {
-      case 'toggle':
-        return `
+  return fields
+    .map(field => {
+      switch (field.type) {
+        case 'toggle':
+          return `
           <div class="setting-row">
             <label>${field.label}</label>
             <label class="toggle toggle-sm">
@@ -262,8 +293,8 @@ function renderFields(fields, moduleId) {
             </label>
           </div>
         `;
-      case 'select':
-        return `
+        case 'select':
+          return `
           <div class="setting-row">
             <label>${field.label}</label>
             <select id="${field.id}">
@@ -271,15 +302,15 @@ function renderFields(fields, moduleId) {
             </select>
           </div>
         `;
-      case 'number':
-        return `
+        case 'number':
+          return `
           <div class="setting-row">
             <label>${field.label}</label>
             <input type="number" id="${field.id}" min="${field.min}" max="${field.max}" step="${field.step}">
           </div>
         `;
-      case 'range':
-        return `
+        case 'range':
+          return `
           <div class="setting-row">
             <label>${field.label}</label>
             <div class="range-wrapper">
@@ -288,8 +319,8 @@ function renderFields(fields, moduleId) {
             </div>
           </div>
         `;
-      case 'emoji-list':
-        return `
+        case 'emoji-list':
+          return `
           <div class="setting-row setting-row-vertical">
             <label>${field.label}</label>
             <div class="emoji-favorites" id="emojiMarkers-favorites-container"></div>
@@ -302,42 +333,51 @@ function renderFields(fields, moduleId) {
             </button>
           </div>
         `;
-      default:
-        return '';
-    }
-  }).join('');
+        default:
+          return '';
+      }
+    })
+    .join('');
 }
 
 function setupFieldListeners(fields, moduleId) {
   fields.forEach(field => {
     const el = document.getElementById(field.id);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
 
-    const setValue = (value) => {
+    const setValue = value => {
       if (field.global) {
         setSettingValue(field.key, value);
       } else {
         setSettingValue(field.key, value, moduleId);
       }
-      console.log(`[Popup] Setting changed: ${field.key} =`, value, `(Module: ${moduleId || 'global'})`);
+      console.log(
+        `[Popup] Setting changed: ${field.key} =`,
+        value,
+        `(Module: ${moduleId || 'global'})`
+      );
     };
 
     switch (field.type) {
       case 'toggle':
-        el.addEventListener('change', (e) => setValue(e.target.checked));
+        el.addEventListener('change', e => setValue(e.target.checked));
         break;
       case 'select':
-        el.addEventListener('change', (e) => setValue(e.target.value));
+        el.addEventListener('change', e => setValue(e.target.value));
         break;
       case 'number':
-        el.addEventListener('input', (e) => setValue(parseInt(e.target.value)));
+        el.addEventListener('input', e => setValue(parseInt(e.target.value)));
         break;
       case 'range':
-        el.addEventListener('input', (e) => {
+        el.addEventListener('input', e => {
           const value = parseFloat(e.target.value);
           setValue(value);
           const display = document.getElementById(field.displayId);
-          if (display) display.textContent = value.toFixed(1);
+          if (display) {
+            display.textContent = value.toFixed(1);
+          }
         });
         break;
     }
@@ -385,16 +425,20 @@ function setupTooltips() {
   document.querySelectorAll('.info-btn').forEach(btn => {
     btn.addEventListener('mouseenter', () => {
       const text = btn.dataset.tooltip;
-      if (!text) return;
+      if (!text) {
+        return;
+      }
 
       tooltip.textContent = text;
       tooltip.classList.remove('hidden');
 
       const rect = btn.getBoundingClientRect();
       let left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
-      let top = rect.bottom + 8;
+      const top = rect.bottom + 8;
 
-      if (left < 8) left = 8;
+      if (left < 8) {
+        left = 8;
+      }
       if (left + tooltip.offsetWidth > window.innerWidth - 8) {
         left = window.innerWidth - tooltip.offsetWidth - 8;
       }
@@ -415,8 +459,8 @@ function getDefaultSettings() {
 }
 
 async function loadSettings() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['settings'], (result) => {
+  return new Promise(resolve => {
+    chrome.storage.sync.get(['settings'], result => {
       let savedSettings = {};
       let isFirstTime = false;
 
@@ -466,7 +510,9 @@ function getSettingValue(key, moduleId = null) {
   const parts = key.split('.');
   let value = moduleId ? currentSettings[moduleId] : currentSettings;
   for (const part of parts) {
-    if (value === undefined || value === null) return undefined;
+    if (value === undefined || value === null) {
+      return undefined;
+    }
     value = value[part];
   }
   return value;
@@ -474,10 +520,14 @@ function getSettingValue(key, moduleId = null) {
 
 function setSettingValue(key, value, moduleId = null) {
   const parts = key.split('.');
-  let target = moduleId ? (currentSettings[moduleId] || (currentSettings[moduleId] = {})) : currentSettings;
+  let target = moduleId
+    ? currentSettings[moduleId] || (currentSettings[moduleId] = {})
+    : currentSettings;
 
   for (let i = 0; i < parts.length - 1; i++) {
-    if (!target[parts[i]]) target[parts[i]] = {};
+    if (!target[parts[i]]) {
+      target[parts[i]] = {};
+    }
     target = target[parts[i]];
   }
   target[parts[parts.length - 1]] = value;
@@ -487,7 +537,9 @@ function updateUI() {
   // Update main toggles
   Object.keys(config.modules).forEach(id => {
     const toggle = document.getElementById(`${id}-enabled`);
-    if (toggle) toggle.checked = currentSettings[id]?.enabled ?? false;
+    if (toggle) {
+      toggle.checked = currentSettings[id]?.enabled ?? false;
+    }
   });
 
   // Update all setting fields
@@ -499,13 +551,17 @@ function updateUI() {
 
     allFields.forEach(field => {
       const el = document.getElementById(field.id);
-      if (!el) return;
+      if (!el) {
+        return;
+      }
 
       const value = field.global
         ? getSettingValue(field.key)
         : getSettingValue(field.key, moduleId);
 
-      if (value === undefined) return;
+      if (value === undefined) {
+        return;
+      }
 
       switch (field.type) {
         case 'toggle':
@@ -518,7 +574,9 @@ function updateUI() {
         case 'range':
           el.value = value;
           const display = document.getElementById(field.displayId);
-          if (display) display.textContent = value.toFixed?.(1) ?? value;
+          if (display) {
+            display.textContent = value.toFixed?.(1) ?? value;
+          }
           break;
       }
     });
@@ -545,11 +603,11 @@ async function saveSettings() {
     showToast('Settings saved!', 'success');
 
     // Notify content script
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, {
           type: 'SETTINGS_UPDATED',
-          settings: currentSettings
+          settings: currentSettings,
         });
       }
     });
@@ -587,7 +645,9 @@ function setupActionButtons() {
 // ============================================
 function renderFavoriteEmojis() {
   const container = document.getElementById('emojiMarkers-favorites-container');
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   const emojis = currentSettings.emojiMarkers?.favoriteEmojis || [];
   container.innerHTML = '';
@@ -599,20 +659,20 @@ function renderFavoriteEmojis() {
     chip.dataset.index = index;
     chip.innerHTML = `<span>${emoji}</span><button title="Remove">×</button>`;
 
-    chip.querySelector('button').addEventListener('click', (e) => {
+    chip.querySelector('button').addEventListener('click', e => {
       e.stopPropagation();
       currentSettings.emojiMarkers.favoriteEmojis.splice(index, 1);
       renderFavoriteEmojis();
     });
 
     // Drag & drop
-    chip.addEventListener('dragstart', (e) => {
+    chip.addEventListener('dragstart', e => {
       e.dataTransfer.setData('text/plain', index);
       chip.style.opacity = '0.5';
     });
-    chip.addEventListener('dragend', () => chip.style.opacity = '1');
-    chip.addEventListener('dragover', (e) => e.preventDefault());
-    chip.addEventListener('drop', (e) => {
+    chip.addEventListener('dragend', () => (chip.style.opacity = '1'));
+    chip.addEventListener('dragover', e => e.preventDefault());
+    chip.addEventListener('drop', e => {
       e.preventDefault();
       const from = parseInt(e.dataTransfer.getData('text/plain'));
       const to = parseInt(chip.dataset.index);
@@ -643,7 +703,8 @@ function showEmojiPicker() {
     max-width: 320px; max-height: 400px; overflow-y: auto;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
   `;
-  picker.innerHTML = '<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;">Select Emoji</h3>';
+  picker.innerHTML =
+    '<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;">Select Emoji</h3>';
 
   Object.entries(config.emojiCategories).forEach(([name, emojis]) => {
     const section = document.createElement('div');
@@ -659,11 +720,21 @@ function showEmojiPicker() {
         width:36px;height:36px;font-size:18px;border:1px solid #e5e7eb;
         border-radius:8px;background:#f9fafb;cursor:pointer;transition:all 0.15s;
       `;
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#e5e7eb'; btn.style.transform = 'scale(1.1)'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = '#f9fafb'; btn.style.transform = 'scale(1)'; });
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = '#e5e7eb';
+        btn.style.transform = 'scale(1.1)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = '#f9fafb';
+        btn.style.transform = 'scale(1)';
+      });
       btn.addEventListener('click', () => {
-        if (!currentSettings.emojiMarkers) currentSettings.emojiMarkers = {};
-        if (!currentSettings.emojiMarkers.favoriteEmojis) currentSettings.emojiMarkers.favoriteEmojis = [];
+        if (!currentSettings.emojiMarkers) {
+          currentSettings.emojiMarkers = {};
+        }
+        if (!currentSettings.emojiMarkers.favoriteEmojis) {
+          currentSettings.emojiMarkers.favoriteEmojis = [];
+        }
 
         if (currentSettings.emojiMarkers.favoriteEmojis.includes(emoji)) {
           showToast('Already in favorites', 'warning');
@@ -682,7 +753,11 @@ function showEmojiPicker() {
   });
 
   modal.appendChild(picker);
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
   document.body.appendChild(modal);
 }
 
@@ -693,14 +768,18 @@ async function handleExport() {
   const exportData = {};
 
   for (const opt of config.dataOptions.export) {
-    if (!document.getElementById(opt.id)?.checked) continue;
+    if (!document.getElementById(opt.id)?.checked) {
+      continue;
+    }
 
     if (opt.key === 'settings') {
       exportData.settings = currentSettings;
     } else {
       const result = await chrome.storage.local.get([opt.storageKey]);
       const data = result[opt.storageKey]?.[opt.dataPath];
-      if (data) exportData[opt.key] = data;
+      if (data) {
+        exportData[opt.key] = data;
+      }
     }
   }
 
@@ -725,9 +804,11 @@ async function handleImport() {
   input.type = 'file';
   input.accept = '.json';
 
-  input.onchange = async (e) => {
+  input.onchange = async e => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     try {
       const text = await file.text();
@@ -735,7 +816,9 @@ async function handleImport() {
       let count = 0;
 
       for (const opt of config.dataOptions.export) {
-        if (!data[opt.key] || opt.key === 'settings') continue;
+        if (!data[opt.key] || opt.key === 'settings') {
+          continue;
+        }
 
         const existing = await chrome.storage.local.get([opt.storageKey]);
         const existingData = existing[opt.storageKey]?.[opt.dataPath] || [];
@@ -746,8 +829,8 @@ async function handleImport() {
           await chrome.storage.local.set({
             [opt.storageKey]: {
               __meta: { version: 2, updatedAt: new Date().toISOString() },
-              [opt.dataPath]: [...existingData, ...newItems]
-            }
+              [opt.dataPath]: [...existingData, ...newItems],
+            },
           });
           count += newItems.length;
         }
@@ -761,8 +844,10 @@ async function handleImport() {
 
       showToast(`Imported ${count} items`, 'success');
 
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => { });
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => {});
+        }
       });
     } catch (err) {
       console.error('[Popup] Import error:', err);
@@ -783,18 +868,24 @@ async function handleClear() {
     return;
   }
 
-  if (!confirm('⚠️ Permanently delete selected data?')) return;
+  if (!confirm('⚠️ Permanently delete selected data?')) {
+    return;
+  }
 
   try {
     await chrome.storage.local.remove(keys);
     config.dataOptions.clear.forEach(opt => {
       const cb = document.getElementById(opt.id);
-      if (cb) cb.checked = false;
+      if (cb) {
+        cb.checked = false;
+      }
     });
     showToast('Data cleared', 'success');
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => { });
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => {});
+      }
     });
   } catch (err) {
     showToast('Failed to clear', 'error');
@@ -806,7 +897,9 @@ async function handleClear() {
 // ============================================
 function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
-  if (!toast) return;
+  if (!toast) {
+    return;
+  }
   toast.textContent = message;
   toast.className = `toast ${type}`;
   setTimeout(() => toast.classList.add('hidden'), 3000);

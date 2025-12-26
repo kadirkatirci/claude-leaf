@@ -134,11 +134,7 @@ export default class BasePanel {
    */
   createFooter() {
     const footer = document.createElement('div');
-    footer.className = cn(
-      'panel-footer',
-      'px-5 py-3',
-      'border-t border-border-300 bg-bg-100'
-    );
+    footer.className = cn('panel-footer', 'px-5 py-3', 'border-t border-border-300 bg-bg-100');
 
     return footer;
   }
@@ -149,7 +145,9 @@ export default class BasePanel {
    * @param {Function} renderItem - Function to render each item
    */
   updateContent(items, renderItem) {
-    if (!this.content) return;
+    if (!this.content) {
+      return;
+    }
 
     // Generate content signature for comparison
     const signature = this.generateSignature(items);
@@ -202,15 +200,19 @@ export default class BasePanel {
    * Generate content signature for change detection
    */
   generateSignature(items) {
-    if (!items || items.length === 0) return 'empty';
+    if (!items || items.length === 0) {
+      return 'empty';
+    }
 
     // Override in subclasses for custom signature generation
-    return items.map(item => {
-      if (typeof item === 'object') {
-        return JSON.stringify(item);
-      }
-      return String(item);
-    }).join('|');
+    return items
+      .map(item => {
+        if (typeof item === 'object') {
+          return JSON.stringify(item);
+        }
+        return String(item);
+      })
+      .join('|');
   }
 
   /**
@@ -218,7 +220,7 @@ export default class BasePanel {
    */
   setupEventListeners() {
     // Close on Escape key
-    const handleEscape = (e) => {
+    const handleEscape = e => {
       if (e.key === 'Escape' && this.isVisible) {
         this.hide();
       }
@@ -228,7 +230,7 @@ export default class BasePanel {
 
     // Store for cleanup
     this.eventListeners = {
-      escape: { element: document, event: 'keydown', handler: handleEscape }
+      escape: { element: document, event: 'keydown', handler: handleEscape },
     };
   }
 
@@ -247,7 +249,9 @@ export default class BasePanel {
    * Show the panel
    */
   show() {
-    if (!this.panel) return;
+    if (!this.panel) {
+      return;
+    }
 
     this.panel.style.display = 'flex';
     this.isVisible = true;
@@ -258,7 +262,9 @@ export default class BasePanel {
    * Hide the panel
    */
   hide() {
-    if (!this.panel) return;
+    if (!this.panel) {
+      return;
+    }
 
     this.panel.style.display = 'none';
     this.isVisible = false;
@@ -291,8 +297,16 @@ export default class BasePanel {
   }
 
   // Abstract methods to override in subclasses
-  hasFooter() { return false; }
-  getEmptyStateMessage() { return 'No items to display'; }
-  onShow() { /* Override in subclass */ }
-  onHide() { /* Override in subclass */ }
+  hasFooter() {
+    return false;
+  }
+  getEmptyStateMessage() {
+    return 'No items to display';
+  }
+  onShow() {
+    /* Override in subclass */
+  }
+  onHide() {
+    /* Override in subclass */
+  }
 }

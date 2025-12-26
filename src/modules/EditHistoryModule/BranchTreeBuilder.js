@@ -1,6 +1,6 @@
 /**
  * BranchTreeBuilder - Snapshot'lardan branch map yapısı oluşturur
- * 
+ *
  * Mantık:
  * 1. En uzun path = Ana Yol
  * 2. Ana yoldaki versiyonlardan farklı olanlar = Dallar
@@ -61,7 +61,7 @@ class BranchTreeBuilder {
       containerIds,
       mainPath,
       nodeLocationMap: this.nodeLocationMap,
-      paths // Snapshot'ların mesaj listeleri (bağlantılar için)
+      paths, // Snapshot'ların mesaj listeleri (bağlantılar için)
     };
   }
 
@@ -78,7 +78,9 @@ class BranchTreeBuilder {
       return h.containerId === containerId && historyVersion === normalizedVersion;
     });
 
-    if (matches.length === 0) return null;
+    if (matches.length === 0) {
+      return null;
+    }
     // Removed early return for single match to allow preview verification logic to run
     // if (matches.length === 1) return matches[0].content;
 
@@ -91,13 +93,16 @@ class BranchTreeBuilder {
         return m.content && m.content.includes(cleanPreview);
       });
 
-      if (bestMatch) return bestMatch.content;
+      if (bestMatch) {
+        return bestMatch.content;
+      }
 
       // CRITICAL FIX: If we have a preview but NO match in history contains it,
-      // it means the history is stale or incomplete. 
+      // it means the history is stale or incomplete.
       // Instead of showing the WRONG content (from the fallback match),
       // we show the preview itself (which we know is correct for this node).
-      if (cleanPreview.length > 5) { // Only if preview is substantial
+      if (cleanPreview.length > 5) {
+        // Only if preview is substantial
         return previewText;
       }
     }
@@ -147,12 +152,14 @@ class BranchTreeBuilder {
    * Generate a simple hash from content string
    */
   generateContentHash(content) {
-    if (!content) return 'empty';
+    if (!content) {
+      return 'empty';
+    }
     let hash = 0;
     const str = content.substring(0, 100); // Only hash start for performance
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return hash.toString(36);
@@ -187,7 +194,7 @@ class BranchTreeBuilder {
             versionIndex: currentVer,
             messageIndex,
             contentPreview: m.contentPreview,
-            rawVersion: m.version // Keep original for lookups
+            rawVersion: m.version, // Keep original for lookups
           };
         })
         .sort((a, b) => a.messageIndex - b.messageIndex);
@@ -204,7 +211,12 @@ class BranchTreeBuilder {
         );
 
         // Include content in ID generation
-        const uniqueId = this.generateUniqueId(m.containerId, m.versionIndex, lastNodeId, fullContent || m.contentPreview);
+        const uniqueId = this.generateUniqueId(
+          m.containerId,
+          m.versionIndex,
+          lastNodeId,
+          fullContent || m.contentPreview
+        );
         const currentParentId = lastNodeId; // Store parentId before updating lastNodeId
         lastNodeId = uniqueId; // Update lastNodeId for the next iteration
 
@@ -215,20 +227,22 @@ class BranchTreeBuilder {
           version: m.version,
           versionIndex: m.versionIndex,
           messageIndex: m.messageIndex,
-          content: fullContent || m.contentPreview || 'No content available'
+          content: fullContent || m.contentPreview || 'No content available',
         };
       });
 
       return {
         snapshotId: snapshot.id,
         timestamp: snapshot.timestamp,
-        messages: messagesWithIds
+        messages: messagesWithIds,
       };
     });
   }
 
   findMainPath(paths) {
-    if (paths.length === 0) return { messages: [] };
+    if (paths.length === 0) {
+      return { messages: [] };
+    }
     return paths.reduce((longest, current) =>
       current.messages.length > longest.messages.length ? current : longest
     );
@@ -254,7 +268,9 @@ class BranchTreeBuilder {
 
           // Actually, we want to know "where did this branch split off from the main path?"
           // We iterate until we find a message NOT in main path.
-          const firstUniqueMsg = path.messages.find(pm => !mainPath.messages.some(mm => mm.uniqueId === pm.uniqueId));
+          const firstUniqueMsg = path.messages.find(
+            pm => !mainPath.messages.some(mm => mm.uniqueId === pm.uniqueId)
+          );
           if (firstUniqueMsg) {
             divergenceParentId = firstUniqueMsg.parentId || 'root';
           }
@@ -264,7 +280,7 @@ class BranchTreeBuilder {
           snapshotId: path.snapshotId,
           messages: path.messages,
           isLeftBranch: isLeft,
-          divergenceParentId
+          divergenceParentId,
         });
       }
     });
@@ -273,8 +289,12 @@ class BranchTreeBuilder {
     // 1. Divergence Parent ID (kardeşleri bir arada tutmak için)
     // 2. Mesaj sayısı (uzunluk)
     branches.sort((a, b) => {
-      if (a.isLeftBranch && !b.isLeftBranch) return -1;
-      if (!a.isLeftBranch && b.isLeftBranch) return 1;
+      if (a.isLeftBranch && !b.isLeftBranch) {
+        return -1;
+      }
+      if (!a.isLeftBranch && b.isLeftBranch) {
+        return 1;
+      }
 
       // Group siblings locally
       if (a.divergenceParentId !== b.divergenceParentId) {
@@ -295,7 +315,9 @@ class BranchTreeBuilder {
       // If no exact match (same lineage), check if it's a version divergence
       if (!mainMsg) {
         // Find main message with same container ID to compare versions
-        const correspondingMainMsg = mainMessages.find(m => m.containerId === branchMsg.containerId);
+        const correspondingMainMsg = mainMessages.find(
+          m => m.containerId === branchMsg.containerId
+        );
 
         if (correspondingMainMsg) {
           // Divergence point found: compare versions
@@ -331,7 +353,7 @@ class BranchTreeBuilder {
         id: columnId,
         type: 'main',
         nodes,
-        connectFrom: null
+        connectFrom: null,
       };
     }
 
@@ -350,7 +372,7 @@ class BranchTreeBuilder {
           id: columnId,
           type: 'left-branch',
           nodes,
-          connectFrom: connectInfo
+          connectFrom: connectInfo,
         });
       }
     });
@@ -366,7 +388,7 @@ class BranchTreeBuilder {
           id: columnId,
           type: 'right-branch',
           nodes,
-          connectFrom: connectInfo
+          connectFrom: connectInfo,
         });
       }
     });
@@ -376,7 +398,9 @@ class BranchTreeBuilder {
     const columns = [];
 
     leftBranchColumns.forEach(col => columns.push(col));
-    if (mainColumn) columns.push(mainColumn);
+    if (mainColumn) {
+      columns.push(mainColumn);
+    }
     rightBranchColumns.forEach(col => columns.push(col));
 
     return columns;
@@ -399,7 +423,7 @@ class BranchTreeBuilder {
         messageIndex: msg.messageIndex,
         version: msg.version,
         versionIndex: msg.versionIndex,
-        content: msg.content
+        content: msg.content,
       };
 
       nodes.push(node);
@@ -432,7 +456,7 @@ class BranchTreeBuilder {
           messageIndex: msg.messageIndex,
           version: msg.version,
           versionIndex: msg.versionIndex,
-          content: msg.content
+          content: msg.content,
         };
 
         nodes.push(node);
@@ -466,7 +490,9 @@ class BranchTreeBuilder {
    * Bağlantı kaynağını bul
    */
   findConnectionSource(targetNode) {
-    if (!targetNode) return null;
+    if (!targetNode) {
+      return null;
+    }
 
     // Strict Parent-Child Connection
     // Instead of guessing based on index, we look for the EXACT parent node.

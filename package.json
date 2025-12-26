@@ -6,10 +6,27 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "dev": "rollup -c -w"
+    "dev": "rollup -c -w",
+    "lint": "eslint src/ popup/ bookmarks/",
+    "lint:fix": "eslint src/ popup/ bookmarks/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"popup/**/*.js\" \"bookmarks/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"popup/**/*.js\" \"bookmarks/**/*.js\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.4",
     "rollup": "^4.9.6"
   }
 }

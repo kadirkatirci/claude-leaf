@@ -16,7 +16,7 @@ export function hashString(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
 
@@ -41,5 +41,5 @@ export function hashContent(str, maxLength = 1000) {
 
 export default {
   hashString,
-  hashContent
+  hashContent,
 };

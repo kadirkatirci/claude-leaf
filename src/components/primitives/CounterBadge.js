@@ -28,7 +28,7 @@ export class CounterBadge {
       content = '0',
       position = { top: '-8px', right: '-8px' },
       className = '',
-      style = {}
+      style = {},
     } = options;
 
     // Create badge element
@@ -39,11 +39,7 @@ export class CounterBadge {
     }
 
     // Apply Claude native classes
-    badge.className = cn(
-      ClaudeClasses.badge.counter,
-      ClaudeClasses.util.transition,
-      className
-    );
+    badge.className = cn(ClaudeClasses.badge.counter, ClaudeClasses.util.transition, className);
 
     // Apply position styles (minimal inline styles for positioning only)
     Object.assign(badge.style, this.getPositionStyles(position));
@@ -64,11 +60,11 @@ export class CounterBadge {
    * @param {string|number} content - New content
    */
   static update(badgeOrId, content) {
-    const badge = typeof badgeOrId === 'string'
-      ? document.getElementById(badgeOrId)
-      : badgeOrId;
+    const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
-    if (!badge) return;
+    if (!badge) {
+      return;
+    }
 
     const contentStr = String(content);
 
@@ -89,9 +85,7 @@ export class CounterBadge {
 
     ['top', 'right', 'bottom', 'left'].forEach(prop => {
       if (position[prop] !== undefined) {
-        styles[prop] = typeof position[prop] === 'number'
-          ? `${position[prop]}px`
-          : position[prop];
+        styles[prop] = typeof position[prop] === 'number' ? `${position[prop]}px` : position[prop];
       }
     });
 
@@ -105,7 +99,9 @@ export class CounterBadge {
    * @returns {HTMLElement} The created badge
    */
   static attachTo(parent, options = {}) {
-    if (!parent) return null;
+    if (!parent) {
+      return null;
+    }
 
     // Ensure parent has relative positioning
     const parentPosition = window.getComputedStyle(parent).position;
@@ -154,9 +150,7 @@ export class CounterBadge {
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    */
   static remove(badgeOrId) {
-    const badge = typeof badgeOrId === 'string'
-      ? document.getElementById(badgeOrId)
-      : badgeOrId;
+    const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
     if (badge) {
       badge.remove();
@@ -168,9 +162,7 @@ export class CounterBadge {
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    */
   static show(badgeOrId) {
-    const badge = typeof badgeOrId === 'string'
-      ? document.getElementById(badgeOrId)
-      : badgeOrId;
+    const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
     if (badge) {
       badge.style.display = 'block';
@@ -182,9 +174,7 @@ export class CounterBadge {
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    */
   static hide(badgeOrId) {
-    const badge = typeof badgeOrId === 'string'
-      ? document.getElementById(badgeOrId)
-      : badgeOrId;
+    const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
     if (badge) {
       badge.style.display = 'none';
@@ -196,11 +186,11 @@ export class CounterBadge {
    * @param {HTMLElement|string} badgeOrId - Badge element or ID
    */
   static pulse(badgeOrId) {
-    const badge = typeof badgeOrId === 'string'
-      ? document.getElementById(badgeOrId)
-      : badgeOrId;
+    const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
-    if (!badge) return;
+    if (!badge) {
+      return;
+    }
 
     badge.style.animation = 'pulse 0.3s ease-in-out';
 

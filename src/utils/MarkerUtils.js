@@ -1,16 +1,16 @@
 /**
  * MarkerUtils - Shared utilities for marker/bookmark index resolution
- * 
+ *
  * Problem: When user changes edit version, messages after that edit point change,
  * causing index-based markers to point to wrong messages.
- * 
+ *
  * Solution: Multi-strategy content-based verification with robust fallbacks
  * 1. Try saved index first with signature verification (exact match)
  * 2. Search all messages by content signature (content moved)
  * 3. Fuzzy search by preview text (content slightly changed)
  * 4. For Claude responses: Find by user message preview (version changed)
  * 5. For user messages: Find by own preview text (fallback)
- * 
+ *
  * Key Insight:
  * - Edit'ten ÖNCE olan mesajlar: Index ve content aynı kalır, signature match olmalı
  * - Edit'ten SONRA olan mesajlar: Index kayabilir ama content aynı kalır (Claude yanıtı hariç)
@@ -24,7 +24,9 @@ import { hashString } from './HashUtils.js';
  * Excludes marker buttons, bookmark buttons, and other injected UI
  */
 export function getCleanMessageText(messageEl) {
-  if (!messageEl) return '';
+  if (!messageEl) {
+    return '';
+  }
 
   // 1. Try to find the specific content container first to avoid sidebar/avatar noise
   // User messages usually have data-testid="user-message"
@@ -53,9 +55,9 @@ export function getCleanMessageText(messageEl) {
     '[role="button"]',
     '.font-mono.text-xs', // Model version text
     '.opacity-0', // Hidden accessibility text
-    '.sr-only',    // Screen reader only text
+    '.sr-only', // Screen reader only text
     '.gap-2 > .shrink-0', // Common avatar container pattern (fallback)
-    '.select-none.rounded-full' // Specific avatar circle (fallback)
+    '.select-none.rounded-full', // Specific avatar circle (fallback)
   ];
 
   selectorsToRemove.forEach(selector => {
@@ -70,8 +72,12 @@ export function getCleanMessageText(messageEl) {
  * Used for fuzzy matching when exact match fails
  */
 function levenshteinDistance(a, b) {
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
+  if (a.length === 0) {
+    return b.length;
+  }
+  if (b.length === 0) {
+    return a.length;
+  }
 
   const matrix = [];
 
@@ -161,13 +167,15 @@ export function getUserMessageText(messageEl, allMessages, currentIndex) {
  * Normalize text for comparison (case-insensitive, trimmed, limited length)
  */
 function normalizeForComparison(text, maxLength = 300) {
-  if (!text) return '';
+  if (!text) {
+    return '';
+  }
   return text.toLowerCase().trim().substring(0, maxLength);
 }
 
 /**
  * Resolve marker/bookmark to current message index
- * 
+ *
  * Multi-strategy resolution with detailed logging
  */
 export function resolveMarkerIndex(marker, messages, options = {}) {
@@ -284,7 +292,7 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
             updateCallback(marker.id, {
               index: i,
               contentSignature: newSignature,
-              messagePreview: newPreview
+              messagePreview: newPreview,
             });
           }
           return { index: i, status: 'user_message_match', message: msg };
@@ -300,7 +308,9 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   // ============================================
 
   // Not found - marker's message no longer exists
-  console.warn(`[MarkerUtils] Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`);
+  console.warn(
+    `[MarkerUtils] Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`
+  );
   return { index: null, status: 'not_found', message: null };
 }
 
@@ -319,7 +329,7 @@ export function createMarkerData(messageEl, messageIndex, allMessages, extraData
     userMessagePreview: userText.substring(0, 300).trim(),
     isClaudeResponse: isResponse,
     timestamp: Date.now(),
-    ...extraData
+    ...extraData,
   };
 }
 
@@ -349,7 +359,9 @@ const VALIDATION_CACHE_TTL = 500; // 500ms TTL
  */
 function getValidationCacheKey(markers, messages) {
   // Use message count + first/last message signature for quick comparison
-  if (messages.length === 0) return 'empty';
+  if (messages.length === 0) {
+    return 'empty';
+  }
 
   const firstSig = messages[0]?.textContent?.substring(0, 50) || '';
   const lastSig = messages[messages.length - 1]?.textContent?.substring(0, 50) || '';
@@ -367,7 +379,7 @@ export function getValidMarkers(markers, messages, options = {}) {
   const cacheKey = getValidationCacheKey(markers, messages);
   const cached = validationCache.get(cacheKey);
 
-  if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < VALIDATION_CACHE_TTL) {
     return cached.result;
   }
 
@@ -379,7 +391,7 @@ export function getValidMarkers(markers, messages, options = {}) {
         marker,
         resolvedIndex: resolution.index,
         status: resolution.status,
-        message: resolution.message
+        message: resolution.message,
       };
     })
     .filter(item => item.resolvedIndex !== null);
@@ -387,7 +399,7 @@ export function getValidMarkers(markers, messages, options = {}) {
   // Cache result
   validationCache.set(cacheKey, {
     result,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 
   // Auto-cleanup old cache entries (keep last 10)
@@ -409,5 +421,5 @@ export default {
   createMarkerData,
   resolveMarkerIndex,
   resolveAllMarkers,
-  getValidMarkers
+  getValidMarkers,
 };

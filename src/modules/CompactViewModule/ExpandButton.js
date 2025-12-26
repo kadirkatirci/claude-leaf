@@ -27,13 +27,14 @@ class ExpandButton {
       : IconLibrary.collapse('currentColor', 16); // Reduced icon size
 
     // Match navigation button style (compact, icon-only) - half size
-    button.className = 'claude-expand-btn size-5 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-0.5 shadow-sm hover:shadow-md bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-all duration-200 border-border-300 cursor-pointer hover:scale-110';
+    button.className =
+      'claude-expand-btn size-5 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-0.5 shadow-sm hover:shadow-md bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-all duration-200 border-border-300 cursor-pointer hover:scale-110';
 
     // Add tooltip
     button.title = isCollapsed ? 'Expand message' : 'Collapse message';
 
     // Click handler
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', e => {
       e.stopPropagation();
       this.onToggle(messageElement);
       // Not: Buton text'i onMessageStateChanged'de güncellenecek

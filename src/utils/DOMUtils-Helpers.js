@@ -30,11 +30,11 @@ const DOMUtilsHelpers = {
    */
   throttle(func, limit) {
     let inThrottle;
-    return function(...args) {
+    return function (...args) {
       if (!inThrottle) {
         func.apply(this, args);
         inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+        setTimeout(() => (inThrottle = false), limit);
       }
     };
   },
@@ -46,7 +46,9 @@ const DOMUtilsHelpers = {
    * @param {number} duration - Duration in ms
    */
   flashClass(element, className, duration = 2000) {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     element.classList.add(className);
     setTimeout(() => {
@@ -70,7 +72,9 @@ const DOMUtilsHelpers = {
     }
 
     const style = document.createElement('style');
-    if (id) style.id = id;
+    if (id) {
+      style.id = id;
+    }
     style.textContent = css;
     document.head.appendChild(style);
     return style;
@@ -132,7 +136,7 @@ const DOMUtilsHelpers = {
 
       observer.observe(document.body, {
         childList: true,
-        subtree: true
+        subtree: true,
       });
 
       setTimeout(() => {
@@ -186,8 +190,12 @@ const DOMUtilsHelpers = {
    * @returns {number} Numeric value
    */
   parseSize(value) {
-    if (typeof value === 'number') return value;
-    if (!value) return 0;
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (!value) {
+      return 0;
+    }
 
     const match = value.toString().match(/^(\d+(?:\.\d+)?)/);
     return match ? parseFloat(match[1]) : 0;
@@ -200,7 +208,9 @@ const DOMUtilsHelpers = {
    * @returns {string}
    */
   getStyle(element, property) {
-    if (!element) return null;
+    if (!element) {
+      return null;
+    }
     return window.getComputedStyle(element).getPropertyValue(property);
   },
 
@@ -210,7 +220,9 @@ const DOMUtilsHelpers = {
    * @param {Object} styles
    */
   setStyles(element, styles) {
-    if (!element || !styles) return;
+    if (!element || !styles) {
+      return;
+    }
     Object.assign(element.style, styles);
   },
 
@@ -219,11 +231,13 @@ const DOMUtilsHelpers = {
    * @param {HTMLElement} element
    */
   clearElement(element) {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
     while (element.firstChild) {
       element.removeChild(element.firstChild);
     }
-  }
+  },
 };
 
 export default DOMUtilsHelpers;

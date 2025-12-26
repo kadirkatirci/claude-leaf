@@ -16,26 +16,26 @@ export class SettingsStore {
     // All other settings are in ModuleConstants.js
     this.defaults = {
       navigation: {
-        enabled: true
+        enabled: true,
       },
       editHistory: {
-        enabled: true
+        enabled: true,
       },
       compactView: {
-        enabled: true
+        enabled: true,
       },
       bookmarks: {
-        enabled: true
+        enabled: true,
       },
       emojiMarkers: {
-        enabled: true
+        enabled: true,
       },
       sidebarCollapse: {
-        enabled: true
+        enabled: true,
       },
       contentFolding: {
-        enabled: true
-      }
+        enabled: true,
+      },
     };
 
     // Create store with sync adapter (settings should sync across devices)
@@ -43,7 +43,7 @@ export class SettingsStore {
       adapter: 'sync',
       version: 1,
       defaultData: this.defaults,
-      cacheTTL: 30000 // Cache for 30 seconds (settings don't change frequently)
+      cacheTTL: 30000, // Cache for 30 seconds (settings don't change frequently)
     });
   }
 
@@ -70,7 +70,7 @@ export class SettingsStore {
 
     // Use cache if still valid (performance optimization)
     const now = Date.now();
-    if (this.mergedCache && (now - this.mergedCacheTime) < this.mergeCacheTTL) {
+    if (this.mergedCache && now - this.mergedCacheTime < this.mergeCacheTTL) {
       const merged = this.mergedCache;
       return path ? path.split('.').reduce((obj, key) => obj?.[key], merged) : merged;
     }
@@ -112,7 +112,7 @@ export class SettingsStore {
     }
 
     // Partial update with dot notation
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const keys = pathOrData.split('.');
       const updated = { ...data };
       let current = updated;
@@ -162,9 +162,9 @@ export class SettingsStore {
       throw new Error(`Unknown feature: ${feature}`);
     }
 
-    return this.store.update((data) => ({
+    return this.store.update(data => ({
       ...data,
-      [feature]: { ...this.defaults[feature] }
+      [feature]: { ...this.defaults[feature] },
     }));
   }
 
@@ -184,7 +184,9 @@ export class SettingsStore {
     const merged = JSON.parse(JSON.stringify(this.defaults));
 
     const deepMerge = (target, source) => {
-      if (!source) return;
+      if (!source) {
+        return;
+      }
 
       for (const key in source) {
         if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {

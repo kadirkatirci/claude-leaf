@@ -8,7 +8,12 @@
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
-import { getCleanMessageText, generateSignature, getValidMarkers, resolveMarkerIndex } from '../utils/MarkerUtils.js';
+import {
+  getCleanMessageText,
+  generateSignature,
+  getValidMarkers,
+  resolveMarkerIndex,
+} from '../utils/MarkerUtils.js';
 import { bookmarkStore } from '../stores/index.js';
 import { BookmarkButton } from './BookmarkModule/BookmarkButton.js';
 import { BookmarkPanel } from './BookmarkModule/BookmarkPanel.js';
@@ -34,7 +39,11 @@ class BookmarkModule extends BaseModule {
   // Lazy getters for panels
   get panel() {
     if (!this._panel) {
-      this._panel = new BookmarkPanel(this.dom, () => this.getTheme(), (key) => this.getSetting(key));
+      this._panel = new BookmarkPanel(
+        this.dom,
+        () => this.getTheme(),
+        key => this.getSetting(key)
+      );
     }
     return this._panel;
   }
@@ -55,7 +64,9 @@ class BookmarkModule extends BaseModule {
 
   async init() {
     await super.init();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     this.log('Bookmarks başlatılıyor...');
 
@@ -79,9 +90,11 @@ class BookmarkModule extends BaseModule {
       this.setupKeyboardShortcuts();
     }
 
-    this.chromeMessageListener = async (message) => {
+    this.chromeMessageListener = async message => {
       if (message.type === 'BOOKMARKS_UPDATED' || message.type === 'STORAGE_TYPE_CHANGED') {
-        if (message.storageType) await bookmarkStore.setStorageType(message.storageType);
+        if (message.storageType) {
+          await bookmarkStore.setStorageType(message.storageType);
+        }
         await this.addBookmarkButtons();
         await this.updateUI();
       }
@@ -94,7 +107,7 @@ class BookmarkModule extends BaseModule {
       tooltip: 'Bookmarks',
       position: { right: '30px', transform: 'translateY(-40px)' },
       onClick: () => this.togglePanel(),
-      showCounter: true
+      showCounter: true,
     });
 
     this.setupVisibilityListener();
@@ -113,7 +126,9 @@ class BookmarkModule extends BaseModule {
 
   async checkBookmarkNavigation() {
     const bookmarkId = new URLSearchParams(window.location.search).get('bookmark');
-    if (!bookmarkId) return;
+    if (!bookmarkId) {
+      return;
+    }
 
     const bookmark = await bookmarkStore.getById(bookmarkId);
     if (!bookmark) {
@@ -122,7 +137,9 @@ class BookmarkModule extends BaseModule {
     }
 
     let bookmarkPath = bookmark.conversationUrl;
-    if (bookmarkPath?.startsWith('http')) bookmarkPath = new URL(bookmarkPath).pathname;
+    if (bookmarkPath?.startsWith('http')) {
+      bookmarkPath = new URL(bookmarkPath).pathname;
+    }
 
     if (window.location.pathname === bookmarkPath) {
       this.waitForMessagesAndNavigate(bookmark, 0);
@@ -146,32 +163,43 @@ class BookmarkModule extends BaseModule {
         this.navigateToBookmark(bookmark, true);
         this.clearBookmarkParam();
       } else {
-        setTimeout(() => this.waitForMessagesAndNavigate(bookmark, retryCount + 1, count, stableCount + 1), 500);
+        setTimeout(
+          () => this.waitForMessagesAndNavigate(bookmark, retryCount + 1, count, stableCount + 1),
+          500
+        );
       }
     } else if (retryCount < 40) {
       setTimeout(() => this.waitForMessagesAndNavigate(bookmark, retryCount + 1, count, 0), 500);
     } else {
-      if (count > 0) this.navigateToBookmark(bookmark, true);
+      if (count > 0) {
+        this.navigateToBookmark(bookmark, true);
+      }
       this.clearBookmarkParam();
     }
   }
 
   async addBookmarkButtons() {
-    if (!this.dom.isOnConversationPage()) return;
+    if (!this.dom.isOnConversationPage()) {
+      return;
+    }
 
     const messages = this.dom.findMessages();
-    if (messages.length === 0) return;
+    if (messages.length === 0) {
+      return;
+    }
 
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
 
     // Get currently visible bookmarks (content matched)
     const validBookmarks = getValidMarkers(bookmarks, messages, { strictMode: false });
-    const bookmarkedIndices = new Set(validBookmarks.map(item => item.resolvedIndex).filter(i => i !== null));
+    const bookmarkedIndices = new Set(
+      validBookmarks.map(item => item.resolvedIndex).filter(i => i !== null)
+    );
 
     this.buttonManager.addToMessages(
       messages,
       (msg, idx) => idx,
-      async (idx) => bookmarkedIndices.has(idx),
+      async idx => bookmarkedIndices.has(idx),
       async (msgElement, idx) => await this.toggleBookmarkByIndex(msgElement, idx)
     );
   }
@@ -193,14 +221,16 @@ class BookmarkModule extends BaseModule {
       this.categorySelector.show(
         buttonElement, // Target element for popover
         existingBookmark.categoryId || 'default', // Current category
-        async (newCategoryId) => { // On Select Category
+        async newCategoryId => {
+          // On Select Category
           if (newCategoryId !== existingBookmark.categoryId) {
             await bookmarkStore.update(existingBookmark.id, { categoryId: newCategoryId });
             await this.updateUI();
             this.log(`Updated bookmark category to ${newCategoryId}`);
           }
         },
-        async () => { // On Remove
+        async () => {
+          // On Remove
           this.log(`Removing bookmark for message at index ${index}`);
           await this.deleteBookmark(existingBookmark.id);
         }
@@ -210,7 +240,8 @@ class BookmarkModule extends BaseModule {
       this.categorySelector.show(
         buttonElement,
         'default', // Default selected
-        async (categoryId) => { // On Select
+        async categoryId => {
+          // On Select
           this.log(`Adding bookmark for message at index ${index} with category ${categoryId}`);
           await this.addBookmark(messageElement, index, categoryId);
         }
@@ -240,7 +271,7 @@ class BookmarkModule extends BaseModule {
         'button[aria-label="Copy"]',
         'button[aria-label="Give positive feedback"]',
         'button[aria-label="Give negative feedback"]',
-        '.group\\/btn'
+        '.group\\/btn',
       ];
 
       const toRemove = clone.querySelectorAll(selectors.join(', '));
@@ -256,7 +287,8 @@ class BookmarkModule extends BaseModule {
     // Previous check for '.font-user-message' failed likely due to '!' prefix or DOM structure
 
     const hasUserTestId = messageElement.querySelector('[data-testid="user-message"]') !== null;
-    const hasUserAvatar = messageElement.querySelector('.bg-text-200.text-bg-100.rounded-full') !== null; // Based on specific avatar classes in snippet
+    const hasUserAvatar =
+      messageElement.querySelector('.bg-text-200.text-bg-100.rounded-full') !== null; // Based on specific avatar classes in snippet
 
     const isUser = hasUserTestId || hasUserAvatar;
     const sender = isUser ? 'user' : 'assistant';
@@ -270,7 +302,7 @@ class BookmarkModule extends BaseModule {
       timestamp: Date.now(),
       conversationUrl: window.location.pathname,
       categoryId: categoryId,
-      sender: sender
+      sender: sender,
     };
 
     await bookmarkStore.add(bookmark);
@@ -292,7 +324,9 @@ class BookmarkModule extends BaseModule {
   }
 
   async updateUI() {
-    if (!this.lastConversationState) return;
+    if (!this.lastConversationState) {
+      return;
+    }
 
     const messages = this.dom.findMessages();
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
@@ -302,15 +336,19 @@ class BookmarkModule extends BaseModule {
     const resolvedBookmarks = validBookmarks.map(item => ({
       ...item.marker,
       index: item.resolvedIndex,
-      _status: item.status
+      _status: item.status,
     }));
 
     this.log(`🔖 Bookmarks: ${resolvedBookmarks.length} visible / ${bookmarks.length} in storage`);
 
     this.updateButtonCounter(resolvedBookmarks.length);
-    this.panel.updateContent(resolvedBookmarks, (b) => this.navigateToBookmark(b), (id) => this.deleteBookmark(id));
+    this.panel.updateContent(
+      resolvedBookmarks,
+      b => this.navigateToBookmark(b),
+      id => this.deleteBookmark(id)
+    );
     this.sidebar.inject();
-    this.sidebar.update(resolvedBookmarks, (b) => this.navigateToBookmark(b));
+    this.sidebar.update(resolvedBookmarks, b => this.navigateToBookmark(b));
   }
 
   async waitAndUpdateUI() {
@@ -325,36 +363,52 @@ class BookmarkModule extends BaseModule {
   }
 
   togglePanel() {
-    if (this.panel.toggle()) this.updateUI();
+    if (this.panel.toggle()) {
+      this.updateUI();
+    }
   }
 
   navigateToBookmark(bookmark, fromUrl = false) {
     let bookmarkPath = bookmark.conversationUrl;
-    if (bookmarkPath?.startsWith('http')) bookmarkPath = new URL(bookmarkPath).pathname;
+    if (bookmarkPath?.startsWith('http')) {
+      bookmarkPath = new URL(bookmarkPath).pathname;
+    }
 
     if (window.location.pathname !== bookmarkPath) {
-      if (fromUrl && bookmarkPath) window.location.href = bookmarkPath + '?bookmark=' + bookmark.id;
+      if (fromUrl && bookmarkPath) {
+        window.location.href = bookmarkPath + '?bookmark=' + bookmark.id;
+      }
       return;
     }
 
     const messages = this.dom.findMessages();
-    if (messages.length === 0) return;
+    if (messages.length === 0) {
+      return;
+    }
 
     const result = resolveMarkerIndex(bookmark, messages, { strictMode: false });
 
     if (result.index !== null && result.message) {
       this.dom.scrollToElement(result.message, 'center');
       this.dom.flashClass(result.message, 'claude-nav-highlight', 2000);
-      if (this.panel?.elements?.panel?.style.display === 'flex') this.panel.toggle();
+      if (this.panel?.elements?.panel?.style.display === 'flex') {
+        this.panel.toggle();
+      }
     } else if (!fromUrl && confirm('Bookmarked message not found. Delete?')) {
       this.deleteBookmark(bookmark.id);
     }
   }
 
   setupKeyboardShortcuts() {
-    const handler = (e) => {
-      if (e.altKey && e.shiftKey && e.key === 'B') { e.preventDefault(); this.togglePanel(); }
-      if (e.altKey && !e.shiftKey && e.key === 'b') { e.preventDefault(); this.toggleCurrentMessageBookmark(); }
+    const handler = e => {
+      if (e.altKey && e.shiftKey && e.key === 'B') {
+        e.preventDefault();
+        this.togglePanel();
+      }
+      if (e.altKey && !e.shiftKey && e.key === 'b') {
+        e.preventDefault();
+        this.toggleCurrentMessageBookmark();
+      }
     };
     document.addEventListener('keydown', handler);
     this.unsubscribers.push(() => document.removeEventListener('keydown', handler));
@@ -363,16 +417,22 @@ class BookmarkModule extends BaseModule {
   toggleCurrentMessageBookmark() {
     const messages = this.dom.findMessages();
     const idx = this.dom.getCurrentVisibleMessageIndex();
-    if (idx >= 0 && idx < messages.length) this.toggleBookmarkByIndex(messages[idx], idx);
+    if (idx >= 0 && idx < messages.length) {
+      this.toggleBookmarkByIndex(messages[idx], idx);
+    }
   }
 
   async onSettingsChanged(settings) {
-    if (settings.position) this.panel.updatePosition(settings.position);
+    if (settings.position) {
+      this.panel.updatePosition(settings.position);
+    }
     if (settings.storageType) {
       await bookmarkStore.setStorageType(settings.storageType);
       await this.updateUI();
     }
-    if (this.settingsChanged(['colorTheme', 'customColor'], settings)) await this.recreateUI();
+    if (this.settingsChanged(['colorTheme', 'customColor'], settings)) {
+      await this.recreateUI();
+    }
   }
 
   async recreateUI() {
@@ -384,7 +444,9 @@ class BookmarkModule extends BaseModule {
   }
 
   async destroy() {
-    if (this.chromeMessageListener) chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
+    if (this.chromeMessageListener) {
+      chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
+    }
     this.buttonManager?.removeAll?.();
     this.panel.destroy();
     this.sidebar.destroy();

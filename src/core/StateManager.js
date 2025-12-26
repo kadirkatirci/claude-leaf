@@ -7,7 +7,7 @@ import { Store } from './storage/Store.js';
 import {
   ChromeLocalAdapter,
   ChromeSyncAdapter,
-  IndexedDBAdapter
+  IndexedDBAdapter,
 } from './storage/adapters/index.js';
 
 export class StateManager {
@@ -16,7 +16,7 @@ export class StateManager {
     this.adapters = {
       local: new ChromeLocalAdapter(),
       sync: new ChromeSyncAdapter(),
-      indexeddb: new IndexedDBAdapter()
+      indexeddb: new IndexedDBAdapter(),
     };
 
     this.debug = false;
@@ -64,7 +64,7 @@ export class StateManager {
       defaultData: options.defaultData || {},
       cacheTTL: options.cacheTTL,
       cache: options.cache,
-      debug: this.debug || options.debug
+      debug: this.debug || options.debug,
     });
 
     // Register store
@@ -76,7 +76,7 @@ export class StateManager {
 
     // Connect adapter changes to store if adapter supports it
     if (adapter.setChangeListener) {
-      adapter.setChangeListener((changes) => {
+      adapter.setChangeListener(changes => {
         if (changes[namespace]) {
           store.onStorageChanged(changes[namespace]);
         }
@@ -175,7 +175,7 @@ export class StateManager {
     return {
       version: '2.0',
       timestamp: new Date().toISOString(),
-      stores: exports
+      stores: exports,
     };
   }
 

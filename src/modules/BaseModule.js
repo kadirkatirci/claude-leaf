@@ -48,7 +48,7 @@ class BaseModule {
 
         // Still subscribe to settings to detect re-enabling
         this.subscribeToSettings();
-        return;  // Exit immediately - no initialization
+        return; // Exit immediately - no initialization
       }
 
       console.log(`[${this.name}] ✅ Module is enabled, proceeding with initialization`);
@@ -112,7 +112,7 @@ class BaseModule {
    * Modülün settings'ini getir
    */
   async getSettings() {
-    return await settingsStore.get(this.name) || {};
+    return (await settingsStore.get(this.name)) || {};
   }
 
   /**
@@ -161,7 +161,7 @@ class BaseModule {
    */
   subscribeToSettings() {
     // Subscribe to settingsStore changes
-    const storeUnsub = settingsStore.subscribe(async (settings) => {
+    const storeUnsub = settingsStore.subscribe(async settings => {
       try {
         const moduleSettings = settings[this.name];
 
@@ -171,7 +171,9 @@ class BaseModule {
           return;
         }
 
-        if (!moduleSettings) return;
+        if (!moduleSettings) {
+          return;
+        }
 
         // Eğer modül disabled olduysa, yok et
         if (!moduleSettings.enabled && this.enabled) {
@@ -199,7 +201,7 @@ class BaseModule {
     this.unsubscribers.push(storeUnsub);
 
     // Also listen to EventBus for backward compatibility (App.js emits this)
-    const eventUnsub = eventBus.on('settings:changed', async (settings) => {
+    const eventUnsub = eventBus.on('settings:changed', async settings => {
       try {
         // Just call onSettingsChanged, settingsStore subscription handles the rest
         const moduleSettings = settings[this.name];
@@ -294,7 +296,7 @@ class BaseModule {
    * Subscribe to centralized URL change events from App
    */
   subscribeToURLChanges() {
-    const unsub = eventBus.on(Events.URL_CHANGED, (newUrl) => {
+    const unsub = eventBus.on(Events.URL_CHANGED, newUrl => {
       this.log(`📩 Received URL_CHANGED event: ${newUrl}`);
       this.onUrlChanged(newUrl);
     });
@@ -321,18 +323,23 @@ class BaseModule {
     this.log('⚠️ Module should override reinitializeUI() for robust SPA support');
   }
 
-
   /**
    * Check if element is visible (has offsetParent or is body/html)
    * Elements in stale DOM trees will have offsetParent = null
    */
   isElementVisible(element) {
-    if (!element) return false;
+    if (!element) {
+      return false;
+    }
 
     // offsetParent is null for hidden elements
     // BUT it's also null for body/html and position:fixed elements, so check for those
-    if (element.offsetParent !== null) return true;
-    if (element === document.body || element === document.documentElement) return true;
+    if (element.offsetParent !== null) {
+      return true;
+    }
+    if (element === document.body || element === document.documentElement) {
+      return true;
+    }
 
     // Check element's own styles
     const elementStyle = window.getComputedStyle(element);
@@ -341,7 +348,9 @@ class BaseModule {
     }
 
     // position:fixed elements also have null offsetParent but are visible
-    if (elementStyle.position === 'fixed') return true;
+    if (elementStyle.position === 'fixed') {
+      return true;
+    }
 
     // If offsetParent is null and element is not fixed/body/html,
     // check if it's because a parent is hidden

@@ -17,9 +17,9 @@ class EventBus {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
-    
+
     this.listeners.get(event).push(callback);
-    
+
     // Unsubscribe fonksiyonu döndür
     return () => this.off(event, callback);
   }
@@ -30,11 +30,13 @@ class EventBus {
    * @param {Function} callback - Kaldırılacak callback
    */
   off(event, callback) {
-    if (!this.listeners.has(event)) return;
-    
+    if (!this.listeners.has(event)) {
+      return;
+    }
+
     const callbacks = this.listeners.get(event);
     const index = callbacks.indexOf(callback);
-    
+
     if (index > -1) {
       callbacks.splice(index, 1);
     }
@@ -46,8 +48,10 @@ class EventBus {
    * @param {*} data - Event verisi
    */
   emit(event, data) {
-    if (!this.listeners.has(event)) return;
-    
+    if (!this.listeners.has(event)) {
+      return;
+    }
+
     const callbacks = this.listeners.get(event);
     callbacks.forEach(callback => {
       try {
@@ -64,11 +68,11 @@ class EventBus {
    * @param {Function} callback - Callback fonksiyonu
    */
   once(event, callback) {
-    const wrappedCallback = (data) => {
+    const wrappedCallback = data => {
       callback(data);
       this.off(event, wrappedCallback);
     };
-    
+
     this.on(event, wrappedCallback);
   }
 
@@ -86,9 +90,9 @@ const eventBus = new EventBus();
 // Event isimleri için constants
 const Events = {
   // MessageHub events (merkezi observer)
-  HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed',  // Mesaj sayısı değişti
-  HUB_VERSION_CHANGED: 'hub:version_changed',              // Edit version değişti
-  HUB_CONTENT_CHANGED: 'hub:content_changed',              // Herhangi bir içerik değişikliği
+  HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed', // Mesaj sayısı değişti
+  HUB_VERSION_CHANGED: 'hub:version_changed', // Edit version değişti
+  HUB_CONTENT_CHANGED: 'hub:content_changed', // Herhangi bir içerik değişikliği
 
   // Message events (legacy, geriye uyumluluk için)
   MESSAGES_UPDATED: 'messages:updated',

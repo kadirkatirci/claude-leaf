@@ -11,15 +11,213 @@ export class EmojiPicker {
 
     // Emoji categories
     this.categories = {
-      'Indicators': ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⭐', '🌟', '💫', '⚡', '🔥', '💥', '🚨', '⏰', '⏳', '🎯', '📌', '📍', '🏁', '🚩'],
-      'Editing': ['✅', '☑️', '✔️', '❌', '❎', '✏️', '✒️', '🖋️', '🖊️', '🖌️', '🖍️', '📝', '✂️', '📋', '🗑️', '💡', '🎨', '🧩', '🌈', '✨', '🎭'],
-      'Alerts': ['❗', '❕', '❓', '❔', '‼️', '⁉️', '⚠️', '🚨', '🔥', '💥', '⚡', '💢', '🛑', '⛔', '📛', '🚫', '🚩', '🏳️', '🏴', '🏁', '🆘'],
-      'Communication': ['📝', '✏️', '🖊️', '📞', '📧', '💬', '🗣️', '👥', '🤝', '📅', '🗓️', '📋', '📁', '🔍', '🔎', '💡', '🧠', '🛠️', '⚙️', '🔧', '📤'],
-      'Business': ['💰', '💵', '📚', '🎓', '⚖️', '🏢', '🏠', '💻', '🖥️', '📱', '🌐', '🔒', '🔓', '🩺', '🧪', '📐', '🎨', '🎭', '🎵', '🏆', '🎁'],
-      'Reactions': ['👍', '👎', '👏', '💯', '🥇', '🥈', '🥉', '⭕', '❗', '❓', '❕', '❔', '💬', '🗨️', '💭', '📣', '📢', '🔔', '🔕', '👁️', '👀'],
-      'Hands': ['👤', '👥', '🙋', '🙌', '🤲', '✋', '👋', '🖐️', '🤚', '💪', '🫱', '🫲', '🔗', '📎', '🧷', '📩', '📨', '📬', '📭', '💌', '🏷️'],
-      'Smiles': ['😀', '😁', '😂', '😃', '😄', '😅', '😆', '😇', '🙂', '🙃', '😉', '😊', '😌', '😍', '🥰', '😘', '😗', '😚', '😙', '😋', '😛'],
-      'Special': ['🎯', '🔍', '🧘', '🔇', '👁️', '🧠', '💡', '⏳', '🕯️', '🔦', '🧘', '🧿', '🤫', '🪬', '🕳️', '⏱️', '📵', '🧷', '🌀', '🔐', '🧩']
+      Indicators: [
+        '🔴',
+        '🟠',
+        '🟡',
+        '🟢',
+        '🔵',
+        '🟣',
+        '⚫',
+        '⭐',
+        '🌟',
+        '💫',
+        '⚡',
+        '🔥',
+        '💥',
+        '🚨',
+        '⏰',
+        '⏳',
+        '🎯',
+        '📌',
+        '📍',
+        '🏁',
+        '🚩',
+      ],
+      Editing: [
+        '✅',
+        '☑️',
+        '✔️',
+        '❌',
+        '❎',
+        '✏️',
+        '✒️',
+        '🖋️',
+        '🖊️',
+        '🖌️',
+        '🖍️',
+        '📝',
+        '✂️',
+        '📋',
+        '🗑️',
+        '💡',
+        '🎨',
+        '🧩',
+        '🌈',
+        '✨',
+        '🎭',
+      ],
+      Alerts: [
+        '❗',
+        '❕',
+        '❓',
+        '❔',
+        '‼️',
+        '⁉️',
+        '⚠️',
+        '🚨',
+        '🔥',
+        '💥',
+        '⚡',
+        '💢',
+        '🛑',
+        '⛔',
+        '📛',
+        '🚫',
+        '🚩',
+        '🏳️',
+        '🏴',
+        '🏁',
+        '🆘',
+      ],
+      Communication: [
+        '📝',
+        '✏️',
+        '🖊️',
+        '📞',
+        '📧',
+        '💬',
+        '🗣️',
+        '👥',
+        '🤝',
+        '📅',
+        '🗓️',
+        '📋',
+        '📁',
+        '🔍',
+        '🔎',
+        '💡',
+        '🧠',
+        '🛠️',
+        '⚙️',
+        '🔧',
+        '📤',
+      ],
+      Business: [
+        '💰',
+        '💵',
+        '📚',
+        '🎓',
+        '⚖️',
+        '🏢',
+        '🏠',
+        '💻',
+        '🖥️',
+        '📱',
+        '🌐',
+        '🔒',
+        '🔓',
+        '🩺',
+        '🧪',
+        '📐',
+        '🎨',
+        '🎭',
+        '🎵',
+        '🏆',
+        '🎁',
+      ],
+      Reactions: [
+        '👍',
+        '👎',
+        '👏',
+        '💯',
+        '🥇',
+        '🥈',
+        '🥉',
+        '⭕',
+        '❗',
+        '❓',
+        '❕',
+        '❔',
+        '💬',
+        '🗨️',
+        '💭',
+        '📣',
+        '📢',
+        '🔔',
+        '🔕',
+        '👁️',
+        '👀',
+      ],
+      Hands: [
+        '👤',
+        '👥',
+        '🙋',
+        '🙌',
+        '🤲',
+        '✋',
+        '👋',
+        '🖐️',
+        '🤚',
+        '💪',
+        '🫱',
+        '🫲',
+        '🔗',
+        '📎',
+        '🧷',
+        '📩',
+        '📨',
+        '📬',
+        '📭',
+        '💌',
+        '🏷️',
+      ],
+      Smiles: [
+        '😀',
+        '😁',
+        '😂',
+        '😃',
+        '😄',
+        '😅',
+        '😆',
+        '😇',
+        '🙂',
+        '🙃',
+        '😉',
+        '😊',
+        '😌',
+        '😍',
+        '🥰',
+        '😘',
+        '😗',
+        '😚',
+        '😙',
+        '😋',
+        '😛',
+      ],
+      Special: [
+        '🎯',
+        '🔍',
+        '🧘',
+        '🔇',
+        '👁️',
+        '🧠',
+        '💡',
+        '⏳',
+        '🕯️',
+        '🔦',
+        '🧘',
+        '🧿',
+        '🤫',
+        '🪬',
+        '🕳️',
+        '⏱️',
+        '📵',
+        '🧷',
+        '🌀',
+        '🔐',
+        '🧩',
+      ],
     };
 
     // Flatten all emojis for search
@@ -51,10 +249,7 @@ export class EmojiPicker {
     const moreBtn = DOMUtils.createElement('button');
     moreBtn.textContent = '⋯';
     moreBtn.title = 'More emojis';
-    moreBtn.className = cn(
-      ClaudeClasses.button.icon,
-      ClaudeClasses.util.transition
-    );
+    moreBtn.className = cn(ClaudeClasses.button.icon, ClaudeClasses.util.transition);
 
     moreBtn.addEventListener('click', () => {
       this.showFullPicker(targetElement, favoriteEmojis, onSelect);
@@ -106,7 +301,7 @@ export class EmojiPicker {
     });
 
     // Search functionality
-    searchBox.addEventListener('input', (e) => {
+    searchBox.addEventListener('input', e => {
       const query = e.target.value.toLowerCase().trim();
       if (query === '') {
         // Show all
@@ -126,7 +321,9 @@ export class EmojiPicker {
 
         // Remove old search results
         const oldResults = content.querySelector('#search-results');
-        if (oldResults) oldResults.remove();
+        if (oldResults) {
+          oldResults.remove();
+        }
 
         content.insertBefore(filteredSection, content.firstChild);
       }
@@ -189,7 +386,7 @@ export class EmojiPicker {
       'transition-all hover:scale-110'
     );
 
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', e => {
       e.stopPropagation();
       if (this.onSelect) {
         this.onSelect(emoji);
@@ -212,7 +409,9 @@ export class EmojiPicker {
     let top = rect.bottom + 8;
 
     // Keep within viewport
-    if (left < 10) left = 10;
+    if (left < 10) {
+      left = 10;
+    }
     if (left + pickerWidth > window.innerWidth - 10) {
       left = window.innerWidth - pickerWidth - 10;
     }
@@ -239,9 +438,9 @@ export class EmojiPicker {
   /**
    * Handle outside click
    */
-  handleOutsideClick = (e) => {
+  handleOutsideClick = e => {
     if (this.picker && !this.picker.contains(e.target)) {
       this.removePicker();
     }
-  }
+  };
 }

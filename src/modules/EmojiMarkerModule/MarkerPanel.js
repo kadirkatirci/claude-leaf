@@ -14,7 +14,7 @@ export class MarkerPanel extends BasePanel {
       title: 'Emoji Markers', // Icon added via updateContent
       width: '280px',
       height: '500px',
-      position: { right: '80px', top: '60px' }
+      position: { right: '80px', top: '60px' },
     });
 
     this.getTheme = getTheme;
@@ -58,7 +58,8 @@ export class MarkerPanel extends BasePanel {
   createMarkerItem(marker, index) {
     // Create item container
     const item = document.createElement('div');
-    item.className = 'flex gap-3 items-start p-3 mb-2 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
+    item.className =
+      'flex gap-3 items-start p-3 mb-2 bg-bg-100 hover:bg-bg-200 rounded-md cursor-pointer transition-colors';
 
     // Emoji display
     const emojiDiv = document.createElement('div');
@@ -87,7 +88,7 @@ export class MarkerPanel extends BasePanel {
     deleteBtn.className = 'text-text-400 hover:text-red-500 flex-shrink-0 p-1';
     deleteBtn.textContent = '🗑️';
     deleteBtn.title = 'Remove marker';
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
       if (confirm('Remove this marker?')) {
         this.onItemDelete(marker.id);
@@ -117,8 +118,13 @@ export class MarkerPanel extends BasePanel {
    * Generate signature for change detection
    */
   generateSignature(items) {
-    if (!items || items.length === 0) return 'empty';
-    return items.map(m => `${m.id}:${m.emoji}`).sort().join(',');
+    if (!items || items.length === 0) {
+      return 'empty';
+    }
+    return items
+      .map(m => `${m.id}:${m.emoji}`)
+      .sort()
+      .join(',');
   }
 
   /**
@@ -133,10 +139,18 @@ export class MarkerPanel extends BasePanel {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (seconds < 60) return 'Just now';
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (seconds < 60) {
+      return 'Just now';
+    }
+    if (minutes < 60) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    }
+    if (hours < 24) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    }
+    if (days < 7) {
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
 
     return new Date(timestamp).toLocaleDateString();
   }

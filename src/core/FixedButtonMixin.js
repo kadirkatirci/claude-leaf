@@ -51,7 +51,9 @@ export default class FixedButtonMixin {
 
       // Check every 2 seconds for state consistency
       this._healthCheckInterval = setInterval(() => {
-        if (!this.fixedButton) return;
+        if (!this.fixedButton) {
+          return;
+        }
 
         // Check if button is still in DOM
         if (!document.body.contains(this.fixedButton)) {
@@ -81,7 +83,9 @@ export default class FixedButtonMixin {
    */
   static setupReadyListener(module) {
     const markReady = () => {
-      if (module._isButtonReady) return;
+      if (module._isButtonReady) {
+        return;
+      }
       module._markButtonReady();
     };
 
@@ -90,7 +94,7 @@ export default class FixedButtonMixin {
     eventBus.on(Events.HUB_MESSAGE_COUNT_CHANGED, markReady);
 
     // Also listen for navigation events to handle /new → conversation transitions
-    module._navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+    module._navigationUnsubscribe = navigationInterceptor.onNavigate(event => {
       // When entering a conversation page from /new or elsewhere, reset ready state
       if (event.isConversationPage && !event.wasConversationPage) {
         module._isButtonReady = false;
@@ -106,7 +110,9 @@ export default class FixedButtonMixin {
    */
   static createReadyMarker(module) {
     return function () {
-      if (this._isButtonReady) return;
+      if (this._isButtonReady) {
+        return;
+      }
 
       this._isButtonReady = true;
 
@@ -123,7 +129,9 @@ export default class FixedButtonMixin {
   static createVisibilityHandler(module) {
     return function (isConversationPage) {
       // Always process visibility changes for robustness
-      module.log(`Visibility change: conversation=${isConversationPage}, button exists=${!!this.fixedButton}`);
+      module.log(
+        `Visibility change: conversation=${isConversationPage}, button exists=${!!this.fixedButton}`
+      );
 
       // Store state
       this.lastConversationState = isConversationPage;
@@ -193,7 +201,7 @@ export default class FixedButtonMixin {
         onClick,
         showCounter = false,
         counterColor = '#ef4444',
-        opacity = null // Allow custom opacity, defaults to module setting or 0.9
+        opacity = null, // Allow custom opacity, defaults to module setting or 0.9
       } = options;
 
       // Remove existing button if present
@@ -204,9 +212,12 @@ export default class FixedButtonMixin {
       const theme = this.getTheme ? this.getTheme() : { primary: '#CC785C' };
 
       // Determine target opacity: use provided, then setting, then default
-      const targetOpacity = opacity !== null
-        ? opacity
-        : (this.getSetting ? (await this.getSetting('opacity') || 0.7) : 0.7);
+      const targetOpacity =
+        opacity !== null
+          ? opacity
+          : this.getSetting
+            ? (await this.getSetting('opacity')) || 0.7
+            : 0.7;
 
       // Store target opacity for later use
       this._targetOpacity = targetOpacity;
@@ -249,8 +260,8 @@ export default class FixedButtonMixin {
           theme: theme,
           position: { top: -8, right: -8 },
           style: {
-            display: 'none' // Start hidden, will show when count > 0
-          }
+            display: 'none', // Start hidden, will show when count > 0
+          },
         });
       }
 
@@ -298,7 +309,9 @@ export default class FixedButtonMixin {
    */
   static createCounterUpdater(module) {
     return function (count) {
-      if (!this.buttonCounter) return;
+      if (!this.buttonCounter) {
+        return;
+      }
 
       // Use CounterBadge.update which handles visibility automatically
       CounterBadge.update(this.buttonCounter, count);
@@ -366,5 +379,4 @@ export default class FixedButtonMixin {
       module.log('Fixed button and listeners destroyed');
     }.bind(module);
   }
-
 }

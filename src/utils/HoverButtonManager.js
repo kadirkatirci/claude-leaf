@@ -19,7 +19,7 @@ export default class HoverButtonManager {
       persistWhen = () => false,
       hideDelay = 0,
       keepVisibleOnButtonHover = true,
-      checkMessageBounds = false
+      checkMessageBounds = false,
     } = options;
 
     let hoverTimeout = null;
@@ -78,10 +78,14 @@ export default class HoverButtonManager {
 
       if (checkMessageBounds) {
         // Advanced: Check if mouse is within message bounds on button leave
-        button.addEventListener('mouseleave', (e) => {
+        button.addEventListener('mouseleave', e => {
           const rect = messageElement.getBoundingClientRect();
-          if (e.clientX >= rect.left && e.clientX <= rect.right &&
-              e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom
+          ) {
             showButton();
           } else {
             hideButton();
@@ -116,7 +120,7 @@ export default class HoverButtonManager {
     return this.attachHoverListeners(messageElement, button, {
       persistWhen: () => false,
       hideDelay: 0,
-      keepVisibleOnButtonHover: false
+      keepVisibleOnButtonHover: false,
     });
   }
 
@@ -130,7 +134,7 @@ export default class HoverButtonManager {
     return this.attachHoverListeners(messageElement, button, {
       persistWhen,
       hideDelay: 0,
-      keepVisibleOnButtonHover: false
+      keepVisibleOnButtonHover: false,
     });
   }
 
@@ -145,7 +149,7 @@ export default class HoverButtonManager {
       persistWhen: () => false,
       hideDelay,
       keepVisibleOnButtonHover: true,
-      checkMessageBounds: true
+      checkMessageBounds: true,
     });
   }
 }

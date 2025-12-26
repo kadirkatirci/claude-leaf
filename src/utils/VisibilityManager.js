@@ -1,6 +1,6 @@
 /**
  * VisibilityManager - Centralized visibility management for all UI elements
- * 
+ *
  * v2.3.0 - Improved navigation event handling
  */
 
@@ -12,21 +12,21 @@ class VisibilityManager {
     if (instance) {
       return instance;
     }
-    
+
     this.isConversationPageCached = false;
     this.lastPath = null;
     this.listeners = new Set();
     this.debugMode = false;
     this.navigationUnsubscribe = null;
     this.initialized = false;
-    
+
     instance = this;
-    
+
     // Debug access
     if (typeof window !== 'undefined') {
       window.__visibilityManager = this;
     }
-    
+
     // Initialize
     this.initialize();
   }
@@ -43,15 +43,15 @@ class VisibilityManager {
       }
       return false;
     };
-    
+
     // Try immediately
     if (tryConnect()) {
       return;
     }
-    
+
     // Fallback: initialize from URL and retry connection
     this.initializeFromUrl();
-    
+
     // Keep trying to connect
     const retryInterval = setInterval(() => {
       if (tryConnect()) {
@@ -59,7 +59,7 @@ class VisibilityManager {
         this.log('Connected to NavigationInterceptor (delayed)');
       }
     }, 100);
-    
+
     // Stop trying after 5 seconds
     setTimeout(() => clearInterval(retryInterval), 5000);
   }
@@ -77,19 +77,19 @@ class VisibilityManager {
     const state = navigationInterceptor.getState();
     this.isConversationPageCached = state.isConversationPage;
     this.lastPath = state.path;
-    
+
     this.log('Initial state from NavigationInterceptor:', {
       isConversationPage: this.isConversationPageCached,
-      path: this.lastPath
+      path: this.lastPath,
     });
 
     // Subscribe to navigation events
-    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate(event => {
       this.handleNavigationEvent(event);
     });
-    
+
     this.initialized = true;
-    
+
     // Notify listeners of initial state
     this.notifyListeners();
   }
@@ -102,10 +102,10 @@ class VisibilityManager {
     this.isConversationPageCached = this.checkConversationPath(path);
     this.lastPath = path;
     this.initialized = true;
-    
+
     this.log('Initialized from URL (fallback):', {
       isConversationPage: this.isConversationPageCached,
-      path: this.lastPath
+      path: this.lastPath,
     });
   }
 
@@ -113,13 +113,15 @@ class VisibilityManager {
    * Check if path is a conversation page
    */
   checkConversationPath(path) {
-    if (!path) return false;
-    
+    if (!path) {
+      return false;
+    }
+
     // Not a conversation if it's /new
     if (path === '/new' || path.endsWith('/new')) {
       return false;
     }
-    
+
     // Is a conversation if it matches /chat/{id}
     return /\/chat\/[^/]+/.test(path);
   }
@@ -138,7 +140,7 @@ class VisibilityManager {
     this.log('Navigation event received:', {
       type: event.type,
       from: `${wasPath} (conv: ${wasConversationPage})`,
-      to: `${event.path} (conv: ${event.isConversationPage})`
+      to: `${event.path} (conv: ${event.isConversationPage})`,
     });
 
     // Always notify on path change or conversation state change
@@ -180,7 +182,9 @@ class VisibilityManager {
    * Notify all listeners
    */
   notifyListeners() {
-    this.log(`Notifying ${this.listeners.size} listeners, isConversation: ${this.isConversationPageCached}`);
+    this.log(
+      `Notifying ${this.listeners.size} listeners, isConversation: ${this.isConversationPageCached}`
+    );
 
     this.listeners.forEach(callback => {
       try {
@@ -207,7 +211,7 @@ class VisibilityManager {
    */
   refresh() {
     const wasConversationPage = this.isConversationPageCached;
-    
+
     if (window.__navigationInterceptor) {
       const state = window.__navigationInterceptor.getState();
       this.isConversationPageCached = state.isConversationPage;
@@ -217,12 +221,12 @@ class VisibilityManager {
       this.isConversationPageCached = this.checkConversationPath(path);
       this.lastPath = path;
     }
-    
+
     this.log('Refreshed:', {
       isConversationPage: this.isConversationPageCached,
-      path: this.lastPath
+      path: this.lastPath,
     });
-    
+
     // Always notify on refresh
     this.notifyListeners();
   }
@@ -231,7 +235,9 @@ class VisibilityManager {
    * Update UI element visibility
    */
   setElementVisibility(element, visible) {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     if (visible) {
       const displayValue = element.dataset.originalDisplay || 'flex';
@@ -243,7 +249,11 @@ class VisibilityManager {
       if (!element.dataset.originalOpacity && element.style.opacity) {
         element.dataset.originalOpacity = element.style.opacity;
       }
-      if (!element.dataset.originalDisplay && element.style.display && element.style.display !== 'none') {
+      if (
+        !element.dataset.originalDisplay &&
+        element.style.display &&
+        element.style.display !== 'none'
+      ) {
         element.dataset.originalDisplay = element.style.display;
       }
 
@@ -286,7 +296,7 @@ class VisibilityManager {
       path: this.lastPath,
       listenerCount: this.listeners.size,
       hasNavigationSubscription: !!this.navigationUnsubscribe,
-      liveCheck: this.isOnConversationPage()
+      liveCheck: this.isOnConversationPage(),
     };
   }
 

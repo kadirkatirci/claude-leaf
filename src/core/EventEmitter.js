@@ -46,7 +46,9 @@ export class EventEmitter {
    * @param {Function} callback - Event handler to remove
    */
   off(event, callback) {
-    if (!this.events.has(event)) return;
+    if (!this.events.has(event)) {
+      return;
+    }
 
     const callbacks = this.events.get(event);
     const index = callbacks.indexOf(callback);
@@ -67,7 +69,9 @@ export class EventEmitter {
    * @param {*} data - Event data
    */
   emit(event, data) {
-    if (!this.events.has(event)) return;
+    if (!this.events.has(event)) {
+      return;
+    }
 
     const callbacks = this.events.get(event);
 

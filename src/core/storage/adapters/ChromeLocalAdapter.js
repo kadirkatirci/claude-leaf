@@ -22,7 +22,9 @@ export class ChromeLocalAdapter extends BaseAdapter {
       return chrome.storage.local;
     }
 
-    console.warn('[ChromeLocalAdapter] chrome.storage.local unavailable, using localStorage fallback');
+    console.warn(
+      '[ChromeLocalAdapter] chrome.storage.local unavailable, using localStorage fallback'
+    );
     return this.createLocalStorageFallback();
   }
 
@@ -31,8 +33,8 @@ export class ChromeLocalAdapter extends BaseAdapter {
    */
   createLocalStorageFallback() {
     return {
-      get: (keys) => {
-        return new Promise((resolve) => {
+      get: keys => {
+        return new Promise(resolve => {
           const result = {};
           const keyArray = Array.isArray(keys) ? keys : [keys];
 
@@ -49,7 +51,7 @@ export class ChromeLocalAdapter extends BaseAdapter {
           resolve(result);
         });
       },
-      set: (items) => {
+      set: items => {
         return new Promise((resolve, reject) => {
           try {
             Object.entries(items).forEach(([key, value]) => {
@@ -65,19 +67,19 @@ export class ChromeLocalAdapter extends BaseAdapter {
           }
         });
       },
-      remove: (keys) => {
-        return new Promise((resolve) => {
+      remove: keys => {
+        return new Promise(resolve => {
           const keyArray = Array.isArray(keys) ? keys : [keys];
           keyArray.forEach(key => localStorage.removeItem(key));
           resolve();
         });
       },
       clear: () => {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           localStorage.clear();
           resolve();
         });
-      }
+      },
     };
   }
 
@@ -135,7 +137,7 @@ export class ChromeLocalAdapter extends BaseAdapter {
     return this.withRetry(async () => {
       return new Promise((resolve, reject) => {
         try {
-          this.storageAPI.get([key], (result) => {
+          this.storageAPI.get([key], result => {
             const error = this.checkChromeError();
             if (error) {
               reject(error);
@@ -180,9 +182,11 @@ export class ChromeLocalAdapter extends BaseAdapter {
             const error = this.checkChromeError();
             if (error) {
               // Check if it's a quota error
-              if (error.message.includes('QUOTA_BYTES_PER_ITEM') ||
-                  error.message.includes('QuotaExceededError') ||
-                  error.message.includes('quota')) {
+              if (
+                error.message.includes('QUOTA_BYTES_PER_ITEM') ||
+                error.message.includes('QuotaExceededError') ||
+                error.message.includes('quota')
+              ) {
                 reject(new Error(`Storage quota exceeded for key '${key}': ${error.message}`));
               } else {
                 reject(error);
@@ -247,7 +251,7 @@ export class ChromeLocalAdapter extends BaseAdapter {
    */
   async keys() {
     return new Promise((resolve, reject) => {
-      this.storageAPI.get(null, (result) => {
+      this.storageAPI.get(null, result => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -261,23 +265,23 @@ export class ChromeLocalAdapter extends BaseAdapter {
    * Get storage info
    */
   async getInfo() {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
         resolve({
           type: 'ChromeLocalAdapter (fallback)',
           available: true,
           quota: 10 * 1024 * 1024, // ~10MB localStorage limit
-          usage: 0
+          usage: 0,
         });
         return;
       }
 
-      chrome.storage.local.getBytesInUse(null, (bytesInUse) => {
+      chrome.storage.local.getBytesInUse(null, bytesInUse => {
         resolve({
           type: 'ChromeLocalAdapter',
           available: true,
           quota: chrome.storage.local.QUOTA_BYTES || 'unlimited',
-          usage: bytesInUse || 0
+          usage: bytesInUse || 0,
         });
       });
     });

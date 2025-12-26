@@ -8,7 +8,8 @@ export const THEMES = {
   native: {
     name: 'Claude Native',
     // Button classes from Claude.ai
-    buttonClasses: 'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 shadow-md hover:shadow-lg bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto',
+    buttonClasses:
+      'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 shadow-md hover:shadow-lg bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto',
     // Accent color - for counters and action buttons
     accentColor: 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))',
   },
@@ -17,7 +18,8 @@ export const THEMES = {
   orange: {
     name: 'Orange',
     simpleStyle: true, // No fancy effects
-    buttonClasses: 'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto bg-bg-000 hover:bg-bg-000',
+    buttonClasses:
+      'z-[1] size-9 inline-flex items-center justify-center border-0.5 overflow-hidden !rounded-full p-1 transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto bg-bg-000 hover:bg-bg-000',
     accentColor: 'hsl(var(--accent-main-000)/var(--tw-bg-opacity))',
   },
 

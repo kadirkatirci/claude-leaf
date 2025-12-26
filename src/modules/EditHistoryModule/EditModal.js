@@ -17,7 +17,9 @@ class EditModal {
    * Reads the version span in real-time to get the up-to-date version number
    */
   getCurrentVersionInfo(messageElement) {
-    if (!messageElement) return null;
+    if (!messageElement) {
+      return null;
+    }
 
     // Find version span (same logic as getEditedPrompts)
     const allSpans = messageElement.querySelectorAll('span');
@@ -54,7 +56,7 @@ class EditModal {
     Object.assign(modalContent.style, {
       maxWidth: '600px',
       maxHeight: '80vh',
-      animation: 'slideUp 0.3s ease'
+      animation: 'slideUp 0.3s ease',
     });
 
     // Header
@@ -65,7 +67,10 @@ class EditModal {
     // Fetch history
     // Use passed containerId or try to find it
     const finalContainerId = containerId || this.getContainerId(messageElement);
-    const history = await editHistoryStore.getHistoryForMessage(window.location.pathname, finalContainerId);
+    const history = await editHistoryStore.getHistoryForMessage(
+      window.location.pathname,
+      finalContainerId
+    );
 
     // Content
     const content = this.createContent(messageText, history, currentVersionInfo);
@@ -75,13 +80,17 @@ class EditModal {
     modal.appendChild(modalContent);
 
     // Click outside to close
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) this.close();
+    modal.addEventListener('click', e => {
+      if (e.target === modal) {
+        this.close();
+      }
     });
 
     // ESC to close
-    const escHandler = (e) => {
-      if (e.key === 'Escape') this.close();
+    const escHandler = e => {
+      if (e.key === 'Escape') {
+        this.close();
+      }
     };
     document.addEventListener('keydown', escHandler);
 
@@ -103,7 +112,8 @@ class EditModal {
     title.innerHTML = `${IconLibrary.edit('currentColor', 16)} Edit History ${versionInfo ? `<span class="text-accent-main-100 text-base">${versionInfo}</span>` : ''}`;
 
     const closeBtn = DOMUtils.createElement('button');
-    closeBtn.className = 'bg-transparent border-0 text-2xl text-text-400 hover:bg-bg-200 hover:text-text-000 cursor-pointer p-0 size-8 rounded-full transition-all flex items-center justify-center';
+    closeBtn.className =
+      'bg-transparent border-0 text-2xl text-text-400 hover:bg-bg-200 hover:text-text-000 cursor-pointer p-0 size-8 rounded-full transition-all flex items-center justify-center';
     closeBtn.innerHTML = '✕';
 
     header.appendChild(title);
@@ -117,7 +127,9 @@ class EditModal {
    * Example: ["1/2", "2/2", "3/3"] -> ["1/3", "2/3", "3/3"]
    */
   normalizeVersionLabels(history) {
-    if (!history || history.length === 0) return history;
+    if (!history || history.length === 0) {
+      return history;
+    }
 
     // Find maximum total version count
     let maxTotal = 0;
@@ -141,7 +153,7 @@ class EditModal {
           const current = parts[0].trim();
           return {
             ...item,
-            versionLabel: `${current} / ${maxTotal}`
+            versionLabel: `${current} / ${maxTotal}`,
           };
         }
       }
@@ -235,7 +247,8 @@ class EditModal {
 
     const messageContent = DOMUtils.createElement('div');
     messageContent.id = 'claude-edit-view-content';
-    messageContent.className = 'text-sm text-text-000 whitespace-pre-wrap break-words max-h-[300px] overflow-y-auto';
+    messageContent.className =
+      'text-sm text-text-000 whitespace-pre-wrap break-words max-h-[300px] overflow-y-auto';
     messageContent.textContent = messageText;
 
     messageBox.appendChild(messageLabel);
@@ -256,8 +269,12 @@ class EditModal {
     const contentEl = document.getElementById('claude-edit-view-content');
     const versionEl = document.getElementById('claude-edit-view-version');
 
-    if (contentEl) contentEl.textContent = content;
-    if (versionEl) versionEl.textContent = versionLabel;
+    if (contentEl) {
+      contentEl.textContent = content;
+    }
+    if (versionEl) {
+      versionEl.textContent = versionLabel;
+    }
   }
 
   getContainerId(element) {
@@ -294,7 +311,9 @@ class EditModal {
    * Modal'ı kapat
    */
   close() {
-    if (!this.activeModal) return;
+    if (!this.activeModal) {
+      return;
+    }
 
     const { element, escHandler } = this.activeModal;
     element.style.animation = 'fadeOut 0.2s ease';

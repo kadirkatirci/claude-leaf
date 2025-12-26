@@ -23,7 +23,9 @@ class SidebarCollapseModule extends BaseModule {
   async init() {
     try {
       await super.init();
-      if (!this.enabled) return;
+      if (!this.enabled) {
+        return;
+      }
 
       this.log('Sidebar Collapse başlatılıyor...');
 
@@ -137,7 +139,9 @@ class SidebarCollapseModule extends BaseModule {
    */
   async injectChevronToSection(sectionKey, sectionElement) {
     const header = sectionElement.querySelector('h3');
-    if (!header) return;
+    if (!header) {
+      return;
+    }
 
     // Check if chevron already exists
     if (header.querySelector('.sidebar-collapse-chevron')) {
@@ -146,14 +150,18 @@ class SidebarCollapseModule extends BaseModule {
 
     // Find the list
     const list = sectionElement.querySelector('ul');
-    if (!list) return;
+    if (!list) {
+      return;
+    }
 
     // Special handling for Recents section: Hide the native "Show/Hide" text
     // and observe header for dynamic re-inserts of the native toggle.
     let headerObserver = null;
     if (sectionKey === 'recent') {
-      const hideToggleIfMatches = (el) => {
-        if (!el || !el.textContent) return;
+      const hideToggleIfMatches = el => {
+        if (!el || !el.textContent) {
+          return;
+        }
         const txt = el.textContent.trim();
         // Match common native toggle labels (case-insensitive). If needed,
         // expand this regex to include localized words.
@@ -171,12 +179,14 @@ class SidebarCollapseModule extends BaseModule {
       header.querySelectorAll('span,button').forEach(hideToggleIfMatches);
 
       // Also watch for dynamic re-rendering that may re-insert the native toggle.
-      headerObserver = new MutationObserver((mutations) => {
-        mutations.forEach((m) => {
-          m.addedNodes.forEach((node) => {
+      headerObserver = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+          m.addedNodes.forEach(node => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               hideToggleIfMatches(node);
-              if (node.querySelectorAll) node.querySelectorAll('span,button').forEach(hideToggleIfMatches);
+              if (node.querySelectorAll) {
+                node.querySelectorAll('span,button').forEach(hideToggleIfMatches);
+              }
             }
           });
         });
@@ -211,7 +221,7 @@ class SidebarCollapseModule extends BaseModule {
         transition: 'all 0.2s ease',
         userSelect: 'none',
         display: 'inline-block',
-      }
+      },
     });
 
     // Hover effect
@@ -226,7 +236,7 @@ class SidebarCollapseModule extends BaseModule {
     });
 
     // Click handler
-    chevron.addEventListener('click', (e) => {
+    chevron.addEventListener('click', e => {
       e.stopPropagation();
       this.toggleSection(sectionKey);
     });
@@ -235,11 +245,15 @@ class SidebarCollapseModule extends BaseModule {
     header.style.cursor = 'pointer';
     header.style.userSelect = 'none';
 
-    const headerClickHandler = (e) => {
+    const headerClickHandler = e => {
       // Don't toggle if clicking on a link or button
-      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') return;
+      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+        return;
+      }
       // Don't toggle if clicking chevron (it has its own handler)
-      if (e.target === chevron) return;
+      if (e.target === chevron) {
+        return;
+      }
       this.toggleSection(sectionKey);
     };
 
@@ -269,7 +283,9 @@ class SidebarCollapseModule extends BaseModule {
    */
   async toggleSection(sectionKey) {
     const section = this.sections.get(sectionKey);
-    if (!section) return;
+    if (!section) {
+      return;
+    }
 
     section.isCollapsed = !section.isCollapsed;
 
@@ -294,7 +310,9 @@ class SidebarCollapseModule extends BaseModule {
    */
   applyCollapseState(sectionKey) {
     const section = this.sections.get(sectionKey);
-    if (!section) return;
+    if (!section) {
+      return;
+    }
 
     if (section.isCollapsed) {
       // Hide the list

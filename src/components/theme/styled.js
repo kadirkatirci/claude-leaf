@@ -9,7 +9,7 @@ import tokens from './tokens.js';
  * Creates a style object from tokens
  * Allows components to use design tokens easily
  */
-export const createStyles = (styleFactory) => {
+export const createStyles = styleFactory => {
   if (typeof styleFactory === 'function') {
     return styleFactory(tokens);
   }
@@ -19,7 +19,7 @@ export const createStyles = (styleFactory) => {
 /**
  * Converts a style object to CSS string for inline styles
  */
-export const toInlineStyle = (styles) => {
+export const toInlineStyle = styles => {
   return Object.entries(styles)
     .map(([key, value]) => {
       const cssKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);

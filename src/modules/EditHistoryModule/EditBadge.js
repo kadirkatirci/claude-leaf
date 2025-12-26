@@ -31,8 +31,8 @@ class EditBadge {
 
     this.badge.updateAll(
       editedPrompts.map(e => e.element),
-      (element) => this.getBadgeOptions(element, editMap.get(element)),
-      (element) => elementsSet.has(element)
+      element => this.getBadgeOptions(element, editMap.get(element)),
+      element => elementsSet.has(element)
     );
   }
 
@@ -66,7 +66,7 @@ class EditBadge {
       position: { top: '-35px', right: '8px' },
       style: {},
       data: editInfo, // Pass full edit info object
-      setParentPosition: true
+      setParentPosition: true,
     };
   }
 

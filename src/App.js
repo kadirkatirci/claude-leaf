@@ -1,21 +1,25 @@
 /**
  * ClaudeProductivityApp - Main application manager
  * Coordinates all modules and manages lifecycle
- * 
- * v2.2.0 - Fixed import order for NavigationInterceptor/VisibilityManager
  */
 
 // CRITICAL: Import NavigationInterceptor FIRST before anything else
 // This ensures window.__navigationInterceptor is set before VisibilityManager initializes
-import navigationInterceptor, { PageType } from './core/NavigationInterceptor.js';
+import navigationInterceptor from './core/NavigationInterceptor.js';
 
 // Now import VisibilityManager - it will find NavigationInterceptor on window
 import VisibilityManager from './utils/VisibilityManager.js';
 
 // Rest of imports
-import { settingsStore, bookmarkStore, markerStore, conversationStateStore } from './stores/index.js';
+import {
+  settingsStore,
+  bookmarkStore,
+  markerStore,
+  conversationStateStore,
+} from './stores/index.js';
 import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
-import { isDevDisabled, getDevDisabledModules } from './config/DevConfig.js';
+import { isDevDisabled } from './config/DevConfig.js';
+import { debugLog } from './config/debug.js';
 
 const GENERAL_CONFIG = MODULE_CONSTANTS.general;
 import { eventBus, Events } from './utils/EventBus.js';
@@ -51,14 +55,14 @@ class ClaudeProductivityApp {
       status: 'idle',
       failedModules: [],
       errors: [],
-      startTime: null
+      startTime: null,
     };
     this.managers = {
       visibility: null,
       theme: null,
       keyboard: null,
       observer: null,
-      messageRegistry: null
+      messageRegistry: null,
     };
     this.moduleMetadata = new Map();
 
@@ -70,16 +74,14 @@ class ClaudeProductivityApp {
 
   async init() {
     if (this.initialized) {
-      console.warn('⚠️ Application already initialized');
+      debugLog('navigation', 'Application already initialized');
       return;
     }
 
     if (this.initializing) {
-      console.warn('⚠️ Application initialization already in progress');
+      debugLog('navigation', 'Application initialization already in progress');
       return;
     }
-
-    console.log('🚀 Claude Productivity Extension starting...');
 
     this.initializing = true;
     this.initState.status = 'initializing';
@@ -92,11 +94,10 @@ class ClaudeProductivityApp {
       this.initializing = false;
       this.initState.status = 'ready';
 
-      console.log('✅ Claude Productivity Extension ready!');
-      console.log('📦 Active modules:', Array.from(this.modules.keys()));
+      debugLog('navigation', 'Extension ready. Active modules:', Array.from(this.modules.keys()));
 
       if (this.initState.failedModules.length > 0) {
-        console.warn('⚠️ Failed modules:', this.initState.failedModules);
+        console.warn('[App] Failed modules:', this.initState.failedModules);
       }
     } catch (error) {
       this.initializing = false;
@@ -104,48 +105,40 @@ class ClaudeProductivityApp {
       this.initState.errors.push({
         message: error.message,
         stack: error.stack,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
-      console.error('❌ Claude Productivity Extension initialization failed:', error);
+      console.error('[App] Initialization failed:', error);
       this.handleInitializationError(error);
     }
   }
 
   async initializeWithTimeout(timeout) {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`Initialization timeout after ${timeout}ms`)),
-        timeout
-      )
+      setTimeout(() => reject(new Error(`Initialization timeout after ${timeout}ms`)), timeout)
     );
 
     await Promise.race([this.doInitialize(), timeoutPromise]);
   }
 
   async doInitialize() {
-    console.log('🏗️ [ARCHITECTURE] Starting initialization sequence...');
     const startTime = performance.now();
 
     // STEP 0: Verify NavigationInterceptor is ready
-    console.log('📍 [STEP 0/7] Verifying NavigationInterceptor...');
     const navState = navigationInterceptor.getState();
-    console.log(`  - NavigationInterceptor ready: ${!!window.__navigationInterceptor}`);
-    console.log(`  - Current page: ${navState.pageType}`);
-    console.log(`  - Is conversation: ${navState.isConversationPage}`);
+    debugLog(
+      'navigation',
+      `Init: page=${navState.pageType}, conversation=${navState.isConversationPage}`
+    );
 
     // Setup App's navigation listener
     this.setupNavigationListener();
-    console.log('✅ [STEP 0/7] NavigationInterceptor verified');
 
     // STEP 1: Load settings
-    console.log('📍 [STEP 1/7] Loading settings...');
-
     try {
       await settingsStore.load();
-      console.log('✅ [STEP 1/7] Settings loaded successfully');
     } catch (error) {
-      console.error('⚠️ [STEP 1/7] Failed to load settings, using defaults:', error);
+      console.warn('[App] Failed to load settings, using defaults:', error);
     }
 
     const { default: settingsCache } = await import('./core/SettingsCache.js');
@@ -153,23 +146,13 @@ class ClaudeProductivityApp {
     const settings = await settingsStore.getAll();
 
     // STEP 2: Wait for DOM
-    console.log('📍 [STEP 2/7] Waiting for DOM...');
-
     if (navState.isConversationPage) {
-      console.log('  - Waiting for conversation DOM...');
-      const isReady = await domReadyChecker.waitForConversationReady({ maxWait: 5000 });
-      console.log(`  - Conversation DOM ready: ${isReady}`);
-    } else if (navState.isNewChatPage) {
-      console.log('  - On /new page, waiting for basic DOM...');
-      await domReadyChecker.waitForReady({ maxWait: 2000 });
+      await domReadyChecker.waitForConversationReady({ maxWait: 5000 });
     } else {
-      console.log('  - Other page, waiting for basic DOM...');
       await domReadyChecker.waitForReady({ maxWait: 2000 });
     }
-    console.log('✅ [STEP 2/7] DOM ready');
 
     // STEP 3: Initialize core utilities
-    console.log('📍 [STEP 3/7] Initializing core infrastructure...');
     await DOMUtils.init();
 
     const { default: asyncManager } = await import('./managers/AsyncManager.js');
@@ -184,7 +167,6 @@ class ClaudeProductivityApp {
       navigationInterceptor.setDebugMode(true);
       domReadyChecker.setDebugMode(true);
       VisibilityManager.setDebugMode(true);
-      console.log('🐛 Debug mode enabled');
     }
 
     domManager.init();
@@ -197,61 +179,31 @@ class ClaudeProductivityApp {
     await messageRegistry.start();
     this.managers.messageRegistry = messageRegistry;
 
-    // Initialize Core Services (Panel, MessageHub & Version)
+    // Initialize Core Services
     panelManager.init();
-    messageHub.start();  // Merkezi DOM observer
-    versionManager.start();  // Geriye uyumluluk için (artık MessageHub kullanacak)
-
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('✅ [STEP 3/7] Core infrastructure ready');
-    }
+    messageHub.start();
+    versionManager.start();
 
     // STEP 4: Initialize managers
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('📍 [STEP 4/7] Initializing managers...');
-    }
     this.initializeManagers();
     this.applySettingsToManagers(settings);
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('✅ [STEP 4/7] Managers ready');
-    }
 
     // STEP 5: Cross-tab sync
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('📍 [STEP 5/7] Setting up cross-tab sync...');
-    }
     this.initializeCrossTabSync();
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('✅ [STEP 5/7] Cross-tab sync ready');
-    }
 
     // STEP 6: Initialize modules
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('📍 [STEP 6/7] Initializing modules...');
-    }
     this.registerModulesWithDependencies();
     await this.initializeModules();
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('✅ [STEP 6/7] Modules ready:', Array.from(this.modules.keys()));
-    }
 
     // STEP 7: Global listeners
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('📍 [STEP 7/7] Setting up global listeners...');
-    }
     this.setupGlobalListeners();
-    if (GENERAL_CONFIG.debugMode) {
-      console.log('✅ [STEP 7/7] Global listeners ready');
-    }
 
     if (settings.general?.debugMode) {
       this.enableDebugMode();
     }
 
     const totalTime = Math.round(performance.now() - startTime);
-    if (GENERAL_CONFIG.debugMode) {
-      console.log(`🎉 Initialization complete in ${totalTime}ms`);
-    }
+    debugLog('performance', `Initialization complete in ${totalTime}ms`);
   }
 
   setupNavigationListener() {
@@ -259,7 +211,7 @@ class ClaudeProductivityApp {
       this.navigationUnsubscribe();
     }
 
-    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate(event => {
       this.handleNavigationEvent(event);
     });
   }
@@ -277,7 +229,7 @@ class ClaudeProductivityApp {
     }
     this.lastNavigationTime = now;
 
-    console.log(`[App] Navigation: ${event.previousPageType || 'null'} → ${event.pageType}`);
+    debugLog('navigation', `Navigation: ${event.previousPageType || 'null'} -> ${event.pageType}`);
 
     if (this.restartDebounceTimer) {
       clearTimeout(this.restartDebounceTimer);
@@ -285,16 +237,12 @@ class ClaudeProductivityApp {
 
     // Handle transitions
     if (event.wasNewChatPage && event.isConversationPage) {
-      console.log('[App] /new → conversation, scheduling restart');
       this.scheduleRestart(500);
     } else if (event.wasConversationPage && event.isConversationPage) {
-      console.log('[App] conversation → conversation');
       this.notifyModulesOfPageChange(event);
     } else if (!event.wasConversationPage && event.isConversationPage) {
-      console.log('[App] → conversation, scheduling restart');
       this.scheduleRestart(300);
     } else if (event.wasConversationPage && !event.isConversationPage) {
-      console.log('[App] conversation →, notifying modules');
       this.notifyModulesOfPageChange(event);
     }
   }
@@ -310,16 +258,15 @@ class ClaudeProductivityApp {
       const isReady = await domReadyChecker.waitForNavigationComplete({ maxWait: 3000 });
 
       if (isReady) {
-        console.log('[App] DOM ready, restarting modules...');
         await this.restartModules();
       } else {
-        console.warn('[App] DOM not ready after navigation');
+        debugLog('navigation', 'DOM not ready after navigation');
       }
     }, delay);
   }
 
   async restartModules() {
-    console.log('[App] Restarting modules...');
+    debugLog('navigation', 'Restarting modules...');
 
     // Refresh VisibilityManager state
     VisibilityManager.refresh();
@@ -341,8 +288,6 @@ class ClaudeProductivityApp {
         console.error(`[App] Error restarting ${name}:`, error);
       }
     }
-
-    console.log('[App] Modules restarted');
   }
 
   notifyModulesOfPageChange(event) {
@@ -360,12 +305,12 @@ class ClaudeProductivityApp {
       storageSync.registerStore('conversationState', conversationStateStore.store);
       storageSync.initializeListener();
     } catch (error) {
-      console.error('⚠️ Failed to initialize cross-tab sync:', error);
+      console.warn('[App] Failed to initialize cross-tab sync:', error);
     }
   }
 
-  handleInitializationError(error) {
-    console.error('🔧 Attempting graceful degradation...');
+  handleInitializationError(_error) {
+    // Attempt graceful degradation
     try {
       if (!this.managers.visibility) {
         this.managers.visibility = VisibilityManager;
@@ -373,9 +318,9 @@ class ClaudeProductivityApp {
       if (!this.managers.theme) {
         this.managers.theme = ThemeManager;
       }
-      console.log('⚠️ Operating in degraded mode');
+      debugLog('navigation', 'Operating in degraded mode');
     } catch (fallbackError) {
-      console.error('❌ Graceful degradation failed:', fallbackError);
+      console.error('[App] Graceful degradation failed:', fallbackError);
     }
   }
 
@@ -398,12 +343,6 @@ class ClaudeProductivityApp {
   }
 
   registerModulesWithDependencies() {
-    // Log dev-disabled modules at startup
-    const devDisabled = getDevDisabledModules();
-    if (devDisabled.length > 0) {
-      console.log(`🚧 [DEV] Disabled modules: ${devDisabled.join(', ')}`);
-    }
-
     // Register modules (skip dev-disabled ones)
     if (!isDevDisabled('navigation')) {
       this.registerModule('navigation', new NavigationModule(), { dependencies: [] });
@@ -412,7 +351,9 @@ class ClaudeProductivityApp {
       this.registerModule('editHistory', new EditHistoryModule(), { dependencies: [] });
     }
     if (!isDevDisabled('compactView')) {
-      this.registerModule('compactView', new CompactViewModule(), { dependencies: ['navigation'] });
+      this.registerModule('compactView', new CompactViewModule(), {
+        dependencies: ['navigation'],
+      });
     }
     if (!isDevDisabled('bookmarks')) {
       this.registerModule('bookmarks', new BookmarkModule(), { dependencies: [] });
@@ -430,7 +371,7 @@ class ClaudeProductivityApp {
 
   registerModule(name, module, metadata = {}) {
     if (this.modules.has(name)) {
-      console.warn(`⚠️ Module ${name} already registered`);
+      debugLog('navigation', `Module ${name} already registered`);
       return;
     }
     this.modules.set(name, module);
@@ -442,10 +383,12 @@ class ClaudeProductivityApp {
     const visited = new Set();
     const visiting = new Set();
 
-    const visit = (name) => {
-      if (visited.has(name)) return;
+    const visit = name => {
+      if (visited.has(name)) {
+        return;
+      }
       if (visiting.has(name)) {
-        console.warn(`⚠️ Circular dependency: ${name}`);
+        debugLog('navigation', `Circular dependency detected: ${name}`);
         return;
       }
 
@@ -454,7 +397,9 @@ class ClaudeProductivityApp {
       const dependencies = metadata.dependencies || [];
 
       for (const dep of dependencies) {
-        if (this.modules.has(dep)) visit(dep);
+        if (this.modules.has(dep)) {
+          visit(dep);
+        }
       }
 
       visiting.delete(name);
@@ -462,7 +407,9 @@ class ClaudeProductivityApp {
       sorted.push(name);
     };
 
-    for (const name of modules.keys()) visit(name);
+    for (const name of modules.keys()) {
+      visit(name);
+    }
     return sorted;
   }
 
@@ -473,19 +420,14 @@ class ClaudeProductivityApp {
       const module = this.modules.get(moduleName);
 
       try {
-        if (GENERAL_CONFIG.debugMode) {
-          console.log(`🚀 Initializing: ${moduleName}`);
-        }
         await module.init();
-        if (GENERAL_CONFIG.debugMode) {
-          console.log(`✅ ${moduleName} ready`);
-        }
+        debugLog('navigation', `${moduleName} initialized`);
       } catch (error) {
-        console.error(`❌ Failed to initialize ${moduleName}:`, error);
+        console.error(`[App] Failed to initialize ${moduleName}:`, error);
         this.initState.failedModules.push({
           name: moduleName,
           error: error.message,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     }
@@ -502,7 +444,7 @@ class ClaudeProductivityApp {
   setupGlobalListeners() {
     window.addEventListener('beforeunload', () => this.destroy());
 
-    eventBus.on(Events.SETTINGS_CHANGED, async (settings) => {
+    eventBus.on(Events.SETTINGS_CHANGED, async settings => {
       this.applySettingsToManagers(settings);
       // Apply theme settings
       ThemeManager.setTheme(GENERAL_CONFIG.colorTheme, GENERAL_CONFIG.customColor);
@@ -510,12 +452,11 @@ class ClaudeProductivityApp {
     });
 
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
-      console.log(`🔄 Feature ${feature} ${enabled ? 'enabled' : 'disabled'}`);
+      debugLog('navigation', `Feature ${feature} ${enabled ? 'enabled' : 'disabled'}`);
     });
   }
 
   enableDebugMode() {
-    console.log('🐛 Debug mode enabled');
     VisibilityManager.setDebugMode(true);
     KeyboardManager.setDebugMode(true);
     ObserverManager.setDebugMode(true);
@@ -538,10 +479,12 @@ class ClaudeProductivityApp {
   }
 
   async destroy() {
-    if (!this.initialized || this.destroying) return;
+    if (!this.initialized || this.destroying) {
+      return;
+    }
 
     this.destroying = true;
-    console.log('🗑️ Stopping extension...');
+    debugLog('navigation', 'Stopping extension...');
 
     if (this.restartDebounceTimer) {
       clearTimeout(this.restartDebounceTimer);
@@ -562,31 +505,39 @@ class ClaudeProductivityApp {
       try {
         module.destroy();
       } catch (err) {
-        console.error(`❌ Error destroying ${name}:`, err);
+        console.error(`[App] Error destroying ${name}:`, err);
       }
     }
 
     this.modules.clear();
 
     // Destroy managers (each only once)
-    if (this.managers.visibility) this.managers.visibility.destroy();
-    if (this.managers.theme) this.managers.theme.destroy();
-    if (this.managers.keyboard) this.managers.keyboard.destroy();
-    if (this.managers.observer) this.managers.observer.destroy();
+    if (this.managers.visibility) {
+      this.managers.visibility.destroy();
+    }
+    if (this.managers.theme) {
+      this.managers.theme.destroy();
+    }
+    if (this.managers.keyboard) {
+      this.managers.keyboard.destroy();
+    }
+    if (this.managers.observer) {
+      this.managers.observer.destroy();
+    }
 
     // Destroy NavigationInterceptor
     try {
-      const { default: navigationInterceptor } = await import('./core/NavigationInterceptor.js');
-      if (navigationInterceptor && navigationInterceptor.destroy) {
-        navigationInterceptor.destroy();
+      const { default: navInterceptor } = await import('./core/NavigationInterceptor.js');
+      if (navInterceptor && navInterceptor.destroy) {
+        navInterceptor.destroy();
       }
     } catch (error) {
-      console.error('Error destroying NavigationInterceptor:', error);
+      console.error('[App] Error destroying NavigationInterceptor:', error);
     }
 
     // Stop Core Services
     panelManager.destroy();
-    messageHub.stop();  // Merkezi DOM observer
+    messageHub.stop();
     versionManager.stop();
 
     try {
@@ -600,26 +551,24 @@ class ClaudeProductivityApp {
       buttonFactory.clearAll();
       settingsCache.clear();
     } catch (error) {
-      console.error('Error cleaning up managers:', error);
+      console.error('[App] Error cleaning up managers:', error);
     }
 
     eventBus.clear();
     this.initialized = false;
     this.destroying = false;
-    console.log('✅ Extension stopped');
   }
 
   async restart() {
     if (this.destroying) {
-      console.warn('⚠️ Cannot restart while destroying');
+      debugLog('navigation', 'Cannot restart while destroying');
       return;
     }
 
-    console.log('🔄 Restarting...');
+    debugLog('navigation', 'Restarting...');
     await this.destroy();
     await domReadyChecker.waitForNavigationComplete({ maxWait: 2000 });
     await this.init();
-    console.log('✅ Restarted');
   }
 
   async healthCheck() {
@@ -633,12 +582,16 @@ class ClaudeProductivityApp {
       navigation: navState,
       visibility: visState,
       messageRegistry: msgRegStatus,
-      failedModules: this.initState.failedModules
+      failedModules: this.initState.failedModules,
     };
   }
 
+  /**
+   * Debug command to verify extension architecture state.
+   * Call via: window.claudeProductivity.verifyArchitecture()
+   */
   async verifyArchitecture() {
-    console.log('🔍 Architecture Verification\n');
+    console.log('[App] Architecture Verification\n');
 
     const navState = navigationInterceptor.getState();
     const visState = VisibilityManager.getStatus();
@@ -658,9 +611,9 @@ class ClaudeProductivityApp {
 
     console.log('\nButton States:');
     const buttonIds = {
-      'Navigation': 'claude-nav-container',
-      'Bookmarks': 'claude-bookmark-button',
-      'EmojiMarkers': 'claude-marker-button'
+      Navigation: 'claude-nav-container',
+      Bookmarks: 'claude-bookmark-button',
+      EmojiMarkers: 'claude-marker-button',
     };
 
     for (const [name, id] of Object.entries(buttonIds)) {
@@ -668,9 +621,9 @@ class ClaudeProductivityApp {
       if (el) {
         const s = getComputedStyle(el);
         const visible = s.display !== 'none' && s.visibility !== 'hidden';
-        console.log(`  - ${name}: ${visible ? '✅ VISIBLE' : '❌ HIDDEN'}`);
+        console.log(`  - ${name}: ${visible ? 'VISIBLE' : 'HIDDEN'}`);
       } else {
-        console.log(`  - ${name}: ❓ NOT FOUND`);
+        console.log(`  - ${name}: NOT FOUND`);
       }
     }
 

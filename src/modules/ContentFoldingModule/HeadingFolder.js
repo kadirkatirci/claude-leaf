@@ -33,7 +33,9 @@ class HeadingFolder {
 
       for (const [index, heading] of Array.from(headings).entries()) {
         // Skip if already processed
-        if (this.processedHeadings.has(heading)) continue;
+        if (this.processedHeadings.has(heading)) {
+          continue;
+        }
 
         try {
           await this.processHeading(heading, messageEl, messageIndex, index);
@@ -106,7 +108,7 @@ class HeadingFolder {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash).toString(36);
@@ -116,7 +118,8 @@ class HeadingFolder {
    * Create chevron icon
    */
   createChevron(heading, isCollapsed) {
-    const chevron = DOMUtils.createElement('button', { // button for accessibility
+    const chevron = DOMUtils.createElement('button', {
+      // button for accessibility
       className: 'heading-fold-chevron',
       type: 'button',
       innerHTML: isCollapsed
@@ -137,7 +140,7 @@ class HeadingFolder {
         background: 'none',
         border: 'none',
         padding: '0',
-      }
+      },
     });
 
     // Make heading position relative for absolute chevron
@@ -173,7 +176,7 @@ class HeadingFolder {
     heading.addEventListener('mouseleave', onMouseLeave);
 
     // Click: Toggle collapse
-    const onClick = (e) => {
+    const onClick = e => {
       e.stopPropagation();
       this.toggleHeading(heading);
     };
@@ -181,7 +184,7 @@ class HeadingFolder {
     chevron.addEventListener('click', onClick);
 
     // Keyboard: Enter/Space to toggle
-    const onKeyDown = (e) => {
+    const onKeyDown = e => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         this.toggleHeading(heading);
@@ -204,7 +207,9 @@ class HeadingFolder {
    */
   async toggleHeading(heading) {
     const cached = this.headingCache.get(heading);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     if (cached.isCollapsed) {
       this.expandHeading(heading);
@@ -214,7 +219,8 @@ class HeadingFolder {
 
     // Update ARIA attributes
     cached.chevron.setAttribute('aria-expanded', !cached.isCollapsed);
-    cached.chevron.setAttribute('aria-label',
+    cached.chevron.setAttribute(
+      'aria-label',
       cached.isCollapsed ? 'Expand section' : 'Collapse section'
     );
 
@@ -231,7 +237,9 @@ class HeadingFolder {
    */
   collapseHeading(heading, animate = true) {
     const cached = this.headingCache.get(heading);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = true;
     cached.chevron.innerHTML = IconLibrary.chevron('right', 'currentColor', 14);
@@ -268,7 +276,9 @@ class HeadingFolder {
    */
   expandHeading(heading) {
     const cached = this.headingCache.get(heading);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = false;
     cached.chevron.innerHTML = IconLibrary.chevron('down', 'currentColor', 14);
@@ -338,7 +348,10 @@ class HeadingFolder {
     if (this.failures.headings.length > 0) {
       this.module.warn(`${this.failures.headings.length} headings failed to process`);
       if (this.failures.reasons.size > 0) {
-        this.module.log('Failure reasons:', Array.from(this.failures.reasons.entries()).map(([h, r]) => r));
+        this.module.log(
+          'Failure reasons:',
+          Array.from(this.failures.reasons.entries()).map(([h, r]) => r)
+        );
       }
     }
 

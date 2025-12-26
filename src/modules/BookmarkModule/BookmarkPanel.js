@@ -16,7 +16,7 @@ export class BookmarkPanel extends BasePanel {
       title: 'Bookmarks', // Icon added dynamically
       width: '280px',
       height: '500px',
-      position: { right: '80px', top: '60px' }
+      position: { right: '80px', top: '60px' },
     });
 
     this.dom = domUtils;
@@ -44,7 +44,7 @@ export class BookmarkPanel extends BasePanel {
     this.elements = {
       panel: this.panel,
       content: this.content,
-      toggleBtn
+      toggleBtn,
     };
 
     return this.elements;
@@ -63,9 +63,9 @@ export class BookmarkPanel extends BasePanel {
       style: {
         display: 'none', // Initially hidden
         marginLeft: '8px',
-        position: 'relative'
+        position: 'relative',
       },
-      onClick: onToggle
+      onClick: onToggle,
     });
 
     // Add counter badge as a child element
@@ -77,8 +77,8 @@ export class BookmarkPanel extends BasePanel {
       position: { top: -6, right: -6 },
       style: {
         fontSize: '10px',
-        fontWeight: '700'
-      }
+        fontWeight: '700',
+      },
     });
 
     toggleBtn.style.position = 'relative';
@@ -105,7 +105,10 @@ export class BookmarkPanel extends BasePanel {
     }
 
     // Check if bookmarks actually changed
-    const currentIds = bookmarks.map(b => b.id).sort().join(',');
+    const currentIds = bookmarks
+      .map(b => b.id)
+      .sort()
+      .join(',');
     const lastIds = this.lastBookmarkIds.join(',');
 
     // Update counter regardless (it has its own change detection)
@@ -148,7 +151,7 @@ export class BookmarkPanel extends BasePanel {
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'size-4 text-text-400 hover:text-red-500 text-sm leading-none';
     deleteBtn.textContent = '×';
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
       if (this.onDeleteCallback) {
         this.onDeleteCallback(bookmark.id);
@@ -160,8 +163,8 @@ export class BookmarkPanel extends BasePanel {
 
     // Preview text
     const preview = document.createElement('div');
-    preview.textContent = bookmark.previewText.substring(0, 50) +
-      (bookmark.previewText.length > 50 ? '...' : '');
+    preview.textContent =
+      bookmark.previewText.substring(0, 50) + (bookmark.previewText.length > 50 ? '...' : '');
     preview.className = 'text-text-400 text-xs truncate';
 
     // Assemble item
@@ -220,7 +223,9 @@ export class BookmarkPanel extends BasePanel {
    * Generate signature for change detection
    */
   generateSignature(items) {
-    if (!items || items.length === 0) return 'empty';
+    if (!items || items.length === 0) {
+      return 'empty';
+    }
     return items.map(b => `${b.id}-${b.timestamp}`).join('|');
   }
 

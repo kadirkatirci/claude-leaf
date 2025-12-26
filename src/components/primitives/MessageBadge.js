@@ -36,7 +36,7 @@ export default class MessageBadge {
       position = { top: '-35px', right: '8px' },
       style = {},
       data = null,
-      setParentPosition = true
+      setParentPosition = true,
     } = options;
 
     // Check if badge already exists
@@ -62,7 +62,7 @@ export default class MessageBadge {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'all 0.2s ease'
+      transition: 'all 0.2s ease',
     };
 
     // Allow callers to override or provide zIndex via options.style.
@@ -72,7 +72,7 @@ export default class MessageBadge {
     const badge = DOMUtils.createElement('div', {
       className,
       title,
-      style: mergedStyle
+      style: mergedStyle,
     });
 
     // Set content
@@ -83,7 +83,7 @@ export default class MessageBadge {
 
     // Add click handler
     if (this.onClick) {
-      badge.addEventListener('click', (e) => {
+      badge.addEventListener('click', e => {
         e.stopPropagation();
         this.onClick(badge, element, data);
       });

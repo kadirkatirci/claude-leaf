@@ -67,8 +67,7 @@ const DOMUtilsCore = {
     }
 
     // Find main content area (excluding sidebar)
-    let mainContent = document.querySelector('main') ||
-      document.querySelector('[role="main"]');
+    let mainContent = document.querySelector('main') || document.querySelector('[role="main"]');
 
     // If no main, search entire document (Claude.ai sometimes removes main element)
     if (!mainContent) {
@@ -83,14 +82,16 @@ const DOMUtilsCore = {
 
     // Strategy 2: data-testid selectors
     if (messages.length === 0) {
-      messages = mainContent.querySelectorAll('[data-testid*="message"], [data-testid*="conversation-turn"]');
+      messages = mainContent.querySelectorAll(
+        '[data-testid*="message"], [data-testid*="conversation-turn"]'
+      );
     }
-
-
 
     // Strategy 4: Fallback - find message pairs
     if (messages.length === 0) {
-      const chatMessages = mainContent.querySelectorAll('div[class*="group"], div[class*="message"]');
+      const chatMessages = mainContent.querySelectorAll(
+        'div[class*="group"], div[class*="message"]'
+      );
       if (chatMessages.length > 0) {
         messages = chatMessages;
       }
@@ -99,21 +100,37 @@ const DOMUtilsCore = {
     // Filter: Extract real messages
     return Array.from(messages).filter(msg => {
       // Skip sidebar elements
-      if (msg.closest('nav')) return false;
-      if (msg.closest('[aria-label="Sidebar"]')) return false;
+      if (msg.closest('nav')) {
+        return false;
+      }
+      if (msg.closest('[aria-label="Sidebar"]')) {
+        return false;
+      }
 
       // Skip if it IS an input/textarea/button
-      if (msg.tagName === 'TEXTAREA') return false;
-      if (msg.tagName === 'INPUT') return false;
-      if (msg.tagName === 'BUTTON') return false;
+      if (msg.tagName === 'TEXTAREA') {
+        return false;
+      }
+      if (msg.tagName === 'INPUT') {
+        return false;
+      }
+      if (msg.tagName === 'BUTTON') {
+        return false;
+      }
 
       // Skip chat input container
-      if (msg.getAttribute('data-testid') === 'chat-input') return false;
-      if (msg.getAttribute('data-testid') === 'prompt-input') return false;
+      if (msg.getAttribute('data-testid') === 'chat-input') {
+        return false;
+      }
+      if (msg.getAttribute('data-testid') === 'prompt-input') {
+        return false;
+      }
 
       // Must have some content
       const text = msg.textContent?.trim() || '';
-      if (text.length === 0) return false;
+      if (text.length === 0) {
+        return false;
+      }
 
       return true;
     });
@@ -145,10 +162,12 @@ const DOMUtilsCore = {
    * @returns {HTMLElement|null}
    */
   getChatContainer() {
-    return document.querySelector('main') ||
+    return (
+      document.querySelector('main') ||
       document.querySelector('[role="main"]') ||
       document.querySelector('#chat-container') ||
-      document.body;
+      document.body
+    );
   },
 
   /**
@@ -157,7 +176,9 @@ const DOMUtilsCore = {
    * @returns {boolean}
    */
   isUserMessage(element) {
-    if (!element) return false;
+    if (!element) {
+      return false;
+    }
 
     return !!(
       element.querySelector('[data-testid="user-message"]') ||
@@ -173,7 +194,9 @@ const DOMUtilsCore = {
    * @returns {boolean}
    */
   isElementVisible(element) {
-    if (!element) return false;
+    if (!element) {
+      return false;
+    }
 
     const rect = element.getBoundingClientRect();
     return (
@@ -190,7 +213,9 @@ const DOMUtilsCore = {
    * @returns {boolean}
    */
   isElementPartiallyVisible(element) {
-    if (!element) return false;
+    if (!element) {
+      return false;
+    }
 
     const rect = element.getBoundingClientRect();
     const windowHeight = window.innerHeight || document.documentElement.clientHeight;
@@ -208,12 +233,14 @@ const DOMUtilsCore = {
    * @param {string} block - 'start' | 'center' | 'end'
    */
   scrollToElement(element, block = 'center') {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     element.scrollIntoView({
       behavior: 'smooth',
       block: block,
-      inline: 'nearest'
+      inline: 'nearest',
     });
   },
 
@@ -255,7 +282,7 @@ const DOMUtilsCore = {
     }
 
     return closestIndex;
-  }
+  },
 };
 
 export default DOMUtilsCore;

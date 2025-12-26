@@ -21,8 +21,18 @@ class ThemeManager {
     const colorTheme = generalSettings.colorTheme || 'native';
     const customColor = generalSettings.customColor || '#8B5CF6';
     const opacity = generalSettings.opacity || 0.9;
-    const highlightPadding = generalSettings.highlightPadding || { top: 0, right: 10, bottom: 0, left: 10 };
-    const highlightMargin = generalSettings.highlightMargin || { top: 5, right: 5, bottom: 10, left: 5 };
+    const highlightPadding = generalSettings.highlightPadding || {
+      top: 0,
+      right: 10,
+      bottom: 0,
+      left: 10,
+    };
+    const highlightMargin = generalSettings.highlightMargin || {
+      top: 5,
+      right: 5,
+      bottom: 10,
+      left: 5,
+    };
 
     this.setTheme(colorTheme, customColor);
     this.setOpacity(opacity);
@@ -53,7 +63,7 @@ class ThemeManager {
       name: 'custom',
       primary: color,
       hover: this.lightenColor(color, 10),
-      active: this.darkenColor(color, 10)
+      active: this.darkenColor(color, 10),
     };
   }
 
@@ -373,13 +383,28 @@ class ThemeManager {
 
     // Update CSS variables
     const root = document.documentElement;
-    root.style.setProperty('--claude-productivity-primary', theme.primary || theme.accentColor || '#CC785C');
-    root.style.setProperty('--claude-productivity-primary-hover', theme.hover || theme.primary || '#CC785C');
-    root.style.setProperty('--claude-productivity-primary-active', theme.active || theme.primary || '#CC785C');
+    root.style.setProperty(
+      '--claude-productivity-primary',
+      theme.primary || theme.accentColor || '#CC785C'
+    );
+    root.style.setProperty(
+      '--claude-productivity-primary-hover',
+      theme.hover || theme.primary || '#CC785C'
+    );
+    root.style.setProperty(
+      '--claude-productivity-primary-active',
+      theme.active || theme.primary || '#CC785C'
+    );
 
     // Legacy support
-    root.style.setProperty('--claude-productivity-hover', theme.hover || theme.primary || '#CC785C');
-    root.style.setProperty('--claude-productivity-active', theme.active || theme.primary || '#CC785C');
+    root.style.setProperty(
+      '--claude-productivity-hover',
+      theme.hover || theme.primary || '#CC785C'
+    );
+    root.style.setProperty(
+      '--claude-productivity-active',
+      theme.active || theme.primary || '#CC785C'
+    );
 
     // Update opacity if set
     const opacity = this.customProperties.get('--claude-productivity-opacity');
@@ -390,13 +415,23 @@ class ThemeManager {
     // Update highlight padding if set
     const paddingTop = this.customProperties.get('--claude-productivity-highlight-padding-top');
     const paddingRight = this.customProperties.get('--claude-productivity-highlight-padding-right');
-    const paddingBottom = this.customProperties.get('--claude-productivity-highlight-padding-bottom');
+    const paddingBottom = this.customProperties.get(
+      '--claude-productivity-highlight-padding-bottom'
+    );
     const paddingLeft = this.customProperties.get('--claude-productivity-highlight-padding-left');
 
-    if (paddingTop !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-top', paddingTop);
-    if (paddingRight !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-right', paddingRight);
-    if (paddingBottom !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-bottom', paddingBottom);
-    if (paddingLeft !== undefined) root.style.setProperty('--claude-productivity-highlight-padding-left', paddingLeft);
+    if (paddingTop !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-padding-top', paddingTop);
+    }
+    if (paddingRight !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-padding-right', paddingRight);
+    }
+    if (paddingBottom !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-padding-bottom', paddingBottom);
+    }
+    if (paddingLeft !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-padding-left', paddingLeft);
+    }
 
     // Update highlight margin if set
     const marginTop = this.customProperties.get('--claude-productivity-highlight-margin-top');
@@ -404,10 +439,18 @@ class ThemeManager {
     const marginBottom = this.customProperties.get('--claude-productivity-highlight-margin-bottom');
     const marginLeft = this.customProperties.get('--claude-productivity-highlight-margin-left');
 
-    if (marginTop !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-top', marginTop);
-    if (marginRight !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-right', marginRight);
-    if (marginBottom !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-bottom', marginBottom);
-    if (marginLeft !== undefined) root.style.setProperty('--claude-productivity-highlight-margin-left', marginLeft);
+    if (marginTop !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-margin-top', marginTop);
+    }
+    if (marginRight !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-margin-right', marginRight);
+    }
+    if (marginBottom !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-margin-bottom', marginBottom);
+    }
+    if (marginLeft !== undefined) {
+      root.style.setProperty('--claude-productivity-highlight-margin-left', marginLeft);
+    }
   }
 
   /**
@@ -417,12 +460,20 @@ class ThemeManager {
     const num = parseInt(color.replace('#', ''), 16);
     const amt = Math.round(2.55 * percent);
     const R = (num >> 16) + amt;
-    const G = (num >> 8 & 0x00FF) + amt;
-    const B = (num & 0x0000FF) + amt;
+    const G = ((num >> 8) & 0x00ff) + amt;
+    const B = (num & 0x0000ff) + amt;
 
-    return '#' + (0x1000000 + (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-      (B < 255 ? (B < 1 ? 0 : B) : 255)).toString(16).slice(1);
+    return (
+      '#' +
+      (
+        0x1000000 +
+        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+        (B < 255 ? (B < 1 ? 0 : B) : 255)
+      )
+        .toString(16)
+        .slice(1)
+    );
   }
 
   /**
@@ -432,19 +483,24 @@ class ThemeManager {
     const num = parseInt(color.replace('#', ''), 16);
     const amt = Math.round(2.55 * percent);
     const R = (num >> 16) - amt;
-    const G = (num >> 8 & 0x00FF) - amt;
-    const B = (num & 0x0000FF) - amt;
+    const G = ((num >> 8) & 0x00ff) - amt;
+    const B = (num & 0x0000ff) - amt;
 
-    return '#' + (0x1000000 + (R > 0 ? R : 0) * 0x10000 +
-      (G > 0 ? G : 0) * 0x100 +
-      (B > 0 ? B : 0)).toString(16).slice(1);
+    return (
+      '#' +
+      (0x1000000 + (R > 0 ? R : 0) * 0x10000 + (G > 0 ? G : 0) * 0x100 + (B > 0 ? B : 0))
+        .toString(16)
+        .slice(1)
+    );
   }
 
   /**
    * Apply theme to element (solid color, no gradient)
    */
   applyToElement(element, properties = {}) {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     const theme = this.getTheme();
 

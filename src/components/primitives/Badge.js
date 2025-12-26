@@ -206,7 +206,9 @@ export class Badge {
    * Updates the content of an existing badge
    */
   static update(badge, content, options = {}) {
-    if (!badge) return;
+    if (!badge) {
+      return;
+    }
 
     // Update content
     this.setBadgeContent(badge, content);
@@ -221,7 +223,8 @@ export class Badge {
     // Update variant if provided
     if (options.variant) {
       // Remove old variant classes and add new ones
-      const oldVariantPattern = /\b(px-2 py-1 bg-bg-200 text-text-000|px-2 py-1 rounded-md bg-accent-main-100 text-white|px-2 py-1 rounded-md bg-bg-200 text-text-000|absolute top-0 right-0 -mt-1 -mr-1 px-1\.5 py-0\.5 rounded-full bg-accent-main-100 text-white)\b/g;
+      const oldVariantPattern =
+        /\b(px-2 py-1 bg-bg-200 text-text-000|px-2 py-1 rounded-md bg-accent-main-100 text-white|px-2 py-1 rounded-md bg-bg-200 text-text-000|absolute top-0 right-0 -mt-1 -mr-1 px-1\.5 py-0\.5 rounded-full bg-accent-main-100 text-white)\b/g;
       badge.className = badge.className.replace(oldVariantPattern, '').trim();
       badge.className = cn(badge.className, this.getVariantClass(options.variant));
     }
@@ -252,7 +255,9 @@ export class Badge {
    * Animates a badge (pulse effect)
    */
   static pulse(badge) {
-    if (!badge) return;
+    if (!badge) {
+      return;
+    }
 
     // Add animation class
     badge.className = cn(badge.className, 'animate-pulse');
@@ -267,7 +272,9 @@ export class Badge {
    * Destroys a badge and removes event listeners
    */
   static destroy(badge) {
-    if (!badge) return;
+    if (!badge) {
+      return;
+    }
 
     // Remove all event listeners by cloning
     const newBadge = badge.cloneNode(true);

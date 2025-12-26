@@ -109,7 +109,7 @@ class MessageCache {
       cacheSize: this.cache ? this.cache.length : 0,
       cacheTTL: this.cacheTTL,
       isEnabled: this.isEnabled,
-      isValid: cacheAge !== null && cacheAge < this.cacheTTL
+      isValid: cacheAge !== null && cacheAge < this.cacheTTL,
     };
   }
 }

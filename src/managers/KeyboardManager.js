@@ -19,7 +19,7 @@ class KeyboardManager {
       return; // Already initialized
     }
 
-    this.listener = (e) => this.handleKeydown(e);
+    this.listener = e => this.handleKeydown(e);
     document.addEventListener('keydown', this.listener, true);
 
     if (this.debugMode) {
@@ -49,7 +49,7 @@ class KeyboardManager {
       description: config.description || '',
       enabled: config.enabled !== false,
       handler,
-      preventDefault: config.preventDefault !== false
+      preventDefault: config.preventDefault !== false,
     };
 
     this.shortcuts.set(id, shortcut);
@@ -127,11 +127,12 @@ class KeyboardManager {
 
     // Skip if user is typing in input/textarea
     const target = e.target;
-    if (target && (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.contentEditable === 'true'
-    )) {
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.contentEditable === 'true')
+    ) {
       return;
     }
 
@@ -187,7 +188,7 @@ class KeyboardManager {
         key: shortcut.key,
         modifiers: this.getModifierString(shortcut),
         description: shortcut.description,
-        enabled: shortcut.enabled
+        enabled: shortcut.enabled,
       });
     }
 
@@ -200,10 +201,18 @@ class KeyboardManager {
   getModifierString(shortcut) {
     const parts = [];
 
-    if (shortcut.ctrlKey) parts.push('Ctrl');
-    if (shortcut.altKey) parts.push('Alt');
-    if (shortcut.shiftKey) parts.push('Shift');
-    if (shortcut.metaKey) parts.push('Cmd');
+    if (shortcut.ctrlKey) {
+      parts.push('Ctrl');
+    }
+    if (shortcut.altKey) {
+      parts.push('Alt');
+    }
+    if (shortcut.shiftKey) {
+      parts.push('Shift');
+    }
+    if (shortcut.metaKey) {
+      parts.push('Cmd');
+    }
 
     return parts.join('+');
   }

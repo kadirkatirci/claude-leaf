@@ -49,7 +49,9 @@ export class MarkerBadge {
    */
   addBadge(messageEl, marker) {
     // Skip if badge already exists
-    if (this.badgeCache.has(messageEl)) return;
+    if (this.badgeCache.has(messageEl)) {
+      return;
+    }
 
     // Container'ın DIŞINDA sabit pozisyon
     // Marker button ile aynı yatay hizada, üstünde
@@ -83,11 +85,11 @@ export class MarkerBadge {
         top: badgeTop, // Dinamik top
         right: badgeRight, // Dinamik right - container dışında
         animation: 'fadeIn 0.3s ease',
-      }
+      },
     });
 
     // Click handler
-    badge.addEventListener('click', (e) => {
+    badge.addEventListener('click', e => {
       e.stopPropagation();
       this.showBadgeOptions(badge, marker);
     });
@@ -152,7 +154,7 @@ export class MarkerBadge {
         'bg-bg-000 border border-border-300 rounded-lg shadow-xl',
         'p-2 flex flex-col gap-2 z-[1000]',
         'min-w-[200px]'
-      )
+      ),
     });
 
     // Emoji picker grid
@@ -162,7 +164,7 @@ export class MarkerBadge {
     Object.assign(emojiGrid.style, {
       display: 'grid',
       gridTemplateColumns: 'repeat(6, 1fr)',
-      gap: '4px'
+      gap: '4px',
     });
 
     const primaryColor = theme.primary || theme.accentColor || '#CC785C';
@@ -184,7 +186,7 @@ export class MarkerBadge {
         emojiBtn.style.backgroundColor = primaryColor;
       }
 
-      emojiBtn.addEventListener('click', (e) => {
+      emojiBtn.addEventListener('click', e => {
         e.stopPropagation();
         container.remove();
         this.onMarkerUpdate(marker.id, emoji);
@@ -197,7 +199,8 @@ export class MarkerBadge {
     const deleteBtn = DOMUtils.createElement('button');
     deleteBtn.innerHTML = '🗑️ Delete Marker';
     // Use inline styles for danger button (red colors not in Claude native classes)
-    deleteBtn.className = 'px-3 py-2 border-none rounded cursor-pointer text-white text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-200';
+    deleteBtn.className =
+      'px-3 py-2 border-none rounded cursor-pointer text-white text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-200';
     deleteBtn.style.backgroundColor = '#ef4444'; // red-500
     deleteBtn.style.fontFamily = 'inherit';
 
@@ -209,7 +212,7 @@ export class MarkerBadge {
       deleteBtn.style.backgroundColor = '#ef4444'; // red-500
     });
 
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
       container.remove();
       this.onMarkerRemove(marker.id);
@@ -238,7 +241,7 @@ export class MarkerBadge {
 
     // Close on outside click
     setTimeout(() => {
-      const closeMenu = (e) => {
+      const closeMenu = e => {
         if (!container.contains(e.target) && !badge.contains(e.target)) {
           container.remove();
           document.removeEventListener('click', closeMenu);

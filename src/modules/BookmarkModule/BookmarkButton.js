@@ -49,7 +49,9 @@ export class BookmarkButton {
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
     // Claude's native button classes
-    const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
+    const bgClass = isBookmarked
+      ? 'bg-accent-main-100 hover:bg-accent-main-200'
+      : 'bg-bg-100 hover:bg-bg-200';
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
@@ -70,7 +72,9 @@ export class BookmarkButton {
       'hover:shadow-md',
       'hover:scale-110'
     );
-    button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
+    button.innerHTML = isBookmarked
+      ? IconLibrary.bookmark(true, '#ffffff')
+      : IconLibrary.bookmark(false, 'currentColor');
 
     // Only positioning and visibility styles (must be inline for calculated values)
     Object.assign(button.style, {
@@ -80,7 +84,10 @@ export class BookmarkButton {
     });
 
     // Set relative positioning on message
-    if (messageElement.style.position !== 'relative' && messageElement.style.position !== 'absolute') {
+    if (
+      messageElement.style.position !== 'relative' &&
+      messageElement.style.position !== 'absolute'
+    ) {
       messageElement.style.position = 'relative';
     }
 
@@ -95,7 +102,7 @@ export class BookmarkButton {
     this.hoverCleanups.set(messageElement, cleanup);
 
     // Button click handler
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', e => {
       e.stopPropagation();
       onToggle(messageElement, messageId);
     });
@@ -109,13 +116,17 @@ export class BookmarkButton {
    */
   updateButton(messageElement, isBookmarked) {
     const button = this.buttons.get(messageElement);
-    if (!button) return;
+    if (!button) {
+      return;
+    }
 
     // Update data attribute first
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
     // Update native classes
-    const bgClass = isBookmarked ? 'bg-accent-main-100 hover:bg-accent-main-200' : 'bg-bg-100 hover:bg-bg-200';
+    const bgClass = isBookmarked
+      ? 'bg-accent-main-100 hover:bg-accent-main-200'
+      : 'bg-bg-100 hover:bg-bg-200';
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
@@ -136,7 +147,9 @@ export class BookmarkButton {
       'hover:shadow-md',
       'hover:scale-110'
     );
-    button.innerHTML = isBookmarked ? IconLibrary.bookmark(true, '#ffffff') : IconLibrary.bookmark(false, 'currentColor');
+    button.innerHTML = isBookmarked
+      ? IconLibrary.bookmark(true, '#ffffff')
+      : IconLibrary.bookmark(false, 'currentColor');
 
     // Update opacity - bookmarked always visible, otherwise check hover
     if (isBookmarked) {
@@ -186,5 +199,4 @@ export class BookmarkButton {
   has(messageElement) {
     return this.buttons.has(messageElement);
   }
-
 }

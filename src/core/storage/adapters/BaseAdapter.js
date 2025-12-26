@@ -55,7 +55,7 @@ export class BaseAdapter {
   async getInfo() {
     return {
       type: this.constructor.name,
-      available: true
+      available: true,
     };
   }
 }

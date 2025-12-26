@@ -13,8 +13,8 @@ function generateUUID() {
     return crypto.randomUUID();
   }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -35,14 +35,16 @@ async function saveCategory() {
   const colorInput = document.getElementById('cat-color-input');
   const name = nameInput.value.trim();
 
-  if (!name) return;
+  if (!name) {
+    return;
+  }
 
   const newCat = {
     id: generateUUID(),
     name,
     color: colorInput.value,
     createdAt: new Date().toISOString(),
-    isDefault: false
+    isDefault: false,
   };
 
   state.categories.push(newCat);
@@ -58,7 +60,8 @@ async function saveCategory() {
 
 function openFullTextModal(bookmark) {
   const modal = document.getElementById('fulltext-modal');
-  document.getElementById('fulltext-content').textContent = bookmark.fullText || bookmark.previewText;
+  document.getElementById('fulltext-content').textContent =
+    bookmark.fullText || bookmark.previewText;
 
   // Setup the "Go to" button inside the modal dynamically or checking if we need to re-bind
   // Safer to re-bind or just set onclick property (which is allowed in JS files)
@@ -72,7 +75,7 @@ function closeFullTextModal() {
   document.getElementById('fulltext-modal').classList.remove('active');
 }
 
-window.navigateToBookmark = (bookmark) => {
+window.navigateToBookmark = bookmark => {
   if (bookmark.conversationUrl) {
     let targetUrl;
     const baseUrl = 'https://claude.ai';
@@ -82,24 +85,30 @@ window.navigateToBookmark = (bookmark) => {
       url.searchParams.set('bookmark', bookmark.id);
       targetUrl = url.toString();
     } else {
-      const path = bookmark.conversationUrl.startsWith('/') ? bookmark.conversationUrl : '/' + bookmark.conversationUrl;
+      const path = bookmark.conversationUrl.startsWith('/')
+        ? bookmark.conversationUrl
+        : '/' + bookmark.conversationUrl;
       targetUrl = `${baseUrl}${path}?bookmark=${bookmark.id}`;
     }
     window.location.href = targetUrl;
   }
 };
 
-window.deleteBookmark = async (id) => {
-  if (!confirm('Are you sure you want to delete this bookmark?')) return;
+window.deleteBookmark = async id => {
+  if (!confirm('Are you sure you want to delete this bookmark?')) {
+    return;
+  }
 
   state.bookmarks = state.bookmarks.filter(b => b.id !== id);
   await saveData();
   renderApp();
 };
 
-window.deleteCategory = async (id) => {
+window.deleteCategory = async id => {
   const category = state.categories.find(c => c.id === id);
-  if (!category) return;
+  if (!category) {
+    return;
+  }
 
   if (category.isDefault || id === 'default') {
     alert('Cannot delete the default category.');
@@ -107,7 +116,13 @@ window.deleteCategory = async (id) => {
   }
 
   const count = state.bookmarks.filter(b => b.categoryId === id).length;
-  if (!confirm(`Delete category "${category.name}"?\n\n${count} bookmarks will be moved to "General".`)) return;
+  if (
+    !confirm(
+      `Delete category "${category.name}"?\n\n${count} bookmarks will be moved to "General".`
+    )
+  ) {
+    return;
+  }
 
   // Move bookmarks to default
   state.bookmarks = state.bookmarks.map(b =>
@@ -117,7 +132,9 @@ window.deleteCategory = async (id) => {
   // Remove category
   state.categories = state.categories.filter(c => c.id !== id);
 
-  if (state.activeCategory === id) state.activeCategory = 'all';
+  if (state.activeCategory === id) {
+    state.activeCategory = 'all';
+  }
 
   await saveData();
   renderApp();
@@ -131,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 
   // Close modals on click outside
-  window.onclick = (e) => {
+  window.onclick = e => {
     if (e.target.classList.contains('modal-overlay')) {
       e.target.classList.remove('active');
     }
@@ -139,8 +156,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadData() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['bookmarks'], (result) => {
+  return new Promise(resolve => {
+    chrome.storage.local.get(['bookmarks'], result => {
       const data = result.bookmarks || {};
 
       // Load bookmarks
@@ -148,9 +165,10 @@ async function loadData() {
 
       // Load categories (ensure defaults)
       const defaultCat = { id: 'default', name: 'General', color: '#667eea', isDefault: true };
-      state.categories = Array.isArray(data.categories) && data.categories.length > 0
-        ? data.categories
-        : [defaultCat];
+      state.categories =
+        Array.isArray(data.categories) && data.categories.length > 0
+          ? data.categories
+          : [defaultCat];
 
       // Ensure 'default' exists in case it was deleted somehow?
       if (!state.categories.find(c => c.id === 'default')) {
@@ -161,7 +179,7 @@ async function loadData() {
       state.bookmarks = state.bookmarks.map(b => ({
         ...b,
         categoryId: b.categoryId || 'default',
-        fullText: b.fullText || b.previewText || ''
+        fullText: b.fullText || b.previewText || '',
       }));
 
       resolve();
@@ -170,22 +188,22 @@ async function loadData() {
 }
 
 async function saveData() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['bookmarks'], (result) => {
+  return new Promise(resolve => {
+    chrome.storage.local.get(['bookmarks'], result => {
       const existingMeta = result.bookmarks?.__meta || {
         version: 2,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
 
       const storeData = {
         __meta: { ...existingMeta, updatedAt: new Date().toISOString() },
         bookmarks: state.bookmarks,
-        categories: state.categories
+        categories: state.categories,
       };
 
       chrome.storage.local.set({ bookmarks: storeData }, () => {
         // Notify extension parts (facultative, but good practice)
-        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' }).catch(() => { });
+        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' }).catch(() => {});
         resolve();
       });
     });
@@ -196,7 +214,7 @@ function setupEventListeners() {
   // Search
   const searchInput = document.getElementById('search-input');
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
+    searchInput.addEventListener('input', e => {
       state.searchQuery = e.target.value.toLowerCase();
       renderBookmarks();
     });
@@ -221,7 +239,9 @@ function navigateToBookmark(bookmark) {
       url.searchParams.set('bookmark', bookmark.id);
       targetUrl = url.toString();
     } else {
-      const path = bookmark.conversationUrl.startsWith('/') ? bookmark.conversationUrl : '/' + bookmark.conversationUrl;
+      const path = bookmark.conversationUrl.startsWith('/')
+        ? bookmark.conversationUrl
+        : '/' + bookmark.conversationUrl;
       targetUrl = `${baseUrl}${path}?bookmark=${bookmark.id}`;
     }
     window.location.href = targetUrl;
@@ -229,7 +249,9 @@ function navigateToBookmark(bookmark) {
 }
 
 async function deleteBookmark(id) {
-  if (!confirm('Are you sure you want to delete this bookmark?')) return;
+  if (!confirm('Are you sure you want to delete this bookmark?')) {
+    return;
+  }
 
   state.bookmarks = state.bookmarks.filter(b => b.id !== id);
   await saveData();
@@ -238,7 +260,9 @@ async function deleteBookmark(id) {
 
 async function deleteCategory(id) {
   const category = state.categories.find(c => c.id === id);
-  if (!category) return;
+  if (!category) {
+    return;
+  }
 
   if (category.isDefault || id === 'default') {
     alert('Cannot delete the default category.');
@@ -246,7 +270,13 @@ async function deleteCategory(id) {
   }
 
   const count = state.bookmarks.filter(b => b.categoryId === id).length;
-  if (!confirm(`Delete category "${category.name}"?\n\n${count} bookmarks will be moved to "General".`)) return;
+  if (
+    !confirm(
+      `Delete category "${category.name}"?\n\n${count} bookmarks will be moved to "General".`
+    )
+  ) {
+    return;
+  }
 
   // Move bookmarks to default
   state.bookmarks = state.bookmarks.map(b =>
@@ -256,12 +286,13 @@ async function deleteCategory(id) {
   // Remove category
   state.categories = state.categories.filter(c => c.id !== id);
 
-  if (state.activeCategory === id) state.activeCategory = 'all';
+  if (state.activeCategory === id) {
+    state.activeCategory = 'all';
+  }
 
   await saveData();
   renderApp();
 }
-
 
 // --- Rendering ---
 
@@ -272,16 +303,21 @@ function renderApp() {
 
 function renderCategories() {
   const container = document.getElementById('category-list');
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   container.innerHTML = '';
 
   // "All Bookmarks" item
-  const allItem = createCategoryItem({
-    id: 'all',
-    name: 'All Bookmarks',
-    color: '#333'
-  }, state.bookmarks.length);
+  const allItem = createCategoryItem(
+    {
+      id: 'all',
+      name: 'All Bookmarks',
+      color: '#333',
+    },
+    state.bookmarks.length
+  );
   container.appendChild(allItem);
 
   // Category items
@@ -324,7 +360,7 @@ function createCategoryItem(category, count) {
     delBtn.className = 'delete-cat-btn';
     delBtn.innerHTML = '🗑️';
     delBtn.title = 'Delete Category';
-    delBtn.onclick = (e) => {
+    delBtn.onclick = e => {
       e.stopPropagation();
       deleteCategory(category.id);
     };
@@ -336,18 +372,23 @@ function createCategoryItem(category, count) {
 
 function renderBookmarks() {
   const container = document.getElementById('bookmarks-grid');
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   container.innerHTML = '';
 
   // Filter
-  let filtered = state.bookmarks.filter(b => {
+  const filtered = state.bookmarks.filter(b => {
     // Category filter
-    if (state.activeCategory !== 'all' && b.categoryId !== state.activeCategory) return false;
+    if (state.activeCategory !== 'all' && b.categoryId !== state.activeCategory) {
+      return false;
+    }
 
     // Search filter
     if (state.searchQuery) {
-      const match = (b.fullText || '').toLowerCase().includes(state.searchQuery) ||
+      const match =
+        (b.fullText || '').toLowerCase().includes(state.searchQuery) ||
         (b.note || '').toLowerCase().includes(state.searchQuery) ||
         (b.previewText || '').toLowerCase().includes(state.searchQuery);
       return match;
@@ -375,8 +416,7 @@ function renderBookmarks() {
 
 function createBookmarkCard(bookmark) {
   const category = state.categories.find(c => c.id === bookmark.categoryId) ||
-    state.categories.find(c => c.id === 'default') ||
-    { name: 'Unknown', color: '#ccc' };
+    state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
 
   const card = document.createElement('div');
   card.className = 'bookmark-card';
@@ -409,7 +449,7 @@ function createBookmarkCard(bookmark) {
     const readMore = document.createElement('span');
     readMore.className = 'read-more';
     readMore.textContent = 'Read full content';
-    readMore.onclick = (e) => {
+    readMore.onclick = e => {
       e.stopPropagation();
       openFullTextModal(bookmark);
     };
@@ -427,7 +467,7 @@ function createBookmarkCard(bookmark) {
       ? new URL(bookmark.conversationUrl)
       : new URL('https://claude.ai' + bookmark.conversationUrl);
     convoName = url.pathname.split('/').pop().substring(0, 8) + '...';
-  } catch (e) { }
+  } catch (e) {}
 
   footer.innerHTML = `<span>📍 ${escapeHtml(convoName)}</span>`;
 
@@ -439,7 +479,7 @@ function createBookmarkCard(bookmark) {
   gotoBtn.className = 'action-btn';
   gotoBtn.innerHTML = '↗️';
   gotoBtn.title = 'Open in Claude';
-  gotoBtn.onclick = (e) => {
+  gotoBtn.onclick = e => {
     e.stopPropagation();
     navigateToBookmark(bookmark);
   };
@@ -449,7 +489,7 @@ function createBookmarkCard(bookmark) {
   delBtn.className = 'action-btn delete';
   delBtn.innerHTML = '🗑️';
   delBtn.title = 'Delete Bookmark';
-  delBtn.onclick = (e) => {
+  delBtn.onclick = e => {
     e.stopPropagation();
     deleteBookmark(bookmark.id);
   };
@@ -464,8 +504,10 @@ function createBookmarkCard(bookmark) {
 
   // Card click -> Open Full Text (Better UX than navigating immediately?)
   // Let's make card click open full text, and button navigate
-  card.onclick = (e) => {
-    if (e.target.closest('button') || e.target.classList.contains('read-more')) return;
+  card.onclick = e => {
+    if (e.target.closest('button') || e.target.classList.contains('read-more')) {
+      return;
+    }
     openFullTextModal(bookmark);
   };
 
@@ -473,7 +515,9 @@ function createBookmarkCard(bookmark) {
 }
 
 function escapeHtml(text) {
-  if (!text) return '';
+  if (!text) {
+    return '';
+  }
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;

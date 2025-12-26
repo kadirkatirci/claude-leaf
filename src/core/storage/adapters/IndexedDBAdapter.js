@@ -24,7 +24,9 @@ export class IndexedDBAdapter extends BaseAdapter {
    * Initialize database connection
    */
   async init() {
-    if (this.db) return this.db;
+    if (this.db) {
+      return this.db;
+    }
 
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.dbVersion);
@@ -38,7 +40,7 @@ export class IndexedDBAdapter extends BaseAdapter {
         resolve(this.db);
       };
 
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = event => {
         const db = event.target.result;
 
         // Create object store if it doesn't exist
@@ -232,9 +234,9 @@ export class IndexedDBAdapter extends BaseAdapter {
           quota: estimate.quota || 'unlimited',
           usage: estimate.usage || 0,
           usagePercent: estimate.quota
-            ? ((estimate.usage || 0) / estimate.quota * 100).toFixed(2) + '%'
+            ? (((estimate.usage || 0) / estimate.quota) * 100).toFixed(2) + '%'
             : 'N/A',
-          isPersisted: await navigator.storage?.persisted?.() || false
+          isPersisted: (await navigator.storage?.persisted?.()) || false,
         };
       }
 
@@ -242,14 +244,14 @@ export class IndexedDBAdapter extends BaseAdapter {
         type: 'IndexedDBAdapter',
         available: true,
         quota: 'unlimited',
-        usage: 0
+        usage: 0,
       };
     } catch (error) {
       console.error('[IndexedDBAdapter] getInfo() failed:', error);
       return {
         type: 'IndexedDBAdapter',
         available: true,
-        error: error.message
+        error: error.message,
       };
     }
   }

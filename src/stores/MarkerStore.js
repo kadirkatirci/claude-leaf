@@ -1,6 +1,6 @@
 /**
  * MarkerStore - Emoji marker management with conversation-aware filtering
- * 
+ *
  * Markers are identified by content signature, not by index.
  * This allows different versions of the same conversation to have separate markers.
  */
@@ -13,8 +13,8 @@ export class MarkerStore {
       adapter: 'local',
       version: 2,
       defaultData: {
-        markers: []
-      }
+        markers: [],
+      },
     });
   }
 
@@ -44,40 +44,44 @@ export class MarkerStore {
    * Duplicate check is by content signature (not index)
    */
   async add(marker) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const markers = data.markers || [];
 
       const normalized = {
         ...marker,
         conversationUrl: this.normalizeUrl(marker.conversationUrl),
         id: marker.id || crypto.randomUUID(),
-        createdAt: marker.createdAt || new Date().toISOString()
+        createdAt: marker.createdAt || new Date().toISOString(),
       };
 
       // Check for duplicates by CONTENT SIGNATURE (not index)
       // This allows same index in different versions to have separate markers
-      const exists = markers.some(m =>
-        m.conversationUrl === normalized.conversationUrl &&
-        m.contentSignature === normalized.contentSignature
+      const exists = markers.some(
+        m =>
+          m.conversationUrl === normalized.conversationUrl &&
+          m.contentSignature === normalized.contentSignature
       );
 
       if (exists) {
-        console.warn('[MarkerStore] Marker already exists for this content:', normalized.contentSignature);
+        console.warn(
+          '[MarkerStore] Marker already exists for this content:',
+          normalized.contentSignature
+        );
         return data;
       }
 
       return {
         ...data,
-        markers: [...markers, normalized]
+        markers: [...markers, normalized],
       };
     });
   }
 
   async update(markerId, updates) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const markers = data.markers || [];
       const index = markers.findIndex(m => m.id === markerId);
-      
+
       if (index === -1) {
         console.warn('[MarkerStore] Marker not found:', markerId);
         return data;
@@ -87,7 +91,7 @@ export class MarkerStore {
       updated[index] = {
         ...updated[index],
         ...updates,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       return { ...data, markers: updated };
@@ -95,17 +99,17 @@ export class MarkerStore {
   }
 
   async remove(markerId) {
-    return this.store.update((data) => ({
+    return this.store.update(data => ({
       ...data,
-      markers: (data.markers || []).filter(m => m.id !== markerId)
+      markers: (data.markers || []).filter(m => m.id !== markerId),
     }));
   }
 
   async removeByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
-    return this.store.update((data) => ({
+    return this.store.update(data => ({
       ...data,
-      markers: (data.markers || []).filter(m => m.conversationUrl !== normalized)
+      markers: (data.markers || []).filter(m => m.conversationUrl !== normalized),
     }));
   }
 
@@ -124,13 +128,17 @@ export class MarkerStore {
 
   getStorageType() {
     const adapter = this.store.adapter;
-    if (adapter.constructor.name === 'ChromeLocalAdapter') return 'local';
-    if (adapter.constructor.name === 'ChromeSyncAdapter') return 'sync';
+    if (adapter.constructor.name === 'ChromeLocalAdapter') {
+      return 'local';
+    }
+    if (adapter.constructor.name === 'ChromeSyncAdapter') {
+      return 'sync';
+    }
     return 'unknown';
   }
 
   subscribe(callback) {
-    return this.store.subscribe((data) => callback(data.markers || []));
+    return this.store.subscribe(data => callback(data.markers || []));
   }
 
   async export() {
@@ -148,13 +156,17 @@ export class MarkerStore {
         const newMarkers = (imported.data.markers || []).filter(m => !existingIds.has(m.id));
 
         if (newMarkers.length > 0) {
-          await this.store.update((data) => ({
+          await this.store.update(data => ({
             ...data,
-            markers: [...(data.markers || []), ...newMarkers]
+            markers: [...(data.markers || []), ...newMarkers],
           }));
         }
 
-        return { success: true, imported: newMarkers.length, skipped: imported.data.markers.length - newMarkers.length };
+        return {
+          success: true,
+          imported: newMarkers.length,
+          skipped: imported.data.markers.length - newMarkers.length,
+        };
       } else {
         await this.store.set({ markers: imported.data.markers || [] });
         return { success: true, imported: imported.data.markers.length };
@@ -166,9 +178,13 @@ export class MarkerStore {
   }
 
   normalizeUrl(url) {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
     try {
-      if (url.startsWith('/')) return url;
+      if (url.startsWith('/')) {
+        return url;
+      }
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname + parsed.search;
     } catch (error) {

@@ -29,7 +29,7 @@ const MessageObserverMixin = {
   enhance(module) {
     console.warn(
       `[MessageObserverMixin] @deprecated - ${module.name || 'Unknown'} modülü hala MessageObserverMixin kullanıyor. ` +
-      'Bunun yerine MessageHub event\'lerini kullanın: HUB_MESSAGE_COUNT_CHANGED, HUB_CONTENT_CHANGED'
+        "Bunun yerine MessageHub event'lerini kullanın: HUB_MESSAGE_COUNT_CHANGED, HUB_CONTENT_CHANGED"
     );
 
     // Add properties
@@ -52,7 +52,7 @@ const MessageObserverMixin = {
       throttleDelay = 500,
       trackMessageCount = true,
       checkConversationPage = true,
-      forceInitialCallback = false
+      forceInitialCallback = false,
     } = options;
 
     // Store callback for cleanup
@@ -131,7 +131,7 @@ const MessageObserverMixin = {
     if (this.log) {
       this.log('Message observer durduruldu');
     }
-  }
+  },
 };
 
 export default MessageObserverMixin;

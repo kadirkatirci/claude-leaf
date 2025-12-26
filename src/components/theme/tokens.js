@@ -66,7 +66,7 @@ export const colors = {
     red: 'var(--claude-productivity-accent-red, #ff4757)',
     orange: 'var(--claude-productivity-accent-orange, #CC785C)',
     blue: 'var(--claude-productivity-accent-blue, #3b82f6)',
-  }
+  },
 };
 
 /**
@@ -74,13 +74,13 @@ export const colors = {
  * Consistent spacing scale based on 4px unit
  */
 export const spacing = {
-  xxs: 2,   // 2px
-  xs: 4,    // 4px
-  sm: 8,    // 8px
-  md: 12,   // 12px
-  lg: 16,   // 16px
-  xl: 20,   // 20px
-  xxl: 24,  // 24px
+  xxs: 2, // 2px
+  xs: 4, // 4px
+  sm: 8, // 8px
+  md: 12, // 12px
+  lg: 16, // 16px
+  xl: 20, // 20px
+  xxl: 24, // 24px
   xxxl: 32, // 32px
 };
 
@@ -111,7 +111,7 @@ export const typography = {
   fontFamily: {
     sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     mono: '"SF Mono", Monaco, Consolas, "Courier New", monospace',
-  }
+  },
 };
 
 /**
@@ -172,7 +172,7 @@ export const animation = {
     easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
     easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
     easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
-  }
+  },
 };
 
 /**
@@ -219,7 +219,7 @@ export const sizes = {
       lg: 500,
     },
     maxHeight: '80vh',
-  }
+  },
 };
 
 /**
@@ -236,17 +236,17 @@ export const breakpoints = {
 /**
  * Helper function to get pixel value with unit
  */
-export const px = (value) => `${value}px`;
+export const px = value => `${value}px`;
 
 /**
  * Helper function to get spacing value with unit
  */
-export const space = (key) => `${spacing[key]}px`;
+export const space = key => `${spacing[key]}px`;
 
 /**
  * Helper function to get radius value with unit
  */
-export const radius = (key) => `${borderRadius[key]}px`;
+export const radius = key => `${borderRadius[key]}px`;
 
 /**
  * Export all tokens as default for easy importing

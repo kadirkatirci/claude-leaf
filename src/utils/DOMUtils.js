@@ -68,7 +68,9 @@ const DOMUtils = {
 
   getEditHistory(messageElement) {
     console.warn('[DOMUtils] getEditHistory() is deprecated, use getEditedPrompts() instead');
-    if (!messageElement) return null;
+    if (!messageElement) {
+      return null;
+    }
 
     // Legacy implementation for compatibility
     const editBadge = messageElement.querySelector('[class*="edit" i][class*="badge" i]');
@@ -80,7 +82,7 @@ const DOMUtils = {
       badge: editBadge,
       version: versionText?.textContent,
       timestamp: timestamp?.textContent,
-      element: messageElement
+      element: messageElement,
     };
   },
 
@@ -93,9 +95,9 @@ const DOMUtils = {
       childList: true,
       subtree: true,
       attributes: false,
-      throttle: 100 // Add throttling for better performance
+      throttle: 100, // Add throttling for better performance
     });
-  }
+  },
 };
 
 export default DOMUtils;

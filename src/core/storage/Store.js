@@ -41,8 +41,12 @@ export class Store extends EventEmitter {
    * Check if cache is valid
    */
   isCacheValid() {
-    if (!this.cacheEnabled || !this.cache) return false;
-    if (!this.cacheTimestamp) return false;
+    if (!this.cacheEnabled || !this.cache) {
+      return false;
+    }
+    if (!this.cacheTimestamp) {
+      return false;
+    }
 
     const age = Date.now() - this.cacheTimestamp;
     return age < this.cacheTTL;
@@ -109,7 +113,7 @@ export class Store extends EventEmitter {
       if (!data.__meta) {
         data.__meta = {
           version: this.version,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
       }
 
@@ -228,18 +232,19 @@ export class Store extends EventEmitter {
     return {
       __meta: {
         version: this.version,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
-      ...this.defaultData
+      ...this.defaultData,
     };
   }
-
 
   /**
    * Validate data against schema
    */
   validate(data) {
-    if (!this.schema) return data;
+    if (!this.schema) {
+      return data;
+    }
 
     // Simple validation (can be extended with Zod/Yup if needed)
     // For now, just return data as-is
@@ -257,7 +262,7 @@ export class Store extends EventEmitter {
       type: this.namespace,
       version: this.version,
       timestamp: new Date().toISOString(),
-      data
+      data,
     };
   }
 

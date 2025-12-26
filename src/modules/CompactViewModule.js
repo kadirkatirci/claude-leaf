@@ -28,7 +28,7 @@ class CompactViewModule extends BaseModule {
 
     this.expandButton = new ExpandButton(
       () => this.getTheme(),
-      (msg) => this.collapse.toggleMessage(msg)
+      msg => this.collapse.toggleMessage(msg)
     );
 
     this.processedMessages = new WeakSet();
@@ -41,7 +41,9 @@ class CompactViewModule extends BaseModule {
 
   async init() {
     await super.init();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     try {
       this.log('Compact View başlatılıyor...');
@@ -94,8 +96,10 @@ class CompactViewModule extends BaseModule {
   setupVisibilityListener() {
     // Use VisibilityManager for consistent visibility handling
     this.unsubscribers.push(
-      VisibilityManager.onVisibilityChange((isConversationPage) => {
-        this.log(`📦 Visibility changed: ${isConversationPage ? 'SHOW' : 'HIDE'} (conversation: ${isConversationPage})`);
+      VisibilityManager.onVisibilityChange(isConversationPage => {
+        this.log(
+          `📦 Visibility changed: ${isConversationPage ? 'SHOW' : 'HIDE'} (conversation: ${isConversationPage})`
+        );
 
         // Update button visibility using the same approach as other modules
         if (this.elements && this.elements.toggleBtn) {
@@ -122,9 +126,13 @@ class CompactViewModule extends BaseModule {
     // No waiting/polling needed as PanelManager is always available
 
     // Toggle butonu - duruma göre collapse veya expand yapar
-    const toggleBtn = this.createNavButton(IconLibrary.collapse('currentColor', 20), 'Tümünü Daralt (Alt+←)', () => {
-      this.toggleAllMessages();
-    });
+    const toggleBtn = this.createNavButton(
+      IconLibrary.collapse('currentColor', 20),
+      'Tümünü Daralt (Alt+←)',
+      () => {
+        this.toggleAllMessages();
+      }
+    );
     toggleBtn.id = 'claude-compact-toggle-all';
 
     // Add to shared panel (Order 40 = below nav buttons)
@@ -142,9 +150,13 @@ class CompactViewModule extends BaseModule {
    */
   addButtonsToNavigation(navContainer) {
     // Toggle butonu - duruma göre collapse veya expand yapar
-    const toggleBtn = this.createNavButton(IconLibrary.collapse('currentColor', 20), 'Tümünü Daralt (Alt+←)', () => {
-      this.toggleAllMessages();
-    });
+    const toggleBtn = this.createNavButton(
+      IconLibrary.collapse('currentColor', 20),
+      'Tümünü Daralt (Alt+←)',
+      () => {
+        this.toggleAllMessages();
+      }
+    );
     toggleBtn.id = 'claude-compact-toggle-all';
 
     // Navigation container'ına ekle (navigation butonlarının altına)
@@ -207,7 +219,7 @@ class CompactViewModule extends BaseModule {
     // Only set positioning (sizing handled by classes)
     // Removed color: 'white' to allow currentColor in SVGs to adapt to theme
     Object.assign(button.style, {
-      position: 'relative'
+      position: 'relative',
     });
 
     button.addEventListener('click', onClick);
@@ -250,10 +262,14 @@ class CompactViewModule extends BaseModule {
 
     messages.forEach(message => {
       // Zaten işlendiyse atla
-      if (this.processedMessages.has(message)) return;
+      if (this.processedMessages.has(message)) {
+        return;
+      }
 
       // User mesajlarını atla, sadece Claude yanıtları
-      if (message.querySelector('[data-testid="user-message"]')) return;
+      if (message.querySelector('[data-testid="user-message"]')) {
+        return;
+      }
 
       this.processMessage(message);
       this.processedMessages.add(message);
@@ -277,7 +293,6 @@ class CompactViewModule extends BaseModule {
     const button = this.expandButton.create(messageElement, isCollapsed);
     this.expandButton.insertNextToEditButton(messageElement, button);
   }
-
 
   /**
    * Mesaj state değiştiğinde
@@ -344,7 +359,9 @@ class CompactViewModule extends BaseModule {
 
     messages.forEach(message => {
       // User mesajlarını atla
-      if (message.querySelector('[data-testid="user-message"]')) return;
+      if (message.querySelector('[data-testid="user-message"]')) {
+        return;
+      }
 
       // Collapse edilmeli mi?
       if (this.collapse.shouldCollapse(message)) {
@@ -377,7 +394,9 @@ class CompactViewModule extends BaseModule {
 
     messages.forEach(message => {
       // User mesajlarını atla
-      if (message.querySelector('[data-testid="user-message"]')) return;
+      if (message.querySelector('[data-testid="user-message"]')) {
+        return;
+      }
 
       // Expand edilmeli mi?
       if (this.collapse.shouldCollapse(message)) {
@@ -401,7 +420,7 @@ class CompactViewModule extends BaseModule {
    * Alt + ArrowRight = Tümünü Genişlet
    */
   setupKeyboardShortcuts() {
-    const handleKeydown = (e) => {
+    const handleKeydown = e => {
       // Alt + ArrowLeft (Sol) - Tümünü Daralt
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -434,7 +453,10 @@ class CompactViewModule extends BaseModule {
 
     // AutoCollapseEnabled değişti mi?
     const compactViewSettings = settings.compactView || {};
-    if (compactViewSettings.autoCollapseEnabled !== undefined && compactViewSettings.autoCollapseEnabled) {
+    if (
+      compactViewSettings.autoCollapseEnabled !== undefined &&
+      compactViewSettings.autoCollapseEnabled
+    ) {
       // Tüm mesajları daralt
       this.collapseAllMessages();
     }

@@ -13,7 +13,7 @@ export class ConversationStateStore {
       adapter: 'indexeddb',
       version: 1,
       defaultData: {},
-      cacheTTL: 10000 // Cache for 10 seconds
+      cacheTTL: 10000, // Cache for 10 seconds
     });
 
     this.currentConversationUrl = null;
@@ -89,7 +89,7 @@ export class ConversationStateStore {
   async setState(conversationUrl, stateType, state) {
     const normalized = this.normalizeUrl(conversationUrl);
 
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const conversationData = data[normalized] || {};
 
       const updated = {
@@ -97,8 +97,8 @@ export class ConversationStateStore {
         [normalized]: {
           ...conversationData,
           [stateType]: state,
-          lastAccessed: Date.now()
-        }
+          lastAccessed: Date.now(),
+        },
       };
 
       // Run LRU cleanup
@@ -112,15 +112,17 @@ export class ConversationStateStore {
   async touchConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
 
-    return this.store.update((data) => {
-      if (!data[normalized]) return data;
+    return this.store.update(data => {
+      if (!data[normalized]) {
+        return data;
+      }
 
       return {
         ...data,
         [normalized]: {
           ...data[normalized],
-          lastAccessed: Date.now()
-        }
+          lastAccessed: Date.now(),
+        },
       };
     });
   }
@@ -142,8 +144,10 @@ export class ConversationStateStore {
   async clearState(conversationUrl, stateType = null) {
     const normalized = this.normalizeUrl(conversationUrl);
 
-    return this.store.update((data) => {
-      if (!data[normalized]) return data;
+    return this.store.update(data => {
+      if (!data[normalized]) {
+        return data;
+      }
 
       if (stateType) {
         // Clear specific state type
@@ -195,14 +199,12 @@ export class ConversationStateStore {
       .map(([url, state]) => ({
         url,
         state,
-        lastAccessed: state.lastAccessed || 0
+        lastAccessed: state.lastAccessed || 0,
       }));
 
     // Remove conversations older than maxAge
     const now = Date.now();
-    const recentConversations = conversations.filter(
-      conv => (now - conv.lastAccessed) < this.maxAge
-    );
+    const recentConversations = conversations.filter(conv => now - conv.lastAccessed < this.maxAge);
 
     // If still too many, keep only the most recent maxConversations
     if (recentConversations.length > this.maxConversations) {
@@ -225,7 +227,9 @@ export class ConversationStateStore {
     // If some were removed by age
     if (recentConversations.length < conversations.length) {
       const removed = conversations.length - recentConversations.length;
-      console.log(`[ConversationStateStore] Cleaned up ${removed} old conversations (age > ${this.maxAge / (24 * 60 * 60 * 1000)} days)`);
+      console.log(
+        `[ConversationStateStore] Cleaned up ${removed} old conversations (age > ${this.maxAge / (24 * 60 * 60 * 1000)} days)`
+      );
 
       const cleaned = { __meta: data.__meta || {} };
       recentConversations.forEach(({ url, state }) => {
@@ -248,7 +252,7 @@ export class ConversationStateStore {
         return {
           headings: {},
           codeBlocks: {},
-          messages: {}
+          messages: {},
         };
       case 'collapse':
         return {};
@@ -261,7 +265,9 @@ export class ConversationStateStore {
    * Normalize URL to pathname + search
    */
   normalizeUrl(url) {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
 
     try {
       // If it's already a pathname, return as-is
@@ -289,7 +295,7 @@ export class ConversationStateStore {
       ...info,
       conversationCount: count,
       maxConversations: this.maxConversations,
-      maxAge: `${this.maxAge / (24 * 60 * 60 * 1000)} days`
+      maxAge: `${this.maxAge / (24 * 60 * 60 * 1000)} days`,
     };
   }
 

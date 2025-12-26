@@ -42,7 +42,8 @@ class MessageCollapse {
     const scrollY = window.scrollY;
 
     // Get computed background color from body for theme-aware gradient
-    const computedBg = window.getComputedStyle(document.body).backgroundColor || 'rgb(255, 255, 255)';
+    const computedBg =
+      window.getComputedStyle(document.body).backgroundColor || 'rgb(255, 255, 255)';
 
     // Wrapper oluştur
     const wrapper = DOMUtils.createElement('div', {
@@ -52,7 +53,7 @@ class MessageCollapse {
         maxHeight: `${previewLines * 24}px`, // ~24px per line
         overflow: 'hidden',
         transition: 'max-height 0.3s ease',
-      }
+      },
     });
 
     // Theme-aware fade overlay using CSS variables (Claude native colors)
@@ -72,7 +73,7 @@ class MessageCollapse {
           ${computedBg} 100%
         )`,
         pointerEvents: 'none',
-      }
+      },
     });
 
     // Mesajı wrap et
@@ -85,7 +86,7 @@ class MessageCollapse {
     this.collapsedMessages.set(messageElement, {
       wrapper,
       fadeOverlay,
-      originalHeight: messageElement.scrollHeight
+      originalHeight: messageElement.scrollHeight,
     });
 
     // Scroll position'u geri yükle
@@ -101,7 +102,9 @@ class MessageCollapse {
    */
   expandMessage(messageElement) {
     const state = this.collapsedMessages.get(messageElement);
-    if (!state) return;
+    if (!state) {
+      return;
+    }
 
     const { wrapper, fadeOverlay } = state;
 

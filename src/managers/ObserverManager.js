@@ -35,7 +35,7 @@ class ObserverManager {
       characterDataOldValue = false,
       attributeFilter = undefined,
       throttle = 0,
-      debounce = 0
+      debounce = 0,
     } = options;
 
     // Create callback wrapper with throttle/debounce
@@ -48,7 +48,7 @@ class ObserverManager {
     }
 
     // Create observer
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(mutations => {
       if (this.debugMode) {
         console.log(`[ObserverManager] Mutations detected for ${id}:`, mutations.length);
       }
@@ -68,7 +68,7 @@ class ObserverManager {
       attributeOldValue,
       characterData,
       characterDataOldValue,
-      attributeFilter
+      attributeFilter,
     };
 
     observer.observe(target, config);
@@ -79,7 +79,7 @@ class ObserverManager {
       target,
       config,
       callback: wrappedCallback,
-      originalCallback: callback
+      originalCallback: callback,
     });
 
     if (this.debugMode) {
@@ -108,11 +108,14 @@ class ObserverManager {
           clearTimeout(timeoutId);
         }
 
-        timeoutId = setTimeout(() => {
-          callback(...args);
-          lastCallTime = Date.now();
-          timeoutId = null;
-        }, delay - (now - lastCallTime));
+        timeoutId = setTimeout(
+          () => {
+            callback(...args);
+            lastCallTime = Date.now();
+            timeoutId = null;
+          },
+          delay - (now - lastCallTime)
+        );
       }
     };
 
@@ -279,7 +282,7 @@ class ObserverManager {
       id,
       target: data.target,
       config: data.config,
-      paused: data.paused || false
+      paused: data.paused || false,
     };
   }
 

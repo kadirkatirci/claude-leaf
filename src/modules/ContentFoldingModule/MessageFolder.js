@@ -26,14 +26,16 @@ class MessageFolder {
       this.module.log(`📬 MessageFolder scanning ${messages.length} messages...`);
 
       // Filter out non-message elements (footer, input area, etc.)
-      const validMessages = messages.filter((messageEl) => {
+      const validMessages = messages.filter(messageEl => {
         // Skip if it's a footer or input container
-        if (messageEl.tagName === 'FOOTER' ||
+        if (
+          messageEl.tagName === 'FOOTER' ||
           messageEl.querySelector('textarea') ||
           messageEl.querySelector('input[type="text"]') ||
           messageEl.classList.contains('sticky') ||
           messageEl.style.position === 'fixed' ||
-          messageEl.style.position === 'sticky') {
+          messageEl.style.position === 'sticky'
+        ) {
           return false;
         }
 
@@ -141,7 +143,7 @@ class MessageFolder {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
@@ -169,12 +171,12 @@ class MessageFolder {
         return Array.from(divs).reduce((largest, div) => {
           const hasContent = div.textContent.trim().length > 10;
           const isLarger = div.scrollHeight > (largest?.scrollHeight || 0);
-          return (hasContent && isLarger) ? div : largest;
+          return hasContent && isLarger ? div : largest;
         }, null);
       },
 
       // Strategy 5: Ultimate fallback - message element itself
-      () => messageEl
+      () => messageEl,
     ];
 
     // Try each strategy
@@ -218,7 +220,8 @@ class MessageFolder {
   createChevron(messageEl, isCollapsed) {
     const theme = this.module.getTheme();
 
-    const chevron = DOMUtils.createElement('button', { // button for accessibility
+    const chevron = DOMUtils.createElement('button', {
+      // button for accessibility
       className: 'message-fold-chevron',
       type: 'button',
       innerHTML: isCollapsed
@@ -242,7 +245,7 @@ class MessageFolder {
         background: 'none',
         border: 'none',
         padding: '0',
-      }
+      },
     });
 
     // Hover effect on chevron
@@ -289,7 +292,7 @@ class MessageFolder {
     messageEl.addEventListener('mouseleave', onMouseLeave);
 
     // Click chevron: Toggle collapse
-    const onClick = (e) => {
+    const onClick = e => {
       e.stopPropagation();
       e.preventDefault();
       this.toggleMessage(messageEl);
@@ -298,7 +301,7 @@ class MessageFolder {
     chevron.addEventListener('click', onClick);
 
     // Keyboard: Enter/Space to toggle
-    const onKeyDown = (e) => {
+    const onKeyDown = e => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         this.toggleMessage(messageEl);
@@ -321,7 +324,9 @@ class MessageFolder {
    */
   async toggleMessage(messageEl) {
     const cached = this.messageCache.get(messageEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     if (cached.isCollapsed) {
       this.expandMessage(messageEl);
@@ -331,7 +336,8 @@ class MessageFolder {
 
     // Update ARIA attributes
     cached.chevron.setAttribute('aria-expanded', !cached.isCollapsed);
-    cached.chevron.setAttribute('aria-label',
+    cached.chevron.setAttribute(
+      'aria-label',
       cached.isCollapsed ? 'Expand message' : 'Collapse message'
     );
 
@@ -348,7 +354,9 @@ class MessageFolder {
    */
   async collapseMessage(messageEl, animate = true) {
     const cached = this.messageCache.get(messageEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = true;
     cached.chevron.innerHTML = IconLibrary.chevron('right', 'currentColor', 14);
@@ -384,7 +392,9 @@ class MessageFolder {
    */
   expandMessage(messageEl) {
     const cached = this.messageCache.get(messageEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = false;
     cached.chevron.innerHTML = IconLibrary.chevron('down', 'currentColor', 14);
@@ -412,7 +422,7 @@ class MessageFolder {
     FadeGradientHelper.add(container, {
       height: '40px',
       className: 'message-fold-gradient',
-      zIndex: '5'
+      zIndex: '5',
     });
   }
 
@@ -446,7 +456,7 @@ class MessageFolder {
         borderRadius: '6px',
         transition: 'all 0.15s ease',
         userSelect: 'none',
-      }
+      },
     });
 
     // Hover effect
@@ -461,7 +471,7 @@ class MessageFolder {
     });
 
     // Click to expand
-    const onFooterClick = (e) => {
+    const onFooterClick = e => {
       e.stopPropagation();
       this.expandMessage(messageEl);
     };

@@ -98,7 +98,7 @@ export class StorageSync {
     return {
       listenerInitialized: this.listenerInitialized,
       registeredStores: Array.from(this.stores.keys()),
-      chromeStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage
+      chromeStorageAvailable: typeof chrome !== 'undefined' && !!chrome.storage,
     };
   }
 }

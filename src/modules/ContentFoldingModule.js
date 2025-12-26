@@ -44,7 +44,9 @@ class ContentFoldingModule extends BaseModule {
   async init() {
     try {
       await super.init();
-      if (!this.enabled) return;
+      if (!this.enabled) {
+        return;
+      }
 
       this.log('Content Folding başlatılıyor...');
 
@@ -57,7 +59,7 @@ class ContentFoldingModule extends BaseModule {
       this.messageFolder = new MessageFolder(this);
 
       // Create debounced state saver (1 second delay)
-      this.debouncedStateSave = this.debounce(async (state) => {
+      this.debouncedStateSave = this.debounce(async state => {
         await conversationStateStore.setCurrentState('folding', state);
         this.log('💾 Fold states saved (debounced)');
       }, 1000);
@@ -138,7 +140,7 @@ class ContentFoldingModule extends BaseModule {
       const config = {
         messages: { ...FOLDING_CONFIG.messages, ...settings.messages },
         headings: { ...FOLDING_CONFIG.headings, ...settings.headings },
-        codeBlocks: { ...FOLDING_CONFIG.codeBlocks, ...settings.codeBlocks }
+        codeBlocks: { ...FOLDING_CONFIG.codeBlocks, ...settings.codeBlocks },
       };
 
       // Update config on helpers
@@ -174,7 +176,6 @@ class ContentFoldingModule extends BaseModule {
       this.error('❌ Content scan error:', error);
     }
   }
-
 
   /**
    * Settings changed

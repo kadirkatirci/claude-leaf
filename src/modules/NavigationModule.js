@@ -43,7 +43,9 @@ class NavigationModule extends BaseModule {
 
   async init() {
     await super.init();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     try {
       this.log('Navigation başlatılıyor...');
@@ -58,7 +60,7 @@ class NavigationModule extends BaseModule {
       this.setupVisibilityListener();
 
       // Subscribe to MessageHub for message count changes
-      this.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, (data) => {
+      this.subscribe(Events.HUB_MESSAGE_COUNT_CHANGED, data => {
         this.messages = data.messages;
         this.updateCounter();
 
@@ -129,7 +131,9 @@ class NavigationModule extends BaseModule {
         this.hasInitialLoadCompleted = true;
 
         if (messages.length > 0) {
-          this.log(`✅ Initial load: Found ${messages.length} messages after ${retryCount} retries`);
+          this.log(
+            `✅ Initial load: Found ${messages.length} messages after ${retryCount} retries`
+          );
         } else {
           this.log(`⚠️ No messages found after ${retryCount} retries`);
         }
@@ -154,7 +158,9 @@ class NavigationModule extends BaseModule {
    */
   async updateUI() {
     // Don't update if not on conversation page
-    if (!this.lastConversationState) return;
+    if (!this.lastConversationState) {
+      return;
+    }
 
     this.log('Updating navigation UI');
 
@@ -251,7 +257,11 @@ class NavigationModule extends BaseModule {
     // We just register our buttons
 
     // Top button
-    const topBtn = this.createButton(IconLibrary.arrowUpDouble('currentColor', 20), 'En üste git (Alt+Home)', () => this.navigateToTop());
+    const topBtn = this.createButton(
+      IconLibrary.arrowUpDouble('currentColor', 20),
+      'En üste git (Alt+Home)',
+      () => this.navigateToTop()
+    );
     topBtn.id = 'claude-nav-top';
     topBtn.disabled = true;
     topBtn.style.opacity = '0.3';
@@ -259,7 +269,11 @@ class NavigationModule extends BaseModule {
     panelManager.addButton(topBtn, 10); // Order 10
 
     // Previous button
-    const prevBtn = this.createButton(IconLibrary.arrowUp('currentColor', 20), 'Önceki mesaj (Alt+↑)', () => this.navigatePrevious());
+    const prevBtn = this.createButton(
+      IconLibrary.arrowUp('currentColor', 20),
+      'Önceki mesaj (Alt+↑)',
+      () => this.navigatePrevious()
+    );
     prevBtn.id = 'claude-nav-prev';
     prevBtn.disabled = true;
     prevBtn.style.opacity = '0.3';
@@ -267,7 +281,11 @@ class NavigationModule extends BaseModule {
     panelManager.addButton(prevBtn, 20); // Order 20
 
     // Next button
-    const nextBtn = this.createButton(IconLibrary.arrowDown('currentColor', 20), 'Sonraki mesaj (Alt+↓)', () => this.navigateNext());
+    const nextBtn = this.createButton(
+      IconLibrary.arrowDown('currentColor', 20),
+      'Sonraki mesaj (Alt+↓)',
+      () => this.navigateNext()
+    );
     nextBtn.id = 'claude-nav-next';
     nextBtn.disabled = true;
     nextBtn.style.opacity = '0.3';
@@ -283,8 +301,8 @@ class NavigationModule extends BaseModule {
         position: { top: -8, right: -8 },
         style: {
           fontSize: '10px',
-          minWidth: '20px'
-        }
+          minWidth: '20px',
+        },
       });
     }
 
@@ -296,7 +314,6 @@ class NavigationModule extends BaseModule {
     this.elements.nextBtn = nextBtn;
   } // End of createUI
 
-
   createButton(icon, tooltip, onClick) {
     // Use Button component for consistent styling (size-9 = 36px from theme.buttonClasses)
     return Button.create({
@@ -306,8 +323,8 @@ class NavigationModule extends BaseModule {
       onClick: onClick,
       className: 'claude-nav-btn',
       style: {
-        position: 'relative'
-      }
+        position: 'relative',
+      },
     });
   }
 
@@ -340,7 +357,7 @@ class NavigationModule extends BaseModule {
           hasMainElement: !!document.querySelector('main'),
           hasRoleMain: !!document.querySelector('[role="main"]'),
           isConversationPage: this.dom.isOnConversationPage(),
-          url: window.location.pathname
+          url: window.location.pathname,
         });
       }
     }
@@ -388,7 +405,9 @@ class NavigationModule extends BaseModule {
   }
 
   navigatePrevious() {
-    if (this.messages.length === 0) return;
+    if (this.messages.length === 0) {
+      return;
+    }
 
     // Ensure currentIndex is initialized if not set
     if (this.currentIndex < 0) {
@@ -404,7 +423,9 @@ class NavigationModule extends BaseModule {
   }
 
   navigateNext() {
-    if (this.messages.length === 0) return;
+    if (this.messages.length === 0) {
+      return;
+    }
 
     // Ensure currentIndex is initialized if not set
     if (this.currentIndex < 0) {
@@ -420,7 +441,9 @@ class NavigationModule extends BaseModule {
   }
 
   navigateToTop() {
-    if (this.messages.length === 0) return;
+    if (this.messages.length === 0) {
+      return;
+    }
 
     this.currentIndex = 0;
     this.lockScrollTracking(); // Lock scroll detection during navigation
@@ -429,7 +452,9 @@ class NavigationModule extends BaseModule {
   }
 
   async scrollToMessage(index) {
-    if (index < 0 || index >= this.messages.length) return;
+    if (index < 0 || index >= this.messages.length) {
+      return;
+    }
 
     const message = this.messages[index];
 
@@ -450,9 +475,12 @@ class NavigationModule extends BaseModule {
     }
 
     // Restore original margin after scroll
-    setTimeout(() => {
-      message.style.scrollMarginTop = originalMargin;
-    }, smoothScroll ? 500 : 100);
+    setTimeout(
+      () => {
+        message.style.scrollMarginTop = originalMargin;
+      },
+      smoothScroll ? 500 : 100
+    );
 
     // Highlight
     const duration = NAV_CONFIG.highlightDuration;
@@ -461,7 +489,9 @@ class NavigationModule extends BaseModule {
     this.updateCounter();
     this.emit(Events.MESSAGE_SCROLLED, { index, message });
 
-    this.log(`Mesaj ${index + 1}/${this.messages.length} gösteriliyor (currentIndex: ${this.currentIndex})`);
+    this.log(
+      `Mesaj ${index + 1}/${this.messages.length} gösteriliyor (currentIndex: ${this.currentIndex})`
+    );
   }
 
   updateCounter() {
@@ -507,10 +537,12 @@ class NavigationModule extends BaseModule {
     const newStates = {
       prev: currentIdx === 0 || this.messages.length === 0,
       next: currentIdx === this.messages.length - 1 || this.messages.length === 0,
-      top: this.messages.length === 0
+      top: this.messages.length === 0,
     };
 
-    this.log(`Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${this.currentIndex}, total: ${this.messages.length})`);
+    this.log(
+      `Button states: prev=${newStates.prev}, next=${newStates.next}, top=${newStates.top} (idx: ${this.currentIndex}, total: ${this.messages.length})`
+    );
 
     // Batch style updates to minimize reflows
     // Use requestAnimationFrame for smooth 60fps updates
@@ -521,7 +553,7 @@ class NavigationModule extends BaseModule {
       scheduleVisualUpdate(() => {
         Object.assign(prevBtn.style, {
           opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+          cursor: shouldDisable ? 'not-allowed' : 'pointer',
         });
       }, 'nav-prev-btn');
       this.lastButtonStates.prev = shouldDisable;
@@ -534,7 +566,7 @@ class NavigationModule extends BaseModule {
       scheduleVisualUpdate(() => {
         Object.assign(nextBtn.style, {
           opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+          cursor: shouldDisable ? 'not-allowed' : 'pointer',
         });
       }, 'nav-next-btn');
       this.lastButtonStates.next = shouldDisable;
@@ -547,7 +579,7 @@ class NavigationModule extends BaseModule {
       scheduleVisualUpdate(() => {
         Object.assign(topBtn.style, {
           opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer'
+          cursor: shouldDisable ? 'not-allowed' : 'pointer',
         });
       }, 'nav-top-btn');
       this.lastButtonStates.top = shouldDisable;
@@ -556,7 +588,7 @@ class NavigationModule extends BaseModule {
   }
 
   setupKeyboardShortcuts() {
-    const handleKeydown = (e) => {
+    const handleKeydown = e => {
       // Alt + Arrow Up
       if (e.altKey && e.key === 'ArrowUp') {
         e.preventDefault();
@@ -610,39 +642,44 @@ class NavigationModule extends BaseModule {
     let maxVisibility = 0;
 
     // Create observer with 50% threshold for better accuracy
-    this.intersectionObserver = new IntersectionObserver((entries) => {
-      // Ignore during button navigation
-      if (this.isNavigating) {
-        return;
-      }
-
-      // Reset tracking
-      mostVisibleMessage = null;
-      maxVisibility = 0;
-
-      // Find most visible message
-      entries.forEach(entry => {
-        if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
-          maxVisibility = entry.intersectionRatio;
-          mostVisibleMessage = entry.target;
+    this.intersectionObserver = new IntersectionObserver(
+      entries => {
+        // Ignore during button navigation
+        if (this.isNavigating) {
+          return;
         }
-      });
 
-      // Update current index if we have a visible message
-      if (mostVisibleMessage) {
-        const newIndex = this.messages.indexOf(mostVisibleMessage);
+        // Reset tracking
+        mostVisibleMessage = null;
+        maxVisibility = 0;
 
-        if (newIndex !== -1 && newIndex !== this.currentIndex) {
-          this.log(`👁️ Intersection update: ${this.currentIndex} → ${newIndex} (visibility: ${(maxVisibility * 100).toFixed(0)}%)`);
-          this.currentIndex = newIndex;
-          this.updateCounter();
+        // Find most visible message
+        entries.forEach(entry => {
+          if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
+            maxVisibility = entry.intersectionRatio;
+            mostVisibleMessage = entry.target;
+          }
+        });
+
+        // Update current index if we have a visible message
+        if (mostVisibleMessage) {
+          const newIndex = this.messages.indexOf(mostVisibleMessage);
+
+          if (newIndex !== -1 && newIndex !== this.currentIndex) {
+            this.log(
+              `👁️ Intersection update: ${this.currentIndex} → ${newIndex} (visibility: ${(maxVisibility * 100).toFixed(0)}%)`
+            );
+            this.currentIndex = newIndex;
+            this.updateCounter();
+          }
         }
+      },
+      {
+        root: null, // viewport
+        threshold: [0, 0.25, 0.5, 0.75, 1.0], // Multiple thresholds for accuracy
+        rootMargin: '-10% 0px -10% 0px', // Ignore top/bottom 10% of viewport
       }
-    }, {
-      root: null, // viewport
-      threshold: [0, 0.25, 0.5, 0.75, 1.0], // Multiple thresholds for accuracy
-      rootMargin: '-10% 0px -10% 0px' // Ignore top/bottom 10% of viewport
-    });
+    );
 
     // Observe all messages
     this.messages.forEach(message => {
@@ -715,7 +752,10 @@ class NavigationModule extends BaseModule {
 
       // Klavye kısayolları değişti mi?
       try {
-        if (settings.navigation && settings.navigation.keyboardShortcuts !== NAV_CONFIG.keyboardShortcuts) {
+        if (
+          settings.navigation &&
+          settings.navigation.keyboardShortcuts !== NAV_CONFIG.keyboardShortcuts
+        ) {
           if (settings.navigation.keyboardShortcuts) {
             this.setupKeyboardShortcuts();
           } else if (this.keydownHandler) {

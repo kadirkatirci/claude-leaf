@@ -15,7 +15,7 @@ class EditPanel extends BasePanel {
       title: 'Edit Points', // Icon will be added dynamically
       width: '280px',
       height: '500px',
-      position: { right: '80px', top: '60px' }
+      position: { right: '80px', top: '60px' },
     });
 
     this.getTheme = getTheme;
@@ -58,7 +58,8 @@ class EditPanel extends BasePanel {
     footer.className = 'p-2 border-t border-border-200 bg-bg-100';
 
     const mapBtn = DOMUtils.createElement('button', {
-      className: 'w-full px-3 py-2 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors font-medium flex items-center justify-center gap-2'
+      className:
+        'w-full px-3 py-2 text-xs bg-bg-200 hover:bg-bg-300 rounded text-text-200 transition-colors font-medium flex items-center justify-center gap-2',
     });
     mapBtn.innerHTML = `${IconLibrary.map('currentColor', 16)} Show Chat Branch Map`;
 
@@ -66,7 +67,7 @@ class EditPanel extends BasePanel {
       // Dispatch event to open Branch Map Modal
       // EditHistoryModule will listen for this
       const event = new CustomEvent('claude:open_branch_map', {
-        detail: { conversationUrl: window.location.pathname }
+        detail: { conversationUrl: window.location.pathname },
       });
       document.dispatchEvent(event);
     });
@@ -80,7 +81,9 @@ class EditPanel extends BasePanel {
    * Only updates DOM if edits actually changed
    */
   updateContent(editedMessages) {
-    if (!this.panel || !this.content) return;
+    if (!this.panel || !this.content) {
+      return;
+    }
 
     // Update title with icon and count
     if (this.header) {

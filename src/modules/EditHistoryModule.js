@@ -27,10 +27,13 @@ class EditHistoryModule extends BaseModule {
     this.editedMessages = [];
 
     // Components
-    this.badge = new EditBadge(() => this.getTheme(), (el, data) => {
-      // data is now the editInfo object
-      this.modal.show(el, data?.versionInfo, data?.containerId);
-    });
+    this.badge = new EditBadge(
+      () => this.getTheme(),
+      (el, data) => {
+        // data is now the editInfo object
+        this.modal.show(el, data?.versionInfo, data?.containerId);
+      }
+    );
 
     // Lazy initialization for panels and modals
     this._panel = null;
@@ -39,7 +42,7 @@ class EditHistoryModule extends BaseModule {
     this._ui = null;
 
     // Listen for Branch Map open event
-    document.addEventListener('claude:open_branch_map', (e) => {
+    document.addEventListener('claude:open_branch_map', e => {
       this.branchMapModal.show(e.detail.conversationUrl);
     });
   }
@@ -47,7 +50,10 @@ class EditHistoryModule extends BaseModule {
   // Lazy getters
   get panel() {
     if (!this._panel) {
-      this._panel = new EditPanel(() => this.getTheme(), (idx) => this.scrollToEdit(idx));
+      this._panel = new EditPanel(
+        () => this.getTheme(),
+        idx => this.scrollToEdit(idx)
+      );
     }
     return this._panel;
   }
@@ -71,7 +77,7 @@ class EditHistoryModule extends BaseModule {
       this._ui = new EditUI(
         () => this.getTheme(),
         () => this.panel.toggle(),
-        (shouldCollapse) => this.handleCollapseAll(shouldCollapse)
+        shouldCollapse => this.handleCollapseAll(shouldCollapse)
       );
     }
     return this._ui;
@@ -79,7 +85,9 @@ class EditHistoryModule extends BaseModule {
 
   async init() {
     await super.init();
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     try {
       this.log('Edit History başlatılıyor...');
@@ -94,19 +102,20 @@ class EditHistoryModule extends BaseModule {
         tooltip: 'Edit History',
         position: { right: '30px', transform: 'translateY(-100px)' },
         onClick: () => this.panel.toggle(),
-        showCounter: true
+        showCounter: true,
       });
 
       this.setupVisibilityListener();
       this.panel.create();
 
       // Subscribe to MessageHub for version changes
-      this.subscribe(Events.HUB_VERSION_CHANGED, (data) => {
+      this.subscribe(Events.HUB_VERSION_CHANGED, data => {
         this.handleVersionChange(data);
       });
 
       // Create collapse button (only if CompactView is enabled)
-      const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+      const compactViewEnabled =
+        this.settings && this.settings.compactView && this.settings.compactView.enabled;
       if (compactViewEnabled) {
         this.createCollapseButton(this.getTheme());
       }
@@ -186,7 +195,9 @@ class EditHistoryModule extends BaseModule {
       // Check if we found any edits
       if (this.editedMessages.length > 0 || retryCount >= maxRetries) {
         if (this.editedMessages.length > 0) {
-          this.log(`✅ Found ${this.editedMessages.length} edited messages after ${retryCount} retries`);
+          this.log(
+            `✅ Found ${this.editedMessages.length} edited messages after ${retryCount} retries`
+          );
         } else {
           this.log(`⚠️ No edited messages found after ${retryCount} retries`);
         }
@@ -205,7 +216,6 @@ class EditHistoryModule extends BaseModule {
     // Start checking
     await checkForEdits();
   }
-
 
   /**
    * Create Collapse/Expand All button in navigation container
@@ -232,14 +242,19 @@ class EditHistoryModule extends BaseModule {
         color: 'white',
         fontSize: '20px',
         position: 'relative',
-      }
+      },
     });
 
     // Click handler
     collapseBtn.addEventListener('click', () => {
       this.isAllCollapsed = !this.isAllCollapsed;
-      collapseBtn.innerHTML = this.isAllCollapsed ? IconLibrary.expand('currentColor', 20) : IconLibrary.collapse('currentColor', 20);
-      collapseBtn.setAttribute('data-tooltip', this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)');
+      collapseBtn.innerHTML = this.isAllCollapsed
+        ? IconLibrary.expand('currentColor', 20)
+        : IconLibrary.collapse('currentColor', 20);
+      collapseBtn.setAttribute(
+        'data-tooltip',
+        this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)'
+      );
       this.handleCollapseAll(this.isAllCollapsed);
     });
 
@@ -265,9 +280,8 @@ class EditHistoryModule extends BaseModule {
   async handleEditsFound(editedPrompts) {
     // Don't process if explicitly NOT on conversation page
     // During initialization (lastConversationState === null), allow processing
-    const isConversationPage = this.lastConversationState !== null
-      ? this.lastConversationState
-      : true; // Allow during initialization
+    const isConversationPage =
+      this.lastConversationState !== null ? this.lastConversationState : true; // Allow during initialization
 
     if (!isConversationPage) {
       this.log('Not on conversation page, skipping edit processing');
@@ -327,7 +341,9 @@ class EditHistoryModule extends BaseModule {
    * Belirli bir edit'e scroll yap
    */
   scrollToEdit(index) {
-    if (index < 0 || index >= this.editedMessages.length) return;
+    if (index < 0 || index >= this.editedMessages.length) {
+      return;
+    }
 
     const editMsg = this.editedMessages[index];
     this.log(`🎯 Edit ${index + 1}'e scroll`);
@@ -342,7 +358,9 @@ class EditHistoryModule extends BaseModule {
   handleCollapseAll(shouldCollapse) {
     // CompactViewModule'ü bul
     const app = window.claudeProductivity;
-    if (!app) return;
+    if (!app) {
+      return;
+    }
 
     const compactViewModule = app.getModule('compactView');
     if (!compactViewModule || !compactViewModule.enabled) {
@@ -387,7 +405,8 @@ class EditHistoryModule extends BaseModule {
     }
 
     // Recreate collapse button if CompactView is enabled
-    const compactViewEnabled = this.settings && this.settings.compactView && this.settings.compactView.enabled;
+    const compactViewEnabled =
+      this.settings && this.settings.compactView && this.settings.compactView.enabled;
     if (compactViewEnabled) {
       this.createCollapseButton(theme);
     }
@@ -405,7 +424,6 @@ class EditHistoryModule extends BaseModule {
 
     this.log('🎨 UI tema ile yenilendi');
   }
-
 
   /**
    * Modülü durdur
@@ -434,19 +452,25 @@ class EditHistoryModule extends BaseModule {
       // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
       try {
-        if (this.badge) this.badge.removeAll();
+        if (this.badge) {
+          this.badge.removeAll();
+        }
       } catch (error) {
         this.error('Error removing badges:', error);
       }
 
       try {
-        if (this.panel) this.panel.remove();
+        if (this.panel) {
+          this.panel.remove();
+        }
       } catch (error) {
         this.error('Error removing panel:', error);
       }
 
       try {
-        if (this.modal) this.modal.close();
+        if (this.modal) {
+          this.modal.close();
+        }
       } catch (error) {
         this.error('Error closing modal:', error);
       }

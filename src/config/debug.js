@@ -85,5 +85,5 @@ export default {
   DEBUG,
   DEBUG_FLAGS,
   debugLog,
-  perfTimer
+  perfTimer,
 };

@@ -1,6 +1,6 @@
 /**
  * BookmarkStore - Bookmark management with conversation-aware filtering
- * 
+ *
  * Bookmarks are identified by content signature, not by index.
  * This allows different versions of the same conversation to have separate bookmarks.
  */
@@ -14,10 +14,8 @@ export class BookmarkStore {
       version: 2,
       defaultData: {
         bookmarks: [],
-        categories: [
-          { id: 'default', name: 'General', color: '#667eea', isDefault: true }
-        ]
-      }
+        categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
+      },
     });
   }
 
@@ -28,34 +26,36 @@ export class BookmarkStore {
 
   async getCategories() {
     const data = await this.store.get();
-    return data.categories || [
-      { id: 'default', name: 'General', color: '#667eea', isDefault: true }
-    ];
+    return (
+      data.categories || [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }]
+    );
   }
 
   async addCategory(name, color) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const categories = data.categories || [];
       const newCategory = {
         id: crypto.randomUUID(),
         name,
         color: color || '#667eea',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
 
       return {
         ...data,
-        categories: [...categories, newCategory]
+        categories: [...categories, newCategory],
       };
     });
   }
 
   async updateCategory(id, updates) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const categories = data.categories || [];
       const index = categories.findIndex(c => c.id === id);
 
-      if (index === -1) return data;
+      if (index === -1) {
+        return data;
+      }
 
       const newCategories = [...categories];
       newCategories[index] = { ...newCategories[index], ...updates };
@@ -65,11 +65,13 @@ export class BookmarkStore {
   }
 
   async removeCategory(id) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const categories = data.categories || [];
       // Don't delete if it's the only one or default (unless forced, but let's keep it simple)
       const toDelete = categories.find(c => c.id === id);
-      if (toDelete?.isDefault) return data;
+      if (toDelete?.isDefault) {
+        return data;
+      }
 
       // Reset bookmarks with this category to default
       const bookmarks = (data.bookmarks || []).map(b => {
@@ -82,7 +84,7 @@ export class BookmarkStore {
       return {
         ...data,
         bookmarks,
-        categories: categories.filter(c => c.id !== id)
+        categories: categories.filter(c => c.id !== id),
       };
     });
   }
@@ -108,7 +110,7 @@ export class BookmarkStore {
    * Duplicate check is by content signature (not index)
    */
   async add(bookmark) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const bookmarks = data.bookmarks || [];
 
       const normalized = {
@@ -119,30 +121,34 @@ export class BookmarkStore {
         // Ensure category exists, else default
         categoryId: bookmark.categoryId || 'default',
         // Support full text if provided
-        fullText: bookmark.fullText || bookmark.previewText || ''
+        fullText: bookmark.fullText || bookmark.previewText || '',
       };
 
       // Check for duplicates by CONTENT SIGNATURE (not index)
       // This allows same index in different versions to have separate bookmarks
-      const exists = bookmarks.some(b =>
-        b.conversationUrl === normalized.conversationUrl &&
-        b.contentSignature === normalized.contentSignature
+      const exists = bookmarks.some(
+        b =>
+          b.conversationUrl === normalized.conversationUrl &&
+          b.contentSignature === normalized.contentSignature
       );
 
       if (exists) {
-        console.warn('[BookmarkStore] Bookmark already exists for this content:', normalized.contentSignature);
+        console.warn(
+          '[BookmarkStore] Bookmark already exists for this content:',
+          normalized.contentSignature
+        );
         return data;
       }
 
       return {
         ...data,
-        bookmarks: [...bookmarks, normalized]
+        bookmarks: [...bookmarks, normalized],
       };
     });
   }
 
   async update(bookmarkId, updates) {
-    return this.store.update((data) => {
+    return this.store.update(data => {
       const bookmarks = data.bookmarks || [];
       const index = bookmarks.findIndex(b => b.id === bookmarkId);
 
@@ -155,7 +161,7 @@ export class BookmarkStore {
       updated[index] = {
         ...updated[index],
         ...updates,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       return { ...data, bookmarks: updated };
@@ -163,22 +169,25 @@ export class BookmarkStore {
   }
 
   async remove(bookmarkId) {
-    return this.store.update((data) => ({
+    return this.store.update(data => ({
       ...data,
-      bookmarks: (data.bookmarks || []).filter(b => b.id !== bookmarkId)
+      bookmarks: (data.bookmarks || []).filter(b => b.id !== bookmarkId),
     }));
   }
 
   async removeByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
-    return this.store.update((data) => ({
+    return this.store.update(data => ({
       ...data,
-      bookmarks: (data.bookmarks || []).filter(b => b.conversationUrl !== normalized)
+      bookmarks: (data.bookmarks || []).filter(b => b.conversationUrl !== normalized),
     }));
   }
 
   async clear() {
-    return this.store.set({ bookmarks: [], categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }] });
+    return this.store.set({
+      bookmarks: [],
+      categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
+    });
   }
 
   async setStorageType(type) {
@@ -192,17 +201,21 @@ export class BookmarkStore {
 
   getStorageType() {
     const adapter = this.store.adapter;
-    if (adapter.constructor.name === 'ChromeLocalAdapter') return 'local';
-    if (adapter.constructor.name === 'ChromeSyncAdapter') return 'sync';
+    if (adapter.constructor.name === 'ChromeLocalAdapter') {
+      return 'local';
+    }
+    if (adapter.constructor.name === 'ChromeSyncAdapter') {
+      return 'sync';
+    }
     return 'unknown';
   }
 
   subscribe(callback) {
-    return this.store.subscribe((data) => callback(data.bookmarks || []));
+    return this.store.subscribe(data => callback(data.bookmarks || []));
   }
 
   subscribeToCategories(callback) {
-    return this.store.subscribe((data) => callback(data.categories || []));
+    return this.store.subscribe(data => callback(data.categories || []));
   }
 
   async export() {
@@ -224,19 +237,27 @@ export class BookmarkStore {
 
         // Merge categories (simple check by ID)
         const existingCatIds = new Set(currentCategories.map(c => c.id));
-        const newCategories = (imported.data.categories || []).filter(c => !existingCatIds.has(c.id));
+        const newCategories = (imported.data.categories || []).filter(
+          c => !existingCatIds.has(c.id)
+        );
 
-        await this.store.update((data) => ({
+        await this.store.update(data => ({
           ...data,
           bookmarks: [...(data.bookmarks || []), ...newBookmarks],
-          categories: [...(data.categories || []), ...newCategories]
+          categories: [...(data.categories || []), ...newCategories],
         }));
 
-        return { success: true, imported: newBookmarks.length, skipped: imported.data.bookmarks.length - newBookmarks.length };
+        return {
+          success: true,
+          imported: newBookmarks.length,
+          skipped: imported.data.bookmarks.length - newBookmarks.length,
+        };
       } else {
         await this.store.set({
           bookmarks: imported.data.bookmarks || [],
-          categories: imported.data.categories || [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }]
+          categories: imported.data.categories || [
+            { id: 'default', name: 'General', color: '#667eea', isDefault: true },
+          ],
         });
         return { success: true, imported: imported.data.bookmarks.length };
       }
@@ -247,9 +268,13 @@ export class BookmarkStore {
   }
 
   normalizeUrl(url) {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
     try {
-      if (url.startsWith('/')) return url;
+      if (url.startsWith('/')) {
+        return url;
+      }
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname + parsed.search;
     } catch (error) {
@@ -263,4 +288,3 @@ export class BookmarkStore {
 }
 
 export const bookmarkStore = new BookmarkStore();
-

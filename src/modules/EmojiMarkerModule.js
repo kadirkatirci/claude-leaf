@@ -1,6 +1,6 @@
 /**
  * EmojiMarkerModule - Emoji-based message marking system
- * 
+ *
  * Markers are tied to specific messages via content signature.
  * If the message exists, show the marker. If not, don't show it.
  * NEVER auto-delete - only user can delete.
@@ -30,14 +30,14 @@ class EmojiMarkerModule extends BaseModule {
       this.emojiPicker,
       () => this.getFavoriteEmojis(),
       (markerId, newEmoji) => this.updateMarker(markerId, newEmoji),
-      (markerId) => this.removeMarker(markerId)
+      markerId => this.removeMarker(markerId)
     );
     this.button = new MarkerButton(
       () => this.getTheme(),
       () => this.getFavoriteEmojis(),
       this.emojiPicker,
       (messageEl, messageIndex, emoji) => this.addMarker(messageEl, messageIndex, emoji),
-      (markerId) => this.removeMarker(markerId),
+      markerId => this.removeMarker(markerId),
       (markerId, newEmoji) => this.updateMarker(markerId, newEmoji)
     );
 
@@ -50,8 +50,8 @@ class EmojiMarkerModule extends BaseModule {
     if (!this._panel) {
       this._panel = new MarkerPanel(
         () => this.getTheme(),
-        (marker) => this.scrollToMarker(marker),
-        (markerId) => this.removeMarker(markerId)
+        marker => this.scrollToMarker(marker),
+        markerId => this.removeMarker(markerId)
       );
     }
     return this._panel;
@@ -60,7 +60,9 @@ class EmojiMarkerModule extends BaseModule {
   async init() {
     try {
       await super.init();
-      if (!this.enabled) return;
+      if (!this.enabled) {
+        return;
+      }
 
       this.log('Emoji Markers başlatılıyor...');
 
@@ -77,7 +79,7 @@ class EmojiMarkerModule extends BaseModule {
         tooltip: 'Emoji Markers',
         position: { right: '30px', transform: 'translateY(-160px)' },
         onClick: () => this.panel.toggle(),
-        showCounter: true
+        showCounter: true,
       });
 
       this.setupVisibilityListener();
@@ -103,7 +105,9 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   async updateUI() {
-    if (!this.lastConversationState) return;
+    if (!this.lastConversationState) {
+      return;
+    }
 
     const allMessages = this.dom.findMessages();
     const messages = allMessages.filter(msg => {
@@ -120,10 +124,12 @@ class EmojiMarkerModule extends BaseModule {
     const resolvedMarkers = validMarkers.map(item => ({
       ...item.marker,
       index: item.resolvedIndex,
-      _status: item.status
+      _status: item.status,
     }));
 
-    this.log(`📍 Markers: ${resolvedMarkers.length} shown / ${conversationMarkers.length} in storage`);
+    this.log(
+      `📍 Markers: ${resolvedMarkers.length} shown / ${conversationMarkers.length} in storage`
+    );
 
     this.updateButtonCounter(resolvedMarkers.length);
 
@@ -153,7 +159,9 @@ class EmojiMarkerModule extends BaseModule {
    * Add marker - checks by content signature to avoid duplicates
    */
   async addMarker(messageEl, messageIndex, emoji) {
-    if (!this.dom.isOnConversationPage()) return;
+    if (!this.dom.isOnConversationPage()) {
+      return;
+    }
 
     const conversationUrl = window.location.pathname;
     const currentSignature = generateSignature(messageEl);
@@ -231,12 +239,14 @@ class EmojiMarkerModule extends BaseModule {
     input.accept = 'application/json';
 
     return new Promise((resolve, reject) => {
-      input.onchange = async (e) => {
+      input.onchange = async e => {
         const file = e.target.files[0];
-        if (!file) return reject(new Error('No file'));
+        if (!file) {
+          return reject(new Error('No file'));
+        }
 
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = async event => {
           try {
             const result = await markerStore.import(event.target.result, true);
             await this.updateUI();
@@ -267,7 +277,7 @@ class EmojiMarkerModule extends BaseModule {
       tooltip: 'Emoji Markers',
       position: { right: '30px', transform: 'translateY(-160px)' },
       onClick: () => this.panel.toggle(),
-      showCounter: true
+      showCounter: true,
     });
     this.setupVisibilityListener();
     this.panel.remove();

@@ -3,7 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import FadeGradientHelper from "../../utils/FadeGradientHelper.js";
+import FadeGradientHelper from '../../utils/FadeGradientHelper.js';
 import { conversationStateStore } from '../../stores/index.js';
 import { MODULE_CONSTANTS } from '../../config/ModuleConstants.js';
 
@@ -27,10 +27,14 @@ class CodeBlockFolder {
 
       for (const [index, preEl] of Array.from(codeBlocks).entries()) {
         // Skip if already processed
-        if (this.processedBlocks.has(preEl)) continue;
+        if (this.processedBlocks.has(preEl)) {
+          continue;
+        }
 
         const codeEl = preEl.querySelector('code');
-        if (!codeEl) continue;
+        if (!codeEl) {
+          continue;
+        }
 
         // Count lines
         const lineCount = this.countLines(codeEl);
@@ -143,7 +147,7 @@ class CodeBlockFolder {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
@@ -183,7 +187,7 @@ class CodeBlockFolder {
         transition: 'all 0.15s ease',
         zIndex: '10',
         padding: '0',
-      }
+      },
     });
 
     // Hover effect on button itself
@@ -225,7 +229,7 @@ class CodeBlockFolder {
     preEl.addEventListener('mouseleave', onMouseLeave);
 
     // Click button: Toggle collapse
-    const onClick = (e) => {
+    const onClick = e => {
       e.stopPropagation();
       e.preventDefault();
       this.toggleCodeBlock(preEl);
@@ -234,7 +238,7 @@ class CodeBlockFolder {
     button.addEventListener('click', onClick);
 
     // Keyboard: Enter/Space to toggle
-    const onKeyDown = (e) => {
+    const onKeyDown = e => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         this.toggleCodeBlock(preEl);
@@ -257,7 +261,9 @@ class CodeBlockFolder {
    */
   async toggleCodeBlock(preEl) {
     const cached = this.codeBlockCache.get(preEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     if (cached.isCollapsed) {
       this.expandCodeBlock(preEl);
@@ -267,10 +273,9 @@ class CodeBlockFolder {
 
     // Update ARIA attributes
     cached.button.setAttribute('aria-expanded', !cached.isCollapsed);
-    cached.button.setAttribute('aria-label',
-      cached.isCollapsed
-        ? `Expand ${cached.lineCount} lines of code`
-        : 'Collapse code block'
+    cached.button.setAttribute(
+      'aria-label',
+      cached.isCollapsed ? `Expand ${cached.lineCount} lines of code` : 'Collapse code block'
     );
 
     // Save state (debounced)
@@ -286,7 +291,9 @@ class CodeBlockFolder {
    */
   async collapseCodeBlock(preEl, animate = true) {
     const cached = this.codeBlockCache.get(preEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = true;
     cached.button.innerHTML = IconLibrary.expand('currentColor', 16);
@@ -321,7 +328,9 @@ class CodeBlockFolder {
    */
   expandCodeBlock(preEl) {
     const cached = this.codeBlockCache.get(preEl);
-    if (!cached) return;
+    if (!cached) {
+      return;
+    }
 
     cached.isCollapsed = false;
     cached.button.innerHTML = IconLibrary.collapse('currentColor', 16);
@@ -349,7 +358,7 @@ class CodeBlockFolder {
     FadeGradientHelper.add(preEl, {
       height: '60px',
       className: 'code-fold-gradient',
-      zIndex: '5'
+      zIndex: '5',
     });
   }
 
@@ -388,7 +397,7 @@ class CodeBlockFolder {
         transition: 'all 0.15s ease',
         zIndex: '10',
         userSelect: 'none',
-      }
+      },
     });
 
     // Hover effect
@@ -403,7 +412,7 @@ class CodeBlockFolder {
     });
 
     // Click to expand
-    footer.addEventListener('click', (e) => {
+    footer.addEventListener('click', e => {
       e.stopPropagation();
       this.expandCodeBlock(preEl);
     });

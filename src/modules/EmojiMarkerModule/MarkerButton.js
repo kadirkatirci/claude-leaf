@@ -7,7 +7,14 @@ import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
 
 export class MarkerButton {
-  constructor(getTheme, getFavoriteEmojis, emojiPicker, onMarkerAdd, onMarkerRemove, onMarkerUpdate) {
+  constructor(
+    getTheme,
+    getFavoriteEmojis,
+    emojiPicker,
+    onMarkerAdd,
+    onMarkerRemove,
+    onMarkerUpdate
+  ) {
     this.getTheme = getTheme;
     this.getFavoriteEmojis = getFavoriteEmojis;
     this.emojiPicker = emojiPicker;
@@ -96,7 +103,7 @@ export class MarkerButton {
     button.title = 'Add emoji marker';
 
     // Click handler - sadece marker yoksa (add için)
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', e => {
       e.stopPropagation();
 
       // Marker button sadece marker yoksa görünür, bu yüzden direkt add
@@ -116,7 +123,7 @@ export class MarkerButton {
   async showEmojiPickerForAdd(button, messageEl, messageIndex) {
     const favoriteEmojis = await this.getFavoriteEmojis();
 
-    this.emojiPicker.showQuickSelect(button, favoriteEmojis, (emoji) => {
+    this.emojiPicker.showQuickSelect(button, favoriteEmojis, emoji => {
       this.onMarkerAdd(messageEl, messageIndex, emoji);
 
       // Update button
@@ -138,22 +145,19 @@ export class MarkerButton {
     const menu = DOMUtils.createElement('div');
 
     // Claude's native dropdown menu classes
-    menu.className = cn(
-      'emoji-marker-options',
-      ClaudeClasses.menu.container
-    );
+    menu.className = cn('emoji-marker-options', ClaudeClasses.menu.container);
 
     // Change emoji button
     const changeBtn = DOMUtils.createElement('button');
     changeBtn.textContent = 'Change Emoji';
     changeBtn.className = ClaudeClasses.menu.item;
 
-    changeBtn.addEventListener('click', async (e) => {
+    changeBtn.addEventListener('click', async e => {
       e.stopPropagation();
       menu.remove();
 
       const favoriteEmojis = await this.getFavoriteEmojis();
-      this.emojiPicker.showQuickSelect(button, favoriteEmojis, (emoji) => {
+      this.emojiPicker.showQuickSelect(button, favoriteEmojis, emoji => {
         this.onMarkerUpdate(marker.id, emoji);
 
         // Update button
@@ -166,7 +170,8 @@ export class MarkerButton {
     const removeBtn = DOMUtils.createElement('button');
     removeBtn.textContent = 'Remove Marker';
     // Use inline styles for danger color (red not in Claude native)
-    removeBtn.className = 'px-3 py-1.5 rounded text-white cursor-pointer text-sm text-left transition-colors';
+    removeBtn.className =
+      'px-3 py-1.5 rounded text-white cursor-pointer text-sm text-left transition-colors';
     removeBtn.style.backgroundColor = '#ef4444'; // red-500
 
     // Add hover effect
@@ -177,7 +182,7 @@ export class MarkerButton {
       removeBtn.style.backgroundColor = '#ef4444'; // red-500
     });
 
-    removeBtn.addEventListener('click', (e) => {
+    removeBtn.addEventListener('click', e => {
       e.stopPropagation();
       menu.remove();
       this.onMarkerRemove(marker.id);
@@ -198,7 +203,7 @@ export class MarkerButton {
 
     // Close on outside click
     setTimeout(() => {
-      const closeMenu = (e) => {
+      const closeMenu = e => {
         if (!menu.contains(e.target)) {
           menu.remove();
           document.removeEventListener('click', closeMenu);
@@ -213,7 +218,9 @@ export class MarkerButton {
    */
   updateButtonState(messageEl, marker) {
     const button = this.buttonCache.get(messageEl);
-    if (!button) return;
+    if (!button) {
+      return;
+    }
 
     if (marker) {
       // Marker varsa button'u gizle (badge zaten gösteriyor)

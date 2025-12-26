@@ -27,15 +27,15 @@ class MessageHub {
 
     // Configuration
     this.config = {
-      debounceDelay: 300,  // Tutarlı 300ms debounce
-      stabilizationDelay: 100  // DOM stabilizasyon bekleme
+      debounceDelay: 300, // Tutarlı 300ms debounce
+      stabilizationDelay: 100, // DOM stabilizasyon bekleme
     };
 
     // State cache - önceki durumu tutarak diff hesaplama
     this.lastState = {
       messageCount: 0,
       editedCount: 0,
-      editVersions: new Map()  // containerId -> versionString
+      editVersions: new Map(), // containerId -> versionString
     };
 
     // Debug
@@ -75,7 +75,7 @@ class MessageHub {
       this.navigationUnsubscribe();
     }
 
-    this.navigationUnsubscribe = navigationInterceptor.onNavigate((event) => {
+    this.navigationUnsubscribe = navigationInterceptor.onNavigate(event => {
       // When entering a conversation page, restart observer
       if (event.isConversationPage && !event.wasConversationPage) {
         this.log('Navigation: entering conversation page, restarting...');
@@ -103,19 +103,24 @@ class MessageHub {
       return;
     }
 
-    this.observer = ObserverManager.observe('message-hub', target, () => {
-      this.scheduleProcess();
-    }, {
-      childList: true,
-      subtree: true,
-      attributes: false,
-      throttle: 100  // İlk seviye throttle (ObserverManager'da)
-    });
+    this.observer = ObserverManager.observe(
+      'message-hub',
+      target,
+      () => {
+        this.scheduleProcess();
+      },
+      {
+        childList: true,
+        subtree: true,
+        attributes: false,
+        throttle: 100, // İlk seviye throttle (ObserverManager'da)
+      }
+    );
 
     this.isStarted = true;
-    this.log('🚀 Started');
+    this.log('Started');
 
-    // İlk tarama
+    // Initial scan
     setTimeout(() => this.process(), 200);
   }
 
@@ -201,7 +206,6 @@ class MessageHub {
         // Event'leri yayınla
         this.emitChanges(changes, messages, editedPrompts);
       }
-
     } catch (error) {
       console.error('[MessageHub] Process error:', error);
     } finally {
@@ -232,8 +236,8 @@ class MessageHub {
         newMessageCount: messages.length,
         oldEditCount: this.lastState.editedCount,
         newEditCount: editedPrompts.length,
-        editChanges: []
-      }
+        editChanges: [],
+      },
     };
 
     // 1. Mesaj sayısı değişti mi?
@@ -261,7 +265,7 @@ class MessageHub {
           changes.details.editChanges.push({
             containerId: edit.containerId,
             oldVersion: lastVersion,
-            newVersion: edit.versionInfo
+            newVersion: edit.versionInfo,
           });
           this.log(`Version change: ${edit.containerId} (${lastVersion} → ${edit.versionInfo})`);
         }
@@ -295,27 +299,27 @@ class MessageHub {
       editedPrompts,
       editCount: editedPrompts.length,
       changes: changes.details,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    // 1. Mesaj sayısı değiştiyse
+    // 1. Message count changed
     if (changes.messageCountChanged) {
-      this.log('📡 Emitting: hub:message_count_changed');
+      this.log('Emitting: hub:message_count_changed');
       eventBus.emit(Events.HUB_MESSAGE_COUNT_CHANGED, eventData);
 
-      // Geriye uyumluluk için eski event
+      // Backward compatibility
       eventBus.emit(Events.MESSAGES_UPDATED, messages);
     }
 
-    // 2. Version değiştiyse
+    // 2. Version changed
     if (changes.versionChanged) {
-      this.log('📡 Emitting: hub:version_changed');
+      this.log('Emitting: hub:version_changed');
       eventBus.emit(Events.HUB_VERSION_CHANGED, eventData);
     }
 
-    // 3. Herhangi bir içerik değişikliği
+    // 3. Any content change
     if (changes.contentChanged || changes.versionChanged) {
-      this.log('📡 Emitting: hub:content_changed');
+      this.log('Emitting: hub:content_changed');
       eventBus.emit(Events.HUB_CONTENT_CHANGED, eventData);
     }
   }
@@ -355,7 +359,7 @@ class MessageHub {
     // State'i sıfırla
     this.resetState();
 
-    this.log('🛑 Stopped');
+    this.log('Stopped');
   }
 
   /**
@@ -365,7 +369,7 @@ class MessageHub {
     this.lastState = {
       messageCount: 0,
       editedCount: 0,
-      editVersions: new Map()
+      editVersions: new Map(),
     };
     this.log('State reset');
   }
@@ -380,9 +384,9 @@ class MessageHub {
       lastState: {
         messageCount: this.lastState.messageCount,
         editedCount: this.lastState.editedCount,
-        editVersionCount: this.lastState.editVersions.size
+        editVersionCount: this.lastState.editVersions.size,
       },
-      config: { ...this.config }
+      config: { ...this.config },
     };
   }
 

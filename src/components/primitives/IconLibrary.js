@@ -48,7 +48,7 @@ export default class IconLibrary {
       up: 180,
       down: 0,
       left: 90,
-      right: 270
+      right: 270,
     };
 
     const rotation = rotations[direction] || 0;

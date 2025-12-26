@@ -60,7 +60,9 @@ const DOMUtilsParsing = {
     messageContainers.forEach((container, idx) => {
       // Does this container have a user message?
       const userMessage = container.querySelector('[data-testid="user-message"]');
-      if (!userMessage) return;
+      if (!userMessage) {
+        return;
+      }
 
       // Look for version counter ("e.g., 3 / 3")
       // Use optimized findVersionSpan with targeted selector
@@ -77,7 +79,9 @@ const DOMUtilsParsing = {
           // Only if total > 1 means it has been edited
           if (total > 1 && !isNaN(current) && !isNaN(total)) {
             // Find edit button (retry button - circular arrow icon)
-            const retryButton = container.querySelector('button svg path[d*="M10.3857"]')?.closest('button');
+            const retryButton = container
+              .querySelector('button svg path[d*="M10.3857"]')
+              ?.closest('button');
 
             // Generate a STABLE containerId based on message INDEX
             // This ensures the ID remains constant even when content is edited
@@ -93,7 +97,7 @@ const DOMUtilsParsing = {
               hasEditHistory: true,
               containerId: containerId,
               // Also include DOM index for debugging/fallback
-              domIndex: idx
+              domIndex: idx,
             });
           }
         }
@@ -118,7 +122,7 @@ const DOMUtilsParsing = {
         level: parseInt(heading.tagName.charAt(1)),
         text: heading.textContent.trim(),
         element: heading,
-        id: heading.id || null
+        id: heading.id || null,
       });
     });
 
@@ -131,7 +135,9 @@ const DOMUtilsParsing = {
    * @returns {string}
    */
   extractTextContent(element) {
-    if (!element) return '';
+    if (!element) {
+      return '';
+    }
 
     // Clone to avoid modifying original
     const clone = element.cloneNode(true);
@@ -153,7 +159,9 @@ const DOMUtilsParsing = {
    * @returns {Array<{language: string, code: string, element: HTMLElement}>}
    */
   parseCodeBlocks(element) {
-    if (!element) return [];
+    if (!element) {
+      return [];
+    }
 
     const codeBlocks = [];
     const preElements = element.querySelectorAll('pre');
@@ -170,7 +178,7 @@ const DOMUtilsParsing = {
           language,
           code: codeElement.textContent,
           element: pre,
-          lines: codeElement.textContent.split('\n').length
+          lines: codeElement.textContent.split('\n').length,
         });
       }
     });
@@ -184,7 +192,9 @@ const DOMUtilsParsing = {
    * @returns {Array<{text: string, href: string, element: HTMLElement}>}
    */
   parseLinks(element) {
-    if (!element) return [];
+    if (!element) {
+      return [];
+    }
 
     const links = [];
     const anchorElements = element.querySelectorAll('a');
@@ -194,7 +204,7 @@ const DOMUtilsParsing = {
         text: anchor.textContent.trim(),
         href: anchor.href,
         element: anchor,
-        isExternal: anchor.hostname !== window.location.hostname
+        isExternal: anchor.hostname !== window.location.hostname,
       });
     });
 
@@ -214,7 +224,7 @@ const DOMUtilsParsing = {
         lines: 0,
         headings: 0,
         codeBlocks: 0,
-        links: 0
+        links: 0,
       };
     }
 
@@ -228,7 +238,7 @@ const DOMUtilsParsing = {
       lines: lines.length,
       headings: this.parseMarkdownHeadings(element).length,
       codeBlocks: this.parseCodeBlocks(element).length,
-      links: this.parseLinks(element).length
+      links: this.parseLinks(element).length,
     };
   },
 
@@ -239,7 +249,9 @@ const DOMUtilsParsing = {
    * @returns {string}
    */
   generateContentSignature(element, maxLength = 1000) {
-    if (!element) return '';
+    if (!element) {
+      return '';
+    }
 
     const text = this.extractTextContent(element);
     const truncated = text.substring(0, maxLength);
@@ -256,15 +268,10 @@ const DOMUtilsParsing = {
    */
   findByTextContent(searchText, container = document.body) {
     const elements = [];
-    const walker = document.createTreeWalker(
-      container,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    );
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
 
     let node;
-    while (node = walker.nextNode()) {
+    while ((node = walker.nextNode())) {
       if (node.nodeValue && node.nodeValue.includes(searchText)) {
         const parent = node.parentElement;
         if (parent && !elements.includes(parent)) {
@@ -293,7 +300,7 @@ const DOMUtilsParsing = {
       hasURL: /https?:\/\/[^\s]+/,
       hasEmail: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
       hasNumber: /\d+/,
-      ...patterns
+      ...patterns,
     };
 
     for (const [key, pattern] of Object.entries(defaultPatterns)) {
@@ -301,7 +308,7 @@ const DOMUtilsParsing = {
     }
 
     return results;
-  }
+  },
 };
 
 export default DOMUtilsParsing;

@@ -54,7 +54,6 @@ class EditUI {
 
     this.lastHighlightedElements = currentElements;
   }
-
 }
 
 export default EditUI;

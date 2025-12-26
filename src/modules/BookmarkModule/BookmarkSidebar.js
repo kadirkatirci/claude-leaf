@@ -33,7 +33,7 @@ export class BookmarkSidebar {
     // Create the bookmark item matching native structure
     const bookmarkItem = this.dom.createElement('div', {
       className: 'relative group',
-      'data-state': 'closed'
+      'data-state': 'closed',
     });
 
     // Create the link
@@ -54,25 +54,25 @@ export class BookmarkSidebar {
           duration-300
           ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 rounded-md px-3 min-w-[4rem] active:scale-[0.985] whitespace-nowrap !text-xs w-full overflow-hidden !min-w-0 group py-1.5 rounded-lg px-4 !duration-75 active:bg-bg-300 active:scale-[1.0] Button_ghost__BUAoh`,
       'aria-label': 'Bookmarks',
-      'data-dd-action-name': 'sidebar-nav-item'
+      'data-dd-action-name': 'sidebar-nav-item',
     });
 
     // Create inner content wrapper
     const contentWrapper = this.dom.createElement('div', {
-      className: '-translate-x-2 w-full flex flex-row items-center justify-start gap-3'
+      className: '-translate-x-2 w-full flex flex-row items-center justify-start gap-3',
     });
 
     // Create icon container
     const iconOuterContainer = this.dom.createElement('div', {
-      className: 'flex items-center justify-center text-text-100'
+      className: 'flex items-center justify-center text-text-100',
     });
 
     const iconInnerContainer = this.dom.createElement('div', {
       className: 'flex items-center justify-center group',
       style: {
         width: '16px',
-        height: '16px'
-      }
+        height: '16px',
+      },
     });
 
     // Insert the bookmark icon
@@ -81,11 +81,11 @@ export class BookmarkSidebar {
 
     // Create text container
     const textContainer = this.dom.createElement('span', {
-      className: 'truncate text-sm whitespace-nowrap flex-1'
+      className: 'truncate text-sm whitespace-nowrap flex-1',
     });
 
     const textInner = this.dom.createElement('div', {
-      className: 'transition-all duration-200'
+      className: 'transition-all duration-200',
     });
     textInner.textContent = 'Bookmarks';
 
@@ -97,7 +97,7 @@ export class BookmarkSidebar {
     link.appendChild(contentWrapper);
 
     // Add click handler
-    link.addEventListener('click', (e) => {
+    link.addEventListener('click', e => {
       e.preventDefault();
       // Open in-app modal
       import('./BookmarkManagerModal.js').then(({ BookmarkManagerModal }) => {
@@ -107,7 +107,8 @@ export class BookmarkSidebar {
 
     // Create the empty hover container (for consistency with native items)
     const hoverContainer = this.dom.createElement('div', {
-      className: 'absolute right-0 top-1/2 -translate-y-1/2 transition-opacity duration-150 hidden group-hover:block group-focus-within:block opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+      className:
+        'absolute right-0 top-1/2 -translate-y-1/2 transition-opacity duration-150 hidden group-hover:block group-focus-within:block opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
     });
 
     // Assemble the bookmark item
@@ -137,5 +138,4 @@ export class BookmarkSidebar {
     }
     this.elements = {};
   }
-
 }

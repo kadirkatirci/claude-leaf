@@ -91,20 +91,11 @@ export class Button {
       icon: buttonClass('icon'),
       small: buttonClass('small'),
       fixed: buttonClass('fixed'),
-      chevron: cn(
-        ClaudeClasses.button.icon,
-        'transition-transform duration-200'
-      ),
-      close: cn(
-        ClaudeClasses.button.icon,
-        'hover:bg-red-500 hover:text-white'
-      ),
+      chevron: cn(ClaudeClasses.button.icon, 'transition-transform duration-200'),
+      close: cn(ClaudeClasses.button.icon, 'hover:bg-red-500 hover:text-white'),
     };
 
-    return cn(
-      variantClassMap[variant] || variantClassMap.primary,
-      additionalClasses
-    );
+    return cn(variantClassMap[variant] || variantClassMap.primary, additionalClasses);
   }
 
   /**
@@ -115,20 +106,14 @@ export class Button {
 
     if (icon) {
       const iconSpan = document.createElement('span');
-      iconSpan.className = cn(
-        ClaudeClasses.text.xl,
-        'leading-none'
-      );
+      iconSpan.className = cn(ClaudeClasses.text.xl, 'leading-none');
       iconSpan.innerHTML = icon; // Use innerHTML to support SVG strings
       contentParts.push(iconSpan);
     }
 
     if (text) {
       const textSpan = document.createElement('span');
-      textSpan.className = cn(
-        ClaudeClasses.text.sm,
-        ClaudeClasses.text.semibold
-      );
+      textSpan.className = cn(ClaudeClasses.text.sm, ClaudeClasses.text.semibold);
       textSpan.textContent = text;
       contentParts.push(textSpan);
     }
@@ -175,10 +160,7 @@ export class Button {
    */
   static createWithBadge(buttonOptions, badgeOptions) {
     const container = document.createElement('div');
-    container.className = cn(
-      ClaudeClasses.position.relative,
-      'inline-block'
-    );
+    container.className = cn(ClaudeClasses.position.relative, 'inline-block');
 
     const button = this.create(buttonOptions);
     container.appendChild(button);
@@ -206,9 +188,8 @@ export class Button {
       'pointer-events-none'
     );
 
-    const variantClasses = variant === 'primary'
-      ? 'bg-accent-main-100 text-white'
-      : 'bg-bg-200 text-text-000';
+    const variantClasses =
+      variant === 'primary' ? 'bg-accent-main-100 text-white' : 'bg-bg-200 text-text-000';
 
     badge.className = cn(baseClasses, variantClasses);
     badge.textContent = count;
@@ -223,9 +204,10 @@ export class Button {
     const badge = container.querySelector('[class*="rounded-full"]');
     if (badge) {
       badge.textContent = count;
-      badge.className = count > 0
-        ? badge.className.replace('opacity-0', 'opacity-100')
-        : badge.className.replace('opacity-100', 'opacity-0');
+      badge.className =
+        count > 0
+          ? badge.className.replace('opacity-0', 'opacity-100')
+          : badge.className.replace('opacity-100', 'opacity-0');
     }
   }
 
@@ -299,15 +281,12 @@ export class Button {
   static createGroup(buttons, options = {}) {
     const group = document.createElement('div');
 
-    const directionClass = options.direction === 'vertical'
-      ? ClaudeClasses.layout.flexCol
-      : ClaudeClasses.layout.flexRow;
+    const directionClass =
+      options.direction === 'vertical'
+        ? ClaudeClasses.layout.flexCol
+        : ClaudeClasses.layout.flexRow;
 
-    group.className = cn(
-      directionClass,
-      ClaudeClasses.layout.gap2,
-      options.className
-    );
+    group.className = cn(directionClass, ClaudeClasses.layout.gap2, options.className);
 
     buttons.forEach(buttonOptions => {
       const button = this.create(buttonOptions);
@@ -321,7 +300,9 @@ export class Button {
    * Destroys a button and removes event listeners
    */
   static destroy(button) {
-    if (!button) return;
+    if (!button) {
+      return;
+    }
 
     // Remove all event listeners by cloning
     const newButton = button.cloneNode(true);

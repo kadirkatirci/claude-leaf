@@ -1,13 +1,13 @@
 /**
  * BranchMapRenderer - Branch map'i SVG olarak renderlar
- * 
+ *
  * Kurallar:
  * - Aynı mesaj numarası = Aynı yatay hiza (satır)
  * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
  * - Duplicate node'lar filtrelenmiş durumda
  * - Aynı satırda başlayan sütunlar yan yana gruplanır
  * - Bağlantılar: Her snapshot'taki ardışık node'ları bağla + sütun içi dikey bağlantılar
- * 
+ *
  * Render sırası (z-index):
  * 1. Columns (en altta)
  * 2. Connections (ortada)
@@ -28,7 +28,7 @@ class BranchMapRenderer {
       startY: 50,
       colors: [
         '#ef4444', // kırmızı
-        '#f97316', // turuncu  
+        '#f97316', // turuncu
         '#eab308', // sarı
         '#22c55e', // yeşil
         '#06b6d4', // cyan
@@ -36,7 +36,7 @@ class BranchMapRenderer {
         '#8b5cf6', // mor
         '#ec4899', // pembe
       ],
-      ...options
+      ...options,
     };
 
     this.svg = null;
@@ -160,8 +160,10 @@ class BranchMapRenderer {
       rowMaxX.set(msgIndex, startX + nodeWidth + horizontalGap);
     });
 
-    this.data.columns.forEach((column) => {
-      if (!column.nodes || column.nodes.length === 0) return;
+    this.data.columns.forEach(column => {
+      if (!column.nodes || column.nodes.length === 0) {
+        return;
+      }
 
       // Bu sütunun başladığı satır (ilk node'un satırı)
       const firstNodeRow = column.nodes[0].messageIndex;
@@ -173,7 +175,7 @@ class BranchMapRenderer {
       // Kapsadığı tüm satırlardaki maksimum X'in en büyüğü
       let columnX = 0;
       coveredRows.forEach(row => {
-        const currentMaxX = rowMaxX.get(row) || (startX + nodeWidth + horizontalGap);
+        const currentMaxX = rowMaxX.get(row) || startX + nodeWidth + horizontalGap;
         columnX = Math.max(columnX, currentMaxX);
       });
 
@@ -182,14 +184,14 @@ class BranchMapRenderer {
         const pos = {
           ...node,
           x: columnX + columnPadding,
-          y: this.rowPositions.get(node.messageIndex)
+          y: this.rowPositions.get(node.messageIndex),
         };
 
         const nodeKey = node.uniqueId;
         this.nodePositionMap.set(nodeKey, {
           x: pos.x,
           y: pos.y,
-          columnId: column.id
+          columnId: column.id,
         });
 
         return pos;
@@ -208,8 +210,8 @@ class BranchMapRenderer {
         x: columnX,
         y: minY - columnPadding,
         width: colWidth,
-        height: (maxY - minY) + nodeHeight + columnPadding * 2,
-        nodes: nodePositions
+        height: maxY - minY + nodeHeight + columnPadding * 2,
+        nodes: nodePositions,
       };
 
       this.columnLayouts.push(layout);
@@ -417,7 +419,9 @@ class BranchMapRenderer {
 
     this.columnLayouts.forEach(col => {
       // Yalnızca 1'den fazla node varsa container oluştur
-      if (col.nodes.length <= 1) return;
+      if (col.nodes.length <= 1) {
+        return;
+      }
 
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', col.x);
@@ -478,12 +482,12 @@ class BranchMapRenderer {
     g.appendChild(text);
 
     // Hover efektleri ve tooltip
-    g.addEventListener('mouseenter', (e) => {
+    g.addEventListener('mouseenter', e => {
       rect.style.filter = 'brightness(1.15)';
       this.showTooltip(node, e);
     });
 
-    g.addEventListener('mousemove', (e) => {
+    g.addEventListener('mousemove', e => {
       this.positionTooltip(e);
     });
 
@@ -512,7 +516,7 @@ class BranchMapRenderer {
       x: this.options.startX,
       y: firstRowY,
       width: nodeWidth,
-      height: nodeHeight
+      height: nodeHeight,
     };
 
     // Duplicate bağlantıları önlemek için Set kullan
@@ -532,12 +536,14 @@ class BranchMapRenderer {
           if (firstNodePos) {
             const connectionKey = `START->${firstNodeKey}`;
             if (!drawnConnections.has(connectionKey)) {
-              g.appendChild(this.createConnection(
-                this.startNodePos.x + this.startNodePos.width,
-                this.startNodePos.y + this.startNodePos.height / 2,
-                firstNodePos.x,
-                firstNodePos.y + nodeHeight / 2
-              ));
+              g.appendChild(
+                this.createConnection(
+                  this.startNodePos.x + this.startNodePos.width,
+                  this.startNodePos.y + this.startNodePos.height / 2,
+                  firstNodePos.x,
+                  firstNodePos.y + nodeHeight / 2
+                )
+              );
               drawnConnections.add(connectionKey);
             }
           }
@@ -557,12 +563,14 @@ class BranchMapRenderer {
           if (currentPos && nextPos) {
             const connectionKey = `${currentKey}->${nextKey}`;
             if (!drawnConnections.has(connectionKey)) {
-              g.appendChild(this.createConnection(
-                currentPos.x + nodeWidth,
-                currentPos.y + nodeHeight / 2,
-                nextPos.x,
-                nextPos.y + nodeHeight / 2
-              ));
+              g.appendChild(
+                this.createConnection(
+                  currentPos.x + nodeWidth,
+                  currentPos.y + nodeHeight / 2,
+                  nextPos.x,
+                  nextPos.y + nodeHeight / 2
+                )
+              );
               drawnConnections.add(connectionKey);
             }
           }
@@ -572,7 +580,9 @@ class BranchMapRenderer {
 
     // 2. Aynı sütundaki ardışık node'ları bağla (dikey bağlantılar)
     this.columnLayouts.forEach(col => {
-      if (col.nodes.length <= 1) return;
+      if (col.nodes.length <= 1) {
+        return;
+      }
 
       // Node'ları messageIndex'e göre sırala
       const sortedNodes = [...col.nodes].sort((a, b) => a.messageIndex - b.messageIndex);
@@ -588,12 +598,14 @@ class BranchMapRenderer {
         // Henüz çizilmemişse çiz
         if (!drawnConnections.has(connectionKey)) {
           // Dikey bağlantı: alt kenardan üst kenara
-          g.appendChild(this.createVerticalConnection(
-            currentNode.x + nodeWidth / 2,
-            currentNode.y + nodeHeight,
-            nextNode.x + nodeWidth / 2,
-            nextNode.y
-          ));
+          g.appendChild(
+            this.createVerticalConnection(
+              currentNode.x + nodeWidth / 2,
+              currentNode.y + nodeHeight,
+              nextNode.x + nodeWidth / 2,
+              nextNode.y
+            )
+          );
           drawnConnections.add(connectionKey);
         }
       }
@@ -671,9 +683,9 @@ class BranchMapRenderer {
   addInteractivity() {
     let isPanning = false;
     let startX, startY;
-    let transform = { x: 0, y: 0, scale: 1 };
+    const transform = { x: 0, y: 0, scale: 1 };
 
-    this.svg.addEventListener('mousedown', (e) => {
+    this.svg.addEventListener('mousedown', e => {
       if (e.target === this.svg || e.target.closest('.columns')) {
         isPanning = true;
         startX = e.clientX - transform.x;
@@ -682,12 +694,16 @@ class BranchMapRenderer {
       }
     });
 
-    document.addEventListener('mousemove', (e) => {
-      if (!isPanning) return;
+    document.addEventListener('mousemove', e => {
+      if (!isPanning) {
+        return;
+      }
       transform.x = e.clientX - startX;
       transform.y = e.clientY - startY;
-      this.mainGroup.setAttribute('transform',
-        `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`);
+      this.mainGroup.setAttribute(
+        'transform',
+        `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`
+      );
     });
 
     document.addEventListener('mouseup', () => {
@@ -696,13 +712,19 @@ class BranchMapRenderer {
     });
 
     // Note: passive:false is intentional - we need preventDefault() to block page scroll during SVG zoom
-    this.svg.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      transform.scale = Math.min(Math.max(transform.scale * delta, 0.3), 3);
-      this.mainGroup.setAttribute('transform',
-        `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`);
-    }, { passive: false });
+    this.svg.addEventListener(
+      'wheel',
+      e => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        transform.scale = Math.min(Math.max(transform.scale * delta, 0.3), 3);
+        this.mainGroup.setAttribute(
+          'transform',
+          `translate(${transform.x}, ${transform.y}) scale(${transform.scale})`
+        );
+      },
+      { passive: false }
+    );
   }
 }
 
