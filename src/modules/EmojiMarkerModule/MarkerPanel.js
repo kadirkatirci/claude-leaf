@@ -5,7 +5,6 @@
  */
 import BasePanel from '../../core/BasePanel.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import { cn } from '../../utils/ClassNames.js';
 import { debugLog } from '../../config/debug.js';
 
 export class MarkerPanel extends BasePanel {

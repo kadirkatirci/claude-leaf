@@ -12,7 +12,6 @@ import EditUI from './EditHistoryModule/EditUI.js';
 import EditPanel from './EditHistoryModule/EditPanel.js';
 import EditModal from './EditHistoryModule/EditModal.js';
 import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
-import { editHistoryStore } from '../stores/index.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
 import { panelManager } from '../components/PanelManager.js';

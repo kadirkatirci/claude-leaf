@@ -4,7 +4,6 @@
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
-import DOMUtils from '../utils/DOMUtils.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';

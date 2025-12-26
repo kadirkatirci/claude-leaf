@@ -1,7 +1,6 @@
 /**
  * EditUI - UI components (highlights)
  */
-import DOMUtils from '../../utils/DOMUtils.js';
 
 class EditUI {
   constructor(getTheme, onButtonClick, onCollapseAllClick) {

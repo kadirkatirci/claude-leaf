@@ -21,7 +21,7 @@
 import { hashString } from '../utils/HashUtils.js';
 import DOMUtilsCore from '../utils/DOMUtils-Core.js';
 import ObserverManager from '../managers/ObserverManager.js';
-import navigationInterceptor, { PageType } from './NavigationInterceptor.js';
+import navigationInterceptor from './NavigationInterceptor.js';
 import domReadyChecker from '../utils/DOMReadyChecker.js';
 
 // Singleton instance

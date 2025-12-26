@@ -5,8 +5,7 @@
 import BasePanel from '../../core/BasePanel.js';
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import { cn, cardClass, textClass } from '../../utils/ClassNames.js';
-import { editHistoryStore } from '../../stores/index.js';
+import { cardClass, textClass } from '../../utils/ClassNames.js';
 
 class EditPanel extends BasePanel {
   constructor(getTheme, onItemClick) {

@@ -3,7 +3,6 @@
  * Enables collapsing headings hierarchically and long code blocks
  */
 import BaseModule from './BaseModule.js';
-import DOMUtils from '../utils/DOMUtils.js';
 import { Events } from '../utils/EventBus.js';
 import HeadingFolder from './ContentFoldingModule/HeadingFolder.js';
 import CodeBlockFolder from './ContentFoldingModule/CodeBlockFolder.js';

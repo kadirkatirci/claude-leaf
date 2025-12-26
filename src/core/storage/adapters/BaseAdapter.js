@@ -9,7 +9,7 @@ export class BaseAdapter {
    * @param {string} key - Storage key
    * @returns {Promise<any>} - Stored value or undefined
    */
-  async get(key) {
+  async get(_key) {
     throw new Error('BaseAdapter.get() must be implemented by subclass');
   }
 
@@ -19,7 +19,7 @@ export class BaseAdapter {
    * @param {any} value - Value to store
    * @returns {Promise<void>}
    */
-  async set(key, value) {
+  async set(_key, _value) {
     throw new Error('BaseAdapter.set() must be implemented by subclass');
   }
 
@@ -28,7 +28,7 @@ export class BaseAdapter {
    * @param {string} key - Storage key
    * @returns {Promise<void>}
    */
-  async remove(key) {
+  async remove(_key) {
     throw new Error('BaseAdapter.remove() must be implemented by subclass');
   }
 

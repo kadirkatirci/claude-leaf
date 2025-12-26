@@ -7,7 +7,7 @@ import BasePanel from '../../core/BasePanel.js';
 import Button from '../../components/primitives/Button.js';
 import Badge from '../../components/primitives/Badge.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import { cn, cardClass } from '../../utils/ClassNames.js';
+import { cardClass } from '../../utils/ClassNames.js';
 
 export class BookmarkPanel extends BasePanel {
   constructor(domUtils, getTheme, getSetting) {
