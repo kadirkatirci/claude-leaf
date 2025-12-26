@@ -28,7 +28,6 @@ import ThemeManager from './managers/ThemeManager.js';
 import KeyboardManager from './managers/KeyboardManager.js';
 import ObserverManager from './managers/ObserverManager.js';
 import { storageSync } from './core/StorageSync.js';
-import MessageRegistry from './core/MessageRegistry.js';
 import domReadyChecker from './utils/DOMReadyChecker.js';
 
 // Core Services
@@ -62,7 +61,6 @@ class ClaudeProductivityApp {
       theme: null,
       keyboard: null,
       observer: null,
-      messageRegistry: null,
     };
     this.moduleMetadata = new Map();
 
@@ -171,14 +169,6 @@ class ClaudeProductivityApp {
 
     domManager.init();
 
-    // MessageRegistry
-    const messageRegistry = MessageRegistry.getInstance();
-    if (settings.general?.debugMode) {
-      messageRegistry.setDebugMode(true);
-    }
-    await messageRegistry.start();
-    this.managers.messageRegistry = messageRegistry;
-
     // Initialize Core Services
     panelManager.init();
     messageHub.start();
@@ -270,11 +260,6 @@ class ClaudeProductivityApp {
 
     // Refresh VisibilityManager state
     VisibilityManager.refresh();
-
-    // Restart MessageRegistry
-    if (this.managers.messageRegistry) {
-      await this.managers.messageRegistry.restart();
-    }
 
     // Reinitialize modules
     for (const [name, module] of this.modules) {
@@ -462,9 +447,6 @@ class ClaudeProductivityApp {
     ObserverManager.setDebugMode(true);
     navigationInterceptor.setDebugMode(true);
     domReadyChecker.setDebugMode(true);
-    if (this.managers.messageRegistry) {
-      this.managers.messageRegistry.setDebugMode(true);
-    }
   }
 
   disableDebugMode() {
@@ -473,9 +455,6 @@ class ClaudeProductivityApp {
     ObserverManager.setDebugMode(false);
     navigationInterceptor.setDebugMode(false);
     domReadyChecker.setDebugMode(false);
-    if (this.managers.messageRegistry) {
-      this.managers.messageRegistry.setDebugMode(false);
-    }
   }
 
   async destroy() {
@@ -494,11 +473,6 @@ class ClaudeProductivityApp {
     if (this.navigationUnsubscribe) {
       this.navigationUnsubscribe();
       this.navigationUnsubscribe = null;
-    }
-
-    if (this.managers.messageRegistry) {
-      this.managers.messageRegistry.stop();
-      this.managers.messageRegistry = null;
     }
 
     for (const [name, module] of this.modules) {
@@ -574,14 +548,12 @@ class ClaudeProductivityApp {
   async healthCheck() {
     const navState = navigationInterceptor.getState();
     const visState = VisibilityManager.getStatus();
-    const msgRegStatus = this.managers.messageRegistry?.getStatus() || null;
 
     return {
       status: this.initState.status,
       initialized: this.initialized,
       navigation: navState,
       visibility: visState,
-      messageRegistry: msgRegStatus,
       failedModules: this.initState.failedModules,
     };
   }
