@@ -6,6 +6,7 @@ import { eventBus, Events } from '../utils/EventBus.js';
 import { settingsStore } from '../stores/index.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import { getThemeColors } from '../config/themes.js';
+import { debugLog } from '../config/debug.js';
 
 class BaseModule {
   /**
@@ -27,22 +28,22 @@ class BaseModule {
    */
   async init() {
     if (this.initialized) {
-      console.warn(`⚠️ ${this.name} modülü zaten başlatılmış`);
+      debugLog('module', `${this.name} already initialized`);
       return;
     }
 
-    console.log(`🔧 ${this.name} modülü başlatılıyor...`);
+    debugLog('module', `${this.name} initializing...`);
 
     try {
-      // ✅ CHECK ENABLED FIRST - before ANY initialization
-      console.log(`[${this.name}] 📥 Loading settings from storage...`);
+      // CHECK ENABLED FIRST - before ANY initialization
+      debugLog('module', `${this.name} loading settings from storage...`);
       await settingsStore.load();
 
       const enabled = await settingsStore.get(`${this.name}.enabled`);
-      console.log(`[${this.name}] 🔍 Enabled check: ${this.name}.enabled =`, enabled);
+      debugLog('module', `${this.name} enabled check: ${enabled}`);
 
       if (enabled !== true) {
-        console.log(`⏸️ ${this.name} modülü devre dışı (enabled=${enabled})`);
+        debugLog('module', `${this.name} disabled (enabled=${enabled})`);
         this.enabled = false;
         this.initialized = false;
 
@@ -51,7 +52,7 @@ class BaseModule {
         return; // Exit immediately - no initialization
       }
 
-      console.log(`[${this.name}] ✅ Module is enabled, proceeding with initialization`);
+      debugLog('module', `${this.name} enabled, proceeding with initialization`);
 
       // Now safe to initialize
       this.initialized = true;
@@ -74,7 +75,7 @@ class BaseModule {
    * Modülü durdur - Alt class'lar override etmeli
    */
   destroy() {
-    console.log(`🗑️ ${this.name} modülü durduruluyor...`);
+    debugLog('module', `${this.name} destroying...`);
 
     // Event listener'ları temizle
     this.unsubscribers.forEach(unsub => unsub());
@@ -275,7 +276,7 @@ class BaseModule {
    * Log helper
    */
   log(...args) {
-    console.log(`[${this.name}]`, ...args);
+    debugLog('module', `[${this.name}]`, ...args);
   }
 
   /**

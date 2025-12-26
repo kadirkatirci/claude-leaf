@@ -2,7 +2,7 @@
  * MarkerBadge - Displays emoji badges on marked messages
  */
 import DOMUtils from '../../utils/DOMUtils.js';
-import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
+import { cn } from '../../utils/ClassNames.js';
 
 export class MarkerBadge {
   constructor(getTheme, emojiPicker, getFavoriteEmojis, onMarkerUpdate, onMarkerRemove) {

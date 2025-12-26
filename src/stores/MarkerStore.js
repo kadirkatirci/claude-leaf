@@ -6,6 +6,7 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { debugLog } from '../config/debug.js';
 
 export class MarkerStore {
   constructor() {
@@ -123,7 +124,7 @@ export class MarkerStore {
     }
     const newAdapter = stateManager.adapters[type];
     await this.store.changeAdapter(newAdapter, true);
-    console.log(`[MarkerStore] Storage type changed to ${type}`);
+    debugLog('marker', `Storage type changed to ${type}`);
   }
 
   getStorageType() {

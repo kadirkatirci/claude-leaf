@@ -11,6 +11,7 @@ import VisibilityManager from '../utils/VisibilityManager.js';
 import navigationInterceptor from '../core/NavigationInterceptor.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { eventBus, Events } from '../utils/EventBus.js';
+import { debugLog } from '../config/debug.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -46,7 +47,7 @@ class PanelManager {
       if (!this.container || !document.body.contains(this.container)) {
         // Container missing, recreate if we have buttons
         if (this.buttons.size > 0) {
-          console.log('[PanelManager] Health check: Container missing, recreating...');
+          debugLog('panel', 'Health check: Container missing, recreating...');
           this.createContainer();
         }
         return;
@@ -58,7 +59,7 @@ class PanelManager {
       const expectedDisplay = isConversationPage ? 'flex' : 'none';
 
       if (currentDisplay !== expectedDisplay) {
-        console.log('[PanelManager] Health check: Fixing visibility mismatch');
+        debugLog('panel', 'Health check: Fixing visibility mismatch');
         if (isConversationPage) {
           this.container.style.display = 'flex';
           this.container.style.visibility = 'visible';

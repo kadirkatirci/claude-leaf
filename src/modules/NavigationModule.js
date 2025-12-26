@@ -12,6 +12,7 @@ import tokens from '../components/theme/tokens.js';
 import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { scheduleVisualUpdate } from '../utils/AnimationScheduler.js';
+import { debugLog } from '../config/debug.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -824,11 +825,17 @@ class NavigationModule extends BaseModule {
    */
   setScrollDebug(enable) {
     this.debugScroll = enable;
-    console.log(`NavigationModule scroll debugging ${enable ? 'enabled' : 'disabled'}`);
+    debugLog('navigation', `Scroll debugging ${enable ? 'enabled' : 'disabled'}`);
 
     if (enable) {
-      console.log('Scroll debug info will be logged. Watch for [NAV SCROLL DEBUG] messages.');
-      console.log(`Current state: ${this.messages.length} messages, index: ${this.currentIndex}`);
+      debugLog(
+        'navigation',
+        'Scroll debug info will be logged. Watch for [NAV SCROLL DEBUG] messages.'
+      );
+      debugLog(
+        'navigation',
+        `Current state: ${this.messages.length} messages, index: ${this.currentIndex}`
+      );
     }
   }
 }

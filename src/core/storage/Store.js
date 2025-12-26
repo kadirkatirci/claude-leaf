@@ -4,6 +4,7 @@
  */
 
 import { EventEmitter } from '../EventEmitter.js';
+import { debugLog } from '../../config/debug.js';
 
 export class Store extends EventEmitter {
   constructor(namespace, options = {}) {
@@ -33,7 +34,7 @@ export class Store extends EventEmitter {
    */
   log(...args) {
     if (this.debug) {
-      console.log(`[Store:${this.namespace}]`, ...args);
+      debugLog('store', `[${this.namespace}]`, ...args);
     }
   }
 

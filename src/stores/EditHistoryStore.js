@@ -10,6 +10,7 @@
 
 import { stateManager } from '../core/StateManager.js';
 import { hashString } from '../utils/HashUtils.js';
+import { debugLog } from '../config/debug.js';
 
 export class EditHistoryStore {
   constructor() {
@@ -124,7 +125,7 @@ export class EditHistoryStore {
       // Check if this exact snapshot already exists
       const exists = snapshots.some(s => s.id === snapshotId);
       if (exists) {
-        console.log('[EditHistoryStore] Snapshot already exists, skipping');
+        debugLog('editHistory', 'Snapshot already exists, skipping');
         return data;
       }
 
@@ -136,11 +137,9 @@ export class EditHistoryStore {
         createdAt: new Date().toISOString(),
       };
 
-      console.log(
-        '[EditHistoryStore] Adding snapshot:',
-        snapshotId,
-        newSnapshot.messages.length,
-        'messages'
+      debugLog(
+        'editHistory',
+        `Adding snapshot: ${snapshotId}, ${newSnapshot.messages.length} messages`
       );
 
       return {

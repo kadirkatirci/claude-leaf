@@ -11,6 +11,7 @@
 
 import navigationInterceptor from '../core/NavigationInterceptor.js';
 import messageCache from '../core/MessageCache.js';
+import { debugLog } from '../config/debug.js';
 
 const DOMUtilsCore = {
   /**
@@ -25,7 +26,7 @@ const DOMUtilsCore = {
       messageCache.invalidate();
     });
 
-    console.log('[DOMUtils-Core] Initialized with NavigationInterceptor and MessageCache');
+    debugLog('domUtils', 'Initialized with NavigationInterceptor and MessageCache');
   },
 
   /**

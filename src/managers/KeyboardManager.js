@@ -247,7 +247,7 @@ class KeyboardManager {
     toDelete.forEach(id => this.unregister(id));
 
     if (this.debugMode && toDelete.length > 0) {
-      console.log(`[KeyboardManager] Cleared ${toDelete.length} shortcuts for ${modulePrefix}`);
+      debugLog('keyboard', `Cleared ${toDelete.length} shortcuts for ${modulePrefix}`);
     }
   }
 
@@ -270,7 +270,7 @@ class KeyboardManager {
     this.shortcuts.clear();
 
     if (this.debugMode) {
-      console.log('[KeyboardManager] Destroyed');
+      debugLog('keyboard', 'Destroyed');
     }
   }
 }

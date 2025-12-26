@@ -12,7 +12,7 @@
  * - Centralized DOM querying and manipulation
  */
 
-// EventBus not needed - DOMManager doesn't emit events
+import { debugLog } from '../config/debug.js';
 
 class DOMManager {
   constructor() {
@@ -36,7 +36,7 @@ class DOMManager {
     this.setupObserver();
 
     if (this.debugMode) {
-      console.log('[DOMManager] Initialized');
+      debugLog('dom', 'Initialized');
     }
   }
 
@@ -124,7 +124,7 @@ class DOMManager {
     this.isObserving = true;
 
     if (this.debugMode) {
-      console.log('[DOMManager] Started observing');
+      debugLog('dom', 'Started observing');
     }
   }
 
@@ -140,7 +140,7 @@ class DOMManager {
     this.isObserving = false;
 
     if (this.debugMode) {
-      console.log('[DOMManager] Stopped observing');
+      debugLog('dom', 'Stopped observing');
     }
   }
 
@@ -164,14 +164,14 @@ class DOMManager {
     });
 
     if (this.debugMode) {
-      console.log(`[DOMManager] Registered observer: ${id} for selector: ${selector}`);
+      debugLog('dom', `Registered observer: ${id} for selector: ${selector}`);
     }
 
     // Return cleanup function
     return () => {
       this.observerCallbacks.delete(id);
       if (this.debugMode) {
-        console.log(`[DOMManager] Unregistered observer: ${id}`);
+        debugLog('dom', `Unregistered observer: ${id}`);
       }
     };
   }
@@ -521,7 +521,7 @@ class DOMManager {
     this.elementCache.clear();
 
     if (this.debugMode) {
-      console.log('[DOMManager] Cache cleared');
+      debugLog('dom', 'Cache cleared');
     }
   }
 
@@ -559,7 +559,7 @@ class DOMManager {
     }
 
     if (this.debugMode) {
-      console.log('[DOMManager] Destroyed');
+      debugLog('dom', 'Destroyed');
     }
   }
 }

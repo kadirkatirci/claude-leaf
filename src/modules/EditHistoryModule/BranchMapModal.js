@@ -3,6 +3,7 @@ import { editHistoryStore } from '../../stores/index.js';
 import BranchTreeBuilder from './BranchTreeBuilder.js';
 import BranchMapRenderer from './BranchMapRenderer.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
+import { debugLog } from '../../config/debug.js';
 
 /**
  * BranchMapModal - Conversation branch haritasını gösteren modal
@@ -40,8 +41,9 @@ class BranchMapModal {
       return;
     }
 
-    console.log(
-      `[BranchMapModal] Loaded ${snapshots?.length || 0} snapshots, ${history?.length || 0} history entries`
+    debugLog(
+      'editHistory',
+      `BranchMapModal loaded ${snapshots?.length || 0} snapshots, ${history?.length || 0} history entries`
     );
 
     this.createModal(snapshots || [], history || []);
@@ -210,13 +212,13 @@ class BranchMapModal {
    * @param {Array} history - History listesi
    */
   renderBranchMap(container, snapshots, history) {
-    console.log('[BranchMapModal] Building branch map...');
+    debugLog('editHistory', 'BranchMapModal building branch map...');
 
     // Tree/data yapısını oluştur
     const builder = new BranchTreeBuilder(snapshots, history);
     const data = builder.build();
 
-    console.log('[BranchMapModal] Data built:', data);
+    debugLog('editHistory', 'BranchMapModal data built:', data);
 
     // Boş data kontrolü
     if (!data.columns || data.columns.length === 0) {
@@ -231,11 +233,11 @@ class BranchMapModal {
     }
 
     // Render
-    console.log('[BranchMapModal] Rendering...');
+    debugLog('editHistory', 'BranchMapModal rendering...');
     this.renderer = new BranchMapRenderer(container, data);
     this.renderer.render();
 
-    console.log('[BranchMapModal] Render complete');
+    debugLog('editHistory', 'BranchMapModal render complete');
   }
 }
 

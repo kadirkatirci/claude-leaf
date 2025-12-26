@@ -18,6 +18,7 @@
  */
 
 import navigationInterceptor, { PageType } from '../core/NavigationInterceptor.js';
+import { debugLog } from '../config/debug.js';
 
 // Ready criteria for different page types
 const ReadyCriteria = {
@@ -361,7 +362,7 @@ class DOMReadyChecker {
    */
   log(...args) {
     if (this.debugMode) {
-      console.log('[DOMReadyChecker]', ...args);
+      debugLog('domReady', ...args);
     }
   }
 

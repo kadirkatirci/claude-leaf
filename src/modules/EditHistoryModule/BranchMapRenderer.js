@@ -1,3 +1,5 @@
+import { debugLog } from '../../config/debug.js';
+
 /**
  * BranchMapRenderer - Branch map'i SVG olarak renderlar
  *
@@ -97,7 +99,7 @@ class BranchMapRenderer {
   }
 
   render() {
-    console.log('[BranchMapRenderer] Starting render with data:', this.data);
+    debugLog('editHistory', 'BranchMapRenderer starting render with data:', this.data);
 
     if (!this.data.columns || this.data.columns.length === 0) {
       const noDataDiv = document.createElement('div');
@@ -129,7 +131,7 @@ class BranchMapRenderer {
     this.renderLegend(bounds.height);
     this.addInteractivity();
 
-    console.log('[BranchMapRenderer] Render complete');
+    debugLog('editHistory', 'BranchMapRenderer render complete');
     return this.svg;
   }
 

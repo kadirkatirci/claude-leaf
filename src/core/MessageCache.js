@@ -9,7 +9,7 @@
  *   messageCache.invalidate(); // Force refresh
  */
 
-import { DEBUG_FLAGS } from '../config/debug.js';
+import { DEBUG_FLAGS, debugLog } from '../config/debug.js';
 
 class MessageCache {
   constructor() {
@@ -48,7 +48,7 @@ class MessageCache {
     // Return cached result if still valid
     if (this.cache && cacheAge < this.cacheTTL) {
       if (DEBUG_FLAGS.cache) {
-        console.log(`[MessageCache] Cache hit (age: ${cacheAge}ms)`);
+        debugLog('cache', `Cache hit (age: ${cacheAge}ms)`);
       }
       return this.cache;
     }
@@ -59,7 +59,7 @@ class MessageCache {
       this.cacheTime = now;
 
       if (DEBUG_FLAGS.cache) {
-        console.log(`[MessageCache] Cache miss - fetched ${this.cache.length} messages`);
+        debugLog('cache', `Cache miss - fetched ${this.cache.length} messages`);
       }
 
       return this.cache;
@@ -76,7 +76,7 @@ class MessageCache {
     this.cacheTime = 0;
 
     if (DEBUG_FLAGS.cache) {
-      console.log('[MessageCache] Cache invalidated');
+      debugLog('cache', 'Cache invalidated');
     }
   }
 
@@ -91,7 +91,7 @@ class MessageCache {
     }
 
     if (DEBUG_FLAGS.cache) {
-      console.log(`[MessageCache] Cache ${enabled ? 'enabled' : 'disabled'}`);
+      debugLog('cache', `Cache ${enabled ? 'enabled' : 'disabled'}`);
     }
   }
 

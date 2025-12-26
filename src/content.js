@@ -52,12 +52,10 @@ async function initializeExtension() {
     const { default: app } = await import('./App.js');
     await app.init();
 
-    if (DEBUG) {
-      console.log('[content] Extension ready. Debug commands:');
-      console.log('  - window.claudeProductivity.verifyArchitecture()');
-      console.log('  - window.__navigationInterceptor.getState()');
-      console.log('  - window.__visibilityManager.getStatus()');
-    }
+    debugLog('core', 'Extension ready. Debug commands:');
+    debugLog('core', '  - window.claudeProductivity.verifyArchitecture()');
+    debugLog('core', '  - window.__navigationInterceptor.getState()');
+    debugLog('core', '  - window.__visibilityManager.getStatus()');
   } catch (error) {
     console.error('[content] Initialization failed:', error);
 

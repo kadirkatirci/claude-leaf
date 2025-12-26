@@ -5,6 +5,7 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { debugLog } from '../config/debug.js';
 
 export class ConversationStateStore {
   constructor() {
@@ -213,7 +214,7 @@ export class ConversationStateStore {
       const removed = sorted.length - toKeep.length;
 
       if (removed > 0) {
-        console.log(`[ConversationStateStore] Cleaned up ${removed} old conversations (LRU)`);
+        debugLog('conversation', `Cleaned up ${removed} old conversations (LRU)`);
       }
 
       const cleaned = { __meta: data.__meta || {} };
@@ -227,8 +228,9 @@ export class ConversationStateStore {
     // If some were removed by age
     if (recentConversations.length < conversations.length) {
       const removed = conversations.length - recentConversations.length;
-      console.log(
-        `[ConversationStateStore] Cleaned up ${removed} old conversations (age > ${this.maxAge / (24 * 60 * 60 * 1000)} days)`
+      debugLog(
+        'conversation',
+        `Cleaned up ${removed} old conversations (age > ${this.maxAge / (24 * 60 * 60 * 1000)} days)`
       );
 
       const cleaned = { __meta: data.__meta || {} };

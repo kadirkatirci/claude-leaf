@@ -6,6 +6,7 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { debugLog } from '../config/debug.js';
 
 export class BookmarkStore {
   constructor() {
@@ -196,7 +197,7 @@ export class BookmarkStore {
     }
     const newAdapter = stateManager.adapters[type];
     await this.store.changeAdapter(newAdapter, true);
-    console.log(`[BookmarkStore] Storage type changed to ${type}`);
+    debugLog('bookmark', `Storage type changed to ${type}`);
   }
 
   getStorageType() {

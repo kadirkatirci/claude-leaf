@@ -17,6 +17,7 @@ import ObserverManager from '../managers/ObserverManager.js';
 import navigationInterceptor from './NavigationInterceptor.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import messageCache from './MessageCache.js';
+import { debugLog } from '../config/debug.js';
 
 class MessageHub {
   constructor() {
@@ -403,7 +404,7 @@ class MessageHub {
    */
   log(...args) {
     if (this.debugMode) {
-      console.log('[MessageHub]', ...args);
+      debugLog('messageHub', ...args);
     }
   }
 }

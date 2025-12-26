@@ -1,3 +1,5 @@
+import { debugLog } from '../../config/debug.js';
+
 /**
  * BranchTreeBuilder - Snapshot'lardan branch map yapısı oluşturur
  *
@@ -20,7 +22,7 @@ class BranchTreeBuilder {
   }
 
   build() {
-    console.log('[BranchTreeBuilder] Building from', this.snapshots.length, 'snapshots');
+    debugLog('editHistory', `BranchTreeBuilder building from ${this.snapshots.length} snapshots`);
 
     if (this.snapshots.length === 0) {
       return { columns: [], messageIndices: [], containerIds: [], paths: [] };
@@ -36,20 +38,20 @@ class BranchTreeBuilder {
 
     // 1. Snapshot'lardan path'leri çıkar
     const paths = this.extractPaths();
-    console.log('[BranchTreeBuilder] Extracted paths:', paths);
+    debugLog('editHistory', 'BranchTreeBuilder extracted paths:', paths);
 
     // 2. Ana yolu bul (en uzun path)
     const mainPath = this.findMainPath(paths);
-    console.log('[BranchTreeBuilder] Main path:', mainPath);
+    debugLog('editHistory', 'BranchTreeBuilder main path:', mainPath);
 
     // 3. Dal snapshot'larını bul
     const branches = this.findBranches(paths, mainPath);
-    console.log('[BranchTreeBuilder] Branches:', branches);
+    debugLog('editHistory', 'BranchTreeBuilder branches:', branches);
 
     // 4. Sütunları oluştur
     // ÖNEMLİ: Önce ana yolu işle (shownNodes'a ekle), sonra dalları
     const columns = this.buildColumnsWithMainPathFirst(mainPath, branches);
-    console.log('[BranchTreeBuilder] Columns:', columns);
+    debugLog('editHistory', 'BranchTreeBuilder columns:', columns);
 
     // 5. Unique değerleri topla
     const messageIndices = this.getAllMessageIndices(paths);

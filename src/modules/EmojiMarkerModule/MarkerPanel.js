@@ -6,6 +6,7 @@
 import BasePanel from '../../core/BasePanel.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn } from '../../utils/ClassNames.js';
+import { debugLog } from '../../config/debug.js';
 
 export class MarkerPanel extends BasePanel {
   constructor(getTheme, onItemClick, onItemDelete) {
@@ -164,7 +165,7 @@ export class MarkerPanel extends BasePanel {
       this.isOpen = !this.isOpen;
     }
     super.toggle();
-    console.log('[MarkerPanel] Panel toggled:', this.isVisible);
+    debugLog('marker', `Panel toggled: ${this.isVisible}`);
     return this.isVisible;
   }
 

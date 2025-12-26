@@ -13,6 +13,8 @@
  * - Retry logic with exponential backoff
  */
 
+import { debugLog } from '../config/debug.js';
+
 class AsyncManager {
   constructor() {
     this.timers = new Map(); // id -> {type, callback, interval, timer}
@@ -50,7 +52,7 @@ class AsyncManager {
       }
 
       if (this.debugMode) {
-        console.log(`[AsyncManager] Executing timeout: ${description}`);
+        debugLog('async', `Executing timeout: ${description}`);
       }
 
       try {
@@ -72,7 +74,7 @@ class AsyncManager {
     });
 
     if (this.debugMode) {
-      console.log(`[AsyncManager] Registered timeout: ${description} (${delay}ms)`);
+      debugLog('async', `Registered timeout: ${description} (${delay}ms)`);
     }
 
     return timerId;
@@ -99,7 +101,7 @@ class AsyncManager {
       }
 
       if (this.debugMode) {
-        console.log(`[AsyncManager] Executing interval: ${description}`);
+        debugLog('async', `Executing interval: ${description}`);
       }
 
       try {
@@ -120,7 +122,7 @@ class AsyncManager {
     });
 
     if (this.debugMode) {
-      console.log(`[AsyncManager] Registered interval: ${description} (${interval}ms)`);
+      debugLog('async', `Registered interval: ${description} (${interval}ms)`);
     }
 
     return timerId;
@@ -145,7 +147,7 @@ class AsyncManager {
     this.timers.delete(timerId);
 
     if (this.debugMode) {
-      console.log(`[AsyncManager] Cleared ${timerInfo.type}: ${timerInfo.description}`);
+      debugLog('async', `Cleared ${timerInfo.type}: ${timerInfo.description}`);
     }
   }
 

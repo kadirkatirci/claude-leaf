@@ -3,6 +3,8 @@
  * Provides lifecycle management and performance optimization for MutationObservers
  */
 
+import { debugLog } from '../config/debug.js';
+
 class ObserverManager {
   constructor() {
     this.observers = new Map();
@@ -50,7 +52,7 @@ class ObserverManager {
     // Create observer
     const observer = new MutationObserver(mutations => {
       if (this.debugMode) {
-        console.log(`[ObserverManager] Mutations detected for ${id}:`, mutations.length);
+        debugLog('observer', `Mutations detected for ${id}:`, mutations.length);
       }
 
       try {
@@ -83,7 +85,7 @@ class ObserverManager {
     });
 
     if (this.debugMode) {
-      console.log(`[ObserverManager] Started observing ${id}`, config);
+      debugLog('observer', `Started observing ${id}`, config);
     }
 
     return observer;
@@ -161,7 +163,7 @@ class ObserverManager {
     data.paused = true;
 
     if (this.debugMode) {
-      console.log(`[ObserverManager] Paused observer ${id}`);
+      debugLog('observer', `Paused observer ${id}`);
     }
 
     return true;
@@ -180,7 +182,7 @@ class ObserverManager {
     data.paused = false;
 
     if (this.debugMode) {
-      console.log(`[ObserverManager] Resumed observer ${id}`);
+      debugLog('observer', `Resumed observer ${id}`);
     }
 
     return true;
@@ -246,7 +248,7 @@ class ObserverManager {
     this.observers.delete(id);
 
     if (this.debugMode) {
-      console.log(`[ObserverManager] Disconnected observer ${id}`);
+      debugLog('observer', `Disconnected observer ${id}`);
     }
 
     return true;
@@ -263,7 +265,7 @@ class ObserverManager {
     }
 
     if (this.debugMode) {
-      console.log(`[ObserverManager] Disconnected all ${count} observers`);
+      debugLog('observer', `Disconnected all ${count} observers`);
     }
 
     return count;
@@ -320,8 +322,8 @@ class ObserverManager {
     this.debugMode = enabled;
 
     if (enabled) {
-      console.log('[ObserverManager] Debug mode enabled');
-      console.log(`Active observers: ${this.observers.size}`);
+      debugLog('observer', 'Debug mode enabled');
+      debugLog('observer', `Active observers: ${this.observers.size}`);
     }
   }
 
@@ -357,7 +359,7 @@ class ObserverManager {
     this.throttledCallbacks.clear();
 
     if (this.debugMode) {
-      console.log('[ObserverManager] Destroyed');
+      debugLog('observer', 'Destroyed');
     }
   }
 }

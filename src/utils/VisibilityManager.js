@@ -4,6 +4,8 @@
  * v2.3.0 - Improved navigation event handling
  */
 
+import { debugLog } from '../config/debug.js';
+
 // Singleton instance
 let instance = null;
 
@@ -278,14 +280,14 @@ class VisibilityManager {
   setDebugMode(enabled) {
     this.debugMode = enabled;
     if (enabled) {
-      console.log('[VisibilityManager] Debug mode enabled');
-      console.log('[VisibilityManager] Status:', this.getStatus());
+      debugLog('visibility', 'Debug mode enabled');
+      debugLog('visibility', 'Status:', this.getStatus());
     }
   }
 
   log(...args) {
     if (this.debugMode) {
-      console.log('[VisibilityManager]', ...args);
+      debugLog('visibility', ...args);
     }
   }
 

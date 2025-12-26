@@ -6,6 +6,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import { editHistoryStore } from '../../stores/index.js';
+import { debugLog } from '../../config/debug.js';
 
 class HistoryCaptureService {
   /**
@@ -91,9 +92,7 @@ class HistoryCaptureService {
       // Only save snapshot if there are edited messages
       if (snapshot.messages.length > 0) {
         await editHistoryStore.addSnapshot(snapshot);
-        console.log(
-          `[HistoryCaptureService] 📸 Snapshot captured: ${snapshot.messages.length} edited messages`
-        );
+        debugLog('editHistory', `Snapshot captured: ${snapshot.messages.length} edited messages`);
       }
     } catch (error) {
       console.error('[HistoryCaptureService] Failed to capture snapshot:', error);
