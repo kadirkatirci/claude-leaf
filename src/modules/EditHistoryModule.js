@@ -164,6 +164,9 @@ class EditHistoryModule extends BaseModule {
     // Clear state
     this.editedMessages = [];
 
+    // Clear counter (critical for page transitions)
+    this.updateButtonCounter(0);
+
     // Clear panel and collapse button visibility
     this.panel.updateContent([]);
     if (this.elements.collapseBtn) {
