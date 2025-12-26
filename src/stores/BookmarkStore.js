@@ -32,7 +32,7 @@ export class BookmarkStore {
     );
   }
 
-  async addCategory(name, color) {
+  addCategory(name, color) {
     return this.store.update(data => {
       const categories = data.categories || [];
       const newCategory = {
@@ -49,7 +49,7 @@ export class BookmarkStore {
     });
   }
 
-  async updateCategory(id, updates) {
+  updateCategory(id, updates) {
     return this.store.update(data => {
       const categories = data.categories || [];
       const index = categories.findIndex(c => c.id === id);
@@ -65,7 +65,7 @@ export class BookmarkStore {
     });
   }
 
-  async removeCategory(id) {
+  removeCategory(id) {
     return this.store.update(data => {
       const categories = data.categories || [];
       // Don't delete if it's the only one or default (unless forced, but let's keep it simple)
@@ -110,7 +110,7 @@ export class BookmarkStore {
    * Add new bookmark
    * Duplicate check is by content signature (not index)
    */
-  async add(bookmark) {
+  add(bookmark) {
     return this.store.update(data => {
       const bookmarks = data.bookmarks || [];
 
@@ -148,7 +148,7 @@ export class BookmarkStore {
     });
   }
 
-  async update(bookmarkId, updates) {
+  update(bookmarkId, updates) {
     return this.store.update(data => {
       const bookmarks = data.bookmarks || [];
       const index = bookmarks.findIndex(b => b.id === bookmarkId);
@@ -169,14 +169,14 @@ export class BookmarkStore {
     });
   }
 
-  async remove(bookmarkId) {
+  remove(bookmarkId) {
     return this.store.update(data => ({
       ...data,
       bookmarks: (data.bookmarks || []).filter(b => b.id !== bookmarkId),
     }));
   }
 
-  async removeByConversation(conversationUrl) {
+  removeByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
     return this.store.update(data => ({
       ...data,
@@ -184,7 +184,7 @@ export class BookmarkStore {
     }));
   }
 
-  async clear() {
+  clear() {
     return this.store.set({
       bookmarks: [],
       categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
@@ -283,7 +283,7 @@ export class BookmarkStore {
     }
   }
 
-  async getStorageInfo() {
+  getStorageInfo() {
     return this.store.getStorageInfo();
   }
 }

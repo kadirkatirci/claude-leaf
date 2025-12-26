@@ -50,7 +50,7 @@ export class SettingsStore {
   /**
    * Load settings (auto-called on first get)
    */
-  async load() {
+  load() {
     return this.get();
   }
 
@@ -91,7 +91,7 @@ export class SettingsStore {
   /**
    * Get all settings
    */
-  async getAll() {
+  getAll() {
     return this.get();
   }
 
@@ -102,7 +102,7 @@ export class SettingsStore {
    * @param {string|Object} pathOrData - Setting path or full settings object
    * @param {*} [value] - Value (if pathOrData is a path)
    */
-  async set(pathOrData, value = undefined) {
+  set(pathOrData, value = undefined) {
     // Invalidate merge cache when settings change
     this.mergedCache = null;
     this.mergedCacheTime = 0;
@@ -149,7 +149,7 @@ export class SettingsStore {
   /**
    * Reset all settings to defaults
    */
-  async reset() {
+  reset() {
     return this.store.set(this.defaults);
   }
 
@@ -157,7 +157,7 @@ export class SettingsStore {
    * Reset specific feature to defaults
    * @param {string} feature - Feature name
    */
-  async resetFeature(feature) {
+  resetFeature(feature) {
     if (!this.defaults[feature]) {
       throw new Error(`Unknown feature: ${feature}`);
     }
@@ -239,7 +239,7 @@ export class SettingsStore {
   /**
    * Get storage info
    */
-  async getStorageInfo() {
+  getStorageInfo() {
     return this.store.getStorageInfo();
   }
 }

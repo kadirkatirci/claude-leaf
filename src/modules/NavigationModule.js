@@ -158,7 +158,7 @@ class NavigationModule extends BaseModule {
   /**
    * Update all UI components (standard pattern for FixedButtonMixin)
    */
-  async updateUI() {
+  updateUI() {
     // Don't update if not on conversation page
     if (!this.lastConversationState) {
       return;
@@ -251,7 +251,7 @@ class NavigationModule extends BaseModule {
     super.destroy();
   }
 
-  async createUI() {
+  createUI() {
     this.cachedOpacity = NAV_CONFIG.opacity;
 
     // Use PanelManager to get/create container
@@ -455,7 +455,7 @@ class NavigationModule extends BaseModule {
     this.emit(Events.NAVIGATION_TOP, 0);
   }
 
-  async scrollToMessage(index) {
+  scrollToMessage(index) {
     if (index < 0 || index >= this.messages.length) {
       return;
     }
@@ -703,7 +703,7 @@ class NavigationModule extends BaseModule {
     });
   }
 
-  async onSettingsChanged(settings) {
+  onSettingsChanged(settings) {
     try {
       this.log('Settings güncellendi:', settings);
 

@@ -199,8 +199,8 @@ class BookmarkModule extends BaseModule {
     this.buttonManager.addToMessages(
       messages,
       (msg, idx) => idx,
-      async idx => bookmarkedIndices.has(idx),
-      async (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
+      idx => bookmarkedIndices.has(idx),
+      (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
     );
   }
 
@@ -319,7 +319,7 @@ class BookmarkModule extends BaseModule {
     await this.addBookmarkButtons();
   }
 
-  async getCurrentConversationBookmarks() {
+  getCurrentConversationBookmarks() {
     return bookmarkStore.getByConversation(window.location.pathname);
   }
 
@@ -445,7 +445,7 @@ class BookmarkModule extends BaseModule {
     await this.updateUI();
   }
 
-  async destroy() {
+  destroy() {
     if (this.chromeMessageListener) {
       chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
     }

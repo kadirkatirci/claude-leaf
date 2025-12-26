@@ -278,7 +278,7 @@ class CompactViewModule extends BaseModule {
   /**
    * Tek bir mesajı işle
    */
-  async processMessage(messageElement) {
+  processMessage(messageElement) {
     // Collapse edilmeli mi?
     if (!this.collapse.shouldCollapse(messageElement)) {
       return;
@@ -469,7 +469,7 @@ class CompactViewModule extends BaseModule {
   /**
    * Reinitialize UI on SPA navigation
    */
-  async reinitializeUI() {
+  reinitializeUI() {
     this.log('🔄 Reinitializing CompactView for new page...');
 
     // Clear processed messages cache

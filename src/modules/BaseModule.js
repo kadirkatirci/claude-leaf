@@ -120,7 +120,7 @@ class BaseModule {
    * Belirli bir ayarı getir
    * @param {string} key - Ayar adı
    */
-  async getSetting(key) {
+  getSetting(key) {
     return settingsStore.get(`${this.name}.${key}`);
   }
 
@@ -202,7 +202,7 @@ class BaseModule {
     this.unsubscribers.push(storeUnsub);
 
     // Also listen to EventBus for backward compatibility (App.js emits this)
-    const eventUnsub = eventBus.on('settings:changed', async settings => {
+    const eventUnsub = eventBus.on('settings:changed', settings => {
       try {
         // Just call onSettingsChanged, settingsStore subscription handles the rest
         const moduleSettings = settings[this.name];

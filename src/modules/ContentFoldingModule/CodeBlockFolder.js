@@ -289,7 +289,7 @@ class CodeBlockFolder {
   /**
    * Collapse code block (show preview + expand button)
    */
-  async collapseCodeBlock(preEl, animate = true) {
+  collapseCodeBlock(preEl, animate = true) {
     const cached = this.codeBlockCache.get(preEl);
     if (!cached) {
       return;

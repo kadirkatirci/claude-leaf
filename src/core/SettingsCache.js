@@ -98,7 +98,7 @@ class SettingsCache {
    * @param {Object} settingsStore - Settings store instance
    * @returns {Promise<Object>} Loaded settings
    */
-  async init(settingsStore) {
+  init(settingsStore) {
     if (this.loadPromise) {
       return this.loadPromise;
     }

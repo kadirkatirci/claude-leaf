@@ -17,7 +17,7 @@ const DOMUtilsCore = {
   /**
    * Initialize - now minimal as NavigationInterceptor handles most setup
    */
-  async init() {
+  init() {
     // Setup MessageCache with our findActualMessages function
     messageCache.setFindMessagesFunction(() => this._findActualMessagesInternal());
 

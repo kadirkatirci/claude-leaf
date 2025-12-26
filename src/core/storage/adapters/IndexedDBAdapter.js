@@ -10,6 +10,7 @@
  */
 
 import { BaseAdapter } from './BaseAdapter.js';
+import { debugLog } from '../../../config/debug.js';
 
 export class IndexedDBAdapter extends BaseAdapter {
   constructor() {
@@ -23,9 +24,9 @@ export class IndexedDBAdapter extends BaseAdapter {
   /**
    * Initialize database connection
    */
-  async init() {
+  init() {
     if (this.db) {
-      return this.db;
+      return Promise.resolve(this.db);
     }
 
     return new Promise((resolve, reject) => {
@@ -262,7 +263,7 @@ export class IndexedDBAdapter extends BaseAdapter {
   async requestPersistentStorage() {
     if (navigator.storage && navigator.storage.persist) {
       const isPersisted = await navigator.storage.persist();
-      console.log(`[IndexedDBAdapter] Persistent storage: ${isPersisted ? 'granted' : 'denied'}`);
+      debugLog('storage', `Persistent storage: ${isPersisted ? 'granted' : 'denied'}`);
       return isPersisted;
     }
     return false;

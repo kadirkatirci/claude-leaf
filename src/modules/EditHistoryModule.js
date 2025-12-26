@@ -278,7 +278,7 @@ class EditHistoryModule extends BaseModule {
   /**
    * Edit'ler bulunduğunda
    */
-  async handleEditsFound(editedPrompts) {
+  handleEditsFound(editedPrompts) {
     // Don't process if explicitly NOT on conversation page
     // During initialization (lastConversationState === null), allow processing
     const isConversationPage =
@@ -396,7 +396,7 @@ class EditHistoryModule extends BaseModule {
   /**
    * UI'ı yeniden oluştur (tema değişikliğinde)
    */
-  async recreateUI() {
+  recreateUI() {
     const theme = this.getTheme();
 
     // Remove old collapse button

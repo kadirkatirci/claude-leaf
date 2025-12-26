@@ -50,7 +50,7 @@ export class EditHistoryStore {
    * Add or update a history entry
    * Captures the content of a specific version
    */
-  async addOrUpdate(entry) {
+  addOrUpdate(entry) {
     return this.store.update(data => {
       const history = data.history || [];
       const normalizedUrl = this.normalizeUrl(entry.conversationUrl);
@@ -97,14 +97,14 @@ export class EditHistoryStore {
     });
   }
 
-  async remove(id) {
+  remove(id) {
     return this.store.update(data => ({
       ...data,
       history: (data.history || []).filter(h => h.id !== id),
     }));
   }
 
-  async clear() {
+  clear() {
     return this.store.set({ history: [], snapshots: [] });
   }
 
@@ -112,7 +112,7 @@ export class EditHistoryStore {
    * Add a conversation snapshot
    * @param {Object} snapshot - { conversationUrl, timestamp, messages: [...] }
    */
-  async addSnapshot(snapshot) {
+  addSnapshot(snapshot) {
     return this.store.update(data => {
       const snapshots = data.snapshots || [];
       const normalizedUrl = this.normalizeUrl(snapshot.conversationUrl);
@@ -162,7 +162,7 @@ export class EditHistoryStore {
   /**
    * Clear all snapshots for a conversation
    */
-  async clearSnapshots(conversationUrl) {
+  clearSnapshots(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
     return this.store.update(data => ({
       ...data,

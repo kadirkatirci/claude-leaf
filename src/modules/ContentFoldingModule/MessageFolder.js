@@ -352,7 +352,7 @@ class MessageFolder {
   /**
    * Collapse message (show preview + expand footer)
    */
-  async collapseMessage(messageEl, animate = true) {
+  collapseMessage(messageEl, animate = true) {
     const cached = this.messageCache.get(messageEl);
     if (!cached) {
       return;

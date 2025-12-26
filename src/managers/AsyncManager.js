@@ -158,7 +158,7 @@ class AsyncManager {
    * @param {HTMLElement} root - Root element to observe (default: document.body)
    * @returns {Promise<HTMLElement>} The found element
    */
-  async waitForElement(selector, timeout = 10000, root = document.body) {
+  waitForElement(selector, timeout = 10000, root = document.body) {
     if (this.destroyed) {
       throw new Error('AsyncManager is destroyed');
     }
@@ -219,7 +219,7 @@ class AsyncManager {
    * @param {string} description - Description for debugging
    * @returns {Promise} Result of the async function
    */
-  async withTimeout(asyncFn, timeout = 30000, description = 'Async operation') {
+  withTimeout(asyncFn, timeout = 30000, description = 'Async operation') {
     if (this.destroyed) {
       throw new Error('AsyncManager is destroyed');
     }
@@ -244,16 +244,14 @@ class AsyncManager {
    * @param {Function} asyncFn - Async function to execute
    * @returns {Promise} Result of the async function
    */
-  async deduplicate(key, asyncFn) {
+  deduplicate(key, asyncFn) {
     if (this.destroyed) {
       throw new Error('AsyncManager is destroyed');
     }
 
     // If already in progress, return existing promise
     if (this.promises.has(key)) {
-      if (this.debugMode) {
-        console.log(`[AsyncManager] Deduplicating operation: ${key}`);
-      }
+      debugLog('AsyncManager', `Deduplicating operation: ${key}`);
       return this.promises.get(key);
     }
 
@@ -284,8 +282,8 @@ class AsyncManager {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        if (attempt > 0 && this.debugMode) {
-          console.log(`[AsyncManager] Retry attempt ${attempt} for: ${description}`);
+        if (attempt > 0) {
+          debugLog('AsyncManager', `Retry attempt ${attempt} for: ${description}`);
         }
 
         return await asyncFn();
@@ -442,9 +440,7 @@ class AsyncManager {
     // Clear promises (they'll resolve/reject on their own)
     this.promises.clear();
 
-    if (this.debugMode) {
-      console.log('[AsyncManager] Cleared all operations');
-    }
+    debugLog('AsyncManager', 'Cleared all operations');
   }
 
   /**
@@ -453,10 +449,7 @@ class AsyncManager {
   destroy() {
     this.destroyed = true;
     this.clearAll();
-
-    if (this.debugMode) {
-      console.log('[AsyncManager] Destroyed');
-    }
+    debugLog('AsyncManager', 'Destroyed');
   }
 }
 

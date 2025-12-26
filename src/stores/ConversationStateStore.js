@@ -45,7 +45,7 @@ export class ConversationStateStore {
    * @param {string} stateType - Type of state ('folding', 'collapse', etc.)
    * @returns {Promise<Object>}
    */
-  async getCurrentState(stateType) {
+  getCurrentState(stateType) {
     const conversationUrl = this.getCurrentConversation();
     return this.getState(conversationUrl, stateType);
   }
@@ -76,7 +76,7 @@ export class ConversationStateStore {
    * @param {string} stateType - Type of state
    * @param {Object} state - State data
    */
-  async setCurrentState(stateType, state) {
+  setCurrentState(stateType, state) {
     const conversationUrl = this.getCurrentConversation();
     return this.setState(conversationUrl, stateType, state);
   }
@@ -87,7 +87,7 @@ export class ConversationStateStore {
    * @param {string} stateType - Type of state
    * @param {Object} state - State data
    */
-  async setState(conversationUrl, stateType, state) {
+  setState(conversationUrl, stateType, state) {
     const normalized = this.normalizeUrl(conversationUrl);
 
     return this.store.update(data => {
@@ -110,7 +110,7 @@ export class ConversationStateStore {
   /**
    * Update last accessed timestamp for conversation
    */
-  async touchConversation(conversationUrl) {
+  touchConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
 
     return this.store.update(data => {
@@ -132,7 +132,7 @@ export class ConversationStateStore {
    * Clear state for current conversation
    * @param {string} [stateType] - Optional state type, clears all if omitted
    */
-  async clearCurrentState(stateType = null) {
+  clearCurrentState(stateType = null) {
     const conversationUrl = this.getCurrentConversation();
     return this.clearState(conversationUrl, stateType);
   }
@@ -142,7 +142,7 @@ export class ConversationStateStore {
    * @param {string} conversationUrl - Conversation URL
    * @param {string} [stateType] - Optional state type
    */
-  async clearState(conversationUrl, stateType = null) {
+  clearState(conversationUrl, stateType = null) {
     const normalized = this.normalizeUrl(conversationUrl);
 
     return this.store.update(data => {
@@ -169,7 +169,7 @@ export class ConversationStateStore {
   /**
    * Clear all conversation states
    */
-  async clearAll() {
+  clearAll() {
     return this.store.set({});
   }
 

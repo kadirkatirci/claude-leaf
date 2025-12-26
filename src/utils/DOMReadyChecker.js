@@ -202,7 +202,7 @@ class DOMReadyChecker {
    * Wait for navigation to complete and DOM to stabilize
    * Use this after a navigation event
    */
-  async waitForNavigationComplete(options = {}) {
+  waitForNavigationComplete(options = {}) {
     const {
       maxWait = 5000,
       // stabilityDelay reserved for future use when implementing DOM mutation-based wait

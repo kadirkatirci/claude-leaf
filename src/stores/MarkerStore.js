@@ -44,7 +44,7 @@ export class MarkerStore {
    * Add new marker
    * Duplicate check is by content signature (not index)
    */
-  async add(marker) {
+  add(marker) {
     return this.store.update(data => {
       const markers = data.markers || [];
 
@@ -78,7 +78,7 @@ export class MarkerStore {
     });
   }
 
-  async update(markerId, updates) {
+  update(markerId, updates) {
     return this.store.update(data => {
       const markers = data.markers || [];
       const index = markers.findIndex(m => m.id === markerId);
@@ -99,14 +99,14 @@ export class MarkerStore {
     });
   }
 
-  async remove(markerId) {
+  remove(markerId) {
     return this.store.update(data => ({
       ...data,
       markers: (data.markers || []).filter(m => m.id !== markerId),
     }));
   }
 
-  async removeByConversation(conversationUrl) {
+  removeByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
     return this.store.update(data => ({
       ...data,
@@ -114,7 +114,7 @@ export class MarkerStore {
     }));
   }
 
-  async clear() {
+  clear() {
     return this.store.set({ markers: [] });
   }
 
@@ -193,7 +193,7 @@ export class MarkerStore {
     }
   }
 
-  async getStorageInfo() {
+  getStorageInfo() {
     return this.store.getStorageInfo();
   }
 }

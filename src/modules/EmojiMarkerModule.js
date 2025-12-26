@@ -217,7 +217,7 @@ class EmojiMarkerModule extends BaseModule {
     }
   }
 
-  async getFavoriteEmojis() {
+  getFavoriteEmojis() {
     return EMOJI_CONFIG.favoriteEmojis;
   }
 
@@ -235,13 +235,13 @@ class EmojiMarkerModule extends BaseModule {
     return (await markerStore.getAll()).length;
   }
 
-  async importMarkers() {
+  importMarkers() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json';
 
     return new Promise((resolve, reject) => {
-      input.onchange = async e => {
+      input.onchange = e => {
         const file = e.target.files[0];
         if (!file) {
           return reject(new Error('No file'));

@@ -212,7 +212,7 @@ export class Store extends EventEmitter {
   /**
    * Reset to default data
    */
-  async reset() {
+  reset() {
     const defaultData = this.createDefaultData();
     return this.set(defaultData);
   }
@@ -301,7 +301,7 @@ export class Store extends EventEmitter {
   /**
    * Get storage info
    */
-  async getStorageInfo() {
+  getStorageInfo() {
     return this.adapter.getInfo();
   }
 

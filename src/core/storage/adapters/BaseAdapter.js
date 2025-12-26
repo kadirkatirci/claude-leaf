@@ -9,7 +9,7 @@ export class BaseAdapter {
    * @param {string} key - Storage key
    * @returns {Promise<any>} - Stored value or undefined
    */
-  async get(_key) {
+  get(_key) {
     throw new Error('BaseAdapter.get() must be implemented by subclass');
   }
 
@@ -19,7 +19,7 @@ export class BaseAdapter {
    * @param {any} value - Value to store
    * @returns {Promise<void>}
    */
-  async set(_key, _value) {
+  set(_key, _value) {
     throw new Error('BaseAdapter.set() must be implemented by subclass');
   }
 
@@ -28,7 +28,7 @@ export class BaseAdapter {
    * @param {string} key - Storage key
    * @returns {Promise<void>}
    */
-  async remove(_key) {
+  remove(_key) {
     throw new Error('BaseAdapter.remove() must be implemented by subclass');
   }
 
@@ -36,7 +36,7 @@ export class BaseAdapter {
    * Clear all data
    * @returns {Promise<void>}
    */
-  async clear() {
+  clear() {
     throw new Error('BaseAdapter.clear() must be implemented by subclass');
   }
 
@@ -44,7 +44,7 @@ export class BaseAdapter {
    * Get all keys
    * @returns {Promise<string[]>}
    */
-  async keys() {
+  keys() {
     throw new Error('BaseAdapter.keys() must be implemented by subclass');
   }
 
@@ -52,10 +52,10 @@ export class BaseAdapter {
    * Get storage info (size, quota, etc.)
    * @returns {Promise<Object>}
    */
-  async getInfo() {
-    return {
+  getInfo() {
+    return Promise.resolve({
       type: this.constructor.name,
       available: true,
-    };
+    });
   }
 }

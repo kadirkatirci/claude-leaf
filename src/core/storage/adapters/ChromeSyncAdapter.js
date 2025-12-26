@@ -161,7 +161,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Get value by key
    */
-  async get(key) {
+  get(key) {
     return new Promise((resolve, reject) => {
       this.storageAPI.get([key], result => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
@@ -176,7 +176,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Set value for key (with quota check)
    */
-  async set(key, value) {
+  set(key, value) {
     // Check quota before setting
     this.checkQuota(key, value);
 
@@ -217,7 +217,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Remove value by key
    */
-  async remove(key) {
+  remove(key) {
     return new Promise((resolve, reject) => {
       this.storageAPI.remove(key, () => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
@@ -232,7 +232,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Clear all data
    */
-  async clear() {
+  clear() {
     return new Promise((resolve, reject) => {
       this.storageAPI.clear(() => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
@@ -247,7 +247,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Get all keys
    */
-  async keys() {
+  keys() {
     return new Promise((resolve, reject) => {
       this.storageAPI.get(null, result => {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
@@ -262,7 +262,7 @@ export class ChromeSyncAdapter extends BaseAdapter {
   /**
    * Get storage info
    */
-  async getInfo() {
+  getInfo() {
     return new Promise(resolve => {
       if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.sync) {
         resolve({

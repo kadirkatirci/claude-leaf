@@ -138,7 +138,7 @@ class SidebarCollapseModule extends BaseModule {
   /**
    * Inject chevron button into section header
    */
-  async injectChevronToSection(sectionKey, sectionElement) {
+  injectChevronToSection(sectionKey, sectionElement) {
     const header = sectionElement.querySelector('h3');
     if (!header) {
       return;
@@ -282,7 +282,7 @@ class SidebarCollapseModule extends BaseModule {
   /**
    * Toggle section collapse/expand
    */
-  async toggleSection(sectionKey) {
+  toggleSection(sectionKey) {
     const section = this.sections.get(sectionKey);
     if (!section) {
       return;
