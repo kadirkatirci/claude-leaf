@@ -15,6 +15,7 @@ import VisibilityManager from './utils/VisibilityManager.js';
 // Rest of imports
 import { settingsStore, bookmarkStore, markerStore, conversationStateStore } from './stores/index.js';
 import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
+import { isDevDisabled, getDevDisabledModules } from './config/DevConfig.js';
 
 const GENERAL_CONFIG = MODULE_CONSTANTS.general;
 import { eventBus, Events } from './utils/EventBus.js';
@@ -397,13 +398,34 @@ class ClaudeProductivityApp {
   }
 
   registerModulesWithDependencies() {
-    this.registerModule('navigation', new NavigationModule(), { dependencies: [] });
-    this.registerModule('editHistory', new EditHistoryModule(), { dependencies: [] });
-    this.registerModule('compactView', new CompactViewModule(), { dependencies: ['navigation'] });
-    this.registerModule('bookmarks', new BookmarkModule(), { dependencies: [] });
-    this.registerModule('emojiMarkers', new EmojiMarkerModule(), { dependencies: [] });
-    this.registerModule('sidebarCollapse', new SidebarCollapseModule(), { dependencies: [] });
-    this.registerModule('contentFolding', new ContentFoldingModule(), { dependencies: [] });
+    // Log dev-disabled modules at startup
+    const devDisabled = getDevDisabledModules();
+    if (devDisabled.length > 0) {
+      console.log(`🚧 [DEV] Disabled modules: ${devDisabled.join(', ')}`);
+    }
+
+    // Register modules (skip dev-disabled ones)
+    if (!isDevDisabled('navigation')) {
+      this.registerModule('navigation', new NavigationModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('editHistory')) {
+      this.registerModule('editHistory', new EditHistoryModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('compactView')) {
+      this.registerModule('compactView', new CompactViewModule(), { dependencies: ['navigation'] });
+    }
+    if (!isDevDisabled('bookmarks')) {
+      this.registerModule('bookmarks', new BookmarkModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('emojiMarkers')) {
+      this.registerModule('emojiMarkers', new EmojiMarkerModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('sidebarCollapse')) {
+      this.registerModule('sidebarCollapse', new SidebarCollapseModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('contentFolding')) {
+      this.registerModule('contentFolding', new ContentFoldingModule(), { dependencies: [] });
+    }
   }
 
   registerModule(name, module, metadata = {}) {

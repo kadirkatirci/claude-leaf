@@ -5,6 +5,7 @@
 
 let config = null;
 let currentSettings = null;
+let devConfig = { disabledModules: [] };
 
 // ============================================
 // Initialization
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     // Load config first
     config = await loadConfig();
+    devConfig = await loadDevConfig();
     console.log('[Popup] Config loaded');
 
     // Set version
@@ -50,6 +52,20 @@ async function loadConfig() {
   return response.json();
 }
 
+async function loadDevConfig() {
+  try {
+    const response = await fetch('./devConfig.json');
+    if (!response.ok) return { disabledModules: [] };
+    return response.json();
+  } catch {
+    return { disabledModules: [] };
+  }
+}
+
+function isModuleDevDisabled(moduleId) {
+  return devConfig.disabledModules.includes(moduleId);
+}
+
 // ============================================
 // UI Rendering
 // ============================================
@@ -70,7 +86,12 @@ function renderTabs() {
 // --- Features Tab ---
 function renderFeatures() {
   const container = document.getElementById('feature-list');
-  container.innerHTML = Object.entries(config.modules).map(([id, module]) => `
+
+  // Filter out dev-disabled modules
+  const enabledModules = Object.entries(config.modules)
+    .filter(([id]) => !isModuleDevDisabled(id));
+
+  container.innerHTML = enabledModules.map(([id, module]) => `
     <div class="feature-item" data-module="${id}">
       <div class="feature-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="${module.iconFill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -94,8 +115,8 @@ function renderFeatures() {
     </div>
   `).join('');
 
-  // Setup feature toggle listeners (NO AUTO-SAVE)
-  Object.keys(config.modules).forEach(id => {
+  // Setup feature toggle listeners (NO AUTO-SAVE) - only for enabled modules
+  enabledModules.forEach(([id]) => {
     const toggle = document.getElementById(`${id}-enabled`);
     if (toggle) {
       toggle.addEventListener('change', (e) => {
@@ -119,7 +140,12 @@ function renderFeatures() {
 // --- Shortcuts Tab ---
 function renderShortcuts() {
   const container = document.getElementById('shortcuts-list');
-  container.innerHTML = config.shortcuts.map(group => `
+
+  // Filter out shortcuts for dev-disabled modules
+  const enabledShortcuts = config.shortcuts
+    .filter(group => !group.module || !isModuleDevDisabled(group.module));
+
+  container.innerHTML = enabledShortcuts.map(group => `
     <div class="shortcut-group">
       <h3 class="shortcut-group-title">${group.group}</h3>
       ${group.items.map(item => `

@@ -2,3 +2,6 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Auto-generated from src/config/DevConfig.js during build
+popup/devConfig.json
