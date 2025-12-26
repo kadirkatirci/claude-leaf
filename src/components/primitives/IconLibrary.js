@@ -316,6 +316,38 @@ export default class IconLibrary {
   }
 
   /**
+   * Get grid icon (for grid view toggle)
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 16)
+   * @returns {string} SVG markup
+   */
+  static grid(color = 'currentColor', size = 16) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="${color}" stroke-width="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="${color}" stroke-width="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="${color}" stroke-width="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="${color}" stroke-width="1.5"/>
+    </svg>`;
+  }
+
+  /**
+   * Get list icon (for list view toggle)
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 16)
+   * @returns {string} SVG markup
+   */
+  static list(color = 'currentColor', size = 16) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
+      <path d="M8 6H21" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M8 12H21" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M8 18H21" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="4" cy="6" r="1" fill="${color}"/>
+      <circle cx="4" cy="12" r="1" fill="${color}"/>
+      <circle cx="4" cy="18" r="1" fill="${color}"/>
+    </svg>`;
+  }
+
+  /**
    * Get icon by name (convenience method)
    * @param {string} name - Icon name
    * @param {Object} options - Options {color, size, filled, direction}
@@ -371,6 +403,10 @@ export default class IconLibrary {
         return this.map(color, size);
       case 'trash':
         return this.trash(color, size);
+      case 'grid':
+        return this.grid(color, size);
+      case 'list':
+        return this.list(color, size);
       default:
         console.warn(`[IconLibrary] Unknown icon: ${name}`);
         return '';

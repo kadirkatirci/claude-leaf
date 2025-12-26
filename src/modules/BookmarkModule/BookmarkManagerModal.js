@@ -11,6 +11,8 @@ export class BookmarkManagerModal {
       activeCategory: 'all',
       activeSenderFilter: 'all', // 'all', 'user', 'assistant'
       searchQuery: '',
+      viewMode: 'grid', // 'grid' | 'list'
+      selectedBookmarkId: null, // For list view selection
     };
   }
 
@@ -179,6 +181,29 @@ export class BookmarkManagerModal {
     });
     titleArea.appendChild(senderFilter);
 
+    // View Toggle (Grid / List)
+    const viewToggle = DOMUtils.createElement('div', {
+      className: 'flex bg-bg-100 rounded-lg p-1 ml-4 border border-border-200',
+      id: 'bm-view-toggle',
+    });
+
+    const viewOptions = [
+      { id: 'grid', icon: IconLibrary.grid('currentColor', 16), title: 'Grid View' },
+      { id: 'list', icon: IconLibrary.list('currentColor', 16), title: 'List View' },
+    ];
+
+    viewOptions.forEach(opt => {
+      const btn = DOMUtils.createElement('button', {
+        className: `p-1.5 rounded-md transition-all flex items-center justify-center ${this.state.viewMode === opt.id ? 'bg-bg-000 text-text-000 shadow-sm' : 'text-text-300 hover:text-text-100'}`,
+        innerHTML: opt.icon,
+        title: opt.title,
+        onclick: () => this.setViewMode(opt.id),
+      });
+      btn.dataset.viewMode = opt.id;
+      viewToggle.appendChild(btn);
+    });
+    titleArea.appendChild(viewToggle);
+
     // Search
     const searchWrapper = DOMUtils.createElement('div', {
       className: 'relative w-[300px]',
@@ -230,7 +255,8 @@ export class BookmarkManagerModal {
 
     // 2. Full View Container (Hidden by default)
     const fullViewContainer = DOMUtils.createElement('div', {
-      className: 'flex-1 flex flex-col overflow-hidden hidden', // Hidden initially
+      className: 'flex-1 flex flex-col overflow-hidden',
+      style: { display: 'none' }, // Hidden initially via inline style
       id: 'bm-full-view-container',
     });
 
@@ -263,10 +289,119 @@ export class BookmarkManagerModal {
     fullViewContainer.appendChild(fullViewHeader);
     fullViewContainer.appendChild(fullViewContent);
 
-    // Append both views
+    // 3. List View Container (Split Pane - Master/Detail)
+    const listViewContainer = DOMUtils.createElement('div', {
+      style: {
+        flex: '1',
+        display: 'none', // Hidden initially
+        flexDirection: 'row',
+        overflow: 'hidden',
+      },
+      id: 'bm-list-view-container',
+    });
+
+    // Master Panel (Left - List)
+    const masterPanel = DOMUtils.createElement('div', {
+      className: 'border-r border-border-200',
+      style: {
+        width: '350px',
+        flexShrink: '0',
+        display: 'flex',
+        flexDirection: 'column',
+      },
+      id: 'bm-master-panel',
+    });
+
+    const masterList = DOMUtils.createElement('div', {
+      className: 'divide-y divide-border-100',
+      style: { flex: '1', overflowY: 'auto' },
+      id: 'bm-master-list',
+    });
+    masterPanel.appendChild(masterList);
+
+    // Detail Panel (Right - Content)
+    const detailPanel = DOMUtils.createElement('div', {
+      className: 'bg-bg-000',
+      style: { flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+      id: 'bm-detail-panel',
+    });
+
+    // Detail panel empty state
+    const detailEmpty = DOMUtils.createElement('div', {
+      className: 'text-text-300',
+      style: {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      id: 'bm-detail-empty',
+    });
+    detailEmpty.innerHTML = `
+      <div class="text-4xl mb-4">📖</div>
+      <div class="text-lg font-medium">Select a bookmark</div>
+      <div class="text-sm">Choose a bookmark from the list to view its content</div>
+    `;
+    detailPanel.appendChild(detailEmpty);
+
+    // Detail content container (hidden initially)
+    const detailContent = DOMUtils.createElement('div', {
+      style: {
+        flex: '1',
+        display: 'none', // Hidden initially
+        flexDirection: 'column',
+        overflow: 'hidden',
+      },
+      id: 'bm-detail-content',
+    });
+
+    // Detail header
+    const detailHeader = DOMUtils.createElement('div', {
+      className: 'p-4 border-b border-border-100 bg-bg-50',
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: '0',
+      },
+      id: 'bm-detail-header',
+    });
+    detailContent.appendChild(detailHeader);
+
+    // Detail body
+    const detailBody = DOMUtils.createElement('div', {
+      className: 'p-6',
+      style: { flex: '1', overflowY: 'auto' },
+      id: 'bm-detail-body',
+    });
+    detailContent.appendChild(detailBody);
+
+    // Detail footer
+    const detailFooter = DOMUtils.createElement('div', {
+      className: 'p-4 border-t border-border-100 bg-bg-50',
+      style: { display: 'flex', justifyContent: 'flex-end', flexShrink: '0' },
+      id: 'bm-detail-footer',
+    });
+    const gotoMsgBtnList = DOMUtils.createElement('button', {
+      className:
+        'px-4 py-2 bg-accent-main-100 text-white hover:opacity-90 rounded-lg text-sm flex items-center gap-2 transition-colors',
+      innerHTML: 'Go to Message ↗️',
+      id: 'bm-detail-goto-btn',
+    });
+    detailFooter.appendChild(gotoMsgBtnList);
+    detailContent.appendChild(detailFooter);
+
+    detailPanel.appendChild(detailContent);
+
+    listViewContainer.appendChild(masterPanel);
+    listViewContainer.appendChild(detailPanel);
+
+    // Append all views
     main.appendChild(header);
     main.appendChild(gridContainer);
     main.appendChild(fullViewContainer);
+    main.appendChild(listViewContainer);
 
     return main;
   }
@@ -276,22 +411,42 @@ export class BookmarkManagerModal {
   showGridView() {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
+    const list = this.activeModal.element.querySelector('#bm-list-view-container');
     if (grid) {
-      grid.classList.remove('hidden');
+      grid.style.display = '';
     }
     if (full) {
-      full.classList.add('hidden');
+      full.style.display = 'none';
     }
+    if (list) {
+      list.style.display = 'none';
+    }
+    this.state.viewMode = 'grid';
+    this.updateViewToggle();
   }
 
   showFullView() {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
+    const list = this.activeModal.element.querySelector('#bm-list-view-container');
     if (grid) {
-      grid.classList.add('hidden');
+      grid.style.display = 'none';
     }
     if (full) {
-      full.classList.remove('hidden');
+      full.style.display = 'flex'; // Flex layout for header + content
+    }
+    if (list) {
+      list.style.display = 'none';
+    }
+  }
+
+  updateViewToggle() {
+    const viewToggle = this.activeModal.element.querySelector('#bm-view-toggle');
+    if (viewToggle) {
+      Array.from(viewToggle.children).forEach(btn => {
+        const isActive = btn.dataset.viewMode === this.state.viewMode;
+        btn.className = `p-1.5 rounded-md transition-all flex items-center justify-center ${isActive ? 'bg-bg-000 text-text-000 shadow-sm' : 'text-text-300 hover:text-text-100'}`;
+      });
     }
   }
 
@@ -378,60 +533,52 @@ export class BookmarkManagerModal {
   }
 
   renderBookmarks() {
+    // Render grid view
     const grid = this.activeModal.element.querySelector('#bm-grid');
-    if (!grid) {
-      return;
-    }
-    grid.innerHTML = '';
+    if (grid) {
+      grid.innerHTML = '';
 
-    const filtered = this.state.bookmarks.filter(b => {
-      if (this.state.activeCategory !== 'all' && b.categoryId !== this.state.activeCategory) {
-        return false;
+      const filtered = this.getFilteredBookmarks();
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-300">
+            <div class="text-4xl mb-4">🔖</div>
+            <div class="text-lg font-medium">No bookmarks found</div>
+            <div class="text-sm">Try changing filters or add some bookmarks.</div>
+          </div>
+        `;
+      } else {
+        filtered.forEach(b => {
+          grid.appendChild(this.createBookmarkCard(b));
+        });
       }
+    }
 
-      // Sender Filter
-      if (this.state.activeSenderFilter !== 'all') {
-        // If existing bookmark doesn't have sender, we treat it as visible or try to guess?
-        // Let's assume old ones are 'assistant' usually, or just don't filter them out aggressively?
-        // Actually, strict filtering is better.
-        // But wait, existing bookmarks don't have this field.
-        // Simple fix: if no sender, show in 'all' only?
-        // Or try to infer? 'assistant' is safe default for old bookmarks generally.
-        const sender = b.sender || 'assistant';
-        if (sender !== this.state.activeSenderFilter) {
-          return false;
+    // Also update list view if it's active
+    if (this.state.viewMode === 'list') {
+      this.renderMasterList();
+
+      // Update detail panel if selected bookmark still exists
+      const filtered = this.getFilteredBookmarks();
+      if (this.state.selectedBookmarkId) {
+        const selected = filtered.find(b => b.id === this.state.selectedBookmarkId);
+        if (selected) {
+          this.renderDetailPanel(selected);
+        } else {
+          // Selected bookmark was filtered out, show empty or select first
+          this.state.selectedBookmarkId = null;
+          const emptyState = this.activeModal.element.querySelector('#bm-detail-empty');
+          const content = this.activeModal.element.querySelector('#bm-detail-content');
+          if (emptyState) {
+            emptyState.style.display = 'flex';
+          }
+          if (content) {
+            content.style.display = 'none';
+          }
         }
       }
-
-      if (this.state.searchQuery) {
-        const q = this.state.searchQuery;
-        const content = b.fullText || '';
-        const preview = b.previewText || '';
-        return content.toLowerCase().includes(q) || preview.toLowerCase().includes(q);
-      }
-      return true;
-    });
-
-    filtered.sort(
-      (a, b) =>
-        new Date(b.createdAt || b.timestamp).getTime() -
-        new Date(a.createdAt || a.timestamp).getTime()
-    );
-
-    if (filtered.length === 0) {
-      grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-300">
-                    <div class="text-4xl mb-4">🔖</div>
-                    <div class="text-lg font-medium">No bookmarks found</div>
-                    <div class="text-sm">Try changing filters or add some bookmarks.</div>
-                </div>
-            `;
-      return;
     }
-
-    filtered.forEach(b => {
-      grid.appendChild(this.createBookmarkCard(b));
-    });
   }
 
   createBookmarkCard(bookmark) {
@@ -545,6 +692,274 @@ export class BookmarkManagerModal {
     card.appendChild(footer);
 
     return card;
+  }
+
+  // --- List View Methods ---
+
+  createBookmarkListItem(bookmark, isSelected) {
+    const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
+      this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
+
+    const item = DOMUtils.createElement('div', {
+      className: `p-3 cursor-pointer border-l-2 transition-colors ${
+        isSelected
+          ? 'bg-accent-main-100/10 border-accent-main-100'
+          : 'border-transparent hover:bg-bg-100'
+      }`,
+    });
+
+    // Use addEventListener for reliable click handling
+    item.addEventListener('click', () => {
+      this.selectBookmark(bookmark);
+    });
+
+    // Top row: Sender badge + Preview
+    const topRow = DOMUtils.createElement('div', {
+      className: 'flex items-center gap-2 mb-1',
+    });
+
+    const isUser = bookmark.sender === 'user';
+    const senderBadge = DOMUtils.createElement('span', {
+      className: `px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
+        isUser
+          ? 'bg-text-500/10 text-text-500 border border-text-500/20'
+          : 'bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20'
+      }`,
+      textContent: isUser ? 'User' : 'Claude',
+    });
+
+    // Preview text
+    let preview = bookmark.previewText;
+    if (!preview && bookmark.fullText) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = bookmark.fullText;
+      preview = tmp.textContent.substring(0, 100);
+    }
+
+    const previewText = DOMUtils.createElement('span', {
+      className: 'text-sm text-text-100 truncate flex-1',
+      textContent: preview || 'No preview',
+    });
+
+    topRow.appendChild(senderBadge);
+    topRow.appendChild(previewText);
+
+    // Bottom row: Category + Date
+    const bottomRow = DOMUtils.createElement('div', {
+      className: 'flex items-center justify-between text-xs text-text-300',
+    });
+
+    const categoryBadge = DOMUtils.createElement('span', {
+      className: 'px-1.5 py-0.5 rounded text-[10px]',
+      style: { backgroundColor: `${category.color}20`, color: category.color },
+      textContent: category.name,
+    });
+
+    const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+    const dateSpan = DOMUtils.createElement('span', {
+      textContent: dateStr,
+    });
+
+    bottomRow.appendChild(categoryBadge);
+    bottomRow.appendChild(dateSpan);
+
+    item.appendChild(topRow);
+    item.appendChild(bottomRow);
+
+    return item;
+  }
+
+  selectBookmark(bookmark) {
+    this.state.selectedBookmarkId = bookmark.id;
+    this.renderMasterList();
+    this.renderDetailPanel(bookmark);
+  }
+
+  renderMasterList() {
+    const container = this.activeModal.element.querySelector('#bm-master-list');
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    const filtered = this.getFilteredBookmarks();
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-text-300">
+          <div class="text-3xl mb-3">🔖</div>
+          <div class="text-sm font-medium">No bookmarks found</div>
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(b => {
+      const isSelected = this.state.selectedBookmarkId === b.id;
+      container.appendChild(this.createBookmarkListItem(b, isSelected));
+    });
+  }
+
+  renderDetailPanel(bookmark) {
+    const emptyState = this.activeModal.element.querySelector('#bm-detail-empty');
+    const content = this.activeModal.element.querySelector('#bm-detail-content');
+    const header = this.activeModal.element.querySelector('#bm-detail-header');
+    const body = this.activeModal.element.querySelector('#bm-detail-body');
+    const gotoBtn = this.activeModal.element.querySelector('#bm-detail-goto-btn');
+
+    if (!content || !header || !body) {
+      return;
+    }
+
+    // Hide empty state, show content
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+    content.style.display = 'flex';
+
+    // Update goto button
+    if (gotoBtn) {
+      gotoBtn.onclick = () => this.navigateToBookmark(bookmark);
+    }
+
+    // Build header
+    const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
+      this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
+
+    const isUser = bookmark.sender === 'user';
+    const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+
+    header.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="px-2 py-1 rounded text-xs font-medium ${
+          isUser
+            ? 'bg-text-500/10 text-text-500 border border-text-500/20'
+            : 'bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20'
+        }">${isUser ? 'User' : 'Claude'}</span>
+        <span class="px-2 py-1 rounded text-xs font-medium" style="background: ${category.color}20; color: ${category.color}">${category.name}</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-text-300">${dateStr}</span>
+        <button class="p-1.5 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded transition-colors" title="Delete" id="bm-detail-delete-btn">
+          ${IconLibrary.trash('currentColor', 16)}
+        </button>
+      </div>
+    `;
+
+    // Attach delete handler
+    const deleteBtn = header.querySelector('#bm-detail-delete-btn');
+    if (deleteBtn) {
+      deleteBtn.onclick = () => this.deleteBookmark(bookmark.id);
+    }
+
+    // Build body content
+    body.innerHTML = '';
+    const contentHtml = DOMUtils.createElement('div', {
+      className:
+        'prose max-w-none font-claude-message text-text-000 whitespace-pre-wrap break-words',
+    });
+
+    const text = bookmark.fullText || bookmark.previewText || '';
+    if (text.trim().startsWith('<') && text.includes('>')) {
+      contentHtml.innerHTML = text;
+    } else {
+      contentHtml.textContent = text;
+    }
+
+    // Clean up UI artifacts
+    const selectors = [
+      '.claude-expand-footer',
+      '.claude-expand-button-container',
+      '.claude-expand-btn',
+      '.absolute.bottom-0.right-2',
+      '[data-testid="action-bar-copy"]',
+      'button[aria-label="Copy"]',
+      'button[aria-label="Give positive feedback"]',
+      'button[aria-label="Give negative feedback"]',
+      '.group\\/btn',
+    ];
+
+    const toRemove = contentHtml.querySelectorAll(selectors.join(', '));
+    toRemove.forEach(el => el.remove());
+
+    body.appendChild(contentHtml);
+  }
+
+  getFilteredBookmarks() {
+    const filtered = this.state.bookmarks.filter(b => {
+      if (this.state.activeCategory !== 'all' && b.categoryId !== this.state.activeCategory) {
+        return false;
+      }
+
+      if (this.state.activeSenderFilter !== 'all') {
+        const sender = b.sender || 'assistant';
+        if (sender !== this.state.activeSenderFilter) {
+          return false;
+        }
+      }
+
+      if (this.state.searchQuery) {
+        const q = this.state.searchQuery;
+        const content = b.fullText || '';
+        const preview = b.previewText || '';
+        return content.toLowerCase().includes(q) || preview.toLowerCase().includes(q);
+      }
+      return true;
+    });
+
+    filtered.sort(
+      (a, b) =>
+        new Date(b.createdAt || b.timestamp).getTime() -
+        new Date(a.createdAt || a.timestamp).getTime()
+    );
+
+    return filtered;
+  }
+
+  setViewMode(mode) {
+    this.state.viewMode = mode;
+
+    const gridContainer = this.activeModal.element.querySelector('#bm-grid-container');
+    const fullViewContainer = this.activeModal.element.querySelector('#bm-full-view-container');
+    const listViewContainer = this.activeModal.element.querySelector('#bm-list-view-container');
+
+    // Hide all containers
+    if (gridContainer) {
+      gridContainer.style.display = 'none';
+    }
+    if (fullViewContainer) {
+      fullViewContainer.style.display = 'none';
+    }
+    if (listViewContainer) {
+      listViewContainer.style.display = 'none';
+    }
+
+    // Show the appropriate container
+    if (mode === 'grid') {
+      if (gridContainer) {
+        gridContainer.style.display = '';
+      }
+    } else if (mode === 'list') {
+      if (listViewContainer) {
+        listViewContainer.style.display = 'flex';
+      }
+      this.renderMasterList();
+
+      // Auto-select first bookmark if none selected
+      const filtered = this.getFilteredBookmarks();
+      if (filtered.length > 0 && !this.state.selectedBookmarkId) {
+        this.selectBookmark(filtered[0]);
+      } else if (this.state.selectedBookmarkId) {
+        const selected = filtered.find(b => b.id === this.state.selectedBookmarkId);
+        if (selected) {
+          this.renderDetailPanel(selected);
+        }
+      }
+    }
+
+    // Update toggle button states
+    this.updateViewToggle();
   }
 
   // --- Actions ---
