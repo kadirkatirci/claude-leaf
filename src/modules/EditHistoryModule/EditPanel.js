@@ -119,7 +119,7 @@ class EditPanel extends BasePanel {
   }
 
   /**
-   * Panel item oluştur
+   * Create panel item
    */
   createPanelItem(editMsg, index) {
     const item = DOMUtils.createElement('div');
@@ -177,7 +177,7 @@ class EditPanel extends BasePanel {
    * Override: Get empty state message
    */
   getEmptyStateMessage() {
-    return 'Henüz edit yok';
+    return 'No edits yet';
   }
 
   /**

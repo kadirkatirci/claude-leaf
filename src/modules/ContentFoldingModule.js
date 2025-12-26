@@ -47,7 +47,7 @@ class ContentFoldingModule extends BaseModule {
         return;
       }
 
-      this.log('Content Folding başlatılıyor...');
+      this.log('Content Folding initializing...');
 
       // Set current conversation for state store
       conversationStateStore.setCurrentConversation(window.location.pathname);
@@ -92,7 +92,7 @@ class ContentFoldingModule extends BaseModule {
       // Initial scan
       setTimeout(() => this.scanContent(), 1000);
 
-      this.log('✅ Content Folding aktif');
+      this.log('✅ Content Folding active');
     } catch (error) {
       this.error('❌ Content Folding init failed:', error);
       throw error;
@@ -180,7 +180,7 @@ class ContentFoldingModule extends BaseModule {
    * Settings changed
    */
   onSettingsChanged() {
-    this.log('⚙️ Settings değişti');
+    this.log('⚙️ Settings changed');
 
     if (!this.enabled) {
       // Module disabled, clean up
@@ -213,7 +213,7 @@ class ContentFoldingModule extends BaseModule {
    * Destroy module
    */
   destroy() {
-    this.log('🛑 Content Folding durduruluyor...');
+    this.log('🛑 Content Folding stopping...');
 
     this.cleanup();
 

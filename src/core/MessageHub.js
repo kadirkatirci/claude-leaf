@@ -1,15 +1,15 @@
 /**
- * MessageHub - Merkezi DOM değişiklik yönetimi
+ * MessageHub - Centralized DOM change management
  *
- * Tek MutationObserver ile tüm DOM değişikliklerini izler,
- * analiz eder ve ilgili modüllere event olarak dağıtır.
+ * Uses a single MutationObserver to track all DOM changes,
+ * analyzes them, and distributes events to relevant modules.
  *
  * Replaces: Multiple MessageObserverMixin instances + VersionManager
  *
  * Events emitted:
- * - hub:message_count_changed - Mesaj sayısı değiştiğinde
- * - hub:version_changed - Edit version değiştiğinde
- * - hub:content_changed - Herhangi bir içerik değişikliğinde
+ * - hub:message_count_changed - When message count changes
+ * - hub:version_changed - When edit version changes
+ * - hub:content_changed - When any content changes
  */
 
 import DOMUtils from '../utils/DOMUtils.js';
@@ -28,11 +28,11 @@ class MessageHub {
 
     // Configuration
     this.config = {
-      debounceDelay: 300, // Tutarlı 300ms debounce
-      stabilizationDelay: 100, // DOM stabilizasyon bekleme
+      debounceDelay: 300, // Consistent 300ms debounce
+      stabilizationDelay: 100, // DOM stabilization wait
     };
 
-    // State cache - önceki durumu tutarak diff hesaplama
+    // State cache - keeping previous state for diff calculation
     this.lastState = {
       messageCount: 0,
       editedCount: 0,
@@ -47,7 +47,7 @@ class MessageHub {
   }
 
   /**
-   * Hub'ı başlat
+   * Start the hub
    */
   start() {
     if (this.isStarted) {
@@ -114,7 +114,7 @@ class MessageHub {
         childList: true,
         subtree: true,
         attributes: false,
-        throttle: 100, // İlk seviye throttle (ObserverManager'da)
+        throttle: 100, // First level throttle (in ObserverManager)
       }
     );
 
@@ -162,7 +162,7 @@ class MessageHub {
   }
 
   /**
-   * İşlemeyi planla (debounce)
+   * Schedule processing (debounce)
    */
   scheduleProcess() {
     if (this.debounceTimer) {
@@ -175,7 +175,7 @@ class MessageHub {
   }
 
   /**
-   * DOM değişikliklerini analiz et ve event'leri yayınla
+   * Analyze DOM changes and emit events
    */
   async process() {
     if (this.isProcessing) {
@@ -186,25 +186,25 @@ class MessageHub {
     this.isProcessing = true;
 
     try {
-      // 1. Cache'i invalidate et
+      // 1. Invalidate cache
       messageCache.invalidate();
 
-      // 2. DOM stabilizasyonu için kısa bekle
+      // 2. Wait briefly for DOM stabilization
       await this.waitForStabilization();
 
-      // 3. Tek seferde tüm veriyi topla
+      // 3. Collect all data at once
       const messages = DOMUtils.findMessages();
       const editedPrompts = DOMUtils.getEditedPrompts ? DOMUtils.getEditedPrompts() : [];
 
-      // 4. Değişiklikleri tespit et
+      // 4. Detect changes
       const changes = this.detectChanges(messages, editedPrompts);
 
-      // 5. Değişiklik varsa işle
+      // 5. Process if there are changes
       if (changes.hasChanges) {
-        // State'i güncelle
+        // Update state
         this.updateState(messages, editedPrompts);
 
-        // Event'leri yayınla
+        // Emit events
         this.emitChanges(changes, messages, editedPrompts);
       }
     } catch (error) {
@@ -215,7 +215,7 @@ class MessageHub {
   }
 
   /**
-   * DOM stabilizasyonu için bekle
+   * Wait for DOM stabilization
    */
   waitForStabilization() {
     return new Promise(resolve => {
@@ -224,7 +224,7 @@ class MessageHub {
   }
 
   /**
-   * Değişiklikleri tespit et
+   * Detect changes
    */
   detectChanges(messages, editedPrompts) {
     const changes = {
@@ -241,7 +241,7 @@ class MessageHub {
       },
     };
 
-    // 1. Mesaj sayısı değişti mi?
+    // 1. Did message count change?
     if (messages.length !== this.lastState.messageCount) {
       changes.messageCountChanged = true;
       changes.contentChanged = true;
@@ -249,14 +249,14 @@ class MessageHub {
       this.log(`Message count: ${this.lastState.messageCount} → ${messages.length}`);
     }
 
-    // 2. Edit sayısı değişti mi?
+    // 2. Did edit count change?
     if (editedPrompts.length !== this.lastState.editedCount) {
       changes.versionChanged = true;
       changes.hasChanges = true;
       this.log(`Edit count: ${this.lastState.editedCount} → ${editedPrompts.length}`);
     }
 
-    // 3. Version string'leri değişti mi?
+    // 3. Did version strings change?
     if (!changes.versionChanged) {
       for (const edit of editedPrompts) {
         const lastVersion = this.lastState.editVersions.get(edit.containerId);
@@ -277,7 +277,7 @@ class MessageHub {
   }
 
   /**
-   * Internal state'i güncelle
+   * Update internal state
    */
   updateState(messages, editedPrompts) {
     this.lastState.messageCount = messages.length;
@@ -290,10 +290,10 @@ class MessageHub {
   }
 
   /**
-   * Event'leri yayınla
+   * Emit events
    */
   emitChanges(changes, messages, editedPrompts) {
-    // Merkezi event data
+    // Central event data
     const eventData = {
       messages,
       messageCount: messages.length,
@@ -326,7 +326,7 @@ class MessageHub {
   }
 
   /**
-   * Manuel tarama tetikle (VersionManager.scan() uyumluluğu için)
+   * Trigger manual scan (for VersionManager.scan() compatibility)
    */
   refresh() {
     this.log('Manual refresh requested');
@@ -334,7 +334,7 @@ class MessageHub {
   }
 
   /**
-   * Zorla anında tarama (beklemeden)
+   * Force immediate scan (without waiting)
    */
   forceRefresh() {
     this.log('Force refresh requested');
@@ -345,7 +345,7 @@ class MessageHub {
   }
 
   /**
-   * Hub'ı durdur
+   * Stop the hub
    */
   stop() {
     // Stop observer
@@ -357,14 +357,14 @@ class MessageHub {
       this.navigationUnsubscribe = null;
     }
 
-    // State'i sıfırla
+    // Reset state
     this.resetState();
 
     this.log('Stopped');
   }
 
   /**
-   * State'i sıfırla (sayfa değişikliğinde)
+   * Reset state (on page change)
    */
   resetState() {
     this.lastState = {

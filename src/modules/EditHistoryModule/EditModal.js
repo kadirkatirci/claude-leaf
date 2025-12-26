@@ -34,14 +34,14 @@ class EditModal {
   }
 
   /**
-   * Modal'ı göster
+   * Show modal
    */
   async show(messageElement, versionInfo = '', containerId = null) {
     // Get the CURRENT version info from DOM (not from cached badge data)
     // This ensures we show the up-to-date version number
     const currentVersionInfo = this.getCurrentVersionInfo(messageElement) || versionInfo;
 
-    // Mesaj içeriğini al
+    // Get message content
     const userMessage = messageElement.querySelector('[data-testid="user-message"]');
     const messageText = userMessage ? userMessage.textContent : messageElement.textContent;
 
@@ -101,7 +101,7 @@ class EditModal {
   }
 
   /**
-   * Modal header oluştur
+   * Create modal header
    */
   createHeader(versionInfo) {
     const header = DOMUtils.createElement('div');
@@ -178,7 +178,7 @@ class EditModal {
   }
 
   /**
-   * Modal content oluştur
+   * Create modal content
    */
   createContent(messageText, history = [], currentVersion) {
     const container = DOMUtils.createElement('div');
@@ -193,7 +193,7 @@ class EditModal {
 
       const historyLabel = DOMUtils.createElement('div');
       historyLabel.className = 'mb-2 text-sm font-semibold text-text-300';
-      historyLabel.innerHTML = '📜 Kaydedilen Versiyonlar:';
+      historyLabel.innerHTML = '📜 Saved Versions:';
 
       const historyList = DOMUtils.createElement('div');
       historyList.className = 'flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1';
@@ -232,7 +232,7 @@ class EditModal {
       // Info note only if no history
       const infoBox = DOMUtils.createElement('div');
       infoBox.className = 'mb-4 p-3 bg-bg-100 rounded-lg text-sm';
-      infoBox.innerHTML = `ℹ️ <strong>Not:</strong> Geçmiş versiyonlar siz gezindikçe kaydedilir.`;
+      infoBox.innerHTML = `ℹ️ <strong>Note:</strong> Past versions are saved as you browse.`;
       container.appendChild(infoBox);
     }
 
@@ -243,7 +243,7 @@ class EditModal {
 
     const messageLabel = DOMUtils.createElement('div');
     messageLabel.className = 'mb-3 text-sm font-semibold text-accent-main-100 flex justify-between';
-    messageLabel.innerHTML = `<span>📝 Görüntülenen İçerik</span> <span id="claude-edit-view-version" class="text-xs bg-accent-main-100 text-white px-2 py-0.5 rounded">${currentVersion}</span>`;
+    messageLabel.innerHTML = `<span>📝 Displayed Content</span> <span id="claude-edit-view-version" class="text-xs bg-accent-main-100 text-white px-2 py-0.5 rounded">${currentVersion}</span>`;
 
     const messageContent = DOMUtils.createElement('div');
     messageContent.id = 'claude-edit-view-content';
@@ -257,7 +257,7 @@ class EditModal {
     // Tip box
     const tipBox = DOMUtils.createElement('div');
     tipBox.className = 'mt-5 p-3 bg-bg-100 rounded-lg text-xs text-text-300';
-    tipBox.innerHTML = `💡 <strong>İpucu:</strong> Versiyonlar arasında gezinmek için mesaj üzerindeki <strong>◀ / ▶</strong> butonlarını kullanın.`;
+    tipBox.innerHTML = `💡 <strong>Tip:</strong> Use the <strong>◀ / ▶</strong> buttons on the message to navigate between versions.`;
 
     container.appendChild(messageBox);
     container.appendChild(tipBox);
@@ -308,7 +308,7 @@ class EditModal {
   }
 
   /**
-   * Modal'ı kapat
+   * Close modal
    */
   close() {
     if (!this.activeModal) {

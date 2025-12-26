@@ -14,12 +14,12 @@ class MessageCollapse {
   }
 
   /**
-   * Mesajın collapse edilip edilmeyeceğini kontrol et
+   * Check if message should be collapsed
    */
   shouldCollapse(messageElement) {
     const minLines = COMPACT_CONFIG.minLines;
 
-    // Get message contentı hesapla (yaklaşık 24px per line)
+    // Calculate message content (approximately 24px per line)
     const lineHeight = 24;
     const lines = Math.floor(messageElement.scrollHeight / lineHeight);
 
@@ -27,25 +27,25 @@ class MessageCollapse {
   }
 
   /**
-   * Mesajı collapse et
+   * Collapse message
    */
   collapseMessage(messageElement) {
     if (this.collapsedMessages.get(messageElement)) {
-      return; // Zaten collapsed
+      return; // Already collapsed
     }
 
     const settings = this.settings();
     const previewLines = settings.previewLines || 8;
-    const fadeHeight = 120; // Daha uzun fade için
+    const fadeHeight = 120; // For longer fade
 
-    // Scroll position'u kaydet (scroll sorunu için)
+    // Save scroll position (for scroll issue)
     const scrollY = window.scrollY;
 
     // Get computed background color from body for theme-aware gradient
     const computedBg =
       window.getComputedStyle(document.body).backgroundColor || 'rgb(255, 255, 255)';
 
-    // Wrapper oluştur
+    // Create wrapper
     const wrapper = DOMUtils.createElement('div', {
       className: 'claude-message-collapsed',
       style: {
@@ -76,20 +76,20 @@ class MessageCollapse {
       },
     });
 
-    // Mesajı wrap et
+    // Wrap the message
     const parent = messageElement.parentElement;
     parent.insertBefore(wrapper, messageElement);
     wrapper.appendChild(messageElement);
     wrapper.appendChild(fadeOverlay);
 
-    // State kaydet
+    // Save state
     this.collapsedMessages.set(messageElement, {
       wrapper,
       fadeOverlay,
       originalHeight: messageElement.scrollHeight,
     });
 
-    // Scroll position'u geri yükle
+    // Restore scroll position
     requestAnimationFrame(() => {
       window.scrollTo(0, scrollY);
     });
@@ -98,7 +98,7 @@ class MessageCollapse {
   }
 
   /**
-   * Mesajı expand et
+   * Expand message
    */
   expandMessage(messageElement) {
     const state = this.collapsedMessages.get(messageElement);
@@ -108,24 +108,24 @@ class MessageCollapse {
 
     const { wrapper, fadeOverlay } = state;
 
-    // Scroll position'u kaydet
+    // Save scroll position
     const scrollY = window.scrollY;
 
-    // Max height'ı kaldır
+    // Remove max height
     wrapper.style.maxHeight = 'none';
 
-    // Fade'i kaldır
+    // Remove fade
     fadeOverlay.style.opacity = '0';
 
     setTimeout(() => {
-      // Wrapper'ı kaldır, mesajı geri koy
+      // Remove wrapper, put message back
       const parent = wrapper.parentElement;
       parent.insertBefore(messageElement, wrapper);
       wrapper.remove();
 
       this.collapsedMessages.delete(messageElement);
 
-      // Scroll position'u geri yükle
+      // Restore scroll position
       requestAnimationFrame(() => {
         window.scrollTo(0, scrollY);
       });
@@ -146,14 +146,14 @@ class MessageCollapse {
   }
 
   /**
-   * Mesaj collapsed mı?
+   * Is message collapsed?
    */
   isCollapsed(messageElement) {
     return this.collapsedMessages.has(messageElement);
   }
 
   /**
-   * Tüm collapsed mesajları temizle
+   * Clear all collapsed messages
    */
   clear() {
     this.collapsedMessages.forEach((state, message) => {

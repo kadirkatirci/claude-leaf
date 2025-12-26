@@ -56,7 +56,7 @@ class ThemeManager {
   }
 
   /**
-   * Create custom theme from color (gradient kaldırıldı - solid color)
+   * Create custom theme from color (gradient removed - solid color)
    */
   createCustomTheme(color) {
     return {
@@ -372,7 +372,7 @@ class ThemeManager {
   }
 
   /**
-   * Update CSS custom properties (gradient kaldırıldı)
+   * Update CSS custom properties (gradient removed)
    */
   updateCSSProperties() {
     if (!this.styleElement) {

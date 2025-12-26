@@ -1,6 +1,6 @@
 /**
- * EventBus - Modüller arası event-driven iletişim
- * Loosely coupled architecture için kullanılır
+ * EventBus - Event-driven communication between modules
+ * Used for loosely coupled architecture
  */
 class EventBus {
   constructor() {
@@ -8,10 +8,10 @@ class EventBus {
   }
 
   /**
-   * Event dinleyici ekle
-   * @param {string} event - Event adı
-   * @param {Function} callback - Callback fonksiyonu
-   * @returns {Function} Unsubscribe fonksiyonu
+   * Add event listener
+   * @param {string} event - Event name
+   * @param {Function} callback - Callback function
+   * @returns {Function} Unsubscribe function
    */
   on(event, callback) {
     if (!this.listeners.has(event)) {
@@ -20,14 +20,14 @@ class EventBus {
 
     this.listeners.get(event).push(callback);
 
-    // Unsubscribe fonksiyonu döndür
+    // Return unsubscribe function
     return () => this.off(event, callback);
   }
 
   /**
-   * Event dinleyiciyi kaldır
-   * @param {string} event - Event adı
-   * @param {Function} callback - Kaldırılacak callback
+   * Remove event listener
+   * @param {string} event - Event name
+   * @param {Function} callback - Callback to remove
    */
   off(event, callback) {
     if (!this.listeners.has(event)) {
@@ -43,9 +43,9 @@ class EventBus {
   }
 
   /**
-   * Event tetikle
-   * @param {string} event - Event adı
-   * @param {*} data - Event verisi
+   * Emit event
+   * @param {string} event - Event name
+   * @param {*} data - Event data
    */
   emit(event, data) {
     if (!this.listeners.has(event)) {
@@ -63,9 +63,9 @@ class EventBus {
   }
 
   /**
-   * Tek seferlik event dinleyici
-   * @param {string} event - Event adı
-   * @param {Function} callback - Callback fonksiyonu
+   * One-time event listener
+   * @param {string} event - Event name
+   * @param {Function} callback - Callback function
    */
   once(event, callback) {
     const wrappedCallback = data => {
@@ -77,7 +77,7 @@ class EventBus {
   }
 
   /**
-   * Tüm dinleyicileri temizle
+   * Clear all listeners
    */
   clear() {
     this.listeners.clear();
@@ -87,14 +87,14 @@ class EventBus {
 // Singleton instance
 const eventBus = new EventBus();
 
-// Event isimleri için constants
+// Event name constants
 const Events = {
-  // MessageHub events (merkezi observer)
-  HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed', // Mesaj sayısı değişti
-  HUB_VERSION_CHANGED: 'hub:version_changed', // Edit version değişti
-  HUB_CONTENT_CHANGED: 'hub:content_changed', // Herhangi bir içerik değişikliği
+  // MessageHub events (central observer)
+  HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed', // Message count changed
+  HUB_VERSION_CHANGED: 'hub:version_changed', // Edit version changed
+  HUB_CONTENT_CHANGED: 'hub:content_changed', // Any content change
 
-  // Message events (legacy, geriye uyumluluk için)
+  // Message events (legacy, for backward compatibility)
   MESSAGES_UPDATED: 'messages:updated',
   MESSAGE_CLICKED: 'message:clicked',
   MESSAGE_SCROLLED: 'message:scrolled',

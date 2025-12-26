@@ -24,7 +24,7 @@ class SidebarCollapseModule extends BaseModule {
         return;
       }
 
-      this.log('Sidebar Collapse başlatılıyor...');
+      this.log('Sidebar Collapse initializing...');
 
       // Load saved states
       this.loadStates();
@@ -32,7 +32,7 @@ class SidebarCollapseModule extends BaseModule {
       // Inject into sidebar with retry mechanism
       this.injectIntoSidebar();
 
-      this.log('✅ Sidebar Collapse aktif');
+      this.log('✅ Sidebar Collapse active');
     } catch (error) {
       this.error('❌ Sidebar Collapse init failed:', error);
       throw error;
@@ -51,10 +51,10 @@ class SidebarCollapseModule extends BaseModule {
 
     if (!sidebarNav) {
       if (retryCount < maxRetries) {
-        this.log(`⏳ Sidebar bulunamadı, yeniden deneniyor (${retryCount + 1}/${maxRetries})...`);
+        this.log(`⏳ Sidebar not found, retrying (${retryCount + 1}/${maxRetries})...`);
         setTimeout(() => this.injectIntoSidebar(retryCount + 1), retryDelay);
       } else {
-        this.warn('❌ Sidebar bulunamadı, maksimum deneme sayısı aşıldı');
+        this.warn('❌ Sidebar not found, max retries exceeded');
       }
       return false;
     }
@@ -113,10 +113,10 @@ class SidebarCollapseModule extends BaseModule {
 
     if (!foundAny) {
       if (retryCount < maxRetries) {
-        this.log(`⏳ Sections bulunamadı, yeniden deneniyor (${retryCount + 1}/${maxRetries})...`);
+        this.log(`⏳ Sections not found, retrying (${retryCount + 1}/${maxRetries})...`);
         setTimeout(() => this.injectIntoSidebar(retryCount + 1), retryDelay);
       } else {
-        this.log('ℹ️ Sidebar sections bulunamadı');
+        this.log('ℹ️ Sidebar sections not found');
       }
       return false;
     }
@@ -359,10 +359,10 @@ class SidebarCollapseModule extends BaseModule {
   }
 
   /**
-   * Settings değiştiğinde
+   * When settings change
    */
   onSettingsChanged() {
-    this.log('⚙️ Settings değişti');
+    this.log('⚙️ Settings changed');
 
     if (!this.enabled) {
       // Module disabled, clean up
@@ -402,10 +402,10 @@ class SidebarCollapseModule extends BaseModule {
   }
 
   /**
-   * Modülü durdur
+   * Stop module
    */
   destroy() {
-    this.log('🛑 Sidebar Collapse durduruluyor...');
+    this.log('🛑 Sidebar Collapse stopping...');
 
     this.cleanupUI();
 

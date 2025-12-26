@@ -12,10 +12,10 @@ class ExpandButton {
   }
 
   /**
-   * Expand butonu oluştur
+   * Create expand button
    */
   create(messageElement, isCollapsed) {
-    // Buton container (edit butonunun yanına eklenecek)
+    // Button container (will be added next to edit button)
     const container = DOMUtils.createElement('div');
     container.className = 'claude-expand-button-container inline-flex gap-2';
 
@@ -37,7 +37,7 @@ class ExpandButton {
     button.addEventListener('click', e => {
       e.stopPropagation();
       this.onToggle(messageElement);
-      // Not: Buton text'i onMessageStateChanged'de güncellenecek
+      // Note: Button text will be updated in onMessageStateChanged
     });
 
     container.appendChild(button);
@@ -45,26 +45,26 @@ class ExpandButton {
   }
 
   /**
-   * Expand butonunu mesajın altına ekle
+   * Insert expand button below the message
    */
   insertNextToEditButton(messageElement, expandButton) {
-    // Önce mevcut butonu kaldır (varsa)
+    // First remove existing button (if any)
     this.remove(messageElement);
 
-    // Mesajın hedef container'ını bul
+    // Find target container for the message
     let targetContainer = messageElement;
 
-    // Eğer mesaj wrapper içindeyse, wrapper'ı kullan
+    // If message is inside a wrapper, use the wrapper
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       targetContainer = messageElement.parentElement;
     }
 
-    // Tüm mesajlar için ayrı footer oluştur (tutarlı görünüm)
+    // Create separate footer for all messages (consistent appearance)
     const footer = DOMUtils.createElement('div');
     footer.className = 'claude-expand-footer mt-3 flex justify-start pl-2';
     footer.appendChild(expandButton);
 
-    // Mesajın hemen sonrasına ekle (wrapper dışında)
+    // Add right after the message (outside wrapper)
     if (targetContainer.parentElement) {
       targetContainer.parentElement.insertBefore(footer, targetContainer.nextSibling);
     } else {
@@ -73,16 +73,16 @@ class ExpandButton {
   }
 
   /**
-   * Butonu kaldır
+   * Remove button
    */
   remove(messageElement) {
-    // Mesaj container'ını bul
+    // Find message container
     let current = messageElement;
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       current = messageElement.parentElement;
     }
 
-    // Footer'ı bul ve kaldır
+    // Find and remove footer
     const nextSibling = current.nextElementSibling;
     if (nextSibling?.classList.contains('claude-expand-footer')) {
       nextSibling.remove();

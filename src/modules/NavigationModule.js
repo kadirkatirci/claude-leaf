@@ -48,7 +48,7 @@ class NavigationModule extends BaseModule {
     }
 
     try {
-      this.log('Navigation başlatılıyor...');
+      this.log('Navigation initializing...');
 
       // Enhance with FixedButtonMixin
       FixedButtonMixin.enhance(this);
@@ -81,7 +81,7 @@ class NavigationModule extends BaseModule {
       // Setup Intersection Observer for efficient scroll tracking
       this.setupIntersectionObserver();
 
-      this.log('✅ Navigation aktif');
+      this.log('✅ Navigation active');
     } catch (error) {
       this.error('Navigation initialization failed:', error);
       throw error;
@@ -266,7 +266,7 @@ class NavigationModule extends BaseModule {
     // Top button
     const topBtn = this.createButton(
       IconLibrary.arrowUpDouble('currentColor', 20),
-      'En üste git (Alt+Home)',
+      'Go to top (Alt+Home)',
       () => this.navigateToTop()
     );
     topBtn.id = 'claude-nav-top';
@@ -278,7 +278,7 @@ class NavigationModule extends BaseModule {
     // Previous button
     const prevBtn = this.createButton(
       IconLibrary.arrowUp('currentColor', 20),
-      'Önceki mesaj (Alt+↑)',
+      'Previous message (Alt+↑)',
       () => this.navigatePrevious()
     );
     prevBtn.id = 'claude-nav-prev';
@@ -290,7 +290,7 @@ class NavigationModule extends BaseModule {
     // Next button
     const nextBtn = this.createButton(
       IconLibrary.arrowDown('currentColor', 20),
-      'Sonraki mesaj (Alt+↓)',
+      'Next message (Alt+↓)',
       () => this.navigateNext()
     );
     nextBtn.id = 'claude-nav-next';
@@ -340,7 +340,7 @@ class NavigationModule extends BaseModule {
    */
   async findMessagesWithRetry(maxRetries = 5, delay = 200) {
     // Log diagnostic info on first attempt
-    this.log(`🔍 Mesaj arama başlandı (max ${maxRetries} deneme, delay ${delay}ms)`);
+    this.log(`🔍 Message search started (max ${maxRetries} attempts, delay ${delay}ms)`);
     this.log(`📍 URL: ${window.location.pathname}`);
     this.log(`📍 isOnConversationPage: ${this.dom.isOnConversationPage()}`);
 
@@ -351,18 +351,18 @@ class NavigationModule extends BaseModule {
         this.updateCounter();
         this.lastMessageCount = this.messages.length;
         this.emit(Events.MESSAGES_UPDATED, this.messages);
-        this.log(`✅ ${this.messages.length} mesaj bulundu (deneme ${i + 1}/${maxRetries})`);
+        this.log(`✅ ${this.messages.length} messages found (attempt ${i + 1}/${maxRetries})`);
         return;
       }
 
       if (i < maxRetries - 1) {
-        this.log(`⏳ Mesaj bulunamadı, tekrar deneniyor (${i + 1}/${maxRetries})...`);
+        this.log(`⏳ No messages found, retrying (${i + 1}/${maxRetries})...`);
         await new Promise(resolve => {
           setTimeout(resolve, delay);
         });
       } else {
         // Last attempt failed - additional diagnostic logging
-        this.log(`❌ Son deneme başarısız oldu. DOM kontrol:`, {
+        this.log(`❌ Last attempt failed. DOM check:`, {
           hasMainElement: !!document.querySelector('main'),
           hasRoleMain: !!document.querySelector('[role="main"]'),
           isConversationPage: this.dom.isOnConversationPage(),
@@ -372,24 +372,24 @@ class NavigationModule extends BaseModule {
     }
 
     // No messages found after all retries
-    this.log(`⚠️ ${maxRetries} deneme sonrası mesaj bulunamadı`);
+    this.log(`⚠️ No messages found after ${maxRetries} attempts`);
     this.updateCounter(); // Update to show 0/0
   }
 
   findMessages() {
-    // Yeni findActualMessages kullanılıyor (DOMUtils otomatik olarak yönlendiriyor)
+    // Using new findActualMessages (DOMUtils redirects automatically)
     this.messages = this.dom.findMessages();
 
-    // Her zaman counter'ı güncelle
+    // Always update counter
     this.updateCounter();
 
-    // İlk başlatmada veya mesaj sayısı değiştiyse emit et
+    // Emit on first init or when message count changes
     if (this.lastMessageCount !== this.messages.length) {
       this.lastMessageCount = this.messages.length;
       this.emit(Events.MESSAGES_UPDATED, this.messages);
     }
 
-    this.log(`${this.messages.length} mesaj bulundu (${this.lastMessageCount} toplam)`);
+    this.log(`${this.messages.length} messages found (${this.lastMessageCount} total)`);
   }
 
   /**
@@ -499,7 +499,7 @@ class NavigationModule extends BaseModule {
     this.emit(Events.MESSAGE_SCROLLED, { index, message });
 
     this.log(
-      `Mesaj ${index + 1}/${this.messages.length} gösteriliyor (currentIndex: ${this.currentIndex})`
+      `Showing message ${index + 1}/${this.messages.length} (currentIndex: ${this.currentIndex})`
     );
   }
 
@@ -512,7 +512,7 @@ class NavigationModule extends BaseModule {
       const current = safeIndex + 1;
 
       newText = `${current}/${this.messages.length}`;
-      this.log(`Counter güncelleniyor: ${newText} (index: ${this.currentIndex})`);
+      this.log(`Updating counter: ${newText} (index: ${this.currentIndex})`);
     } else {
       newText = '0/0';
       this.currentIndex = -1; // Reset index when no messages
@@ -524,18 +524,18 @@ class NavigationModule extends BaseModule {
       if (badge) {
         CounterBadge.updateById('claude-nav-counter', newText);
         this.lastCounterText = newText;
-        this.log(`Counter badge güncellendi: ${newText}`);
+        this.log(`Counter badge updated: ${newText}`);
       }
     }
 
-    // Butonları enable/disable et
+    // Enable/disable buttons
     this.updateButtonStates();
   }
 
   updateButtonStates() {
     const { prevBtn, nextBtn, topBtn } = this.elements;
     if (!prevBtn || !nextBtn || !topBtn) {
-      this.log('❌ Butonlar bulunamadı, state güncellenemedi');
+      this.log('❌ Buttons not found, state not updated');
       return;
     }
 
@@ -619,13 +619,13 @@ class NavigationModule extends BaseModule {
 
     document.addEventListener('keydown', handleKeydown);
 
-    // Cleanup için sakla
+    // Store for cleanup
     this.keydownHandler = handleKeydown;
     this.unsubscribers.push(() => {
       document.removeEventListener('keydown', handleKeydown);
     });
 
-    this.log('Klavye kısayolları aktif');
+    this.log('Keyboard shortcuts active');
   }
 
   /**
@@ -710,7 +710,7 @@ class NavigationModule extends BaseModule {
 
   onSettingsChanged(settings) {
     try {
-      this.log('Settings güncellendi:', settings);
+      this.log('Settings updated:', settings);
 
       // Only update position if it actually changed
       if (this.elements.container && settings.navigation) {
@@ -743,7 +743,7 @@ class NavigationModule extends BaseModule {
         }
       }
 
-      // Counter göster/gizle - only if changed
+      // Show/hide counter - only if changed
       const counter = document.getElementById('claude-nav-counter');
       if (counter && settings.navigation) {
         try {
@@ -759,7 +759,7 @@ class NavigationModule extends BaseModule {
         }
       }
 
-      // Klavye kısayolları değişti mi?
+      // Did keyboard shortcuts change?
       try {
         if (
           settings.navigation &&
@@ -775,7 +775,7 @@ class NavigationModule extends BaseModule {
         this.error('Failed to update keyboard shortcuts:', error);
       }
 
-      // Tema değişti mi? (general ayarlarından kontrol et)
+      // Did theme change? (check from general settings)
       try {
         if (this.settings && this.settings.general) {
           this.recreateUI();
@@ -789,21 +789,21 @@ class NavigationModule extends BaseModule {
   }
 
   /**
-   * UI'ı yeniden oluştur (tema değişikliğinde)
+   * Recreate UI (on theme change)
    */
   recreateUI() {
-    // Eski container'ı kaldır
+    // Remove old container
     if (this.elements.container) {
       this.elements.container.remove();
     }
 
-    // Yeni container oluştur
+    // Create new container
     this.createUI();
 
-    // Button state'lerini güncelle
+    // Update button states
     this.updateButtonStates();
 
-    this.log('🎨 UI tema ile yenilendi');
+    this.log('🎨 UI refreshed with theme');
   }
 
   /**

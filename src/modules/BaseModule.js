@@ -1,6 +1,6 @@
 /**
- * BaseModule - Tüm özellik modülleri için base class
- * Her modül bu class'tan türetilir
+ * BaseModule - Base class for all feature modules
+ * Every module extends this class
  */
 import { eventBus, Events } from '../utils/EventBus.js';
 import { settingsStore } from '../stores/index.js';
@@ -10,8 +10,8 @@ import { debugLog } from '../config/debug.js';
 
 class BaseModule {
   /**
-   * @param {string} name - Modül adı (örn: 'navigation')
-   * @param {Object} options - Modül seçenekleri
+   * @param {string} name - Module name (e.g., 'navigation')
+   * @param {Object} options - Module options
    */
   constructor(name, options = {}) {
     this.name = name;
@@ -24,7 +24,7 @@ class BaseModule {
   }
 
   /**
-   * Modülü başlat - Alt class'lar override etmeli
+   * Initialize module - Subclasses should override
    */
   async init() {
     if (this.initialized) {
@@ -58,7 +58,7 @@ class BaseModule {
       this.initialized = true;
       this.enabled = true;
 
-      // Settings değişikliklerini dinle
+      // Listen to settings changes
       this.subscribeToSettings();
 
       // Listen to centralized SPA navigation events
@@ -72,16 +72,16 @@ class BaseModule {
   }
 
   /**
-   * Modülü durdur - Alt class'lar override etmeli
+   * Destroy module - Subclasses should override
    */
   destroy() {
     debugLog('module', `${this.name} destroying...`);
 
-    // Event listener'ları temizle
+    // Clean up event listeners
     this.unsubscribers.forEach(unsub => unsub());
     this.unsubscribers = [];
 
-    // DOM elementlerini temizle
+    // Clean up DOM elements
     Object.values(this.elements).forEach(element => {
       if (element && element.remove) {
         element.remove();
@@ -94,7 +94,7 @@ class BaseModule {
   }
 
   /**
-   * Modülü yeniden başlat
+   * Restart module
    */
   async restart() {
     this.destroy();
@@ -102,7 +102,7 @@ class BaseModule {
   }
 
   /**
-   * Settings'i yükle
+   * Load settings
    */
   async loadSettings() {
     await settingsStore.load();
@@ -110,31 +110,31 @@ class BaseModule {
   }
 
   /**
-   * Modülün settings'ini getir
+   * Get module settings
    */
   async getSettings() {
     return (await settingsStore.get(this.name)) || {};
   }
 
   /**
-   * Belirli bir ayarı getir
-   * @param {string} key - Ayar adı
+   * Get a specific setting
+   * @param {string} key - Setting name
    */
   getSetting(key) {
     return settingsStore.get(`${this.name}.${key}`);
   }
 
   /**
-   * Belirli bir ayarı değiştir
-   * @param {string} key - Ayar adı
-   * @param {*} value - Yeni değer
+   * Set a specific setting
+   * @param {string} key - Setting name
+   * @param {*} value - New value
    */
   async setSetting(key, value) {
     await settingsStore.set(`${this.name}.${key}`, value);
   }
 
   /**
-   * Modülün aktif olup olmadığını kontrol et
+   * Check if module is enabled
    */
   async isEnabled() {
     const enabled = await this.getSetting('enabled');
@@ -142,7 +142,7 @@ class BaseModule {
   }
 
   /**
-   * Modülü aç/kapat
+   * Toggle module on/off
    */
   async toggle() {
     const currentState = this.isEnabled();
@@ -158,7 +158,7 @@ class BaseModule {
   }
 
   /**
-   * Settings değişikliklerini dinle
+   * Listen to settings changes
    */
   subscribeToSettings() {
     // Subscribe to settingsStore changes
@@ -166,7 +166,7 @@ class BaseModule {
       try {
         const moduleSettings = settings[this.name];
 
-        // Eğer sadece general değiştiyse (tema vb.)
+        // If only general changed (theme, etc.)
         if (!moduleSettings && settings.general) {
           this.onSettingsChanged({});
           return;
@@ -176,13 +176,13 @@ class BaseModule {
           return;
         }
 
-        // Eğer modül disabled olduysa, yok et
+        // If module was disabled, destroy it
         if (!moduleSettings.enabled && this.enabled) {
           this.destroy();
           return;
         }
 
-        // Eğer modül enabled olduysa ve henüz başlamamışsa, başlat
+        // If module was enabled and hasn't started yet, initialize it
         if (moduleSettings.enabled && !this.enabled) {
           try {
             await this.init();
@@ -192,7 +192,7 @@ class BaseModule {
           return;
         }
 
-        // Settings güncellendiginde modüle bildir
+        // Notify module when settings are updated
         this.onSettingsChanged(moduleSettings);
       } catch (error) {
         console.error(`❌ Error in settings subscription for ${this.name}:`, error);
@@ -218,17 +218,17 @@ class BaseModule {
   }
 
   /**
-   * Settings değiştiğinde çağrılır - Alt class'lar override edebilir
-   * @param {Object} _settings - Yeni settings
+   * Called when settings change - Subclasses can override
+   * @param {Object} _settings - New settings
    */
   onSettingsChanged(_settings) {
-    // Override edilebilir
+    // Can be overridden
   }
 
   /**
-   * Event'e subscribe ol ve unsubscriber'ı sakla
-   * @param {string} event - Event adı
-   * @param {Function} callback - Callback fonksiyonu
+   * Subscribe to event and store unsubscriber
+   * @param {string} event - Event name
+   * @param {Function} callback - Callback function
    */
   subscribe(event, callback) {
     const unsub = eventBus.on(event, callback);
@@ -237,24 +237,24 @@ class BaseModule {
   }
 
   /**
-   * Event emit et
-   * @param {string} event - Event adı
-   * @param {*} data - Event verisi
+   * Emit event
+   * @param {string} event - Event name
+   * @param {*} data - Event data
    */
   emit(event, data) {
     eventBus.emit(event, data);
   }
 
   /**
-   * DOM Utils'e erişim
+   * Access to DOM Utils
    */
   get dom() {
     return DOMUtils;
   }
 
   /**
-   * Tema renklerini al
-   * @returns {Object} Tema renkleri
+   * Get theme colors
+   * @returns {Object} Theme colors
    */
   getTheme() {
     // Get theme from settingsStore synchronously (using cache)
@@ -306,7 +306,7 @@ class BaseModule {
   }
 
   /**
-   * Called when URL changes (SPA navigation) - Alt class'lar override edebilir
+   * Called when URL changes (SPA navigation) - Subclasses can override
    * @param {string} _newUrl - New URL
    */
   onUrlChanged(_newUrl) {
@@ -316,7 +316,7 @@ class BaseModule {
   }
 
   /**
-   * Reinitialize UI without full restart - Alt class'lar override edebilir
+   * Reinitialize UI without full restart - Subclasses can override
    * This is called automatically on SPA navigation after page stabilizes
    */
   reinitializeUI() {

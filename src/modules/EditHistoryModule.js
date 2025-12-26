@@ -1,6 +1,6 @@
 /**
- * EditHistoryModule - Mesaj düzenleme geçmişini takip eder
- * BaseModule'den türetilir
+ * EditHistoryModule - Tracks message edit history
+ * Extends BaseModule
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
@@ -90,7 +90,7 @@ class EditHistoryModule extends BaseModule {
     }
 
     try {
-      this.log('Edit History başlatılıyor...');
+      this.log('Edit History initializing...');
 
       // Enhance with FixedButtonMixin
       FixedButtonMixin.enhance(this);
@@ -125,7 +125,7 @@ class EditHistoryModule extends BaseModule {
         this.panel.updateContent(this.editedMessages);
       }
 
-      this.log('✅ Edit History aktif (VersionManager integrated)');
+      this.log('✅ Edit History active (VersionManager integrated)');
     } catch (error) {
       this.error('Edit History initialization failed:', error);
       throw error;
@@ -277,7 +277,7 @@ class EditHistoryModule extends BaseModule {
   }
 
   /**
-   * Edit'ler bulunduğunda
+   * When edits are found
    */
   handleEditsFound(editedPrompts) {
     // Don't process if explicitly NOT on conversation page
@@ -292,7 +292,7 @@ class EditHistoryModule extends BaseModule {
 
     const oldCount = this.editedMessages.length;
 
-    // Değişiklikleri logla
+    // Log changes
     const currentIds = new Set(editedPrompts.map(e => e.containerId));
     const previousIds = new Set(this.editedMessages.map(e => e.containerId));
 
@@ -300,18 +300,18 @@ class EditHistoryModule extends BaseModule {
     const removed = this.editedMessages.filter(e => !currentIds.has(e.containerId));
 
     if (newEdits.length > 0) {
-      this.log(`➕ ${newEdits.length} yeni edit`);
+      this.log(`➕ ${newEdits.length} new edits`);
     }
 
     if (removed.length > 0) {
-      this.log(`➖ ${removed.length} edit kaldırıldı`);
+      this.log(`➖ ${removed.length} edits removed`);
     }
 
-    // UI güncelle
+    // Update UI
     this.badge.updateAll(editedPrompts, EDIT_CONFIG.showBadges);
     this.ui.updateHighlights(editedPrompts, EDIT_CONFIG.highlightEdited);
 
-    // State güncelle
+    // Update state
     this.editedMessages = editedPrompts.map((editInfo, index) => ({
       element: editInfo.element,
       index,
@@ -329,18 +329,18 @@ class EditHistoryModule extends BaseModule {
       this.elements.collapseBtn.style.display = this.editedMessages.length > 0 ? 'flex' : 'none';
     }
 
-    // Panel güncelle
+    // Update panel
     this.panel.updateContent(this.editedMessages);
 
     // Event
     if (this.editedMessages.length !== oldCount) {
-      this.log(`🔄 Toplam edit: ${oldCount} → ${this.editedMessages.length}`);
+      this.log(`🔄 Total edits: ${oldCount} → ${this.editedMessages.length}`);
       this.emit(Events.EDIT_MESSAGES_FOUND, this.editedMessages);
     }
   }
 
   /**
-   * Belirli bir edit'e scroll yap
+   * Scroll to a specific edit
    */
   scrollToEdit(index) {
     if (index < 0 || index >= this.editedMessages.length) {
@@ -348,17 +348,17 @@ class EditHistoryModule extends BaseModule {
     }
 
     const editMsg = this.editedMessages[index];
-    this.log(`🎯 Edit ${index + 1}'e scroll`);
+    this.log(`🎯 Scrolling to edit ${index + 1}`);
 
     DOMUtils.scrollToElement(editMsg.element, 'center');
     DOMUtils.flashClass(editMsg.element, 'claude-nav-highlight', 2000);
   }
 
   /**
-   * Tümünü Daralt/Genişlet işlemi
+   * Collapse/Expand All operation
    */
   handleCollapseAll(shouldCollapse) {
-    // CompactViewModule'ü bul
+    // Find CompactViewModule
     const app = window.claudeProductivity;
     if (!app) {
       return;
@@ -366,36 +366,36 @@ class EditHistoryModule extends BaseModule {
 
     const compactViewModule = app.getModule('compactView');
     if (!compactViewModule || !compactViewModule.enabled) {
-      this.warn('CompactView modülü aktif değil');
+      this.warn('CompactView module is not active');
       return;
     }
 
     if (shouldCollapse) {
       compactViewModule.collapseAllMessages();
-      this.log('📦 Tüm mesajlar daraltıldı');
+      this.log('📦 All messages collapsed');
     } else {
       compactViewModule.expandAllMessages();
-      this.log('📂 Tüm mesajlar genişletildi');
+      this.log('📂 All messages expanded');
     }
   }
 
   /**
-   * Settings değiştiğinde
+   * When settings change
    */
   onSettingsChanged() {
-    this.log('⚙️ Settings değişti');
+    this.log('⚙️ Settings changed');
 
-    // Tema değiştiyse UI yenile
+    // Refresh UI if theme changed
     if (this.settings && this.settings.general) {
       this.recreateUI();
     }
 
-    // Yeniden tara
+    // Re-scan
     messageHub.refresh();
   }
 
   /**
-   * UI'ı yeniden oluştur (tema değişikliğinde)
+   * Recreate UI (on theme change)
    */
   recreateUI() {
     const theme = this.getTheme();
@@ -413,25 +413,25 @@ class EditHistoryModule extends BaseModule {
       this.createCollapseButton(theme);
     }
 
-    // Panel yeniden oluştur
+    // Recreate panel
     this.panel.remove();
     this.panel.create();
 
-    // Badge'leri yeniden oluştur
+    // Recreate badges
     this.badge.removeAll();
     this.badge.updateAll(DOMUtils.getEditedPrompts(), EDIT_CONFIG.showBadges);
 
-    // Panel içeriği güncelle
+    // Update panel content
     this.panel.updateContent(this.editedMessages);
 
-    this.log('🎨 UI tema ile yenilendi');
+    this.log('🎨 UI refreshed with theme');
   }
 
   /**
-   * Modülü durdur
+   * Stop module
    */
   destroy() {
-    this.log('🛑 Edit History durduruluyor...');
+    this.log('🛑 Edit History stopping...');
 
     try {
       // Destroy fixed button (includes visibility listener cleanup)
@@ -477,7 +477,7 @@ class EditHistoryModule extends BaseModule {
         this.error('Error closing modal:', error);
       }
 
-      // Highlight'ları kaldır
+      // Remove highlights
       try {
         document.querySelectorAll('.claude-edit-highlighted').forEach(el => {
           el.classList.remove('claude-edit-highlighted');

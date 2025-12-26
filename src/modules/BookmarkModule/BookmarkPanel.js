@@ -216,7 +216,7 @@ export class BookmarkPanel extends BasePanel {
    * Override empty state message
    */
   getEmptyStateMessage() {
-    return 'Henüz bookmark yok';
+    return 'No bookmarks yet';
   }
 
   /**

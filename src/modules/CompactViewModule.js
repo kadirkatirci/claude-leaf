@@ -1,6 +1,6 @@
 /**
- * CompactViewModule - Claude yanıtlarını collapse/expand et
- * BaseModule'den türetilir
+ * CompactViewModule - Collapse/expand Claude responses
+ * Extends BaseModule
  */
 import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
@@ -11,7 +11,7 @@ import { panelManager } from '../components/PanelManager.js'; // Shared panel
 
 const COMPACT_CONFIG = MODULE_CONSTANTS.compactView;
 
-// Alt bileşenler
+// Sub-components
 import MessageCollapse from './CompactViewModule/MessageCollapse.js';
 import ExpandButton from './CompactViewModule/ExpandButton.js';
 
@@ -19,7 +19,7 @@ class CompactViewModule extends BaseModule {
   constructor() {
     super('compactView');
 
-    // Alt bileşenler
+    // Sub-components
     this.collapse = new MessageCollapse(
       () => this.getSettings(),
       (msg, collapsed) => this.onMessageStateChanged(msg, collapsed)
@@ -45,7 +45,7 @@ class CompactViewModule extends BaseModule {
     }
 
     try {
-      this.log('Compact View başlatılıyor...');
+      this.log('Compact View initializing...');
 
       // Setup visibility listener for proper show/hide behavior
       this.setupVisibilityListener();
@@ -57,7 +57,7 @@ class CompactViewModule extends BaseModule {
         this.error('Failed to create collapse buttons:', error);
       }
 
-      // Mevcut mesajları işle
+      // Process existing messages
       try {
         this.processMessages();
       } catch (error) {
@@ -73,7 +73,7 @@ class CompactViewModule extends BaseModule {
         }
       });
 
-      // Klavye kısayolu
+      // Keyboard shortcuts
       try {
         if (COMPACT_CONFIG.keyboardShortcuts) {
           this.setupKeyboardShortcuts();
@@ -115,19 +115,16 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
-   * Collapse/Expand All butonlarını oluştur
-   */
-  /**
-   * Collapse/Expand All butonlarını oluştur
+   * Create Collapse/Expand All buttons
    */
   createCollapseButtons() {
     // Use PanelManager to add toggle button
     // No waiting/polling needed as PanelManager is always available
 
-    // Toggle butonu - duruma göre collapse veya expand yapar
+    // Toggle button - collapses or expands based on state
     const toggleBtn = this.createNavButton(
       IconLibrary.collapse('currentColor', 20),
-      'Tümünü Daralt (Alt+←)',
+      'Collapse All (Alt+←)',
       () => {
         this.toggleAllMessages();
       }
@@ -141,35 +138,35 @@ class CompactViewModule extends BaseModule {
     this.elements.toggleBtn = toggleBtn;
     this.isAllCollapsed = false; // Track state
 
-    this.log('📦 Collapse/Expand All butonu oluşturuldu (PanelManager via)');
+    this.log('📦 Collapse/Expand All button created (via PanelManager)');
   }
 
   /**
-   * Navigation container'ına butonları ekle
+   * Add buttons to navigation container
    */
   addButtonsToNavigation(navContainer) {
-    // Toggle butonu - duruma göre collapse veya expand yapar
+    // Toggle button - collapses or expands based on state
     const toggleBtn = this.createNavButton(
       IconLibrary.collapse('currentColor', 20),
-      'Tümünü Daralt (Alt+←)',
+      'Collapse All (Alt+←)',
       () => {
         this.toggleAllMessages();
       }
     );
     toggleBtn.id = 'claude-compact-toggle-all';
 
-    // Navigation container'ına ekle (navigation butonlarının altına)
+    // Add to navigation container (below navigation buttons)
     navContainer.appendChild(toggleBtn);
 
     this.elements = this.elements || {};
     this.elements.toggleBtn = toggleBtn;
     this.isAllCollapsed = false; // Track state
 
-    this.log('📦 Collapse/Expand All butonu oluşturuldu');
+    this.log('📦 Collapse/Expand All button created');
   }
 
   /**
-   * Tüm mesajları toggle et
+   * Toggle all messages
    */
   toggleAllMessages() {
     if (this.isAllCollapsed) {
@@ -177,33 +174,33 @@ class CompactViewModule extends BaseModule {
       const count = this.expandAllMessages();
       this.isAllCollapsed = false;
       this.updateToggleButton();
-      this.log(`📂 ${count} mesaj genişletildi`);
+      this.log(`📂 ${count} messages expanded`);
     } else {
       // Collapse all
       const count = this.collapseAllMessages();
       this.isAllCollapsed = true;
       this.updateToggleButton();
-      this.log(`📦 ${count} mesaj daraltıldı`);
+      this.log(`📦 ${count} messages collapsed`);
     }
   }
 
   /**
-   * Toggle butonunu güncelle
+   * Update toggle button
    */
   updateToggleButton() {
     if (this.elements && this.elements.toggleBtn) {
       if (this.isAllCollapsed) {
         this.elements.toggleBtn.innerHTML = IconLibrary.expand('currentColor', 20);
-        this.elements.toggleBtn.title = 'Tümünü Genişlet (Alt+→)';
+        this.elements.toggleBtn.title = 'Expand All (Alt+→)';
       } else {
         this.elements.toggleBtn.innerHTML = IconLibrary.collapse('currentColor', 20);
-        this.elements.toggleBtn.title = 'Tümünü Daralt (Alt+←)';
+        this.elements.toggleBtn.title = 'Collapse All (Alt+←)';
       }
     }
   }
 
   /**
-   * Navigation stili buton oluştur
+   * Create navigation-style button
    */
   createNavButton(icon, tooltip, onClick) {
     const theme = this.getTheme();
@@ -226,7 +223,7 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
-   * Mesajları işle
+   * Process messages
    */
   processMessages() {
     // Check if we're on a conversation page
@@ -256,16 +253,16 @@ class CompactViewModule extends BaseModule {
       btn.style.pointerEvents = 'auto';
     });
 
-    // Claude yanıtlarını bul (assistant messages)
+    // Find Claude responses (assistant messages)
     const messages = document.querySelectorAll('[data-is-streaming="false"]');
 
     messages.forEach(message => {
-      // Zaten işlendiyse atla
+      // Skip if already processed
       if (this.processedMessages.has(message)) {
         return;
       }
 
-      // User mesajlarını atla, sadece Claude yanıtları
+      // Skip user messages, only Claude responses
       if (message.querySelector('[data-testid="user-message"]')) {
         return;
       }
@@ -276,10 +273,10 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
-   * Tek bir mesajı işle
+   * Process a single message
    */
   processMessage(messageElement) {
-    // Collapse edilmeli mi?
+    // Should collapse?
     if (!this.collapse.shouldCollapse(messageElement)) {
       return;
     }
@@ -294,31 +291,31 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
-   * Mesaj state değiştiğinde
+   * When message state changes
    */
   onMessageStateChanged(messageElement, isCollapsed) {
-    this.log(`Mesaj ${isCollapsed ? 'collapsed' : 'expanded'}`);
+    this.log(`Message ${isCollapsed ? 'collapsed' : 'expanded'}`);
 
-    // Butonu güncelle
+    // Update button
     this.updateButtonState(messageElement, isCollapsed);
 
     this.emit(Events.MESSAGE_COLLAPSED, { messageElement, isCollapsed });
   }
 
   /**
-   * Buton state'ini güncelle
+   * Update button state
    */
   updateButtonState(messageElement, isCollapsed) {
-    // Mesaj container'ını bul (wrapper içinde olabilir)
+    // Find message container (may be inside wrapper)
     let targetContainer = messageElement;
     if (messageElement.parentElement?.classList.contains('claude-message-collapsed')) {
       targetContainer = messageElement.parentElement;
     }
 
-    // Mevcut butonu bul - birkaç yerde olabilir
+    // Find existing button - may be in several places
     let container = targetContainer.querySelector('.claude-expand-button-container');
 
-    // Footer'da da arayabiliriz
+    // Also search in footer
     if (!container) {
       const nextSibling = targetContainer.nextElementSibling;
       if (nextSibling?.classList.contains('claude-expand-footer')) {
@@ -327,13 +324,13 @@ class CompactViewModule extends BaseModule {
     }
 
     if (!container) {
-      // Buton yoksa yeni oluştur
+      // If button doesn't exist, create new one
       const button = this.expandButton.create(messageElement, isCollapsed);
       this.expandButton.insertNextToEditButton(messageElement, button);
       return;
     }
 
-    // Mevcut butonu güncelle
+    // Update existing button
     const button = container.querySelector('.claude-expand-btn');
     if (button) {
       button.innerHTML = isCollapsed
@@ -344,7 +341,7 @@ class CompactViewModule extends BaseModule {
   }
 
   /**
-   * Tüm mesajları daralt
+   * Collapse all messages
    */
   collapseAllMessages() {
     // Check if we're on a conversation page
@@ -357,16 +354,16 @@ class CompactViewModule extends BaseModule {
     let collapsedCount = 0;
 
     messages.forEach(message => {
-      // User mesajlarını atla
+      // Skip user messages
       if (message.querySelector('[data-testid="user-message"]')) {
         return;
       }
 
-      // Collapse edilmeli mi?
+      // Should collapse?
       if (this.collapse.shouldCollapse(message)) {
         const wasCollapsed = this.collapse.isCollapsed(message);
 
-        // Zaten collapsed değilse, collapse et
+        // If not already collapsed, collapse it
         if (!wasCollapsed) {
           this.collapse.collapseMessage(message);
           collapsedCount++;
@@ -374,12 +371,12 @@ class CompactViewModule extends BaseModule {
       }
     });
 
-    this.log(`📦 ${collapsedCount} mesaj daraltıldı`);
+    this.log(`📦 ${collapsedCount} messages collapsed`);
     return collapsedCount;
   }
 
   /**
-   * Tüm mesajları genişlet
+   * Expand all messages
    */
   expandAllMessages() {
     // Check if we're on a conversation page
@@ -392,16 +389,16 @@ class CompactViewModule extends BaseModule {
     let expandedCount = 0;
 
     messages.forEach(message => {
-      // User mesajlarını atla
+      // Skip user messages
       if (message.querySelector('[data-testid="user-message"]')) {
         return;
       }
 
-      // Expand edilmeli mi?
+      // Should expand?
       if (this.collapse.shouldCollapse(message)) {
         const wasCollapsed = this.collapse.isCollapsed(message);
 
-        // Zaten collapsed ise, expand et
+        // If already collapsed, expand it
         if (wasCollapsed) {
           this.collapse.expandMessage(message);
           expandedCount++;
@@ -409,29 +406,29 @@ class CompactViewModule extends BaseModule {
       }
     });
 
-    this.log(`📂 ${expandedCount} mesaj genişletildi`);
+    this.log(`📂 ${expandedCount} messages expanded`);
     return expandedCount;
   }
 
   /**
-   * Klavye kısayolları
-   * Alt + ArrowLeft = Tümünü Daralt
-   * Alt + ArrowRight = Tümünü Genişlet
+   * Keyboard shortcuts
+   * Alt + ArrowLeft = Collapse All
+   * Alt + ArrowRight = Expand All
    */
   setupKeyboardShortcuts() {
     const handleKeydown = e => {
-      // Alt + ArrowLeft (Sol) - Tümünü Daralt
+      // Alt + ArrowLeft - Collapse All
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         this.collapseAllMessages();
-        this.log('⌨️ Alt+← (Daralt)');
+        this.log('⌨️ Alt+← (Collapse)');
       }
 
-      // Alt + ArrowRight (Sağ) - Tümünü Genişlet
+      // Alt + ArrowRight - Expand All
       if (e.altKey && e.key === 'ArrowRight') {
         e.preventDefault();
         this.expandAllMessages();
-        this.log('⌨️ Alt+→ (Genişlet)');
+        this.log('⌨️ Alt+→ (Expand)');
       }
     };
 
@@ -441,26 +438,26 @@ class CompactViewModule extends BaseModule {
       document.removeEventListener('keydown', handleKeydown);
     });
 
-    this.log('⌨️ Keyboard shortcuts aktif: Alt+← (Daralt), Alt+→ (Genişlet)');
+    this.log('⌨️ Keyboard shortcuts active: Alt+← (Collapse), Alt+→ (Expand)');
   }
 
   /**
-   * Settings değiştiğinde
+   * When settings change
    */
   onSettingsChanged(settings) {
-    this.log('⚙️ Settings değişti');
+    this.log('⚙️ Settings changed');
 
-    // AutoCollapseEnabled değişti mi?
+    // Did autoCollapseEnabled change?
     const compactViewSettings = settings.compactView || {};
     if (
       compactViewSettings.autoCollapseEnabled !== undefined &&
       compactViewSettings.autoCollapseEnabled
     ) {
-      // Tüm mesajları daralt
+      // Collapse all messages
       this.collapseAllMessages();
     }
 
-    // Mesajları yeniden işle
+    // Reprocess messages
     this.processedMessages = new WeakSet();
     this.collapse.clear();
     this.processMessages();
@@ -487,17 +484,17 @@ class CompactViewModule extends BaseModule {
     // Auto-collapse is handled by MessageCollapse component
     setTimeout(() => {
       const count = this.collapseAllMessages();
-      this.log(`🔄 Auto collapse - ${count} mesaj daraltıldı`);
+      this.log(`🔄 Auto collapse - ${count} messages collapsed`);
     }, 500);
 
     this.log('✅ CompactView reinitialized');
   }
 
   /**
-   * Modülü durdur
+   * Stop module
    */
   destroy() {
-    this.log('🛑 Compact View durduruluyor...');
+    this.log('🛑 Compact View stopping...');
 
     try {
       // Clean up all intervals
@@ -529,7 +526,7 @@ class CompactViewModule extends BaseModule {
         this.error('Error clearing collapse state:', error);
       }
 
-      // Collapse/Expand All butonunu kaldır
+      // Remove Collapse/Expand All button
       try {
         if (this.elements && this.elements.toggleBtn) {
           panelManager.removeButton(this.elements.toggleBtn.id);
@@ -539,7 +536,7 @@ class CompactViewModule extends BaseModule {
         this.error('Error removing toggle button:', error);
       }
 
-      // Tüm expand butonlarını kaldır
+      // Remove all expand buttons
       try {
         document.querySelectorAll('.claude-expand-button-container').forEach(btn => {
           btn.remove();

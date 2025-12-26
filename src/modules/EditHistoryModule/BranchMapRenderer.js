@@ -1,19 +1,19 @@
 import { debugLog } from '../../config/debug.js';
 
 /**
- * BranchMapRenderer - Branch map'i SVG olarak renderlar
+ * BranchMapRenderer - Renders branch map as SVG
  *
- * Kurallar:
- * - Aynı mesaj numarası = Aynı yatay hiza (satır)
- * - Sütun sırası: Sol dallar → Ana yol → Sağ dallar
- * - Duplicate node'lar filtrelenmiş durumda
- * - Aynı satırda başlayan sütunlar yan yana gruplanır
- * - Bağlantılar: Her snapshot'taki ardışık node'ları bağla + sütun içi dikey bağlantılar
+ * Rules:
+ * - Same message number = Same horizontal alignment (row)
+ * - Column order: Left branches → Main path → Right branches
+ * - Duplicate nodes are filtered
+ * - Columns starting on the same row are grouped side by side
+ * - Connections: Connect consecutive nodes in each snapshot + vertical connections within columns
  *
- * Render sırası (z-index):
- * 1. Columns (en altta)
- * 2. Connections (ortada)
- * 3. Nodes (en üstte)
+ * Render order (z-index):
+ * 1. Columns (bottom layer)
+ * 2. Connections (middle layer)
+ * 3. Nodes (top layer)
  */
 
 class BranchMapRenderer {
@@ -29,14 +29,14 @@ class BranchMapRenderer {
       startX: 80,
       startY: 50,
       colors: [
-        '#ef4444', // kırmızı
-        '#f97316', // turuncu
-        '#eab308', // sarı
-        '#22c55e', // yeşil
+        '#ef4444', // red
+        '#f97316', // orange
+        '#eab308', // yellow
+        '#22c55e', // green
         '#06b6d4', // cyan
-        '#3b82f6', // mavi
-        '#8b5cf6', // mor
-        '#ec4899', // pembe
+        '#3b82f6', // blue
+        '#8b5cf6', // purple
+        '#ec4899', // pink
       ],
       ...options,
     };
@@ -120,10 +120,10 @@ class BranchMapRenderer {
     this.createSVG(bounds.width, bounds.height);
     this.createTooltip();
 
-    // Render sırası önemli! (z-index)
-    // 1. Columns (arka plan)
-    // 2. Connections (çizgiler - columns üstünde, nodes altında)
-    // 3. Start node & Nodes (en üstte)
+    // Render order is important! (z-index)
+    // 1. Columns (background)
+    // 2. Connections (lines - above columns, below nodes)
+    // 3. Start node & Nodes (on top)
     this.renderColumns();
     this.renderConnections();
     this.renderStartNode();
@@ -150,13 +150,13 @@ class BranchMapRenderer {
   }
 
   /**
-   * Sütunları satıra göre grupla ve pozisyonla
-   * Aynı satırda başlayan sütunlar yan yana
+   * Group and position columns by row
+   * Columns starting on the same row are placed side by side
    */
   calculateColumnLayoutsGroupedByRow() {
     const { startX, nodeWidth, horizontalGap, columnPadding, nodeHeight } = this.options;
 
-    // Her satır için o satırda kullanılan maksimum X pozisyonunu takip et
+    // Track the maximum X position used in each row
     const rowMaxX = new Map();
     this.data.messageIndices.forEach(msgIndex => {
       rowMaxX.set(msgIndex, startX + nodeWidth + horizontalGap);
@@ -167,18 +167,18 @@ class BranchMapRenderer {
         return;
       }
 
-      // Bu sütunun kapsadığı tüm satırlar
+      // All rows covered by this column
       const coveredRows = column.nodes.map(n => n.messageIndex);
 
-      // Bu sütun için X pozisyonunu belirle:
-      // Kapsadığı tüm satırlardaki maksimum X'in en büyüğü
+      // Determine X position for this column:
+      // The largest of the maximum X values in all covered rows
       let columnX = 0;
       coveredRows.forEach(row => {
         const currentMaxX = rowMaxX.get(row) || startX + nodeWidth + horizontalGap;
         columnX = Math.max(columnX, currentMaxX);
       });
 
-      // Node pozisyonlarını hesapla
+      // Calculate node positions
       const nodePositions = column.nodes.map(node => {
         const pos = {
           ...node,
@@ -196,7 +196,7 @@ class BranchMapRenderer {
         return pos;
       });
 
-      // Sütun boyutlarını hesapla
+      // Calculate column dimensions
       const ys = nodePositions.map(n => n.y);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
@@ -215,7 +215,7 @@ class BranchMapRenderer {
 
       this.columnLayouts.push(layout);
 
-      // Bu sütunun kapladığı tüm satırlar için maxX'i güncelle
+      // Update maxX for all rows covered by this column
       coveredRows.forEach(row => {
         rowMaxX.set(row, columnX + colWidth + horizontalGap);
       });
@@ -251,7 +251,7 @@ class BranchMapRenderer {
   }
 
   /**
-   * Custom tooltip oluştur
+   * Create custom tooltip
    */
   createTooltip() {
     this.tooltip = document.createElement('div');
@@ -279,7 +279,7 @@ class BranchMapRenderer {
   }
 
   /**
-   * Tooltip'i göster
+   * Show tooltip
    */
   showTooltip(node, event) {
     const color = this.colorMap.get(node.containerId) || '#6366f1';
@@ -323,13 +323,13 @@ class BranchMapRenderer {
       ">${this.escapeHtml(content)}</div>
     `;
 
-    // Pozisyonu hesapla
+    // Calculate position
     this.positionTooltip(event);
     this.tooltip.style.opacity = '1';
   }
 
   /**
-   * Tooltip pozisyonunu ayarla (ekran kenarlarına taşmaz)
+   * Set tooltip position (prevents overflow from screen edges)
    */
   positionTooltip(event) {
     const padding = 15;
@@ -340,22 +340,22 @@ class BranchMapRenderer {
     let x = event.clientX + padding;
     let y = event.clientY + padding;
 
-    // Sağ kenara taşarsa sola al
+    // Move to left if overflows right edge
     if (x + tooltipRect.width > viewportWidth - padding) {
       x = event.clientX - tooltipRect.width - padding;
     }
 
-    // Alt kenara taşarsa yukarı al
+    // Move up if overflows bottom edge
     if (y + tooltipRect.height > viewportHeight - padding) {
       y = event.clientY - tooltipRect.height - padding;
     }
 
-    // Sol kenara taşarsa düzelt
+    // Fix if overflows left edge
     if (x < padding) {
       x = padding;
     }
 
-    // Üst kenara taşarsa düzelt
+    // Fix if overflows top edge
     if (y < padding) {
       y = padding;
     }
@@ -365,7 +365,7 @@ class BranchMapRenderer {
   }
 
   /**
-   * Tooltip'i gizle
+   * Hide tooltip
    */
   hideTooltip() {
     this.tooltip.style.opacity = '0';
@@ -417,7 +417,7 @@ class BranchMapRenderer {
     g.setAttribute('class', 'columns');
 
     this.columnLayouts.forEach(col => {
-      // Yalnızca 1'den fazla node varsa container oluştur
+      // Only create container if more than 1 node
       if (col.nodes.length <= 1) {
         return;
       }
@@ -480,7 +480,7 @@ class BranchMapRenderer {
     g.appendChild(rect);
     g.appendChild(text);
 
-    // Hover efektleri ve tooltip
+    // Hover effects and tooltip
     g.addEventListener('mouseenter', e => {
       rect.style.filter = 'brightness(1.15)';
       this.showTooltip(node, e);
@@ -499,9 +499,9 @@ class BranchMapRenderer {
   }
 
   /**
-   * Bağlantıları çiz - Snapshot bazlı + Sütun içi
-   * 1. Her snapshot'taki ardışık node'ları bağla
-   * 2. Aynı sütundaki ardışık node'ları bağla
+   * Draw connections - Snapshot based + Within column
+   * 1. Connect consecutive nodes in each snapshot
+   * 2. Connect consecutive nodes in the same column
    */
   renderConnections() {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -509,7 +509,7 @@ class BranchMapRenderer {
 
     const { nodeWidth, nodeHeight } = this.options;
 
-    // START node pozisyonunu hesapla (henüz renderStartNode çağrılmadı)
+    // Calculate START node position (renderStartNode not yet called)
     const firstRowY = this.rowPositions.get(this.data.messageIndices[0]) || this.options.startY;
     this.startNodePos = {
       x: this.options.startX,
@@ -518,15 +518,15 @@ class BranchMapRenderer {
       height: nodeHeight,
     };
 
-    // Duplicate bağlantıları önlemek için Set kullan
+    // Use Set to prevent duplicate connections
     const drawnConnections = new Set();
 
-    // 1. Her snapshot (path) için bağlantıları çiz
+    // 1. Draw connections for each snapshot (path)
     if (this.data.paths && this.data.paths.length > 0) {
       this.data.paths.forEach(path => {
         const messages = path.messages;
 
-        // İlk node'u START'a bağla
+        // Connect first node to START
         if (messages.length > 0) {
           const firstMsg = messages[0];
           const firstNodeKey = firstMsg.uniqueId;
@@ -548,7 +548,7 @@ class BranchMapRenderer {
           }
         }
 
-        // Ardışık node'ları bağla
+        // Connect consecutive nodes
         for (let i = 0; i < messages.length - 1; i++) {
           const currentMsg = messages[i];
           const nextMsg = messages[i + 1];
@@ -577,13 +577,13 @@ class BranchMapRenderer {
       });
     }
 
-    // 2. Aynı sütundaki ardışık node'ları bağla (dikey bağlantılar)
+    // 2. Connect consecutive nodes in the same column (vertical connections)
     this.columnLayouts.forEach(col => {
       if (col.nodes.length <= 1) {
         return;
       }
 
-      // Node'ları messageIndex'e göre sırala
+      // Sort nodes by messageIndex
       const sortedNodes = [...col.nodes].sort((a, b) => a.messageIndex - b.messageIndex);
 
       for (let i = 0; i < sortedNodes.length - 1; i++) {
@@ -594,9 +594,9 @@ class BranchMapRenderer {
         const nextKey = nextNode.uniqueId;
         const connectionKey = `${currentKey}->${nextKey}`;
 
-        // Henüz çizilmemişse çiz
+        // Draw if not already drawn
         if (!drawnConnections.has(connectionKey)) {
-          // Dikey bağlantı: alt kenardan üst kenara
+          // Vertical connection: from bottom edge to top edge
           g.appendChild(
             this.createVerticalConnection(
               currentNode.x + nodeWidth / 2,
@@ -614,7 +614,7 @@ class BranchMapRenderer {
   }
 
   /**
-   * Yatay bağlantı çiz (farklı sütunlar arası)
+   * Draw horizontal connection (between different columns)
    */
   createConnection(x1, y1, x2, y2) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -631,7 +631,7 @@ class BranchMapRenderer {
   }
 
   /**
-   * Dikey bağlantı çiz (aynı sütundaki node'lar için)
+   * Draw vertical connection (for nodes in the same column)
    */
   createVerticalConnection(x1, y1, x2, y2) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');

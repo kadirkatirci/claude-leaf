@@ -1,5 +1,5 @@
 /**
- * EditBadge - Edit badge yönetimi
+ * EditBadge - Edit badge management
  */
 import MessageBadge from '../../components/primitives/MessageBadge.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
@@ -17,7 +17,7 @@ class EditBadge {
   }
 
   /**
-   * Badge'leri güncelle
+   * Update badges
    */
   updateAll(editedPrompts, showBadges) {
     if (!showBadges) {
@@ -71,7 +71,7 @@ class EditBadge {
   }
 
   /**
-   * Tek bir badge ekle veya güncelle
+   * Add or update a single badge
    */
   add(messageElement, versionInfo = '') {
     // Legacy support or simple usage
@@ -80,7 +80,7 @@ class EditBadge {
   }
 
   /**
-   * Tüm badge'leri kaldır
+   * Remove all badges
    */
   removeAll() {
     this.badge.removeAll('.claude-edit-badge');

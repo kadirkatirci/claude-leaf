@@ -53,20 +53,20 @@ export class MarkerBadge {
       return;
     }
 
-    // Container'ın DIŞINDA sabit pozisyon
-    // Marker button ile aynı yatay hizada, üstünde
+    // Fixed position OUTSIDE the container
+    // Same horizontal alignment as marker button, above it
     const markerBtn = messageEl.querySelector('.emoji-marker-btn');
 
     let badgeRight, badgeTop;
 
     if (markerBtn) {
-      // Marker button var: onun üstünde göster
-      badgeRight = '-36px'; // Sabit pozisyon, marker button ile aynı
-      badgeTop = '10px'; // Button'un üstünde (çakışmayı önle)
+      // Marker button exists: show above it
+      badgeRight = '-36px'; // Fixed position, same as marker button
+      badgeTop = '10px'; // Above the button (prevent overlap)
     } else {
-      // Marker button yok: container'ın dışında göster
-      badgeRight = '-36px'; // Sabit pozisyon
-      badgeTop = '10px'; // Normal top pozisyonu
+      // No marker button: show outside the container
+      badgeRight = '-36px'; // Fixed position
+      badgeTop = '10px'; // Normal top position
     }
 
     const badge = DOMUtils.createElement('div', {
@@ -82,8 +82,8 @@ export class MarkerBadge {
       innerHTML: marker.emoji,
       title: `Marked with ${marker.emoji}\nClick to see options`,
       style: {
-        top: badgeTop, // Dinamik top
-        right: badgeRight, // Dinamik right - container dışında
+        top: badgeTop, // Dynamic top
+        right: badgeRight, // Dynamic right - outside container
         animation: 'fadeIn 0.3s ease',
       },
     });
@@ -136,11 +136,11 @@ export class MarkerBadge {
    * Show badge options: emoji picker + delete button
    */
   async showBadgeOptions(badge, marker) {
-    // Önce mevcut options container'ı kapat (duplicate önleme)
+    // First close existing options container (prevent duplicates)
     const existingContainer = badge.querySelector('.emoji-marker-options');
     if (existingContainer) {
       existingContainer.remove();
-      return; // Toggle behavior: Açıksa kapat
+      return; // Toggle behavior: Close if open
     }
 
     const theme = this.getTheme();
@@ -221,17 +221,17 @@ export class MarkerBadge {
     container.appendChild(emojiGrid);
     container.appendChild(deleteBtn);
 
-    // Container'ı badge'e değil, badge'in parent'ına (messageEl) ekle
-    // Badge'in position'ını BOZMADAN container'ı göster
+    // Add container to badge's parent (messageEl), not to badge itself
+    // Show container WITHOUT breaking badge's position
     const messageEl = badge.parentElement;
     if (messageEl) {
-      // Badge'in pozisyonunu al
+      // Get badge's position
       const badgeRect = badge.getBoundingClientRect();
       const messageRect = messageEl.getBoundingClientRect();
 
-      // Container'ı badge'in altına konumlandır (message container'a göre)
-      const topPosition = badgeRect.bottom - messageRect.top + 8; // Badge'in altında, 8px gap
-      const rightPosition = messageRect.right - badgeRect.right; // Badge ile aynı right hizasında
+      // Position container below badge (relative to message container)
+      const topPosition = badgeRect.bottom - messageRect.top + 8; // Below badge, 8px gap
+      const rightPosition = messageRect.right - badgeRect.right; // Same right alignment as badge
 
       container.style.top = `${topPosition}px`;
       container.style.right = `${rightPosition}px`;

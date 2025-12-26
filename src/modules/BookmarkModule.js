@@ -68,7 +68,7 @@ class BookmarkModule extends BaseModule {
       return;
     }
 
-    this.log('Bookmarks başlatılıyor...');
+    this.log('Bookmarks initializing...');
 
     FixedButtonMixin.enhance(this);
 

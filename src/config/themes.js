@@ -1,6 +1,6 @@
 /**
  * Theme Configurations
- * Claude native renkler ve custom tema seçenekleri
+ * Claude native colors and custom theme options
  */
 
 export const THEMES = {

@@ -6,14 +6,14 @@ import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { debugLog } from '../../config/debug.js';
 
 /**
- * BranchMapModal - Conversation branch haritasını gösteren modal
+ * BranchMapModal - Modal that shows the conversation branch map
  *
- * Özellikler:
- * - Snapshot'lardan oluşturulan branch yapısını görselleştirir
- * - Aynı mesaj numarası = aynı yatay hiza
- * - Devam eden path'ler aynı sütunda
- * - Yalnız kalanlar kendi sütununda
- * - Hover ile mesaj içeriği tooltip'te gösterilir
+ * Features:
+ * - Visualizes branch structure created from snapshots
+ * - Same message number = same horizontal alignment
+ * - Continuing paths stay in the same column
+ * - Isolated ones stay in their own column
+ * - Hover shows message content in tooltip
  */
 class BranchMapModal {
   constructor() {
@@ -24,7 +24,7 @@ class BranchMapModal {
   }
 
   /**
-   * Modal'ı göster
+   * Show modal
    * @param {string} conversationUrl - Conversation URL
    */
   async show(conversationUrl) {
@@ -52,7 +52,7 @@ class BranchMapModal {
   }
 
   /**
-   * Modal'ı gizle
+   * Hide modal
    */
   hide() {
     if (!this.isVisible) {
@@ -71,7 +71,7 @@ class BranchMapModal {
   }
 
   /**
-   * Boş state göster
+   * Show empty state
    */
   showEmptyState() {
     const toast = DOMUtils.createElement('div');
@@ -91,9 +91,9 @@ class BranchMapModal {
   }
 
   /**
-   * Modal oluştur
-   * @param {Array} snapshots - Snapshot listesi
-   * @param {Array} history - History listesi
+   * Create modal
+   * @param {Array} snapshots - Snapshot list
+   * @param {Array} history - History list
    */
   createModal(snapshots, history) {
     // Overlay
@@ -150,9 +150,9 @@ class BranchMapModal {
   }
 
   /**
-   * Header oluştur
-   * @param {Array} snapshots - Snapshot listesi
-   * @param {Array} history - History listesi
+   * Create header
+   * @param {Array} snapshots - Snapshot list
+   * @param {Array} history - History list
    */
   createHeader(snapshots, history) {
     const header = DOMUtils.createElement('div');
@@ -206,21 +206,21 @@ class BranchMapModal {
   }
 
   /**
-   * Branch map'i renderla
+   * Render branch map
    * @param {HTMLElement} container - Container element
-   * @param {Array} snapshots - Snapshot listesi
-   * @param {Array} history - History listesi
+   * @param {Array} snapshots - Snapshot list
+   * @param {Array} history - History list
    */
   renderBranchMap(container, snapshots, history) {
     debugLog('editHistory', 'BranchMapModal building branch map...');
 
-    // Tree/data yapısını oluştur
+    // Build tree/data structure
     const builder = new BranchTreeBuilder(snapshots, history);
     const data = builder.build();
 
     debugLog('editHistory', 'BranchMapModal data built:', data);
 
-    // Boş data kontrolü
+    // Empty data check
     if (!data.columns || data.columns.length === 0) {
       container.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full text-text-300">

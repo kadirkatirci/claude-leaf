@@ -1,15 +1,15 @@
 import { debugLog } from '../../config/debug.js';
 
 /**
- * BranchTreeBuilder - Snapshot'lardan branch map yapısı oluşturur
+ * BranchTreeBuilder - Creates branch map structure from snapshots
  *
- * Mantık:
- * 1. En uzun path = Ana Yol
- * 2. Ana yoldaki versiyonlardan farklı olanlar = Dallar
- * 3. Sütun sırası: Sol dallar → Ana yol → Sağ dallar
- * 4. Aynı mesaj numarası = Aynı yatay hiza (satır)
- * 5. Global "gösterilen" set ile duplicate'ler filtrelenir
- * 6. ÖNEMLİ: Ana yol önce işlenir, sonra dallar (duplicate önleme için)
+ * Logic:
+ * 1. Longest path = Main Path
+ * 2. Different versions from main path = Branches
+ * 3. Column order: Left branches → Main path → Right branches
+ * 4. Same message number = Same horizontal alignment (row)
+ * 5. Global "shown" set filters duplicates
+ * 6. IMPORTANT: Main path is processed first, then branches (for duplicate prevention)
  */
 
 class BranchTreeBuilder {
@@ -33,27 +33,27 @@ class BranchTreeBuilder {
     this.nodeLocationMap.clear();
     this.containerMaxVersions.clear();
 
-    // 0. Tüm snapshotları tara ve her mesaj için maksimum versiyon sayısını bul
+    // 0. Scan all snapshots and find maximum version count for each message
     this.calculateMaxVersions();
 
-    // 1. Snapshot'lardan path'leri çıkar
+    // 1. Extract paths from snapshots
     const paths = this.extractPaths();
     debugLog('editHistory', 'BranchTreeBuilder extracted paths:', paths);
 
-    // 2. Ana yolu bul (en uzun path)
+    // 2. Find main path (longest path)
     const mainPath = this.findMainPath(paths);
     debugLog('editHistory', 'BranchTreeBuilder main path:', mainPath);
 
-    // 3. Dal snapshot'larını bul
+    // 3. Find branch snapshots
     const branches = this.findBranches(paths, mainPath);
     debugLog('editHistory', 'BranchTreeBuilder branches:', branches);
 
-    // 4. Sütunları oluştur
-    // ÖNEMLİ: Önce ana yolu işle (shownNodes'a ekle), sonra dalları
+    // 4. Build columns
+    // IMPORTANT: Process main path first (add to shownNodes), then branches
     const columns = this.buildColumnsWithMainPathFirst(mainPath, branches);
     debugLog('editHistory', 'BranchTreeBuilder columns:', columns);
 
-    // 5. Unique değerleri topla
+    // 5. Collect unique values
     const messageIndices = this.getAllMessageIndices(paths);
     const containerIds = this.getAllContainerIds(paths);
 
@@ -63,7 +63,7 @@ class BranchTreeBuilder {
       containerIds,
       mainPath,
       nodeLocationMap: this.nodeLocationMap,
-      paths, // Snapshot'ların mesaj listeleri (bağlantılar için)
+      paths, // Snapshot message lists (for connections)
     };
   }
 
@@ -114,12 +114,12 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Her container için maksimum versiyon sayısını hesapla
-   * Örn: Bir mesajın 1/2, 2/2 versiyonları var, sonra 1/3, 2/3, 3/3 oldu.
-   * Max versiyon sayısı 3 olmalı.
+   * Calculate maximum version count for each container
+   * Ex: A message has versions 1/2, 2/2, then became 1/3, 2/3, 3/3.
+   * Max version count should be 3.
    */
   calculateMaxVersions() {
-    // History'den kontrol et
+    // Check from history
     this.history.forEach(h => {
       if (h.versionLabel) {
         const parts = h.versionLabel.split('/');
@@ -133,7 +133,7 @@ class BranchTreeBuilder {
       }
     });
 
-    // Snapshotlardan kontrol et
+    // Check from snapshots
     this.snapshots.forEach(snapshot => {
       snapshot.messages.forEach(m => {
         if (m.version) {
@@ -287,9 +287,9 @@ class BranchTreeBuilder {
       }
     });
 
-    // Sol dalları sırala:
-    // 1. Divergence Parent ID (kardeşleri bir arada tutmak için)
-    // 2. Mesaj sayısı (uzunluk)
+    // Sort left branches:
+    // 1. Divergence Parent ID (to keep siblings together)
+    // 2. Message count (length)
     branches.sort((a, b) => {
       if (a.isLeftBranch && !b.isLeftBranch) {
         return -1;
@@ -339,14 +339,14 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Sütunları oluştur - ANA YOL ÖNCE işlenir
+   * Build columns - MAIN PATH IS PROCESSED FIRST
    */
   buildColumnsWithMainPathFirst(mainPath, branches) {
     const leftBranchColumns = [];
     const rightBranchColumns = [];
     let mainColumn = null;
 
-    // ========== 1. ÖNCE ANA YOLU İŞLE (shownNodes'a ekle) ==========
+    // ========== 1. PROCESS MAIN PATH FIRST (add to shownNodes) ==========
     if (mainPath.messages.length > 0) {
       const columnId = 'main-path';
       const nodes = this.registerNodes(mainPath.messages, columnId);
@@ -359,11 +359,11 @@ class BranchTreeBuilder {
       };
     }
 
-    // ========== 2. SONRA DALLARI İŞLE ==========
+    // ========== 2. THEN PROCESS BRANCHES ==========
     const leftBranches = branches.filter(b => b.isLeftBranch);
     const rightBranches = branches.filter(b => !b.isLeftBranch);
 
-    // Sol dallar
+    // Left branches
     leftBranches.forEach((branch, idx) => {
       const columnId = `left-branch-${idx}`;
       const nodes = this.filterAndRegisterNodes(branch.messages, columnId);
@@ -379,7 +379,7 @@ class BranchTreeBuilder {
       }
     });
 
-    // Sağ dallar
+    // Right branches
     rightBranches.forEach((branch, idx) => {
       const columnId = `right-branch-${idx}`;
       const nodes = this.filterAndRegisterNodes(branch.messages, columnId);
@@ -395,8 +395,8 @@ class BranchTreeBuilder {
       }
     });
 
-    // ========== 3. GÖRSEL SIRAYA GÖRE BİRLEŞTİR ==========
-    // Sol dallar → Ana yol → Sağ dallar
+    // ========== 3. MERGE IN VISUAL ORDER ==========
+    // Left branches → Main path → Right branches
     const columns = [];
 
     leftBranchColumns.forEach(col => columns.push(col));
@@ -409,7 +409,7 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Ana yol için: Tüm node'ları kaydet (filtre yok)
+   * For main path: Register all nodes (no filter)
    */
   registerNodes(messages, columnId) {
     const nodes = [];
@@ -437,10 +437,7 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Dallar için: Duplicate kontrolü yap
-   */
-  /**
-   * Dallar için: Duplicate kontrolü yap
+   * For branches: Check for duplicates
    */
   filterAndRegisterNodes(messages, columnId) {
     const nodes = [];
@@ -449,7 +446,7 @@ class BranchTreeBuilder {
       // Node Key uses Lineage ID
       const nodeKey = msg.uniqueId;
 
-      // Daha önce gösterilmemişse ekle
+      // Add if not shown before
       if (!this.shownNodes.has(nodeKey)) {
         const node = {
           uniqueId: msg.uniqueId,
@@ -489,7 +486,7 @@ class BranchTreeBuilder {
   }
 
   /**
-   * Bağlantı kaynağını bul
+   * Find connection source
    */
   findConnectionSource(targetNode) {
     if (!targetNode) {

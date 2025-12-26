@@ -11,7 +11,7 @@ class EditUI {
   }
 
   /**
-   * Highlight'ları güncelle
+   * Update highlights
    * Only updates DOM if highlighted elements actually changed
    */
   updateHighlights(editedPrompts, shouldHighlight) {

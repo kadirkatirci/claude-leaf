@@ -64,12 +64,12 @@ class EmojiMarkerModule extends BaseModule {
         return;
       }
 
-      this.log('Emoji Markers başlatılıyor...');
+      this.log('Emoji Markers initializing...');
 
       await markerStore.setStorageType('local');
 
       const markers = await markerStore.getAll();
-      this.log(`${markers.length} marker yüklendi`);
+      this.log(`${markers.length} markers loaded`);
 
       FixedButtonMixin.enhance(this);
 
@@ -91,7 +91,7 @@ class EmojiMarkerModule extends BaseModule {
         await this.updateUI();
       });
 
-      this.log('✅ Emoji Markers aktif');
+      this.log('✅ Emoji Markers active');
     } catch (error) {
       this.error('❌ Emoji Markers init failed:', error);
       throw error;
@@ -190,19 +190,19 @@ class EmojiMarkerModule extends BaseModule {
     };
 
     await markerStore.add(marker);
-    this.log(`✅ Marker eklendi: ${emoji} at index ${messageIndex}`);
+    this.log(`✅ Marker added: ${emoji} at index ${messageIndex}`);
     await this.updateUI();
   }
 
   async removeMarker(markerId) {
     await markerStore.remove(markerId);
-    this.log(`Marker silindi: ${markerId}`);
+    this.log(`Marker removed: ${markerId}`);
     await this.updateUI();
   }
 
   async updateMarker(markerId, newEmoji) {
     await markerStore.update(markerId, { emoji: newEmoji });
-    this.log(`Marker güncellendi: ${markerId} -> ${newEmoji}`);
+    this.log(`Marker updated: ${markerId} -> ${newEmoji}`);
     await this.updateUI();
   }
 

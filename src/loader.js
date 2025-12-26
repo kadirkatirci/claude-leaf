@@ -1,16 +1,16 @@
 /**
- * Module Loader - ES modules için
- * Page context'te çalışır
+ * Module Loader - For ES modules
+ * Runs in page context
  */
 
 (async () => {
   try {
-    // Extension ID'yi script tag'inden al
+    // Get extension ID from script tag
     const currentScript = document.currentScript;
     const extensionId = currentScript?.dataset?.extensionId;
 
     if (!extensionId) {
-      throw new Error('Extension ID bulunamadı');
+      throw new Error('Extension ID not found');
     }
 
     const baseUrl = `chrome-extension://${extensionId}`;
@@ -18,14 +18,14 @@
     console.log('[Loader] Extension ID:', extensionId);
     console.log('[Loader] Base URL:', baseUrl);
 
-    // App'i import et
+    // Import App
     const { default: app } = await import(`${baseUrl}/src/App.js`);
     await app.init();
 
-    console.log('✅ Claude Productivity Extension hazır!');
-    console.log("💡 İpucu: window.claudeProductivity ile extension'a erişebilirsiniz");
+    console.log('✅ Claude Productivity Extension ready!');
+    console.log('💡 Tip: Access the extension via window.claudeProductivity');
   } catch (error) {
-    console.error('❌ App yüklenemedi:', error);
-    console.error('Detay:', error.stack);
+    console.error('❌ Failed to load app:', error);
+    console.error('Details:', error.stack);
   }
 })();

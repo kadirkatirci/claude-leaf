@@ -42,7 +42,7 @@ export class MarkerButton {
       const button = this.createButton(messageEl, index, markers);
       this.buttonCache.set(messageEl, button);
 
-      // Attach hover listeners (SADECE BİR KEZ!)
+      // Attach hover listeners (ONLY ONCE!)
       this.attachHoverListeners(messageEl, button);
     });
   }
@@ -65,8 +65,8 @@ export class MarkerButton {
   createButton(messageEl, messageIndex, markers) {
     const existingMarker = markers.find(m => m.index === messageIndex);
 
-    // Container'ın DIŞINDA sabit pozisyon
-    const buttonRight = '-36px'; // Sabit pozisyon, bookmark varlığından bağımsız
+    // Fixed position OUTSIDE the container
+    const buttonRight = '-36px'; // Fixed position, independent of bookmark presence
 
     const button = DOMUtils.createElement('button');
 
@@ -102,11 +102,11 @@ export class MarkerButton {
     button.innerHTML = IconLibrary.pin('currentColor', 16); // Use pin icon for marker
     button.title = 'Add emoji marker';
 
-    // Click handler - sadece marker yoksa (add için)
+    // Click handler - only when no marker exists (for add)
     button.addEventListener('click', e => {
       e.stopPropagation();
 
-      // Marker button sadece marker yoksa görünür, bu yüzden direkt add
+      // Marker button is only visible when no marker exists, so directly add
       this.showEmojiPickerForAdd(button, messageEl, messageIndex);
     });
 
@@ -223,10 +223,10 @@ export class MarkerButton {
     }
 
     if (marker) {
-      // Marker varsa button'u gizle (badge zaten gösteriyor)
+      // If marker exists, hide button (badge already shows it)
       button.style.display = 'none';
     } else {
-      // Marker yoksa button'u göster (add marker için)
+      // If no marker, show button (for add marker)
       button.style.display = 'flex';
       button.innerHTML = IconLibrary.pin('currentColor', 16);
       button.title = 'Add emoji marker';

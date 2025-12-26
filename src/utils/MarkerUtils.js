@@ -12,9 +12,9 @@
  * 5. For user messages: Find by own preview text (fallback)
  *
  * Key Insight:
- * - Edit'ten ÖNCE olan mesajlar: Index ve content aynı kalır, signature match olmalı
- * - Edit'ten SONRA olan mesajlar: Index kayabilir ama content aynı kalır (Claude yanıtı hariç)
- * - Claude yanıtları: Content değişir ama parent user message aynı kalır
+ * - Messages BEFORE edit: Index and content stay same, signature should match
+ * - Messages AFTER edit: Index may shift but content stays same (except Claude responses)
+ * - Claude responses: Content changes but parent user message stays same
  */
 
 import { hashString } from './HashUtils.js';
@@ -305,7 +305,7 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   // ============================================
   // NO INDEX FALLBACK
   // If content doesn't match, marker is invalid
-  // Edit sonrası mesajlar versiyon değişince kaybolmalı
+  // Messages after edit should disappear when version changes
   // ============================================
 
   // Not found - marker's message no longer exists
