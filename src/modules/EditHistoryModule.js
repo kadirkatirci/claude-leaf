@@ -221,7 +221,7 @@ class EditHistoryModule extends BaseModule {
   /**
    * Create Collapse/Expand All button in navigation container
    */
-  createCollapseButton(theme) {
+  createCollapseButton(_theme) {
     this.isAllCollapsed = false;
 
     // Use PanelManager

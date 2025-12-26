@@ -205,11 +205,10 @@ class DOMReadyChecker {
   async waitForNavigationComplete(options = {}) {
     const {
       maxWait = 5000,
-      stabilityDelay = 200, // Wait this long after last DOM change
+      // stabilityDelay reserved for future use when implementing DOM mutation-based wait
       skipNewChatPage = true, // Don't wait for messages on /new page
     } = options;
 
-    const startTime = Date.now();
     const state = navigationInterceptor.getState();
 
     this.log(`Waiting for navigation to complete (pageType: ${state.pageType})`);

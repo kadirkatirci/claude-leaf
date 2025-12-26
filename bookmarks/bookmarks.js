@@ -467,7 +467,9 @@ function createBookmarkCard(bookmark) {
       ? new URL(bookmark.conversationUrl)
       : new URL('https://claude.ai' + bookmark.conversationUrl);
     convoName = url.pathname.split('/').pop().substring(0, 8) + '...';
-  } catch (e) {}
+  } catch {
+    // URL parsing failed, use default
+  }
 
   footer.innerHTML = `<span>📍 ${escapeHtml(convoName)}</span>`;
 

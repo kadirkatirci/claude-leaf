@@ -280,7 +280,7 @@ export class ConversationStateStore {
       // Parse full URL
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname + parsed.search;
-    } catch (error) {
+    } catch {
       console.warn('[ConversationStateStore] Failed to normalize URL:', url);
       return url;
     }

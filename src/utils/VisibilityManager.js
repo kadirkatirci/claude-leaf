@@ -212,8 +212,6 @@ class VisibilityManager {
    * Force refresh state
    */
   refresh() {
-    const wasConversationPage = this.isConversationPageCached;
-
     if (window.__navigationInterceptor) {
       const state = window.__navigationInterceptor.getState();
       this.isConversationPageCached = state.isConversationPage;

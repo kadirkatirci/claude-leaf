@@ -47,15 +47,15 @@ export class MarkerPanel extends BasePanel {
     const sortedMarkers = [...markers].sort((a, b) => b.timestamp - a.timestamp);
 
     // Use BasePanel's updateContent with our custom renderer
-    super.updateContent(sortedMarkers, (marker, index) => {
-      return this.createMarkerItem(marker, index);
+    super.updateContent(sortedMarkers, marker => {
+      return this.createMarkerItem(marker);
     });
   }
 
   /**
    * Create a marker list item
    */
-  createMarkerItem(marker, index) {
+  createMarkerItem(marker) {
     // Create item container
     const item = document.createElement('div');
     item.className =

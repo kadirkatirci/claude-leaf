@@ -188,7 +188,7 @@ export class MarkerStore {
       }
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname + parsed.search;
-    } catch (error) {
+    } catch {
       return url;
     }
   }

@@ -350,7 +350,7 @@ class HeadingFolder {
       if (this.failures.reasons.size > 0) {
         this.module.log(
           'Failure reasons:',
-          Array.from(this.failures.reasons.entries()).map(([h, r]) => r)
+          Array.from(this.failures.reasons.entries()).map(([, r]) => r)
         );
       }
     }

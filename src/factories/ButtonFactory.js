@@ -39,7 +39,7 @@ class ButtonFactory {
       position = {},
       onClick = null,
       showCounter = false,
-      counterValue = 0,
+      // counterValue reserved for initial counter state
       className = '',
       zIndex = 10000,
       visible = true,

@@ -8,7 +8,6 @@ import VisibilityManager from '../utils/VisibilityManager.js';
 import Button from '../components/primitives/Button.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
-import tokens from '../components/theme/tokens.js';
 import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { scheduleVisualUpdate } from '../utils/AnimationScheduler.js';

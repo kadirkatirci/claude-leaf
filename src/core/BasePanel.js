@@ -4,7 +4,7 @@
  * Uses ONLY Claude native classes for automatic dark/light mode adaptation
  */
 
-import { cn, panelClass, textClass } from '../utils/ClassNames.js';
+import { cn, textClass } from '../utils/ClassNames.js';
 
 export default class BasePanel {
   constructor(options = {}) {
@@ -30,9 +30,9 @@ export default class BasePanel {
 
   /**
    * Create the panel UI
-   * @param {Object} theme - Theme configuration (unused, kept for compatibility)
+   * @param {Object} _theme - Theme configuration (unused, kept for compatibility)
    */
-  create(theme) {
+  create(_theme) {
     // Remove existing panel
     if (this.panel) {
       this.destroy();

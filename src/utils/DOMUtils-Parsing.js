@@ -53,10 +53,6 @@ const DOMUtilsParsing = {
     // Get only real messages (excluding sidebar)
     const messageContainers = DOMUtilsCore.findActualMessages();
 
-    // Track hash occurrences to handle duplicate content
-    // Key: userMessageHash, Value: occurrence count
-    const hashOccurrences = new Map();
-
     messageContainers.forEach((container, idx) => {
       // Does this container have a user message?
       const userMessage = container.querySelector('[data-testid="user-message"]');

@@ -187,7 +187,7 @@ class MessageFolder {
           this.module.log('Found content container via fallback strategy');
           return result;
         }
-      } catch (e) {
+      } catch {
         // Strategy failed, try next
         continue;
       }
@@ -436,7 +436,7 @@ class MessageFolder {
   /**
    * Add expand footer button
    */
-  addExpandFooter(messageEl, container) {
+  addExpandFooter(messageEl, _container) {
     // Remove existing footer
     this.removeExpandFooter(messageEl);
 

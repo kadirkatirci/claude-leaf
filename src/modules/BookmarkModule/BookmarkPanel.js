@@ -35,7 +35,7 @@ export class BookmarkPanel extends BasePanel {
    * Override create to pass theme and setup elements reference
    */
   create(onClose) {
-    const panel = super.create(this.getTheme());
+    super.create(this.getTheme());
 
     // Create toggle button separately (maintains existing functionality)
     const toggleBtn = this.createToggleButton(this.getTheme(), onClose);
@@ -125,7 +125,7 @@ export class BookmarkPanel extends BasePanel {
     const sortedBookmarks = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
 
     // Use BasePanel's updateContent with our custom renderer
-    super.updateContent(sortedBookmarks, (bookmark, index) => {
+    super.updateContent(sortedBookmarks, bookmark => {
       return this.createBookmarkItem(bookmark);
     });
   }

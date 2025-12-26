@@ -156,7 +156,7 @@ const DOMUtilsHelpers = {
     try {
       await navigator.clipboard.writeText(text);
       return true;
-    } catch (err) {
+    } catch {
       // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = text;

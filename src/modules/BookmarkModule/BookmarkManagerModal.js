@@ -495,7 +495,9 @@ export class BookmarkManagerModal {
     try {
       const urlPart = bookmark.conversationUrl.split('/').pop();
       convoName = urlPart.substring(0, 8) + '...';
-    } catch (e) {}
+    } catch {
+      // URL parsing failed, use default
+    }
 
     const loc = DOMUtils.createElement('div', {
       className: 'text-xs text-text-300 flex items-center gap-1',

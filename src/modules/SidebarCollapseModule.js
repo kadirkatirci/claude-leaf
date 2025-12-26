@@ -3,10 +3,7 @@
  * Adds chevron icons to section headers for simple expand/collapse
  */
 import BaseModule from './BaseModule.js';
-import { Events } from '../utils/EventBus.js';
 import DOMUtils from '../utils/DOMUtils.js';
-import IconLibrary from '../components/primitives/IconLibrary.js';
-import { conversationStateStore } from '../stores/index.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 
 const SIDEBAR_CONFIG = MODULE_CONSTANTS.sidebarCollapse;
@@ -173,7 +170,7 @@ class SidebarCollapseModule extends BaseModule {
           try {
             el.style.display = 'none';
             el.setAttribute('aria-hidden', 'true');
-          } catch (e) {
+          } catch {
             // ignore style mutation errors
           }
         }
@@ -383,12 +380,12 @@ class SidebarCollapseModule extends BaseModule {
    */
   cleanupUI() {
     // Remove chevrons and restore list visibility
-    this.sections.forEach((section, key) => {
+    this.sections.forEach(section => {
       // Disconnect any observer watching the header for native toggles
       if (section.observer) {
         try {
           section.observer.disconnect();
-        } catch (e) {
+        } catch {
           // ignore
         }
       }

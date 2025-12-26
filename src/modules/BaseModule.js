@@ -219,9 +219,9 @@ class BaseModule {
 
   /**
    * Settings değiştiğinde çağrılır - Alt class'lar override edebilir
-   * @param {Object} settings - Yeni settings
+   * @param {Object} _settings - Yeni settings
    */
-  onSettingsChanged(settings) {
+  onSettingsChanged(_settings) {
     // Override edilebilir
   }
 
@@ -307,9 +307,9 @@ class BaseModule {
 
   /**
    * Called when URL changes (SPA navigation) - Alt class'lar override edebilir
-   * @param {string} newUrl - New URL
+   * @param {string} _newUrl - New URL
    */
-  onUrlChanged(newUrl) {
+  onUrlChanged(_newUrl) {
     // Default behavior: reinitialize UI
     this.log('🔄 Reinitializing due to URL change...');
     this.reinitializeUI();

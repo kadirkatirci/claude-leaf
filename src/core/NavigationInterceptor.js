@@ -178,7 +178,6 @@ class NavigationInterceptor {
    * Catches any navigation that other methods miss
    */
   startUrlPolling() {
-    let lastUrl = window.location.href;
     let lastPath = window.location.pathname;
 
     this.urlCheckInterval = setInterval(() => {
@@ -189,7 +188,6 @@ class NavigationInterceptor {
         this.log('URL change detected via polling:', lastPath, '→', currentPath);
 
         const previousPath = lastPath;
-        lastUrl = currentUrl;
         lastPath = currentPath;
 
         // Only emit if we haven't already processed this change
@@ -232,7 +230,6 @@ class NavigationInterceptor {
    * Handle navigation event
    */
   handleNavigation(type, url = null, previousPath = null) {
-    const newUrl = url ? new URL(url, window.location.origin).href : window.location.href;
     const newPath = url ? new URL(url, window.location.origin).pathname : window.location.pathname;
 
     // Skip if path hasn't actually changed

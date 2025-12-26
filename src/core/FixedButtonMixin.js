@@ -200,7 +200,7 @@ export default class FixedButtonMixin {
         position = { right: '30px', transform: 'translateY(0)' },
         onClick,
         showCounter = false,
-        counterColor = '#ef4444',
+        // counterColor reserved for future badge customization
         opacity = null, // Allow custom opacity, defaults to module setting or 0.9
       } = options;
 

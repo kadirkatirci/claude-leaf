@@ -167,9 +167,6 @@ class BranchMapRenderer {
         return;
       }
 
-      // Bu sütunun başladığı satır (ilk node'un satırı)
-      const firstNodeRow = column.nodes[0].messageIndex;
-
       // Bu sütunun kapsadığı tüm satırlar
       const coveredRows = column.nodes.map(n => n.messageIndex);
 

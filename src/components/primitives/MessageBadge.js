@@ -52,8 +52,6 @@ export default class MessageBadge {
       return existingBadge;
     }
 
-    const theme = this.getTheme();
-
     // Create badge element
     const baseStyle = {
       position: 'absolute',

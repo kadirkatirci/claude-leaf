@@ -212,7 +212,7 @@ export class EditHistoryStore {
       }
       const parsed = new URL(url, window.location.origin);
       return parsed.pathname;
-    } catch (error) {
+    } catch {
       return url;
     }
   }

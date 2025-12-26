@@ -501,7 +501,7 @@ class BranchTreeBuilder {
     let bestMatch = null;
 
     // Use loop for performance instead of forEach
-    for (const [nodeKey, location] of this.nodeLocationMap) {
+    for (const [, location] of this.nodeLocationMap) {
       if (location.node.uniqueId === targetNode.parentId) {
         bestMatch = location;
         break; // Found the exact parent, stop searching

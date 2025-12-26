@@ -274,7 +274,7 @@ export class Store extends EventEmitter {
    */
   async import(importData, merge = true) {
     try {
-      const { data, version } = importData;
+      const { data } = importData;
 
       if (merge) {
         const current = await this.get();

@@ -279,7 +279,8 @@ function renderSettingsAccordion() {
   `;
 }
 
-function renderFields(fields, moduleId) {
+// Reserved for future advanced settings UI
+function _renderFields(fields) {
   return fields
     .map(field => {
       switch (field.type) {
@@ -340,7 +341,8 @@ function renderFields(fields, moduleId) {
     .join('');
 }
 
-function setupFieldListeners(fields, moduleId) {
+// Reserved for future advanced settings UI
+function _setupFieldListeners(fields, moduleId) {
   fields.forEach(field => {
     const el = document.getElementById(field.id);
     if (!el) {
@@ -462,7 +464,6 @@ async function loadSettings() {
   return new Promise(resolve => {
     chrome.storage.sync.get(['settings'], result => {
       let savedSettings = {};
-      let isFirstTime = false;
 
       if (result.settings) {
         if (result.settings.data?.settings) {
@@ -470,9 +471,6 @@ async function loadSettings() {
         } else if (typeof result.settings === 'object' && !result.settings.data) {
           savedSettings = result.settings;
         }
-      } else {
-        // First time - no settings in storage
-        isFirstTime = true;
       }
 
       currentSettings = deepMerge(getDefaultSettings(), savedSettings);
@@ -887,7 +885,7 @@ async function handleClear() {
         chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => {});
       }
     });
-  } catch (err) {
+  } catch {
     showToast('Failed to clear', 'error');
   }
 }
