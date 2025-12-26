@@ -205,7 +205,9 @@ class MessageRegistry {
 
       this.log(`Chat container not found, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => {
+        setTimeout(resolve, delay);
+      });
       delay = Math.min(delay * 1.5, 1000); // Exponential backoff, max 1s
     }
 
@@ -339,7 +341,9 @@ class MessageRegistry {
     this.stopObserver();
 
     // Brief delay to allow DOM to settle
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => {
+      setTimeout(resolve, 100);
+    });
 
     this.isStarted = false;
     this.isStarting = false;

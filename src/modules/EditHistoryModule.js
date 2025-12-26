@@ -209,7 +209,9 @@ class EditHistoryModule extends BaseModule {
       const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
       this.log(`🔄 Edit scan retry ${retryCount}/${maxRetries}: Waiting ${delay}ms...`);
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => {
+        setTimeout(resolve, delay);
+      });
       return checkForEdits();
     };
 

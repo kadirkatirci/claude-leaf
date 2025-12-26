@@ -120,7 +120,7 @@ class BaseModule {
    * @param {string} key - Ayar adı
    */
   async getSetting(key) {
-    return await settingsStore.get(`${this.name}.${key}`);
+    return settingsStore.get(`${this.name}.${key}`);
   }
 
   /**

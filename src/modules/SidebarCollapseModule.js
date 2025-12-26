@@ -91,12 +91,16 @@ class SidebarCollapseModule extends BaseModule {
           recentHeader.click();
 
           // Wait for list to appear
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => {
+            setTimeout(resolve, 100);
+          });
           list = recentSection.querySelector('ul');
 
           if (!list) {
             // Try one more time with longer delay
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => {
+              setTimeout(resolve, 300);
+            });
             list = recentSection.querySelector('ul');
           }
         }

@@ -149,7 +149,9 @@ class EmojiMarkerModule extends BaseModule {
   async waitAndUpdateUI() {
     let retries = 0;
     while (this.dom.findMessages().length === 0 && retries < 5) {
-      await new Promise(r => setTimeout(r, 200 * Math.pow(1.5, retries)));
+      await new Promise(r => {
+        setTimeout(r, 200 * Math.pow(1.5, retries));
+      });
       retries++;
     }
     await this.updateUI();

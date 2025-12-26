@@ -200,7 +200,7 @@ class BookmarkModule extends BaseModule {
       messages,
       (msg, idx) => idx,
       async idx => bookmarkedIndices.has(idx),
-      async (msgElement, idx) => await this.toggleBookmarkByIndex(msgElement, idx)
+      async (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
     );
   }
 
@@ -320,7 +320,7 @@ class BookmarkModule extends BaseModule {
   }
 
   async getCurrentConversationBookmarks() {
-    return await bookmarkStore.getByConversation(window.location.pathname);
+    return bookmarkStore.getByConversation(window.location.pathname);
   }
 
   async updateUI() {
@@ -354,7 +354,9 @@ class BookmarkModule extends BaseModule {
   async waitAndUpdateUI() {
     let retries = 0;
     while (this.dom.findMessages().length === 0 && retries < 5) {
-      await new Promise(r => setTimeout(r, 200 * Math.pow(1.5, retries)));
+      await new Promise(r => {
+        setTimeout(r, 200 * Math.pow(1.5, retries));
+      });
       retries++;
     }
     await this.updateUI();

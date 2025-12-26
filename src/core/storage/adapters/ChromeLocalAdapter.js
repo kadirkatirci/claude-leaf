@@ -98,7 +98,9 @@ export class ChromeLocalAdapter extends BaseAdapter {
    */
   async delay(attemptNumber) {
     const delayMs = this.retryDelayMs * Math.pow(2, attemptNumber);
-    return new Promise(resolve => setTimeout(resolve, delayMs));
+    return new Promise(resolve => {
+      setTimeout(resolve, delayMs);
+    });
   }
 
   /**

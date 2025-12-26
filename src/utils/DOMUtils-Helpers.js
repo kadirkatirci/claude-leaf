@@ -123,7 +123,8 @@ const DOMUtilsHelpers = {
     return new Promise((resolve, reject) => {
       const element = document.querySelector(selector);
       if (element) {
-        return resolve(element);
+        resolve(element);
+        return;
       }
 
       const observer = new MutationObserver((mutations, obs) => {

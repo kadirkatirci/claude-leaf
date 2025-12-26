@@ -114,9 +114,9 @@ class ClaudeProductivityApp {
   }
 
   async initializeWithTimeout(timeout) {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`Initialization timeout after ${timeout}ms`)), timeout)
-    );
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`Initialization timeout after ${timeout}ms`)), timeout);
+    });
 
     await Promise.race([this.doInitialize(), timeoutPromise]);
   }

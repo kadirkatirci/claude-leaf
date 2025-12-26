@@ -168,8 +168,9 @@ class AsyncManager {
     }
 
     return new Promise((resolve, reject) => {
-      let observer;
-      let timeoutId;
+      const observerId = `wait_${selector}_${Date.now()}`;
+      let observer = null;
+      let timeoutId = null;
 
       const cleanup = () => {
         if (observer) {
@@ -180,8 +181,6 @@ class AsyncManager {
           this.clearTimer(timeoutId);
         }
       };
-
-      const observerId = `wait_${selector}_${Date.now()}`;
 
       // Set up timeout
       timeoutId = this.setTimeout(
@@ -194,7 +193,7 @@ class AsyncManager {
       );
 
       // Set up observer
-      observer = new MutationObserver((mutations, obs) => {
+      observer = new MutationObserver(() => {
         const element = root.querySelector(selector);
         if (element) {
           cleanup();

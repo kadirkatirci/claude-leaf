@@ -145,7 +145,9 @@ class NavigationModule extends BaseModule {
       const delay = Math.min(baseDelay * Math.pow(1.5, retryCount), 1000);
       this.log(`🔄 Retry ${retryCount}/${maxRetries}: Waiting ${delay}ms for messages...`);
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => {
+        setTimeout(resolve, delay);
+      });
       return checkMessages();
     };
 
@@ -350,7 +352,9 @@ class NavigationModule extends BaseModule {
 
       if (i < maxRetries - 1) {
         this.log(`⏳ Mesaj bulunamadı, tekrar deneniyor (${i + 1}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => {
+          setTimeout(resolve, delay);
+        });
       } else {
         // Last attempt failed - additional diagnostic logging
         this.log(`❌ Son deneme başarısız oldu. DOM kontrol:`, {
