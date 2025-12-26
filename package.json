@@ -1,8 +1,26 @@
 {
   "name": "claude-productivity-extension",
-  "version": "1.0.9",
-  "description": "Claude productivity tools extension",
+  "version": "1.1.0",
+  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, edit history, and more",
   "type": "module",
+  "keywords": [
+    "chrome-extension",
+    "claude",
+    "productivity",
+    "ai",
+    "bookmarks",
+    "navigation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kadirkatirci/claude-productivity-ext.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kadirkatirci/claude-productivity-ext/issues"
+  },
+  "homepage": "https://github.com/kadirkatirci/claude-productivity-ext",
+  "author": "Kadir Katirci",
+  "license": "MIT",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",

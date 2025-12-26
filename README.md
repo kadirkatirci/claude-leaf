@@ -24,7 +24,7 @@ A Chrome extension that enhances the Claude.ai web interface with productivity f
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/anthropics/claude-productivity-ext.git
+   git clone https://github.com/kadirkatirci/claude-productivity-ext.git
    cd claude-productivity-ext
    ```
 
