@@ -156,58 +156,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadData() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(['bookmarks'], result => {
-      const data = result.bookmarks || {};
+  const result = await chrome.storage.local.get(['bookmarks']);
+  const data = result.bookmarks || {};
 
-      // Load bookmarks
-      state.bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks : [];
+  // Load bookmarks
+  state.bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks : [];
 
-      // Load categories (ensure defaults)
-      const defaultCat = { id: 'default', name: 'General', color: '#667eea', isDefault: true };
-      state.categories =
-        Array.isArray(data.categories) && data.categories.length > 0
-          ? data.categories
-          : [defaultCat];
+  // Load categories (ensure defaults)
+  const defaultCat = { id: 'default', name: 'General', color: '#667eea', isDefault: true };
+  state.categories =
+    Array.isArray(data.categories) && data.categories.length > 0 ? data.categories : [defaultCat];
 
-      // Ensure 'default' exists in case it was deleted somehow?
-      if (!state.categories.find(c => c.id === 'default')) {
-        state.categories.unshift(defaultCat);
-      }
+  // Ensure 'default' exists in case it was deleted somehow?
+  if (!state.categories.find(c => c.id === 'default')) {
+    state.categories.unshift(defaultCat);
+  }
 
-      // Ensure every bookmark has a categoryId
-      state.bookmarks = state.bookmarks.map(b => ({
-        ...b,
-        categoryId: b.categoryId || 'default',
-        fullText: b.fullText || b.previewText || '',
-      }));
-
-      resolve();
-    });
-  });
+  // Ensure every bookmark has a categoryId
+  state.bookmarks = state.bookmarks.map(b => ({
+    ...b,
+    categoryId: b.categoryId || 'default',
+    fullText: b.fullText || b.previewText || '',
+  }));
 }
 
 async function saveData() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(['bookmarks'], result => {
-      const existingMeta = result.bookmarks?.__meta || {
-        version: 2,
-        createdAt: new Date().toISOString(),
-      };
+  const result = await chrome.storage.local.get(['bookmarks']);
+  const existingMeta = result.bookmarks?.__meta || {
+    version: 2,
+    createdAt: new Date().toISOString(),
+  };
 
-      const storeData = {
-        __meta: { ...existingMeta, updatedAt: new Date().toISOString() },
-        bookmarks: state.bookmarks,
-        categories: state.categories,
-      };
+  const storeData = {
+    __meta: { ...existingMeta, updatedAt: new Date().toISOString() },
+    bookmarks: state.bookmarks,
+    categories: state.categories,
+  };
 
-      chrome.storage.local.set({ bookmarks: storeData }, () => {
-        // Notify extension parts (facultative, but good practice)
-        chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' }).catch(() => {});
-        resolve();
-      });
-    });
-  });
+  await chrome.storage.local.set({ bookmarks: storeData });
+  // Notify extension parts
+  chrome.runtime.sendMessage({ type: 'BOOKMARKS_UPDATED' }).catch(() => {});
 }
 
 function setupEventListeners() {

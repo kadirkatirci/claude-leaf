@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // ============================================
 // Claude Productivity - Popup JavaScript
 // Fully Dynamic Config-Driven UI
@@ -461,35 +462,31 @@ function getDefaultSettings() {
 }
 
 async function loadSettings() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get(['settings'], result => {
-      let savedSettings = {};
+  const result = await chrome.storage.sync.get(['settings']);
+  let savedSettings = {};
+  let isFirstTime = false;
 
-      if (result.settings) {
-        if (result.settings.data?.settings) {
-          savedSettings = result.settings.data.settings;
-        } else if (typeof result.settings === 'object' && !result.settings.data) {
-          savedSettings = result.settings;
-        }
-      }
+  if (result.settings) {
+    if (result.settings.data?.settings) {
+      savedSettings = result.settings.data.settings;
+    } else if (typeof result.settings === 'object' && !result.settings.data) {
+      savedSettings = result.settings;
+    }
+  } else {
+    // No settings in storage - this is first time
+    isFirstTime = true;
+  }
 
-      currentSettings = deepMerge(getDefaultSettings(), savedSettings);
-      console.log('[Popup] Settings loaded:', currentSettings);
-      updateUI();
+  currentSettings = deepMerge(getDefaultSettings(), savedSettings);
+  console.log('[Popup] Settings loaded:', currentSettings);
+  updateUI();
 
-      // Auto-save defaults on first load
-      if (isFirstTime) {
-        console.log('[Popup] First time - saving defaults to storage');
-        const storeData = { version: 1, data: { settings: currentSettings } };
-        chrome.storage.sync.set({ settings: storeData }, () => {
-          console.log('[Popup] Default settings saved');
-          resolve();
-        });
-      } else {
-        resolve();
-      }
-    });
-  });
+  // Auto-save defaults on first load
+  if (isFirstTime) {
+    console.log('[Popup] First time - saving defaults to storage');
+    await chrome.storage.sync.set({ settings: currentSettings });
+    console.log('[Popup] Default settings saved');
+  }
 }
 
 function deepMerge(target, source) {
@@ -797,7 +794,7 @@ async function handleExport() {
   showToast('Exported successfully!', 'success');
 }
 
-async function handleImport() {
+function handleImport() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
