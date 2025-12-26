@@ -94,6 +94,7 @@ const DataService = {
    * Read data from a store
    */
   async readStore(storeId) {
+    await this.init();
     const config = this.getStoreConfig(storeId);
     if (!config) {
       throw new Error(`Unknown store: ${storeId}`);
@@ -123,6 +124,7 @@ const DataService = {
    * Write data to a store
    */
   async writeStore(storeId, data) {
+    await this.init();
     const config = this.getStoreConfig(storeId);
     if (!config) {
       throw new Error(`Unknown store: ${storeId}`);
@@ -156,6 +158,7 @@ const DataService = {
    * Clear a store (reset to defaults or remove)
    */
   async clearStore(storeId, resetToDefaults = false) {
+    await this.init();
     const config = this.getStoreConfig(storeId);
     if (!config) {
       throw new Error(`Unknown store: ${storeId}`);

@@ -69,6 +69,10 @@ class ClaudeProductivityApp {
     this.navigationUnsubscribe = null;
     this.restartDebounceTimer = null;
     this.lastNavigationTime = 0;
+
+    // Setup message listener immediately so popup can communicate
+    // even before full initialization completes
+    this.setupChromeMessageListener();
   }
 
   async init() {
@@ -439,11 +443,6 @@ class ClaudeProductivityApp {
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
       debugLog('navigation', `Feature ${feature} ${enabled ? 'enabled' : 'disabled'}`);
     });
-
-    // Handle messages from popup for IndexedDB operations
-    // Popup runs in extension context, content script runs in page context
-    // They have different IndexedDB instances, so popup must request data via messaging
-    this.setupChromeMessageListener();
   }
 
   setupChromeMessageListener() {
