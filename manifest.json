@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Claude Productivity Tools",
   "version": "1.1.0",
-  "description": "Claude web arayüzü için verimlilik araçları - Navigation buttons, outline viewer ve daha fazlası",
+  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, edit history, and more",
   "permissions": [
     "storage",
     "activeTab"
@@ -17,7 +17,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Claude Productivity - Ayarlar"
+    "default_title": "Claude Productivity - Settings"
   },
   "content_scripts": [
     {

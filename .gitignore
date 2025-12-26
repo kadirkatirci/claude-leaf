@@ -5,3 +5,6 @@ dist/
 
 # Auto-generated from src/config/DevConfig.js during build
 popup/devConfig.json
+
+# Development notes (not needed for distribution)
+refactor-notes/
