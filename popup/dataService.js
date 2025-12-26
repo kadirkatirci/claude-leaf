@@ -2,17 +2,14 @@
  * DataService - Centralized data export/import/clear for popup
  * Reads store configurations from shared/storeConfig.json
  * This ensures popup and content script use the same store definitions
+ *
+ * IMPORTANT: For IndexedDB stores, popup sends messages to content script
+ * because popup runs in extension context while IndexedDB is in page context
  */
 
 const DataService = {
   // Will be loaded from storeConfig.json
   storeConfig: null,
-
-  // IndexedDB connection (shared with content script)
-  indexedDB: null,
-  DB_NAME: 'claude-productivity',
-  DB_VERSION: 1,
-  STORE_NAME: 'keyvalue',
 
   /**
    * Initialize by loading store config
@@ -67,85 +64,29 @@ const DataService = {
   },
 
   /**
-   * Initialize IndexedDB connection
-   * Uses same DB as content script for shared access
+   * Send message to content script and get response
+   * Used for IndexedDB operations since popup can't access page's IndexedDB
    */
-  async initIndexedDB() {
-    if (this.indexedDB) {
-      return this.indexedDB;
-    }
-
+  async sendToContentScript(message) {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-
-      request.onerror = () => {
-        console.error('[DataService] IndexedDB open failed:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        this.indexedDB = request.result;
-        console.log('[DataService] IndexedDB connected');
-        resolve(this.indexedDB);
-      };
-
-      request.onupgradeneeded = event => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-          db.createObjectStore(this.STORE_NAME, { keyPath: 'key' });
-          console.log('[DataService] IndexedDB store created');
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        if (!tabs[0]) {
+          reject(new Error('No active tab found'));
+          return;
         }
-      };
-    });
-  },
 
-  /**
-   * Read from IndexedDB
-   */
-  async readFromIndexedDB(key) {
-    const db = await this.initIndexedDB();
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([this.STORE_NAME], 'readonly');
-      const store = transaction.objectStore(this.STORE_NAME);
-      const request = store.get(key);
-
-      request.onsuccess = () => {
-        resolve(request.result?.value || null);
-      };
-      request.onerror = () => reject(request.error);
-    });
-  },
-
-  /**
-   * Write to IndexedDB
-   */
-  async writeToIndexedDB(key, value) {
-    const db = await this.initIndexedDB();
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([this.STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(this.STORE_NAME);
-      const request = store.put({ key, value });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  },
-
-  /**
-   * Delete from IndexedDB
-   */
-  async deleteFromIndexedDB(key) {
-    const db = await this.initIndexedDB();
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([this.STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(this.STORE_NAME);
-      const request = store.delete(key);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+        chrome.tabs.sendMessage(tabs[0].id, message, response => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          if (response?.error) {
+            reject(new Error(response.error));
+            return;
+          }
+          resolve(response);
+        });
+      });
     });
   },
 
@@ -158,10 +99,21 @@ const DataService = {
       throw new Error(`Unknown store: ${storeId}`);
     }
 
+    // For IndexedDB stores, request data from content script
     if (config.storageType === 'indexeddb') {
-      return this.readFromIndexedDB(storeId);
+      try {
+        const response = await this.sendToContentScript({
+          type: 'STORE_READ',
+          storeId,
+        });
+        return response?.data || null;
+      } catch (error) {
+        console.warn(`[DataService] Failed to read ${storeId} from content script:`, error);
+        return null;
+      }
     }
 
+    // For chrome.storage, read directly
     const storage = this.getStorage(config.storageType);
     const result = await storage.get([storeId]);
     return result[storeId] || null;
@@ -185,11 +137,17 @@ const DataService = {
     }
     data.__meta.updatedAt = new Date().toISOString();
 
+    // For IndexedDB stores, send to content script
     if (config.storageType === 'indexeddb') {
-      await this.writeToIndexedDB(storeId, data);
+      await this.sendToContentScript({
+        type: 'STORE_WRITE',
+        storeId,
+        data,
+      });
       return;
     }
 
+    // For chrome.storage, write directly
     const storage = this.getStorage(config.storageType);
     await storage.set({ [storeId]: data });
   },
@@ -208,11 +166,16 @@ const DataService = {
       return;
     }
 
+    // For IndexedDB stores, send to content script
     if (config.storageType === 'indexeddb') {
-      await this.deleteFromIndexedDB(storeId);
+      await this.sendToContentScript({
+        type: 'STORE_CLEAR',
+        storeId,
+      });
       return;
     }
 
+    // For chrome.storage, remove directly
     const storage = this.getStorage(config.storageType);
     await storage.remove([storeId]);
   },

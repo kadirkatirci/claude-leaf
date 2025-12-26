@@ -16,6 +16,7 @@ import {
   settingsStore,
   bookmarkStore,
   markerStore,
+  editHistoryStore,
   conversationStateStore,
 } from './stores/index.js';
 import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
@@ -437,6 +438,68 @@ class ClaudeProductivityApp {
 
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
       debugLog('navigation', `Feature ${feature} ${enabled ? 'enabled' : 'disabled'}`);
+    });
+
+    // Handle messages from popup for IndexedDB operations
+    // Popup runs in extension context, content script runs in page context
+    // They have different IndexedDB instances, so popup must request data via messaging
+    this.setupChromeMessageListener();
+  }
+
+  setupChromeMessageListener() {
+    const storeMap = {
+      bookmarks: bookmarkStore,
+      markers: markerStore,
+      editHistory: editHistoryStore,
+    };
+
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message.type === 'STORE_READ') {
+        const store = storeMap[message.storeId];
+        if (!store) {
+          sendResponse({ error: `Unknown store: ${message.storeId}` });
+          return true;
+        }
+
+        store.store
+          .get()
+          .then(data => sendResponse({ data }))
+          .catch(err => sendResponse({ error: err.message }));
+
+        return true; // Keep channel open for async response
+      }
+
+      if (message.type === 'STORE_WRITE') {
+        const store = storeMap[message.storeId];
+        if (!store) {
+          sendResponse({ error: `Unknown store: ${message.storeId}` });
+          return true;
+        }
+
+        store.store
+          .set(message.data)
+          .then(() => sendResponse({ success: true }))
+          .catch(err => sendResponse({ error: err.message }));
+
+        return true;
+      }
+
+      if (message.type === 'STORE_CLEAR') {
+        const store = storeMap[message.storeId];
+        if (!store) {
+          sendResponse({ error: `Unknown store: ${message.storeId}` });
+          return true;
+        }
+
+        store
+          .clear()
+          .then(() => sendResponse({ success: true }))
+          .catch(err => sendResponse({ error: err.message }));
+
+        return true;
+      }
+
+      return false;
     });
   }
 
