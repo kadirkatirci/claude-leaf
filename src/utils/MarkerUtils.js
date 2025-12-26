@@ -18,6 +18,7 @@
  */
 
 import { hashString } from './HashUtils.js';
+import { debugLog } from '../config/debug.js';
 
 /**
  * Get clean text content from a message element
@@ -308,8 +309,9 @@ export function resolveMarkerIndex(marker, messages, options = {}) {
   // ============================================
 
   // Not found - marker's message no longer exists
-  console.warn(
-    `[MarkerUtils] Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`
+  debugLog(
+    'marker',
+    `Marker not found (message removed): index=${savedIndex}, preview="${savedPreview?.substring(0, 30)}..."`
   );
   return { index: null, status: 'not_found', message: null };
 }

@@ -5,6 +5,8 @@
  * Set DEBUG = false for production builds to improve performance.
  */
 
+/* eslint-disable no-console -- This file IS the debug logging infrastructure */
+
 // Main debug flag - set to false for production
 export const DEBUG = false;
 
