@@ -25,7 +25,6 @@ export const MODULE_CONSTANTS = {
   bookmarks: {
     keyboardShortcuts: true,
     showOnHover: true,
-    storageType: 'local',
   },
 
   emojiMarkers: {

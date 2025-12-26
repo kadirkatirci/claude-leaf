@@ -6,16 +6,16 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
-import { debugLog } from '../config/debug.js';
+import { getStoreConfig } from '../config/storeConfig.js';
+
+const CONFIG = getStoreConfig('markers');
 
 export class MarkerStore {
   constructor() {
     this.store = stateManager.createStore('markers', {
-      adapter: 'local',
-      version: 2,
-      defaultData: {
-        markers: [],
-      },
+      adapter: CONFIG.storageType,
+      version: CONFIG.version,
+      defaultData: CONFIG.defaultData,
     });
   }
 
@@ -116,26 +116,6 @@ export class MarkerStore {
 
   clear() {
     return this.store.set({ markers: [] });
-  }
-
-  async setStorageType(type) {
-    if (type !== 'local' && type !== 'sync') {
-      throw new Error(`Invalid storage type: ${type}`);
-    }
-    const newAdapter = stateManager.adapters[type];
-    await this.store.changeAdapter(newAdapter, true);
-    debugLog('marker', `Storage type changed to ${type}`);
-  }
-
-  getStorageType() {
-    const adapter = this.store.adapter;
-    if (adapter.constructor.name === 'ChromeLocalAdapter') {
-      return 'local';
-    }
-    if (adapter.constructor.name === 'ChromeSyncAdapter') {
-      return 'sync';
-    }
-    return 'unknown';
   }
 
   subscribe(callback) {

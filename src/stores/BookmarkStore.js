@@ -6,17 +6,16 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
-import { debugLog } from '../config/debug.js';
+import { getStoreConfig } from '../config/storeConfig.js';
+
+const CONFIG = getStoreConfig('bookmarks');
 
 export class BookmarkStore {
   constructor() {
     this.store = stateManager.createStore('bookmarks', {
-      adapter: 'local',
-      version: 2,
-      defaultData: {
-        bookmarks: [],
-        categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
-      },
+      adapter: CONFIG.storageType,
+      version: CONFIG.version,
+      defaultData: CONFIG.defaultData,
     });
   }
 
@@ -189,26 +188,6 @@ export class BookmarkStore {
       bookmarks: [],
       categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
     });
-  }
-
-  async setStorageType(type) {
-    if (type !== 'local' && type !== 'sync') {
-      throw new Error(`Invalid storage type: ${type}`);
-    }
-    const newAdapter = stateManager.adapters[type];
-    await this.store.changeAdapter(newAdapter, true);
-    debugLog('bookmark', `Storage type changed to ${type}`);
-  }
-
-  getStorageType() {
-    const adapter = this.store.adapter;
-    if (adapter.constructor.name === 'ChromeLocalAdapter') {
-      return 'local';
-    }
-    if (adapter.constructor.name === 'ChromeSyncAdapter') {
-      return 'sync';
-    }
-    return 'unknown';
   }
 
   subscribe(callback) {

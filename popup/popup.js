@@ -757,41 +757,60 @@ function showEmojiPicker() {
 }
 
 // ============================================
-// Data Management
+// Data Management (using DataService)
 // ============================================
+
+/**
+ * Map config export options to DataService store IDs
+ */
+function getStoreIdFromConfig(configKey) {
+  const keyMap = {
+    editHistory: 'editHistory',
+    bookmarks: 'bookmarks',
+    emojiMarkers: 'markers',
+    settings: 'settings',
+  };
+  return keyMap[configKey] || null;
+}
+
 async function handleExport() {
-  const exportData = {};
+  // Collect selected store IDs
+  const selectedStores = [];
 
   for (const opt of config.dataOptions.export) {
     if (!document.getElementById(opt.id)?.checked) {
       continue;
     }
 
-    if (opt.key === 'settings') {
-      exportData.settings = currentSettings;
-    } else {
-      const result = await chrome.storage.local.get([opt.storageKey]);
-      const data = result[opt.storageKey]?.[opt.dataPath];
-      if (data) {
-        exportData[opt.key] = data;
-      }
+    const storeId = getStoreIdFromConfig(opt.key);
+    if (storeId) {
+      selectedStores.push(storeId);
     }
   }
 
-  if (Object.keys(exportData).length === 0) {
+  if (selectedStores.length === 0) {
     showToast('Nothing selected', 'warning');
     return;
   }
 
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `claude-productivity-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    // Use DataService for export
+    const exportData = await window.DataService.exportData(selectedStores, currentSettings);
 
-  showToast('Exported successfully!', 'success');
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `claude-productivity-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Exported successfully!', 'success');
+    console.log('[Popup] Exported stores:', selectedStores);
+  } catch (error) {
+    console.error('[Popup] Export error:', error);
+    showToast('Export failed', 'error');
+  }
 }
 
 function handleImport() {
@@ -808,37 +827,31 @@ function handleImport() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      let count = 0;
 
-      for (const opt of config.dataOptions.export) {
-        if (!data[opt.key] || opt.key === 'settings') {
-          continue;
-        }
+      // Use DataService for import
+      const result = await window.DataService.importData(data, true);
 
-        const existing = await chrome.storage.local.get([opt.storageKey]);
-        const existingData = existing[opt.storageKey]?.[opt.dataPath] || [];
-        const existingIds = new Set(existingData.map(i => i.id));
-        const newItems = data[opt.key].filter(i => !existingIds.has(i.id));
-
-        if (newItems.length > 0) {
-          await chrome.storage.local.set({
-            [opt.storageKey]: {
-              __meta: { version: 2, updatedAt: new Date().toISOString() },
-              [opt.dataPath]: [...existingData, ...newItems],
-            },
-          });
-          count += newItems.length;
-        }
-      }
-
+      // Handle settings separately (needs UI update)
       if (data.settings) {
         currentSettings = deepMerge(getDefaultSettings(), data.settings);
         await saveSettings();
         updateUI();
       }
 
-      showToast(`Imported ${count} items`, 'success');
+      // Build result message
+      const importedCount = Object.values(result.imported).reduce((sum, val) => {
+        return sum + (typeof val === 'number' ? val : 0);
+      }, 0);
 
+      if (result.success) {
+        showToast(`Imported ${importedCount} items`, 'success');
+        console.log('[Popup] Import result:', result);
+      } else {
+        showToast('Import completed with errors', 'warning');
+        console.warn('[Popup] Import errors:', result.errors);
+      }
+
+      // Notify content script
       chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
         if (tabs[0]) {
           chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => {});
@@ -854,11 +867,26 @@ function handleImport() {
 }
 
 async function handleClear() {
-  const keys = config.dataOptions.clear
-    .filter(opt => document.getElementById(opt.id)?.checked)
-    .map(opt => opt.storageKey);
+  // Collect selected stores to clear
+  const selectedStores = [];
 
-  if (keys.length === 0) {
+  // Map storageKey to storeId
+  const storeMap = {
+    editHistory: 'editHistory',
+    bookmarks: 'bookmarks',
+    markers: 'markers',
+  };
+
+  for (const opt of config.dataOptions.clear) {
+    if (document.getElementById(opt.id)?.checked) {
+      const mappedId = storeMap[opt.storageKey];
+      if (mappedId) {
+        selectedStores.push(mappedId);
+      }
+    }
+  }
+
+  if (selectedStores.length === 0) {
     showToast('Nothing selected', 'warning');
     return;
   }
@@ -868,21 +896,30 @@ async function handleClear() {
   }
 
   try {
-    await chrome.storage.local.remove(keys);
+    // Use DataService to clear stores
+    for (const storeId of selectedStores) {
+      await window.DataService.clearStore(storeId, false);
+    }
+
+    // Uncheck all clear checkboxes
     config.dataOptions.clear.forEach(opt => {
       const cb = document.getElementById(opt.id);
       if (cb) {
         cb.checked = false;
       }
     });
-    showToast('Data cleared', 'success');
 
+    showToast('Data cleared', 'success');
+    console.log('[Popup] Cleared stores:', selectedStores);
+
+    // Notify content script
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => {});
       }
     });
-  } catch {
+  } catch (error) {
+    console.error('[Popup] Clear error:', error);
     showToast('Failed to clear', 'error');
   }
 }

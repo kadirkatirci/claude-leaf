@@ -66,8 +66,6 @@ class EmojiMarkerModule extends BaseModule {
 
       this.log('Emoji Markers initializing...');
 
-      await markerStore.setStorageType('local');
-
       const markers = await markerStore.getAll();
       this.log(`${markers.length} markers loaded`);
 

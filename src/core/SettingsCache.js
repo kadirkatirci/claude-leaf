@@ -57,7 +57,6 @@ class SettingsCache {
         enabled: true,
         keyboardShortcuts: true,
         showInSidebar: true,
-        storageType: 'local',
         exportFormat: 'json',
         showTimestamp: true,
       },
@@ -65,7 +64,6 @@ class SettingsCache {
         enabled: true,
         favoriteEmojis: ['⚠️', '❓', '💡', '⭐', '📌', '🔥'],
         showPanel: true,
-        storageType: 'local',
       },
       sidebarCollapse: {
         enabled: true,

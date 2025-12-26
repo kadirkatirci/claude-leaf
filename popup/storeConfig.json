@@ -1,0 +1,55 @@
+{
+  "stores": {
+    "bookmarks": {
+      "storageType": "indexeddb",
+      "version": 2,
+      "defaultData": {
+        "bookmarks": [],
+        "categories": [
+          {
+            "id": "default",
+            "name": "General",
+            "color": "#667eea",
+            "isDefault": true
+          }
+        ]
+      },
+      "exportable": true,
+      "label": "Bookmarks"
+    },
+    "markers": {
+      "storageType": "indexeddb",
+      "version": 2,
+      "defaultData": {
+        "markers": []
+      },
+      "exportable": true,
+      "label": "Emoji Markers"
+    },
+    "editHistory": {
+      "storageType": "indexeddb",
+      "version": 2,
+      "defaultData": {
+        "history": [],
+        "snapshots": []
+      },
+      "exportable": true,
+      "label": "Edit History"
+    },
+    "settings": {
+      "storageType": "sync",
+      "version": 1,
+      "defaultData": null,
+      "exportable": true,
+      "label": "Settings"
+    },
+    "conversation-states": {
+      "storageType": "indexeddb",
+      "version": 1,
+      "defaultData": {},
+      "cacheTTL": 10000,
+      "exportable": false,
+      "label": "Conversation State"
+    }
+  }
+}

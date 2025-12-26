@@ -2,6 +2,7 @@
 import resolve from '@rollup/plugin-node-resolve';
 import { writeFileSync } from 'fs';
 import { DEV_CONFIG } from './src/config/DevConfig.js';
+import { STORE_CONFIG } from './src/config/storeConfig.js';
 
 // Generate popup devConfig.json from DevConfig.js (single source of truth)
 function generatePopupDevConfig() {
@@ -23,6 +24,18 @@ function generatePopupDevConfig() {
   };
 }
 
+// Generate storeConfig.json for popup from storeConfig.js (single source of truth)
+function generateStoreConfig() {
+  return {
+    name: 'generate-store-config',
+    buildStart() {
+      const storeConfigJson = { stores: STORE_CONFIG };
+      writeFileSync('./popup/storeConfig.json', JSON.stringify(storeConfigJson, null, 2) + '\n');
+      console.log('📦 Store config generated for popup/');
+    },
+  };
+}
+
 export default {
   input: 'src/content.js',
   output: {
@@ -31,5 +44,5 @@ export default {
     name: 'ClaudeProductivity',
     inlineDynamicImports: true,
   },
-  plugins: [generatePopupDevConfig(), resolve()],
+  plugins: [generatePopupDevConfig(), generateStoreConfig(), resolve()],
 };

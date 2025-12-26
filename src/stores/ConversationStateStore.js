@@ -5,16 +5,19 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { getStoreConfig } from '../config/storeConfig.js';
 import { debugLog } from '../config/debug.js';
+
+const CONFIG = getStoreConfig('conversation-states');
 
 export class ConversationStateStore {
   constructor() {
     // Create store with IndexedDB adapter (unlimited storage)
     this.store = stateManager.createStore('conversation-states', {
-      adapter: 'indexeddb',
-      version: 1,
-      defaultData: {},
-      cacheTTL: 10000, // Cache for 10 seconds
+      adapter: CONFIG.storageType,
+      version: CONFIG.version,
+      defaultData: CONFIG.defaultData,
+      cacheTTL: CONFIG.cacheTTL,
     });
 
     this.currentConversationUrl = null;

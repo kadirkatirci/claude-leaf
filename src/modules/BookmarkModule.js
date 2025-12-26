@@ -72,7 +72,6 @@ class BookmarkModule extends BaseModule {
 
     FixedButtonMixin.enhance(this);
 
-    await bookmarkStore.setStorageType(BOOKMARK_CONFIG.storageType);
     const bookmarks = await bookmarkStore.getAll();
     this.log(`Loaded ${bookmarks.length} bookmarks`);
 
@@ -91,10 +90,7 @@ class BookmarkModule extends BaseModule {
     }
 
     this.chromeMessageListener = async message => {
-      if (message.type === 'BOOKMARKS_UPDATED' || message.type === 'STORAGE_TYPE_CHANGED') {
-        if (message.storageType) {
-          await bookmarkStore.setStorageType(message.storageType);
-        }
+      if (message.type === 'BOOKMARKS_UPDATED') {
         await this.addBookmarkButtons();
         await this.updateUI();
       }
@@ -427,10 +423,6 @@ class BookmarkModule extends BaseModule {
   async onSettingsChanged(settings) {
     if (settings.position) {
       this.panel.updatePosition(settings.position);
-    }
-    if (settings.storageType) {
-      await bookmarkStore.setStorageType(settings.storageType);
-      await this.updateUI();
     }
     if (this.settingsChanged(['colorTheme', 'customColor'], settings)) {
       await this.recreateUI();

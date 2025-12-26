@@ -9,18 +9,18 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { getStoreConfig } from '../config/storeConfig.js';
 import { hashString } from '../utils/HashUtils.js';
 import { debugLog } from '../config/debug.js';
+
+const CONFIG = getStoreConfig('editHistory');
 
 export class EditHistoryStore {
   constructor() {
     this.store = stateManager.createStore('editHistory', {
-      adapter: 'local',
-      version: 2, // Bumped for snapshots
-      defaultData: {
-        history: [],
-        snapshots: [],
-      },
+      adapter: CONFIG.storageType,
+      version: CONFIG.version,
+      defaultData: CONFIG.defaultData,
     });
   }
 
