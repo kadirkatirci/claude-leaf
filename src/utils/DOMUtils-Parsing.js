@@ -8,6 +8,36 @@ import { hashString } from './HashUtils.js';
 
 const DOMUtilsParsing = {
   /**
+   * Find version span efficiently using targeted selector
+   * Uses fast path with specific selector, falls back to full scan
+   * @param {HTMLElement} container - Message container
+   * @returns {HTMLElement|null} Version span or null
+   */
+  findVersionSpan(container) {
+    const pattern = /^\d+\s*\/\s*\d+$/;
+
+    // FAST PATH: Version navigation container (Previous/Next buttons area)
+    // Claude.ai places version span in: div.inline-flex.items-center.gap-1 > span
+    const versionContainer = container.querySelector('.inline-flex.items-center.gap-1');
+    if (versionContainer) {
+      const span = versionContainer.querySelector('span');
+      if (span && pattern.test(span.textContent.trim())) {
+        return span;
+      }
+    }
+
+    // FALLBACK: Full scan for backwards compatibility
+    const allSpans = container.querySelectorAll('span');
+    for (const span of allSpans) {
+      if (pattern.test(span.textContent.trim())) {
+        return span;
+      }
+    }
+
+    return null;
+  },
+
+  /**
    * Find edited prompts
    * Detects Claude messages with edit icons
    * @returns {Array<{element: HTMLElement, editButton: HTMLElement, versionInfo: string}>}
@@ -33,17 +63,8 @@ const DOMUtilsParsing = {
       if (!userMessage) return;
 
       // Look for version counter ("e.g., 3 / 3")
-      // Check all spans in container
-      const allSpans = container.querySelectorAll('span');
-      let versionSpan = null;
-
-      for (const span of allSpans) {
-        const text = span.textContent.trim();
-        if (/^\d+\s*\/\s*\d+$/.test(text)) {
-          versionSpan = span;
-          break;
-        }
-      }
+      // Use optimized findVersionSpan with targeted selector
+      const versionSpan = this.findVersionSpan(container);
 
       if (versionSpan) {
         const versionText = versionSpan.textContent.trim();
