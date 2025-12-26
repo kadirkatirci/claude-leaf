@@ -148,11 +148,9 @@ export default class FixedButtonMixin {
           this.fixedButton.style.pointerEvents = 'auto';
 
           // Use loading opacity if not ready, target opacity if ready
+          // Note: _isButtonReady is reset by navigation listener, not here
           const opacity = this._isButtonReady ? this._targetOpacity : LOADING_OPACITY;
           this.fixedButton.style.opacity = opacity.toString();
-
-          // Reset ready state on new page navigation
-          this._isButtonReady = false;
         } else {
           // Hide completely - use display:none for guaranteed hiding
           this.fixedButton.style.display = 'none';
@@ -318,6 +316,12 @@ export default class FixedButtonMixin {
 
       // Use CounterBadge.update which handles visibility automatically
       CounterBadge.update(this.buttonCounter, count);
+
+      // Mark button as ready when counter is updated (data has loaded)
+      // This handles the case where updateUI() is called directly without MessageHub events
+      if (this._markButtonReady && !this._isButtonReady) {
+        this._markButtonReady();
+      }
     }.bind(module);
   }
 
