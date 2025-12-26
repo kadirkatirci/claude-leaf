@@ -3,6 +3,8 @@
  * Prevents conflicts and provides consistent shortcut handling
  */
 
+import { debugLog } from '../config/debug.js';
+
 class KeyboardManager {
   constructor() {
     this.shortcuts = new Map();
@@ -23,7 +25,7 @@ class KeyboardManager {
     document.addEventListener('keydown', this.listener, true);
 
     if (this.debugMode) {
-      console.log('[KeyboardManager] Initialized');
+      debugLog('keyboard', 'Initialized');
     }
   }
 
@@ -55,7 +57,7 @@ class KeyboardManager {
     this.shortcuts.set(id, shortcut);
 
     if (this.debugMode) {
-      console.log(`[KeyboardManager] Registered shortcut: ${id}`, shortcut);
+      debugLog('keyboard', `Registered shortcut: ${id}`, shortcut);
     }
 
     return true;
@@ -68,7 +70,7 @@ class KeyboardManager {
     const deleted = this.shortcuts.delete(id);
 
     if (this.debugMode && deleted) {
-      console.log(`[KeyboardManager] Unregistered shortcut: ${id}`);
+      debugLog('keyboard', `Unregistered shortcut: ${id}`);
     }
 
     return deleted;
@@ -87,7 +89,7 @@ class KeyboardManager {
     Object.assign(shortcut, config);
 
     if (this.debugMode) {
-      console.log(`[KeyboardManager] Updated shortcut: ${id}`, shortcut);
+      debugLog('keyboard', `Updated shortcut: ${id}`, shortcut);
     }
 
     return true;
@@ -113,7 +115,7 @@ class KeyboardManager {
     this.enabled = enabled;
 
     if (this.debugMode) {
-      console.log(`[KeyboardManager] Global shortcuts ${enabled ? 'enabled' : 'disabled'}`);
+      debugLog('keyboard', `Global shortcuts ${enabled ? 'enabled' : 'disabled'}`);
     }
   }
 
@@ -144,7 +146,7 @@ class KeyboardManager {
 
       if (this.matchesShortcut(e, shortcut)) {
         if (this.debugMode) {
-          console.log(`[KeyboardManager] Triggered shortcut: ${id}`);
+          debugLog('keyboard', `Triggered shortcut: ${id}`);
         }
 
         if (shortcut.preventDefault) {
