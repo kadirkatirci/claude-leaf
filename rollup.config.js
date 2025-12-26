@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import resolve from '@rollup/plugin-node-resolve';
 import { writeFileSync } from 'fs';
 import { DEV_CONFIG } from './src/config/DevConfig.js';
@@ -13,15 +14,12 @@ function generatePopupDevConfig() {
 
       const popupConfig = { disabledModules };
 
-      writeFileSync(
-        './popup/devConfig.json',
-        JSON.stringify(popupConfig, null, 2) + '\n'
-      );
+      writeFileSync('./popup/devConfig.json', JSON.stringify(popupConfig, null, 2) + '\n');
 
       if (disabledModules.length > 0) {
         console.log(`🚧 Dev-disabled modules: ${disabledModules.join(', ')}`);
       }
-    }
+    },
   };
 }
 
@@ -31,10 +29,7 @@ export default {
     file: 'dist/content.bundle.js',
     format: 'iife',
     name: 'ClaudeProductivity',
-    inlineDynamicImports: true
+    inlineDynamicImports: true,
   },
-  plugins: [
-    generatePopupDevConfig(),
-    resolve()
-  ]
+  plugins: [generatePopupDevConfig(), resolve()],
 };

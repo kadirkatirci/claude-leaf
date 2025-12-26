@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * ClaudeProductivityApp - Main application manager
  * Coordinates all modules and manages lifecycle
