@@ -20,8 +20,31 @@ export class BookmarkSidebar {
       return true;
     }
 
+    // Find sidebar nav first (more stable selector)
+    const sidebarNav = document.querySelector('nav[aria-label="Sidebar"]');
+    if (!sidebarNav) {
+      if (retryCount < maxRetries) {
+        setTimeout(() => this.inject(retryCount + 1), 1000);
+      }
+      return false;
+    }
+
     // Find the container that holds Chats, Projects, etc.
-    const container = document.querySelector('.flex.flex-col.px-2.gap-px.pt-px');
+    // Try multiple selectors for robustness against UI changes
+    let container =
+      sidebarNav.querySelector('.flex.flex-col.px-2.gap-px.pt-px') ||
+      sidebarNav.querySelector('.flex.flex-col.px-2.gap-px') ||
+      sidebarNav.querySelector('.flex.flex-col.px-2');
+
+    // Fallback: find container by looking for nav items (Chats, Projects links)
+    if (!container) {
+      const navLinks = sidebarNav.querySelectorAll('a[data-dd-action-name="sidebar-nav-item"]');
+      if (navLinks.length > 0) {
+        // Get the parent container of the first nav link
+        const firstLink = navLinks[0];
+        container = firstLink.closest('.flex.flex-col') || firstLink.parentElement?.parentElement;
+      }
+    }
 
     if (!container) {
       if (retryCount < maxRetries) {

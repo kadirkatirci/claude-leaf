@@ -20,8 +20,14 @@ export class BookmarkManagerModal {
 
     // Create Modal Structure
     const modal = DOMUtils.createElement('div', {
-      className: 'fixed inset-0 bg-black/70 flex items-center justify-center z-[5000]',
-      style: { animation: 'fadeIn 0.2s ease' },
+      className: 'fixed inset-0 flex items-center justify-center',
+      style: {
+        animation: 'fadeIn 0.2s ease',
+        zIndex: '2147483647', // Maximum z-index to ensure always on top
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)', // Safari support
+      },
     });
 
     const content = DOMUtils.createElement('div', {
@@ -592,8 +598,14 @@ export class BookmarkManagerModal {
   showCategoryCreationModal() {
     // Create a dialog overlay for adding category
     const overlay = DOMUtils.createElement('div', {
-      className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-[5100]',
-      style: { animation: 'fadeIn 0.1s ease' },
+      className: 'fixed inset-0 flex items-center justify-center',
+      style: {
+        animation: 'fadeIn 0.1s ease',
+        zIndex: '2147483647', // Maximum z-index
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+      },
     });
 
     const dialog = DOMUtils.createElement('div', {
