@@ -6,13 +6,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with productivity features: message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse, content folding, and compact view for managing long conversations.
 
+### Target Users
+- Power users who have long conversations with Claude
+- Users who want to track edited prompts and their history
+- Anyone who needs to bookmark or mark important messages
+
+### Key Features
+| Feature | Description |
+|---------|-------------|
+| **Message Navigation** | Jump between messages with keyboard shortcuts (J/K) |
+| **Edit History** | Track all prompt edits with version comparison |
+| **Bookmarks** | Save and categorize important messages |
+| **Emoji Markers** | Mark messages with emojis for quick reference |
+| **Compact View** | Collapse long messages to manageable previews |
+| **Sidebar Collapse** | Collapsible sidebar sections for cleaner UI |
+| **Content Folding** | Fold code blocks and headings |
+
 ## Development Commands
 
 ```bash
-npm install       # Install dependencies
-npm run build     # Build for production (creates dist/content.bundle.js)
-npm run watch     # Watch mode for development
-npm run dev       # Alias for watch mode
+npm install        # Install dependencies
+npm run build      # Build for production (creates dist/content.bundle.js)
+npm run watch      # Watch mode for development
+npm run dev        # Alias for watch mode
+npm run lint       # Run ESLint
+npm run lint:fix   # Run ESLint with auto-fix
+npm run format     # Format code with Prettier
 ```
 
 ### Testing the Extension
@@ -21,9 +40,60 @@ npm run dev       # Alias for watch mode
 3. Click "Load unpacked" and select this folder
 4. Navigate to https://claude.ai to test
 
+### Pre-commit Hooks
+The project uses Husky + lint-staged for pre-commit validation:
+- ESLint runs on staged `.js` files
+- Prettier formats all staged files
+
 ## Architecture Overview
 
+### Directory Structure
+```
+src/
+├── content.js              # Entry point (loads NavigationInterceptor first!)
+├── App.js                  # Main application manager
+├── config/                 # Configuration files
+│   ├── debug.js            # Debug flags and debugLog utility
+│   ├── DevConfig.js        # Development feature flags
+│   ├── ModuleConstants.js  # Module-related constants
+│   └── themes.js           # Theme definitions
+├── core/                   # Core infrastructure
+│   ├── NavigationInterceptor.js  # SPA navigation handling
+│   ├── FixedButtonMixin.js       # Sidebar button behavior
+│   ├── MessageHub.js             # Message coordination
+│   ├── MessageRegistry.js        # DOM message tracking
+│   ├── storage/                  # Storage layer
+│   │   ├── Store.js              # Base store class
+│   │   └── adapters/             # Storage adapters
+│   └── ...
+├── managers/               # Centralized managers
+│   ├── AsyncManager.js     # Timer/interval management
+│   ├── DOMManager.js       # DOM operations
+│   ├── KeyboardManager.js  # Keyboard shortcuts
+│   ├── ObserverManager.js  # MutationObserver lifecycle
+│   └── ThemeManager.js     # Dynamic theming
+├── stores/                 # State management
+│   ├── SettingsStore.js    # Global settings
+│   ├── BookmarkStore.js    # Bookmark data
+│   ├── MarkerStore.js      # Emoji marker data
+│   └── ...
+├── modules/                # Feature modules
+│   ├── BaseModule.js       # Base class for all modules
+│   ├── NavigationModule.js
+│   ├── BookmarkModule/
+│   ├── EditHistoryModule/
+│   └── ...
+├── utils/                  # Utility functions
+│   ├── EventBus.js         # Pub/sub event system
+│   ├── DOMUtils.js         # DOM helpers
+│   └── ...
+└── components/             # UI components
+    ├── primitives/         # Basic UI elements
+    └── theme/              # Theme utilities
+```
+
 ### Entry Point & Initialization
+
 - **[src/content.js](src/content.js)** - Entry point, imports NavigationInterceptor FIRST (critical order)
 - **[src/App.js](src/App.js)** - Main application manager, 7-step initialization sequence
 
@@ -36,13 +106,36 @@ The initialization order is critical:
 6. Cross-tab sync
 7. Feature modules (topologically sorted by dependencies)
 
-### Module Pattern
+### Module System
 
 All feature modules extend **[BaseModule](src/modules/BaseModule.js)** which provides:
 - Settings access via `settingsStore`
 - Event subscription lifecycle management
 - Theme access (`getTheme()`)
 - URL change handling for SPA navigation
+- Automatic cleanup on destroy
+
+#### Module Lifecycle
+```javascript
+class MyModule extends BaseModule {
+  constructor() {
+    super('myModule');  // Module name for settings
+  }
+
+  async init() {
+    await super.init();      // Load settings, check enabled
+    if (!this.enabled) return;
+
+    // Initialize module...
+    this.setupEventListeners();
+  }
+
+  destroy() {
+    // Cleanup resources...
+    super.destroy();  // Cleanup subscriptions
+  }
+}
+```
 
 Modules with fixed sidebar buttons use **[FixedButtonMixin](src/core/FixedButtonMixin.js)** for standardized visibility handling.
 
@@ -75,6 +168,20 @@ Modules with fixed sidebar buttons use **[FixedButtonMixin](src/core/FixedButton
 
 Stores use adapters (`src/core/storage/adapters/`) for Chrome Local/Sync/IndexedDB storage.
 
+### Storage Layer
+
+```
+Store (src/core/storage/Store.js)
+  ├── ChromeLocalAdapter   # chrome.storage.local
+  ├── ChromeSyncAdapter    # chrome.storage.sync
+  └── IndexedDBAdapter     # IndexedDB for large data
+```
+
+**Choosing an Adapter:**
+- `local` - Default, 5MB limit, fast
+- `sync` - Syncs across devices, 100KB limit
+- `indexeddb` - Large data, complex queries
+
 ### Visibility & Navigation
 
 The extension handles Claude.ai's SPA navigation through:
@@ -92,6 +199,12 @@ this.emit(Events.MESSAGES_UPDATED, data);
 // Subscribe (auto-cleanup via BaseModule)
 this.subscribe(Events.SETTINGS_CHANGED, callback);
 ```
+
+**Available Events:**
+- `MESSAGES_UPDATED` - Message list changed
+- `SETTINGS_CHANGED` - Settings modified
+- `THEME_CHANGED` - Theme updated
+- `NAVIGATION_CHANGED` - Page navigation occurred
 
 ## Key Patterns
 
@@ -127,14 +240,38 @@ const app = window.claudeProductivity;
 const navigation = app.getModule('navigation');
 ```
 
+### Debug Logging
+Use `debugLog` from `src/config/debug.js` instead of `console.log`:
+```javascript
+import { debugLog, DEBUG_FLAGS } from '../config/debug.js';
+
+// Conditional logging
+debugLog('navigation', 'Page changed:', newPath);
+
+// Check if debugging is enabled
+if (DEBUG_FLAGS.navigation) {
+  // expensive debug operation
+}
+```
+
 ## Debug Commands
 
 In browser console:
 ```javascript
+// System health
 window.claudeProductivity.verifyArchitecture()  // System health check
 window.claudeProductivity.healthCheck()         // Initialization status
+
+// Navigation state
 window.__navigationInterceptor.getState()       // Current page state
 window.__visibilityManager.getStatus()          // Visibility state
+
+// Module access
+window.claudeProductivity.getModule('navigation')  // Get module instance
+window.claudeProductivity.modules                  // All modules
+
+// Storage
+window.__stateManager.getStorageInfo()          // Storage statistics
 ```
 
 ## Build Info
@@ -142,3 +279,72 @@ window.__visibilityManager.getStatus()          // Visibility state
 - **Bundler**: Rollup with `@rollup/plugin-node-resolve`
 - **Output**: `dist/content.bundle.js` (IIFE format, ~300KB)
 - **Styles**: `styles.css` loaded via manifest
+- **Linting**: ESLint v9 (flat config)
+- **Formatting**: Prettier
+
+## Common Tasks
+
+### Adding a New Setting
+1. Add default value in `src/core/SettingsCache.js` → `getDefaults()`
+2. Add to popup UI in `popup/popup.html` and `popup/popup.js`
+3. Use in module: `this.getSetting('yourSetting')`
+
+### Adding a New Store
+```javascript
+// In src/stores/YourStore.js
+import { stateManager } from '../core/StateManager.js';
+
+const store = stateManager.createStore('yourStore', {
+  adapter: 'local',  // or 'sync', 'indexeddb'
+  defaultData: { items: [] },
+  version: 1
+});
+
+export default store;
+```
+
+### Handling SPA Navigation
+```javascript
+import navigationInterceptor from '../core/NavigationInterceptor.js';
+
+// Subscribe to navigation events
+const unsubscribe = navigationInterceptor.onNavigate(event => {
+  if (event.isConversationPage) {
+    // Handle conversation page
+  }
+});
+
+// Get current state
+const state = navigationInterceptor.getState();
+```
+
+## Troubleshooting
+
+### Extension Not Loading
+1. Check `chrome://extensions` for errors
+2. Verify `npm run build` completed successfully
+3. Check browser console for initialization errors
+
+### Buttons Not Showing
+1. Verify you're on a conversation page (`/chat/...`)
+2. Check `window.__visibilityManager.getStatus()`
+3. Ensure module is enabled in settings
+
+### Settings Not Saving
+1. Check `chrome.storage.local.get(null, console.log)`
+2. Verify no storage quota exceeded
+3. Check for errors in background script
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes following the patterns above
+4. Run `npm run lint` to check for issues
+5. Submit a pull request
+
+### Code Style
+- Use `debugLog` instead of `console.log`
+- Extend `BaseModule` for new features
+- Use `FixedButtonMixin` for sidebar buttons
+- Clean up resources in `destroy()` methods
