@@ -243,8 +243,28 @@ export class BookmarkManagerModal {
     // 1. Grid View Container
     const gridContainer = DOMUtils.createElement('div', {
       className: 'flex-1 overflow-y-auto p-8',
+      style: { display: 'flex', flexDirection: 'column' },
       id: 'bm-grid-container',
     });
+
+    // Grid Empty State (hidden by default)
+    const gridEmptyState = DOMUtils.createElement('div', {
+      className: 'text-text-300',
+      style: {
+        flex: '1',
+        display: 'none',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      id: 'bm-grid-empty',
+    });
+    gridEmptyState.innerHTML = `
+      <div class="text-4xl mb-4">🔖</div>
+      <div class="text-lg font-medium">No bookmarks found</div>
+      <div class="text-sm">Try changing filters or add some bookmarks.</div>
+    `;
+    gridContainer.appendChild(gridEmptyState);
 
     // Adjusted Grid: Force 2 columns
     const grid = DOMUtils.createElement('div', {
@@ -535,20 +555,25 @@ export class BookmarkManagerModal {
   renderBookmarks() {
     // Render grid view
     const grid = this.activeModal.element.querySelector('#bm-grid');
+    const gridEmptyState = this.activeModal.element.querySelector('#bm-grid-empty');
+
     if (grid) {
       grid.innerHTML = '';
 
       const filtered = this.getFilteredBookmarks();
 
       if (filtered.length === 0) {
-        grid.innerHTML = `
-          <div class="col-span-full flex flex-col items-center justify-center py-20 text-text-300">
-            <div class="text-4xl mb-4">🔖</div>
-            <div class="text-lg font-medium">No bookmarks found</div>
-            <div class="text-sm">Try changing filters or add some bookmarks.</div>
-          </div>
-        `;
+        // Show empty state, hide grid
+        grid.style.display = 'none';
+        if (gridEmptyState) {
+          gridEmptyState.style.display = 'flex';
+        }
       } else {
+        // Show grid, hide empty state
+        grid.style.display = '';
+        if (gridEmptyState) {
+          gridEmptyState.style.display = 'none';
+        }
         filtered.forEach(b => {
           grid.appendChild(this.createBookmarkCard(b));
         });
@@ -787,7 +812,7 @@ export class BookmarkManagerModal {
 
     if (filtered.length === 0) {
       container.innerHTML = `
-        <div class="flex flex-col items-center justify-center py-12 text-text-300">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 200px;" class="text-text-300">
           <div class="text-3xl mb-3">🔖</div>
           <div class="text-sm font-medium">No bookmarks found</div>
         </div>
