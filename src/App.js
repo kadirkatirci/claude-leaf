@@ -32,7 +32,6 @@ import domReadyChecker from './utils/DOMReadyChecker.js';
 
 // Core Services
 import { panelManager } from './components/PanelManager.js';
-import { versionManager } from './core/VersionManager.js';
 import { messageHub } from './core/MessageHub.js';
 
 // Import feature modules
@@ -172,7 +171,6 @@ class ClaudeProductivityApp {
     // Initialize Core Services
     panelManager.init();
     messageHub.start();
-    versionManager.start();
 
     // STEP 4: Initialize managers
     this.initializeManagers();
@@ -512,7 +510,6 @@ class ClaudeProductivityApp {
     // Stop Core Services
     panelManager.destroy();
     messageHub.stop();
-    versionManager.stop();
 
     try {
       const { default: asyncManager } = await import('./managers/AsyncManager.js');
