@@ -290,21 +290,6 @@ export class Store extends EventEmitter {
   }
 
   /**
-   * Clear store
-   */
-  async clear() {
-    try {
-      await this.adapter.remove(this.namespace);
-      this.invalidateCache();
-      this.log('Store cleared');
-      this.emit('clear');
-    } catch (error) {
-      console.error(`[Store:${this.namespace}] Failed to clear:`, error);
-      throw error;
-    }
-  }
-
-  /**
    * Reset to default data
    */
   reset() {

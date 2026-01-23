@@ -87,6 +87,10 @@ export class BookmarkStore {
     return this.store.delete(categoryId);
   }
 
+  async clear() {
+    return this.store.clear();
+  }
+
   async getByConversation(conversationUrl) {
     const normalized = this.normalizeUrl(conversationUrl);
     // Use index, then filter by type 'bookmark' (implicit if no type matches category)
