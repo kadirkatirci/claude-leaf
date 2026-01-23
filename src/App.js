@@ -454,12 +454,29 @@ class ClaudeProductivityApp {
           return true;
         }
 
-        store.store
-          .get()
-          .then(data => sendResponse({ data }))
-          .catch(err => sendResponse({ error: err.message }));
+        // Use export() if available for proper data formatting
+        if (store.export) {
+          store
+            .export()
+            .then(jsonString => {
+              // Popup expects object (data), not string. Parse it here.
+              try {
+                const data = JSON.parse(jsonString);
+                sendResponse({ data });
+              } catch (e) {
+                sendResponse({ error: 'Failed to parse export data: ' + e.message });
+              }
+            })
+            .catch(err => sendResponse({ error: err.message }));
+        } else {
+          // Fallback to raw get()
+          store.store
+            .get()
+            .then(data => sendResponse({ data }))
+            .catch(err => sendResponse({ error: err.message }));
+        }
 
-        return true; // Keep channel open for async response
+        return true; // Keep channel open
       }
 
       if (message.type === 'STORE_WRITE') {
@@ -469,10 +486,27 @@ class ClaudeProductivityApp {
           return true;
         }
 
-        store.store
-          .set(message.data)
-          .then(() => sendResponse({ success: true }))
-          .catch(err => sendResponse({ error: err.message }));
+        // Use import() if available
+        if (store.import) {
+          // Popup sends data object, import expects JSON string
+          const jsonString = JSON.stringify(message.data);
+          store
+            .import(jsonString)
+            .then(result => {
+              if (result && result.success === false) {
+                sendResponse({ error: result.error });
+              } else {
+                sendResponse({ success: true });
+              }
+            })
+            .catch(err => sendResponse({ error: err.message }));
+        } else {
+          // Fallback to raw set()
+          store.store
+            .set(message.data)
+            .then(() => sendResponse({ success: true }))
+            .catch(err => sendResponse({ error: err.message }));
+        }
 
         return true;
       }
@@ -484,10 +518,23 @@ class ClaudeProductivityApp {
           return true;
         }
 
-        store
-          .clear()
-          .then(() => sendResponse({ success: true }))
-          .catch(err => sendResponse({ error: err.message }));
+        // Wrapper should expose clear(), which calls store.clear()
+        if (store.clear) {
+          store
+            .clear()
+            .then(() => sendResponse({ success: true }))
+            .catch(err => sendResponse({ error: err.message }));
+        } else {
+          // Fallback to accessing inner store directly if wrapper missing clear
+          if (store.store && store.store.clear) {
+            store.store
+              .clear()
+              .then(() => sendResponse({ success: true }))
+              .catch(err => sendResponse({ error: err.message }));
+          } else {
+            sendResponse({ error: 'Store does not support clear' });
+          }
+        }
 
         return true;
       }

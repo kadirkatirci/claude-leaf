@@ -98,6 +98,10 @@ export class BookmarkStore {
     return this.store.get(bookmarkId);
   }
 
+  async clear() {
+    return this.store.clear();
+  }
+
   async add(bookmark) {
     const normalized = {
       ...bookmark,

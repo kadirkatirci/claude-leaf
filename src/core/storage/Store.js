@@ -251,6 +251,34 @@ export class Store extends EventEmitter {
   }
 
   /**
+   * Clear store data
+   */
+  async clear() {
+    try {
+      if (this.adapter.clear) {
+        await this.adapter.clear(this.namespace);
+      } else if (this.adapter.remove) {
+        // Fallback for some adapters (e.g. ChromeStorage uses remove)
+        await this.adapter.remove(this.namespace); // Removes the whole namespace key
+      } else {
+        console.warn(`[Store:${this.namespace}] Adapter does not support clear/remove`);
+      }
+
+      // Reset cache
+      if (this.cacheEnabled) {
+        this.cache = this.createDefaultData();
+        this.cacheTimestamp = Date.now();
+      }
+
+      this.log('Store cleared');
+      this.emit('cleared');
+    } catch (error) {
+      console.error(`[Store:${this.namespace}] Failed to clear data:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Update with callback (atomic operation)
    * @param {Function} updater - Function that receives current state and returns new state
    * @returns {Promise<any>}

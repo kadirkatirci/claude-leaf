@@ -59,6 +59,10 @@ export class MarkerStore {
     });
   }
 
+  async clear() {
+    return this.store.clear();
+  }
+
   async remove(markerId) {
     return this.store.delete(markerId);
   }

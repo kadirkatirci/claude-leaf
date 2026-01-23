@@ -150,9 +150,6 @@ export class IndexedDBAdapter extends BaseAdapter {
     }
   }
 
-  /**
-   * Delete item by key
-   */
   async delete(storeName, key) {
     try {
       const objectStore = await this.getObjectStore(storeName, 'readwrite');
@@ -163,6 +160,23 @@ export class IndexedDBAdapter extends BaseAdapter {
       });
     } catch (error) {
       console.error(`[IndexedDB] Delete failed for ${storeName}/${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all items from store
+   */
+  async clear(storeName) {
+    try {
+      const objectStore = await this.getObjectStore(storeName, 'readwrite');
+      return new Promise((resolve, reject) => {
+        const request = objectStore.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error(`[IndexedDB] Clear failed for ${storeName}:`, error);
       throw error;
     }
   }

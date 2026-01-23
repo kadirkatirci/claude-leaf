@@ -71,6 +71,10 @@ export class EditHistoryStore {
     return this.store.delete(id);
   }
 
+  async clear() {
+    return this.store.clear();
+  }
+
   async addSnapshot(snapshot) {
     const normalizedUrl = this.normalizeUrl(snapshot.conversationUrl);
 
