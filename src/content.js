@@ -31,6 +31,26 @@ async function initializeExtension() {
       return;
     }
 
+    // CRITICAL FIX: Handle root path redirect race condition
+    // When visiting claude.ai/, it often redirects immediately to /new
+    // We defer initialization until we are on a "real" page to avoid partial init failure
+    if (window.location.pathname === '/' || window.location.pathname === '') {
+      debugLog('navigation', 'On root path, deferring initialization until redirection...');
+
+      await new Promise(resolve => {
+        const unsub = navigationInterceptor.onNavigate(event => {
+          if (event.path !== '/' && event.path !== '') {
+            debugLog(
+              'navigation',
+              `Redirect detected (${event.path}), proceeding with initialization`
+            );
+            unsub();
+            resolve();
+          }
+        });
+      });
+    }
+
     const navState = navigationInterceptor.getState();
     debugLog('navigation', `Page: ${navState.pageType} (${navState.path})`);
 
