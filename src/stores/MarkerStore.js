@@ -1,10 +1,3 @@
-/**
- * MarkerStore - Emoji marker management with conversation-aware filtering
- *
- * Markers are identified by content signature, not by index.
- * This allows different versions of the same conversation to have separate markers.
- */
-
 import { stateManager } from '../core/StateManager.js';
 import { getStoreConfig } from '../config/storeConfig.js';
 
@@ -21,13 +14,12 @@ export class MarkerStore {
 
   async getAll() {
     const data = await this.store.get();
-    return data.markers || [];
+    return Array.isArray(data) ? data : data.markers || [];
   }
 
   async getByConversation(conversationUrl) {
-    const markers = await this.getAll();
     const normalized = this.normalizeUrl(conversationUrl);
-    return markers.filter(m => m.conversationUrl === normalized);
+    return this.store.getByIndex('conversationUrl', normalized);
   }
 
   async getCountByConversation(conversationUrl) {
@@ -36,126 +28,38 @@ export class MarkerStore {
   }
 
   async getById(markerId) {
-    const markers = await this.getAll();
-    return markers.find(m => m.id === markerId);
+    return this.store.get(markerId);
   }
 
   /**
    * Add new marker
-   * Duplicate check is by content signature (not index)
    */
-  add(marker) {
-    return this.store.update(data => {
-      const markers = data.markers || [];
-
-      const normalized = {
-        ...marker,
-        conversationUrl: this.normalizeUrl(marker.conversationUrl),
-        id: marker.id || crypto.randomUUID(),
-        createdAt: marker.createdAt || new Date().toISOString(),
-      };
-
-      // Check for duplicates by CONTENT SIGNATURE (not index)
-      // This allows same index in different versions to have separate markers
-      const exists = markers.some(
-        m =>
-          m.conversationUrl === normalized.conversationUrl &&
-          m.contentSignature === normalized.contentSignature
-      );
-
-      if (exists) {
-        console.warn(
-          '[MarkerStore] Marker already exists for this content:',
-          normalized.contentSignature
-        );
-        return data;
-      }
-
-      return {
-        ...data,
-        markers: [...markers, normalized],
-      };
-    });
+  async add(marker) {
+    const normalized = {
+      ...marker,
+      conversationUrl: this.normalizeUrl(marker.conversationUrl),
+      id: marker.id || crypto.randomUUID(),
+      createdAt: marker.createdAt || new Date().toISOString(),
+    };
+    // Direct add via adapter
+    return this.store.add(normalized);
   }
 
-  update(markerId, updates) {
-    return this.store.update(data => {
-      const markers = data.markers || [];
-      const index = markers.findIndex(m => m.id === markerId);
-
-      if (index === -1) {
-        console.warn('[MarkerStore] Marker not found:', markerId);
-        return data;
-      }
-
-      const updated = [...markers];
-      updated[index] = {
-        ...updated[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      return { ...data, markers: updated };
-    });
-  }
-
-  remove(markerId) {
-    return this.store.update(data => ({
-      ...data,
-      markers: (data.markers || []).filter(m => m.id !== markerId),
-    }));
-  }
-
-  removeByConversation(conversationUrl) {
-    const normalized = this.normalizeUrl(conversationUrl);
-    return this.store.update(data => ({
-      ...data,
-      markers: (data.markers || []).filter(m => m.conversationUrl !== normalized),
-    }));
-  }
-
-  clear() {
-    return this.store.set({ markers: [] });
-  }
-
-  subscribe(callback) {
-    return this.store.subscribe(data => callback(data.markers || []));
-  }
-
-  async export() {
-    const exported = await this.store.export();
-    return JSON.stringify(exported, null, 2);
-  }
-
-  async import(jsonString, merge = true) {
-    try {
-      const imported = JSON.parse(jsonString);
-
-      if (merge) {
-        const current = await this.getAll();
-        const existingIds = new Set(current.map(m => m.id));
-        const newMarkers = (imported.data.markers || []).filter(m => !existingIds.has(m.id));
-
-        if (newMarkers.length > 0) {
-          await this.store.update(data => ({
-            ...data,
-            markers: [...(data.markers || []), ...newMarkers],
-          }));
-        }
-
-        return {
-          success: true,
-          imported: newMarkers.length,
-          skipped: imported.data.markers.length - newMarkers.length,
-        };
-      } else {
-        await this.store.set({ markers: imported.data.markers || [] });
-        return { success: true, imported: imported.data.markers.length };
-      }
-    } catch (error) {
-      console.error('[MarkerStore] Import failed:', error);
-      return { success: false, error: error.message };
+  async update(markerId, updates) {
+    const marker = await this.getById(markerId);
+    if (!marker) {
+      return;
     }
+
+    return this.store.put({
+      ...marker,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async remove(markerId) {
+    return this.store.delete(markerId);
   }
 
   normalizeUrl(url) {
@@ -170,6 +74,24 @@ export class MarkerStore {
       return parsed.pathname + parsed.search;
     } catch {
       return url;
+    }
+  }
+
+  async export() {
+    const markers = await this.getAll();
+    return JSON.stringify({ markers }, null, 2);
+  }
+
+  async import(jsonString, _merge = true) {
+    try {
+      const data = JSON.parse(jsonString);
+      const markers = data.markers || [];
+      for (const marker of markers) {
+        await this.store.put(marker);
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
   }
 

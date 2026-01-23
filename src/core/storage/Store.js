@@ -63,6 +63,55 @@ export class Store extends EventEmitter {
   }
 
   /**
+   * Add new item (delegates to adapter)
+   */
+  async add(item) {
+    if (this.adapter.add) {
+      if (this.cacheEnabled) {
+        this.invalidateCache();
+      }
+      return this.adapter.add(this.namespace, item);
+    }
+    throw new Error('Adapter does not support add()');
+  }
+
+  /**
+   * Update item (delegates to adapter)
+   */
+  async put(item) {
+    if (this.adapter.put) {
+      if (this.cacheEnabled) {
+        this.invalidateCache();
+      }
+      return this.adapter.put(this.namespace, item);
+    }
+    throw new Error('Adapter does not support put()');
+  }
+
+  /**
+   * Delete item (delegates to adapter)
+   */
+  async delete(key) {
+    if (this.adapter.delete) {
+      if (this.cacheEnabled) {
+        this.invalidateCache();
+      }
+      return this.adapter.delete(this.namespace, key);
+    }
+    throw new Error('Adapter does not support delete()');
+  }
+
+  /**
+   * Get items by index (delegates to adapter)
+   */
+  async getByIndex(indexName, value) {
+    if (this.adapter.getByIndex) {
+      return this.adapter.getByIndex(this.namespace, indexName, value);
+    }
+    throw new Error('Adapter does not support getByIndex()');
+  }
+
+  /**
    * Get state (with cache and promise deduplication)
    * @param {string} [key] - Optional key for nested access
    * @returns {Promise<any>}
@@ -76,14 +125,20 @@ export class Store extends EventEmitter {
 
     this.log('Cache miss, loading from adapter');
 
-    // Deduplicate concurrent load requests
+    // For new IndexedDB adapter, getAll() returns array instead of object map
+    // We need to handle this based on adapter capabilities
+    if (this.adapter.getAll && this.adapter.constructor.name === 'IndexedDBAdapter') {
+      const items = await this.adapter.getAll(this.namespace);
+      // For backward compatibility or if using cache, we might want to transform
+      // But for now, let's just return items if key is null
+      return items;
+    }
+
+    // Legacy load path
     if (!this.loadingPromise) {
-      this.log('Starting new load from adapter');
       this.loadingPromise = this.loadFromAdapter().finally(() => {
         this.loadingPromise = null;
       });
-    } else {
-      this.log('Reusing existing load promise');
     }
 
     try {
@@ -91,7 +146,6 @@ export class Store extends EventEmitter {
       return key ? data[key] : data;
     } catch (error) {
       console.error(`[Store:${this.namespace}] Failed to get data:`, error);
-      // Return default data on error
       const defaultData = this.createDefaultData();
       return key ? defaultData[key] : defaultData;
     }

@@ -10,14 +10,13 @@
  */
 
 import { BaseAdapter } from './BaseAdapter.js';
-import { debugLog } from '../../../config/debug.js';
+import { STORE_CONFIG } from '../../../config/storeConfig.js';
 
 export class IndexedDBAdapter extends BaseAdapter {
   constructor() {
     super();
     this.dbName = 'claude-productivity';
-    this.dbVersion = 1;
-    this.storeName = 'keyvalue';
+    this.dbVersion = 2; // Incremented for schema changes
     this.db = null;
   }
 
@@ -44,10 +43,41 @@ export class IndexedDBAdapter extends BaseAdapter {
       request.onupgradeneeded = event => {
         const db = event.target.result;
 
-        // Create object store if it doesn't exist
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          const objectStore = db.createObjectStore(this.storeName, { keyPath: 'key' });
-          objectStore.createIndex('key', 'key', { unique: true });
+        // Iterate through STORE_CONFIG to create object stores
+        Object.entries(STORE_CONFIG).forEach(([storeName, config]) => {
+          if (config.storageType !== 'indexeddb' || !config.schema) {
+            return;
+          }
+
+          // Create object store if it doesn't exist
+          if (!db.objectStoreNames.contains(storeName)) {
+            const objectStore = db.createObjectStore(storeName, {
+              keyPath: config.schema.keyPath,
+              autoIncrement: config.schema.autoIncrement || false,
+            });
+
+            // Create indexes
+            if (config.schema.indexes) {
+              config.schema.indexes.forEach(idx => {
+                objectStore.createIndex(idx.name, idx.keyPath, idx.options);
+              });
+            }
+          } else {
+            // If store exists, check for new indexes (simple migration)
+            const objectStore = request.transaction.objectStore(storeName);
+            if (config.schema.indexes) {
+              config.schema.indexes.forEach(idx => {
+                if (!objectStore.indexNames.contains(idx.name)) {
+                  objectStore.createIndex(idx.name, idx.keyPath, idx.options);
+                }
+              });
+            }
+          }
+        });
+
+        // Legacy cleanup (optional)
+        if (db.objectStoreNames.contains('keyvalue')) {
+          db.deleteObjectStore('keyvalue');
         }
       };
     });
@@ -56,217 +86,136 @@ export class IndexedDBAdapter extends BaseAdapter {
   /**
    * Get transaction
    */
-  async getTransaction(mode = 'readonly') {
+  async getTransaction(storeName, mode = 'readonly') {
     const db = await this.init();
-    return db.transaction([this.storeName], mode);
+    return db.transaction([storeName], mode);
   }
 
   /**
    * Get object store
    */
-  async getObjectStore(mode = 'readonly') {
-    const transaction = await this.getTransaction(mode);
-    return transaction.objectStore(this.storeName);
+  async getObjectStore(storeName, mode = 'readonly') {
+    const transaction = await this.getTransaction(storeName, mode);
+    return transaction.objectStore(storeName);
   }
 
   /**
-   * Get value by key
+   * Get item by key
    */
-  async get(key) {
+  async get(storeName, key) {
     try {
-      const objectStore = await this.getObjectStore('readonly');
-
+      const objectStore = await this.getObjectStore(storeName, 'readonly');
       return new Promise((resolve, reject) => {
         const request = objectStore.get(key);
-
-        request.onsuccess = () => {
-          const result = request.result;
-          resolve(result ? result.value : undefined);
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to get key "${key}": ${request.error}`));
-        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('[IndexedDBAdapter] get() failed:', error);
-      return undefined;
-    }
-  }
-
-  /**
-   * Set value for key
-   */
-  async set(key, value) {
-    try {
-      const objectStore = await this.getObjectStore('readwrite');
-
-      return new Promise((resolve, reject) => {
-        const request = objectStore.put({ key, value });
-
-        request.onsuccess = () => {
-          resolve();
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to set key "${key}": ${request.error}`));
-        };
-      });
-    } catch (error) {
-      console.error('[IndexedDBAdapter] set() failed:', error);
+      console.error(`[IndexedDB] Get failed for ${storeName}/${key}:`, error);
       throw error;
     }
   }
 
   /**
-   * Remove value by key
+   * Add new item (fails if key exists)
    */
-  async remove(key) {
+  async add(storeName, item) {
     try {
-      const objectStore = await this.getObjectStore('readwrite');
+      const objectStore = await this.getObjectStore(storeName, 'readwrite');
+      return new Promise((resolve, reject) => {
+        const request = objectStore.add(item);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error(`[IndexedDB] Add failed for ${storeName}:`, error);
+      throw error;
+    }
+  }
 
+  /**
+   * Put/Update item (overwrites if key exists)
+   */
+  async put(storeName, item) {
+    try {
+      const objectStore = await this.getObjectStore(storeName, 'readwrite');
+      return new Promise((resolve, reject) => {
+        const request = objectStore.put(item);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error(`[IndexedDB] Put failed for ${storeName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete item by key
+   */
+  async delete(storeName, key) {
+    try {
+      const objectStore = await this.getObjectStore(storeName, 'readwrite');
       return new Promise((resolve, reject) => {
         const request = objectStore.delete(key);
-
-        request.onsuccess = () => {
-          resolve();
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to remove key "${key}": ${request.error}`));
-        };
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('[IndexedDBAdapter] remove() failed:', error);
+      console.error(`[IndexedDB] Delete failed for ${storeName}/${key}:`, error);
       throw error;
     }
   }
 
   /**
-   * Clear all data
+   * Get all items from store
    */
-  async clear() {
+  async getAll(storeName) {
     try {
-      const objectStore = await this.getObjectStore('readwrite');
-
+      const objectStore = await this.getObjectStore(storeName, 'readonly');
       return new Promise((resolve, reject) => {
-        const request = objectStore.clear();
-
-        request.onsuccess = () => {
-          resolve();
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to clear store: ${request.error}`));
-        };
+        const request = objectStore.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('[IndexedDBAdapter] clear() failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all keys
-   */
-  async keys() {
-    try {
-      const objectStore = await this.getObjectStore('readonly');
-
-      return new Promise((resolve, reject) => {
-        const request = objectStore.getAllKeys();
-
-        request.onsuccess = () => {
-          resolve(request.result || []);
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to get keys: ${request.error}`));
-        };
-      });
-    } catch (error) {
-      console.error('[IndexedDBAdapter] keys() failed:', error);
+      console.error(`[IndexedDB] GetAll failed for ${storeName}:`, error);
       return [];
     }
   }
 
   /**
-   * Get all values
+   * Get items by index
    */
-  async getAll() {
+  async getByIndex(storeName, indexName, value) {
     try {
-      const objectStore = await this.getObjectStore('readonly');
-
+      const objectStore = await this.getObjectStore(storeName, 'readonly');
+      const index = objectStore.index(indexName);
       return new Promise((resolve, reject) => {
-        const request = objectStore.getAll();
-
-        request.onsuccess = () => {
-          const result = request.result || [];
-          // Convert to key-value map
-          const map = {};
-          result.forEach(item => {
-            map[item.key] = item.value;
-          });
-          resolve(map);
-        };
-
-        request.onerror = () => {
-          reject(new Error(`Failed to get all values: ${request.error}`));
-        };
+        const request = index.getAll(value);
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
       });
     } catch (error) {
-      console.error('[IndexedDBAdapter] getAll() failed:', error);
-      return {};
+      console.error(`[IndexedDB] GetByIndex failed for ${storeName}/${indexName}:`, error);
+      return [];
     }
   }
 
   /**
-   * Get storage info
+   * Count items
    */
-  async getInfo() {
+  async count(storeName) {
     try {
-      // Get storage estimate (Chrome 52+)
-      if (navigator.storage && navigator.storage.estimate) {
-        const estimate = await navigator.storage.estimate();
-
-        return {
-          type: 'IndexedDBAdapter',
-          available: true,
-          quota: estimate.quota || 'unlimited',
-          usage: estimate.usage || 0,
-          usagePercent: estimate.quota
-            ? (((estimate.usage || 0) / estimate.quota) * 100).toFixed(2) + '%'
-            : 'N/A',
-          isPersisted: (await navigator.storage?.persisted?.()) || false,
-        };
-      }
-
-      return {
-        type: 'IndexedDBAdapter',
-        available: true,
-        quota: 'unlimited',
-        usage: 0,
-      };
+      const objectStore = await this.getObjectStore(storeName, 'readonly');
+      return new Promise((resolve, reject) => {
+        const request = objectStore.count();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
     } catch (error) {
-      console.error('[IndexedDBAdapter] getInfo() failed:', error);
-      return {
-        type: 'IndexedDBAdapter',
-        available: true,
-        error: error.message,
-      };
+      return 0;
     }
-  }
-
-  /**
-   * Request persistent storage (prevents data eviction)
-   */
-  async requestPersistentStorage() {
-    if (navigator.storage && navigator.storage.persist) {
-      const isPersisted = await navigator.storage.persist();
-      debugLog('storage', `Persistent storage: ${isPersisted ? 'granted' : 'denied'}`);
-      return isPersisted;
-    }
-    return false;
   }
 
   /**
@@ -277,5 +226,20 @@ export class IndexedDBAdapter extends BaseAdapter {
       this.db.close();
       this.db = null;
     }
+  }
+
+  /**
+   * Get storage info
+   */
+  async getInfo() {
+    if (navigator.storage && navigator.storage.estimate) {
+      const estimate = await navigator.storage.estimate();
+      return {
+        type: 'IndexedDBAdapter',
+        quota: estimate.quota,
+        usage: estimate.usage,
+      };
+    }
+    return { type: 'IndexedDBAdapter', quota: 'unlimited' };
   }
 }

@@ -7,10 +7,18 @@
 export const STORE_CONFIG = {
   bookmarks: {
     storageType: 'indexeddb',
-    version: 2,
+    version: 3,
     defaultData: {
       bookmarks: [],
       categories: [{ id: 'default', name: 'General', color: '#667eea', isDefault: true }],
+    },
+    schema: {
+      keyPath: 'id',
+      indexes: [
+        { name: 'conversationUrl', keyPath: 'conversationUrl', options: { unique: false } },
+        { name: 'contentSignature', keyPath: 'contentSignature', options: { unique: false } },
+        { name: 'type', keyPath: 'type', options: { unique: false } },
+      ],
     },
     exportable: true,
     label: 'Bookmarks',
@@ -21,15 +29,30 @@ export const STORE_CONFIG = {
     defaultData: {
       markers: [],
     },
+    schema: {
+      keyPath: 'id',
+      indexes: [
+        { name: 'conversationUrl', keyPath: 'conversationUrl', options: { unique: false } },
+        { name: 'contentSignature', keyPath: 'contentSignature', options: { unique: false } },
+      ],
+    },
     exportable: true,
     label: 'Emoji Markers',
   },
   editHistory: {
     storageType: 'indexeddb',
-    version: 2,
+    version: 3,
     defaultData: {
       history: [],
       snapshots: [],
+    },
+    schema: {
+      keyPath: 'id',
+      indexes: [
+        { name: 'conversationUrl', keyPath: 'conversationUrl', options: { unique: false } },
+        { name: 'containerId', keyPath: 'containerId', options: { unique: false } },
+        { name: 'type', keyPath: 'type', options: { unique: false } },
+      ],
     },
     exportable: true,
     label: 'Edit History',
@@ -46,6 +69,10 @@ export const STORE_CONFIG = {
     version: 1,
     defaultData: {},
     cacheTTL: 10000,
+    schema: {
+      keyPath: 'url',
+      indexes: [{ name: 'lastAccessed', keyPath: 'lastAccessed', options: { unique: false } }],
+    },
     exportable: false,
     label: 'Conversation State',
   },
