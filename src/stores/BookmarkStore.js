@@ -100,11 +100,14 @@ export class BookmarkStore {
       return;
     }
 
-    return this.store.put({
+    const updatedBookmark = {
       ...bookmark,
       ...updates,
+      id: bookmarkId, // Ensure ID is present for keyPath
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    return this.store.put(updatedBookmark);
   }
 
   async remove(bookmarkId) {

@@ -54,6 +54,7 @@ export class MarkerStore {
     return this.store.put({
       ...marker,
       ...updates,
+      id: markerId, // Ensure ID is present
       updatedAt: new Date().toISOString(),
     });
   }

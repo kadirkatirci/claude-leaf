@@ -120,21 +120,34 @@ export class Store extends EventEmitter {
     // Check cache first
     if (this.isCacheValid()) {
       this.log('Cache hit');
+      // Handle array-based cache (IndexedDB)
+      if (key && Array.isArray(this.cache)) {
+        const keyPath = this.schema?.keyPath || 'id';
+        return this.cache.find(item => item[keyPath] === key);
+      }
       return key ? this.cache[key] : this.cache;
     }
 
     this.log('Cache miss, loading from adapter');
 
-    // For new IndexedDB adapter, getAll() returns array instead of object map
-    // We need to handle this based on adapter capabilities
-    if (this.adapter.getAll && this.adapter.constructor.name === 'IndexedDBAdapter') {
-      const items = await this.adapter.getAll(this.namespace);
-      // For backward compatibility or if using cache, we might want to transform
-      // But for now, let's just return items if key is null
-      return items;
+    // IndexedDB Adapter handling
+    if (this.adapter.constructor.name === 'IndexedDBAdapter') {
+      if (key) {
+        // Single item fetch
+        return this.adapter.get(this.namespace, key);
+      } else {
+        // All items fetch
+        const items = (await this.adapter.getAll(this.namespace)) || [];
+        // Update cache with array
+        if (this.cacheEnabled) {
+          this.cache = items;
+          this.cacheTimestamp = Date.now();
+        }
+        return items;
+      }
     }
 
-    // Legacy load path
+    // Legacy load path (Chrome Storage / Object-based)
     if (!this.loadingPromise) {
       this.loadingPromise = this.loadFromAdapter().finally(() => {
         this.loadingPromise = null;
