@@ -173,10 +173,11 @@ Stores use adapters (`src/core/storage/adapters/`) for Chrome Local/Sync/Indexed
 
 ```
 Store (src/core/storage/Store.js)
-  ├── ChromeLocalAdapter   # chrome.storage.local
-  ├── ChromeSyncAdapter    # chrome.storage.sync
-  └── IndexedDBAdapter     # IndexedDB for large data
+  ├── ChromeSyncAdapter    # chrome.storage.sync (settings)
+  └── IndexedDBAdapter     # IndexedDB for large data (bookmarks, markers, etc.)
 ```
+
+> **Note:** ChromeLocalAdapter exists but is not currently used. Cross-tab sync via StorageSync only works for chrome.storage-based stores (settings).
 
 **Store Configuration:** All store definitions are centralized in `src/config/storeConfig.js`. This file is the single source of truth - rollup generates `popup/storeConfig.json` from it during build.
 
@@ -186,9 +187,8 @@ Store (src/core/storage/Store.js)
 - `conversation-states` - IndexedDB with cache TTL
 
 **Choosing an Adapter:**
-- `sync` - Settings that sync across devices, 100KB limit
-- `indexeddb` - Large data like bookmarks with full HTML content (recommended for data stores)
-- `local` - Legacy, 5MB limit (avoid for new stores)
+- `sync` - Settings that sync across devices, 100KB limit, cross-tab sync supported
+- `indexeddb` - Large data like bookmarks (recommended for data stores, no cross-tab sync currently)
 
 ### Popup-Content Script Communication
 

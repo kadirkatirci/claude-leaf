@@ -12,13 +12,7 @@ import navigationInterceptor from './core/NavigationInterceptor.js';
 import VisibilityManager from './utils/VisibilityManager.js';
 
 // Rest of imports
-import {
-  settingsStore,
-  bookmarkStore,
-  markerStore,
-  editHistoryStore,
-  conversationStateStore,
-} from './stores/index.js';
+import { settingsStore, bookmarkStore, markerStore, editHistoryStore } from './stores/index.js';
 import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
 import { isDevDisabled } from './config/DevConfig.js';
 import { debugLog } from './config/debug.js';
@@ -288,10 +282,10 @@ class ClaudeProductivityApp {
 
   initializeCrossTabSync() {
     try {
+      // Only register chrome.storage based stores
+      // IndexedDB stores (bookmarks, markers, conversationState) don't work with
+      // chrome.storage.onChanged - they would need BroadcastChannel API for cross-tab sync
       storageSync.registerStore('settings', settingsStore.store);
-      storageSync.registerStore('bookmarks', bookmarkStore.store);
-      storageSync.registerStore('markers', markerStore.store);
-      storageSync.registerStore('conversationState', conversationStateStore.store);
       storageSync.initializeListener();
     } catch (error) {
       console.warn('[App] Failed to initialize cross-tab sync:', error);

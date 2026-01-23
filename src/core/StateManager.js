@@ -4,18 +4,15 @@
  */
 
 import { Store } from './storage/Store.js';
-import {
-  ChromeLocalAdapter,
-  ChromeSyncAdapter,
-  IndexedDBAdapter,
-} from './storage/adapters/index.js';
+import { ChromeSyncAdapter, IndexedDBAdapter } from './storage/adapters/index.js';
 import { debugLog } from '../config/debug.js';
 
 export class StateManager {
   constructor() {
     this.stores = new Map();
+    // Note: ChromeLocalAdapter exists but is not currently used by any store
+    // It can be added here if needed in the future
     this.adapters = {
-      local: new ChromeLocalAdapter(),
       sync: new ChromeSyncAdapter(),
       indexeddb: new IndexedDBAdapter(),
     };
