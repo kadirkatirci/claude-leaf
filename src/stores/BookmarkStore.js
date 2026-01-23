@@ -67,6 +67,23 @@ export class BookmarkStore {
       console.warn('Cannot remove default category');
       return;
     }
+
+    // Reassign bookmarks to default category
+    const bookmarks = await this.getAll();
+    const toReassign = bookmarks.filter(b => b.categoryId === categoryId);
+
+    console.log(
+      `[BookmarkStore] Reassigning ${toReassign.length} bookmarks from ${categoryId} to default`
+    );
+
+    for (const bookmark of toReassign) {
+      await this.update(bookmark.id, { categoryId: 'default' });
+    }
+
+    // Force cache invalidation to ensure next fetch sees updates
+    this.store.invalidateCache();
+
+    console.log(`[BookmarkStore] Deleting category ${categoryId}`);
     return this.store.delete(categoryId);
   }
 
