@@ -27,18 +27,6 @@
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "bookmarks/bookmarks.html",
-        "bookmarks/bookmarks.js",
-        "migrate-storage.html",
-        "migrate-storage.js",
-        "debug-check.html"
-      ],
-      "matches": ["https://claude.ai/*"]
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

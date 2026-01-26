@@ -66,7 +66,6 @@ The extension adds floating buttons on the right side of the conversation:
 
 Click the extension icon in the Chrome toolbar to:
 - Enable/disable individual features
-- Access the bookmarks manager
 - View storage usage
 
 ## Development
@@ -102,7 +101,6 @@ src/
 └── config/             # Configuration
 
 popup/                  # Extension popup UI
-bookmarks/              # Bookmarks manager page
 ```
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.

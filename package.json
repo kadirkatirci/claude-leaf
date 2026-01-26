@@ -25,10 +25,10 @@
     "build": "rollup -c",
     "watch": "rollup -c -w",
     "dev": "rollup -c -w",
-    "lint": "eslint src/ popup/ bookmarks/",
-    "lint:fix": "eslint src/ popup/ bookmarks/ --fix",
-    "format": "prettier --write \"src/**/*.js\" \"popup/**/*.js\" \"bookmarks/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.js\" \"popup/**/*.js\" \"bookmarks/**/*.js\"",
+    "lint": "eslint src/ popup/",
+    "lint:fix": "eslint src/ popup/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"popup/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"popup/**/*.js\"",
     "prepare": "husky"
   },
   "lint-staged": {
