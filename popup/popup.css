@@ -4,10 +4,10 @@
 
 /* CSS Variables */
 :root {
-  /* Colors - Clean & Neutral */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f7;
-  --bg-tertiary: #e8e8ed;
+  /* Colors - Ultra Light Beige Theme */
+  --bg-primary: #fcfaf7;
+  --bg-secondary: #f5f1ea;
+  --bg-tertiary: #ede7dc;
   --bg-hover: rgba(0, 0, 0, 0.04);
   --bg-active: rgba(0, 0, 0, 0.06);
 
