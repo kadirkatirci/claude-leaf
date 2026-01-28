@@ -20,8 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     devConfig = await loadDevConfig();
     console.log('[Popup] Config loaded');
 
-    // Set version
-    document.getElementById('version').textContent = `v${config.version}`;
+    // Set version from manifest
+    const manifest = chrome.runtime.getManifest();
+    document.getElementById('version').textContent = `v${manifest.version}`;
 
     // Generate UI from config
     renderTabs();
