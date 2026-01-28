@@ -285,7 +285,7 @@ function renderHelpSection() {
     },
     {
       url: 'https://github.com/anthropics/claude-code/issues/new?labels=enhancement',
-      icon: 'M11 11r8 M21 21l-4.35-4.35 M11 8v6M8 11h6',
+      icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
       title: 'Request a Feature',
       description: 'Have a great idea? Suggest new features or improvements.',
       linkText: 'Request Feature',
