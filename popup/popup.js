@@ -307,7 +307,7 @@ function renderHelpSection() {
           <div class="help-content">
             <h3>${item.title}</h3>
             <p>${item.description}</p>
-            <a href="${item.url}" target="_blank" class="help-link" onclick="event.stopPropagation()">
+            <a href="javascript:void(0)" class="help-link" onclick="event.stopPropagation()">
               ${item.linkText}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
