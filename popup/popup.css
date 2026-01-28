@@ -270,8 +270,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
+  background: var(--accent-light);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
