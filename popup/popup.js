@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderFeatures();
     // renderShortcuts(); // Commented out shortcuts
     renderDataSection();
-    renderSettingsAccordion();
+    renderHelpSection();
 
     // Load settings and update UI
     await loadSettings();
@@ -264,21 +264,74 @@ function renderDataSection() {
   `;
 }
 
-// --- Settings Tab ---
-function renderSettingsAccordion() {
-  const container = document.getElementById('settings-accordion');
+// --- Help Tab ---
+function renderHelpSection() {
+  const container = document.getElementById('help-section');
 
-  // Settings have been simplified - show informational message
+  const helpItems = [
+    {
+      url: 'https://github.com/anthropics/claude-code/issues',
+      icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
+      title: 'Documentation',
+      description: 'Learn how to use Claude Productivity features and keyboard shortcuts.',
+      linkText: 'Read the Docs',
+    },
+    {
+      url: 'https://github.com/anthropics/claude-code/issues/new?labels=bug',
+      icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 14v-4m0-4h.01',
+      title: 'Report an Issue',
+      description: 'Found a bug or something not working as expected? Let us know.',
+      linkText: 'Report Issue',
+    },
+    {
+      url: 'https://github.com/anthropics/claude-code/issues/new?labels=enhancement',
+      icon: 'M11 11r8 M21 21l-4.35-4.35 M11 8v6M8 11h6',
+      title: 'Request a Feature',
+      description: 'Have a great idea? Suggest new features or improvements.',
+      linkText: 'Request Feature',
+    },
+  ];
+
   container.innerHTML = `
-    <div style="padding: 40px 20px; text-align: center; color: var(--text-secondary);">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
-        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM12 16v-4m0-4h.01"/>
-      </svg>
-      <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Settings Simplified</h3>
-      <p style="font-size: 13px; line-height: 1.5;">Module settings have been simplified.</p>
-      <p style="font-size: 13px; line-height: 1.5;">Use the <strong>Features</strong> tab to enable/disable modules.</p>
+    <div class="help-container">
+      ${helpItems
+        .map(
+          (item, index) => `
+        <div class="help-item" data-url="${item.url}" data-index="${index}">
+          <div class="help-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="${item.icon}"/>
+            </svg>
+          </div>
+          <div class="help-content">
+            <h3>${item.title}</h3>
+            <p>${item.description}</p>
+            <a href="${item.url}" target="_blank" class="help-link" onclick="event.stopPropagation()">
+              ${item.linkText}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      `
+        )
+        .join('')}
     </div>
   `;
+
+  // Add click handlers to make entire card clickable
+  document.querySelectorAll('.help-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const url = item.getAttribute('data-url');
+      if (url) {
+        chrome.tabs.create({ url });
+      }
+    });
+    item.style.cursor = 'pointer';
+  });
 }
 
 // Reserved for future advanced settings UI
@@ -630,7 +683,6 @@ function setupActionButtons() {
     console.log('[Popup] 💾 Save button clicked');
     await saveSettings();
   });
-  document.getElementById('reset-btn')?.addEventListener('click', resetSettings);
   document.getElementById('export-btn')?.addEventListener('click', handleExport);
   document.getElementById('import-btn')?.addEventListener('click', handleImport);
   document.getElementById('clear-btn')?.addEventListener('click', handleClear);
