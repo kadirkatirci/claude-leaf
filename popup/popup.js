@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Generate UI from config
     renderTabs();
     renderFeatures();
-    renderShortcuts();
+    // renderShortcuts(); // Commented out shortcuts
     renderDataSection();
     renderSettingsAccordion();
 
@@ -79,6 +79,7 @@ function isModuleDevDisabled(moduleId) {
 function renderTabs() {
   const container = document.getElementById('tabs-nav');
   container.innerHTML = config.tabs
+    .filter(tab => tab.id !== 'shortcuts') // Hide shortcuts tab
     .map(
       (tab, index) => `
     <button class="tab ${index === 0 ? 'active' : ''}" data-tab="${tab.id}">

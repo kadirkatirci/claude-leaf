@@ -70,6 +70,8 @@ body {
   background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .popup-container {
