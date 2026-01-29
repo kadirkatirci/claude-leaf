@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Claude Productivity Tools",
-  "version": "1.1.0",
-  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, edit history, and more",
+  "version": "1.0.0",
+  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, emoji marker, edit history, and more",
+  "author": "Kadir KATIRCI",
+  "homepage_url": "https://tedaitesnim.com",
   "permissions": [
     "storage",
     "activeTab"
