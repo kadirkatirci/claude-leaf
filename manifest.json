@@ -12,6 +12,9 @@
   "host_permissions": [
     "https://claude.ai/*"
   ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
