@@ -1,10 +1,13 @@
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { bookmarkStore } from '../../stores/index.js';
+import { trackEvent } from '../../analytics/Analytics.js';
 
 export class BookmarkManagerModal {
   constructor() {
     this.activeModal = null;
+    this.openSource = 'unknown';
+    this.searchDebounceTimer = null;
     this.state = {
       bookmarks: [],
       categories: [],
@@ -16,9 +19,17 @@ export class BookmarkManagerModal {
     };
   }
 
-  async show() {
+  async show({ source = 'unknown' } = {}) {
+    this.openSource = source;
     // Load Data
     await this.loadData();
+
+    trackEvent('bookmark_manager_open', {
+      module: 'bookmarks',
+      method: source,
+      count: this.state.bookmarks.length,
+      view_mode: this.state.viewMode,
+    });
 
     // Create Modal Structure
     const modal = DOMUtils.createElement('div', {
@@ -51,14 +62,14 @@ export class BookmarkManagerModal {
     // Close on click outside
     modal.addEventListener('click', e => {
       if (e.target === modal) {
-        this.close();
+        this.close('backdrop');
       }
     });
 
     // ESC to close
     const escHandler = e => {
       if (e.key === 'Escape') {
-        this.close();
+        this.close('escape');
       }
     };
     document.addEventListener('keydown', escHandler);
@@ -71,10 +82,14 @@ export class BookmarkManagerModal {
     this.renderBookmarks();
   }
 
-  close() {
+  close(reason = 'unknown') {
     if (!this.activeModal) {
       return;
     }
+    trackEvent('bookmark_manager_close', {
+      module: 'bookmarks',
+      method: reason,
+    });
     const { element, escHandler } = this.activeModal;
     element.style.animation = 'fadeOut 0.2s ease';
     setTimeout(() => {
@@ -122,7 +137,13 @@ export class BookmarkManagerModal {
       className:
         'm-3 p-2 bg-bg-000 border border-border-300 border-dashed rounded-lg text-text-300 hover:text-accent-main-100 hover:border-accent-main-100 hover:bg-bg-000 transition-all flex items-center justify-center gap-2 text-sm',
       textContent: '+ New Category',
-      onclick: () => this.showCategoryCreationModal(),
+      onclick: () => {
+        trackEvent('bookmark_manager_category_create_open', {
+          module: 'bookmarks',
+          method: 'sidebar_button',
+        });
+        this.showCategoryCreationModal();
+      },
     });
 
     sidebar.appendChild(header);
@@ -175,6 +196,12 @@ export class BookmarkManagerModal {
             child.className = `px-3 py-1 text-xs rounded-md transition-all ${child.textContent === opt.label ? 'bg-bg-000 text-text-000 shadow-sm font-medium' : 'text-text-300 hover:text-text-100'}`;
           });
           this.renderBookmarks();
+          const filteredCount = this.getFilteredBookmarks().length;
+          trackEvent('bookmark_manager_sender_filter', {
+            module: 'bookmarks',
+            sender: opt.id,
+            count: filteredCount,
+          });
         },
       });
       senderFilter.appendChild(btn);
@@ -218,6 +245,17 @@ export class BookmarkManagerModal {
       oninput: e => {
         this.state.searchQuery = e.target.value.toLowerCase();
         this.renderBookmarks();
+        if (this.searchDebounceTimer) {
+          clearTimeout(this.searchDebounceTimer);
+        }
+        this.searchDebounceTimer = setTimeout(() => {
+          const filteredCount = this.getFilteredBookmarks().length;
+          trackEvent('bookmark_manager_search', {
+            module: 'bookmarks',
+            query_length: this.state.searchQuery.length,
+            count: filteredCount,
+          });
+        }, 400);
       },
     });
     searchWrapper.appendChild(searchInput);
@@ -227,7 +265,7 @@ export class BookmarkManagerModal {
       className:
         'ml-4 p-2 text-text-300 hover:text-text-000 hover:bg-bg-100 rounded-md transition-colors',
       innerHTML: IconLibrary.close('currentColor', 20),
-      onclick: () => this.close(),
+      onclick: () => this.close('close_btn'),
     });
 
     header.appendChild(titleArea);
@@ -288,7 +326,7 @@ export class BookmarkManagerModal {
       className:
         'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
       innerHTML: '← Back to List',
-      onclick: () => this.showGridView(),
+      onclick: () => this.showGridView('back'),
     });
 
     const gotoMsgBtn = DOMUtils.createElement('button', {
@@ -428,7 +466,7 @@ export class BookmarkManagerModal {
 
   // --- View Switching ---
 
-  showGridView() {
+  showGridView(reason = null) {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
     const list = this.activeModal.element.querySelector('#bm-list-view-container');
@@ -443,6 +481,13 @@ export class BookmarkManagerModal {
     }
     this.state.viewMode = 'grid';
     this.updateViewToggle();
+    if (reason) {
+      trackEvent('bookmark_manager_view_change', {
+        module: 'bookmarks',
+        method: reason,
+        view_mode: 'grid',
+      });
+    }
   }
 
   showFullView() {
@@ -511,6 +556,12 @@ export class BookmarkManagerModal {
         this.showGridView(); // Ensure we are on grid view
         this.renderCategories();
         this.renderBookmarks();
+        const filteredCount = this.getFilteredBookmarks().length;
+        trackEvent('bookmark_manager_category_select', {
+          module: 'bookmarks',
+          category_id: category.id,
+          count: filteredCount,
+        });
       },
     });
 
@@ -615,6 +666,11 @@ export class BookmarkManagerModal {
         'bg-bg-000 border border-border-200 rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col h-[280px] cursor-pointer group',
       onclick: e => {
         if (!e.target.closest('button')) {
+          trackEvent('bookmark_manager_bookmark_open', {
+            module: 'bookmarks',
+            method: 'grid_card',
+            view_mode: 'grid',
+          });
           this.openFullText(bookmark);
         }
       },
@@ -691,7 +747,7 @@ export class BookmarkManagerModal {
       innerHTML: '↗️',
       onclick: e => {
         e.stopPropagation();
-        this.navigateToBookmark(bookmark);
+        this.navigateToBookmark(bookmark, 'grid_card_button');
       },
     });
 
@@ -702,7 +758,7 @@ export class BookmarkManagerModal {
       innerHTML: IconLibrary.trash('currentColor', 16),
       onclick: e => {
         e.stopPropagation();
-        this.deleteBookmark(bookmark.id);
+        this.deleteBookmark(bookmark.id, 'grid_card');
       },
     });
 
@@ -735,7 +791,7 @@ export class BookmarkManagerModal {
 
     // Use addEventListener for reliable click handling
     item.addEventListener('click', () => {
-      this.selectBookmark(bookmark);
+      this.selectBookmark(bookmark, { method: 'list_click', track: true });
     });
 
     // Top row: Sender badge + Preview
@@ -794,10 +850,17 @@ export class BookmarkManagerModal {
     return item;
   }
 
-  selectBookmark(bookmark) {
+  selectBookmark(bookmark, { method = 'list_click', track = true } = {}) {
     this.state.selectedBookmarkId = bookmark.id;
     this.renderMasterList();
     this.renderDetailPanel(bookmark);
+    if (track) {
+      trackEvent('bookmark_manager_list_select', {
+        module: 'bookmarks',
+        method,
+        view_mode: 'list',
+      });
+    }
   }
 
   renderMasterList() {
@@ -845,7 +908,7 @@ export class BookmarkManagerModal {
 
     // Update goto button
     if (gotoBtn) {
-      gotoBtn.onclick = () => this.navigateToBookmark(bookmark);
+      gotoBtn.onclick = () => this.navigateToBookmark(bookmark, 'detail_button');
     }
 
     // Build header
@@ -875,7 +938,7 @@ export class BookmarkManagerModal {
     // Attach delete handler
     const deleteBtn = header.querySelector('#bm-detail-delete-btn');
     if (deleteBtn) {
-      deleteBtn.onclick = () => this.deleteBookmark(bookmark.id);
+      deleteBtn.onclick = () => this.deleteBookmark(bookmark.id, 'detail_header');
     }
 
     // Build body content
@@ -943,6 +1006,10 @@ export class BookmarkManagerModal {
   }
 
   setViewMode(mode) {
+    const prevMode = this.state.viewMode;
+    if (prevMode === mode) {
+      return;
+    }
     this.state.viewMode = mode;
 
     const gridContainer = this.activeModal.element.querySelector('#bm-grid-container');
@@ -974,7 +1041,7 @@ export class BookmarkManagerModal {
       // Auto-select first bookmark if none selected
       const filtered = this.getFilteredBookmarks();
       if (filtered.length > 0 && !this.state.selectedBookmarkId) {
-        this.selectBookmark(filtered[0]);
+        this.selectBookmark(filtered[0], { method: 'auto', track: false });
       } else if (this.state.selectedBookmarkId) {
         const selected = filtered.find(b => b.id === this.state.selectedBookmarkId);
         if (selected) {
@@ -985,14 +1052,27 @@ export class BookmarkManagerModal {
 
     // Update toggle button states
     this.updateViewToggle();
+
+    const filteredCount = this.getFilteredBookmarks().length;
+    trackEvent('bookmark_manager_view_change', {
+      module: 'bookmarks',
+      method: 'toggle',
+      view_mode: mode,
+      count: filteredCount,
+    });
   }
 
   // --- Actions ---
 
-  async deleteBookmark(id) {
+  async deleteBookmark(id, method = 'unknown') {
     if (!confirm('Delete this bookmark?')) {
       return;
     }
+    trackEvent('bookmark_manager_bookmark_delete', {
+      module: 'bookmarks',
+      method,
+      view_mode: this.state.viewMode,
+    });
     await bookmarkStore.remove(id);
     await this.refreshData();
   }
@@ -1005,6 +1085,12 @@ export class BookmarkManagerModal {
       return;
     }
 
+    trackEvent('bookmark_manager_category_delete', {
+      module: 'bookmarks',
+      category_id: category.id,
+      count,
+    });
+
     await bookmarkStore.removeCategory(category.id);
     if (this.state.activeCategory === category.id) {
       this.state.activeCategory = 'all';
@@ -1013,8 +1099,14 @@ export class BookmarkManagerModal {
     await this.refreshData();
   }
 
-  navigateToBookmark(bookmark) {
-    this.close();
+  navigateToBookmark(bookmark, method = 'unknown') {
+    trackEvent('bookmark_manager_bookmark_navigate', {
+      module: 'bookmarks',
+      method,
+      view_mode: this.state.viewMode,
+      result: 'requested',
+    });
+    this.close('navigate');
     if (bookmark.conversationUrl) {
       const baseUrl = 'https://claude.ai';
       const path = bookmark.conversationUrl.startsWith('/')
@@ -1075,23 +1167,35 @@ export class BookmarkManagerModal {
     const input = dialog.querySelector('#new-cat-name');
     input.focus();
 
-    const close = () => overlay.remove();
+    const close = (reason = 'close') => {
+      trackEvent('bookmark_manager_category_create', {
+        module: 'bookmarks',
+        method: reason,
+        result: 'cancel',
+      });
+      overlay.remove();
+    };
 
-    dialog.querySelector('#btn-cat-cancel').onclick = close;
+    dialog.querySelector('#btn-cat-cancel').onclick = () => close('cancel_button');
     dialog.querySelector('#btn-cat-save').onclick = async () => {
       const name = input.value.trim();
       const color = dialog.querySelector('#new-cat-color').value;
       if (name) {
+        trackEvent('bookmark_manager_category_create', {
+          module: 'bookmarks',
+          method: 'save',
+          result: 'success',
+        });
         await bookmarkStore.addCategory(name, color);
         await this.refreshData();
-        close();
+        overlay.remove();
       }
     };
 
     // Close on click outside
     overlay.onclick = e => {
       if (e.target === overlay) {
-        close();
+        close('backdrop');
       }
     };
   }
@@ -1102,7 +1206,7 @@ export class BookmarkManagerModal {
     // Update Go to Button action
     const gotoBtn = this.activeModal.element.querySelector('#bm-full-view-goto-btn');
     if (gotoBtn) {
-      gotoBtn.onclick = () => this.navigateToBookmark(bookmark);
+      gotoBtn.onclick = () => this.navigateToBookmark(bookmark, 'full_view_button');
     }
 
     const container = this.activeModal.element.querySelector('#bm-full-view-content');

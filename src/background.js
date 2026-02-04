@@ -26,6 +26,19 @@ const ALLOWED_EVENTS = new Set([
   'bookmark_category_change',
   'bookmark_panel_toggle',
   'bookmark_navigate',
+  'bookmark_manager_open',
+  'bookmark_manager_close',
+  'bookmark_manager_category_select',
+  'bookmark_manager_sender_filter',
+  'bookmark_manager_view_change',
+  'bookmark_manager_search',
+  'bookmark_manager_bookmark_open',
+  'bookmark_manager_bookmark_delete',
+  'bookmark_manager_bookmark_navigate',
+  'bookmark_manager_list_select',
+  'bookmark_manager_category_create_open',
+  'bookmark_manager_category_create',
+  'bookmark_manager_category_delete',
   'marker_add',
   'marker_remove',
   'marker_update',
@@ -56,6 +69,8 @@ const ALLOWED_PARAMS = new Set([
   'to_emoji',
   'result',
   'page_type',
+  'view_mode',
+  'query_length',
 ]);
 
 let analyticsEnabledCache = null;

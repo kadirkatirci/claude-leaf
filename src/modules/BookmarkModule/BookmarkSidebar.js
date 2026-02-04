@@ -124,7 +124,7 @@ export class BookmarkSidebar {
       e.preventDefault();
       // Open in-app modal
       import('./BookmarkManagerModal.js').then(({ BookmarkManagerModal }) => {
-        new BookmarkManagerModal().show();
+        new BookmarkManagerModal().show({ source: 'sidebar' });
       });
     });
 
