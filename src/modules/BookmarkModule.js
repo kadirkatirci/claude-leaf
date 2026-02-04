@@ -21,6 +21,7 @@ import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+import { trackEvent } from '../analytics/Analytics.js';
 
 const BOOKMARK_CONFIG = MODULE_CONSTANTS.bookmarks;
 
@@ -196,7 +197,7 @@ class BookmarkModule extends BaseModule {
       messages,
       (msg, idx) => idx,
       idx => bookmarkedIndices.has(idx),
-      (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx)
+      (msgElement, idx) => this.toggleBookmarkByIndex(msgElement, idx, 'button')
     );
   }
 
@@ -204,7 +205,7 @@ class BookmarkModule extends BaseModule {
    * Toggle bookmark - check by content signature, not just index
    * NOW: Opens CategorySelector instead of immediate toggle
    */
-  async toggleBookmarkByIndex(messageElement, index) {
+  async toggleBookmarkByIndex(messageElement, index, method = 'button') {
     const currentSignature = generateSignature(messageElement);
     const bookmarks = await bookmarkStore.getByConversation(window.location.pathname);
 
@@ -223,12 +224,18 @@ class BookmarkModule extends BaseModule {
             await bookmarkStore.update(existingBookmark.id, { categoryId: newCategoryId });
             await this.updateUI();
             this.log(`Updated bookmark category to ${newCategoryId}`);
+            trackEvent('bookmark_category_change', {
+              module: 'bookmarks',
+              method,
+              from_category: existingBookmark.categoryId || 'default',
+              to_category: newCategoryId,
+            });
           }
         },
         async () => {
           // On Remove
           this.log(`Removing bookmark for message at index ${index}`);
-          await this.deleteBookmark(existingBookmark.id);
+          await this.deleteBookmark(existingBookmark.id, 'popover');
         }
       );
     } else {
@@ -239,13 +246,13 @@ class BookmarkModule extends BaseModule {
         async categoryId => {
           // On Select
           this.log(`Adding bookmark for message at index ${index} with category ${categoryId}`);
-          await this.addBookmark(messageElement, index, categoryId);
+          await this.addBookmark(messageElement, index, categoryId, method);
         }
       );
     }
   }
 
-  async addBookmark(messageElement, messageIndex, categoryId = 'default') {
+  async addBookmark(messageElement, messageIndex, categoryId = 'default', method = 'button') {
     const cleanText = getCleanMessageText(messageElement);
 
     // Capture HTML content
@@ -304,13 +311,25 @@ class BookmarkModule extends BaseModule {
     await bookmarkStore.add(bookmark);
     this.log(`✅ Bookmark added at index ${messageIndex}`);
 
+    trackEvent('bookmark_add', {
+      module: 'bookmarks',
+      method,
+      category_id: categoryId,
+      sender,
+      message_index: messageIndex,
+    });
+
     await this.updateUI();
     await this.addBookmarkButtons();
   }
 
-  async deleteBookmark(bookmarkId) {
+  async deleteBookmark(bookmarkId, method = 'panel') {
     await bookmarkStore.remove(bookmarkId);
     this.log(`Bookmark deleted: ${bookmarkId}`);
+    trackEvent('bookmark_remove', {
+      module: 'bookmarks',
+      method,
+    });
     await this.updateUI();
     await this.addBookmarkButtons();
   }
@@ -341,7 +360,7 @@ class BookmarkModule extends BaseModule {
     this.panel.updateContent(
       resolvedBookmarks,
       b => this.navigateToBookmark(b),
-      id => this.deleteBookmark(id)
+      id => this.deleteBookmark(id, 'panel')
     );
     this.sidebar.inject();
     this.sidebar.update(resolvedBookmarks, b => this.navigateToBookmark(b));
@@ -360,8 +379,16 @@ class BookmarkModule extends BaseModule {
     this.sidebar.inject();
   }
 
-  togglePanel() {
-    if (this.panel.toggle()) {
+  togglePanel(method = 'button') {
+    const wasVisible = this.panel.isVisible;
+    this.panel.toggle();
+    const isVisible = this.panel.isVisible;
+    trackEvent('bookmark_panel_toggle', {
+      module: 'bookmarks',
+      method,
+      state: isVisible ? 'open' : 'close',
+    });
+    if (!wasVisible && isVisible) {
       this.updateUI();
     }
   }
@@ -389,11 +416,22 @@ class BookmarkModule extends BaseModule {
     if (result.index !== null && result.message) {
       this.dom.scrollToElement(result.message, 'center');
       this.dom.flashClass(result.message, 'claude-nav-highlight', 2000);
+      trackEvent('bookmark_navigate', {
+        module: 'bookmarks',
+        method: fromUrl ? 'url' : 'panel',
+        result: 'found',
+        message_index: result.index,
+      });
       if (this.panel?.elements?.panel?.style.display === 'flex') {
         this.panel.toggle();
       }
     } else if (!fromUrl && confirm('Bookmarked message not found. Delete?')) {
-      this.deleteBookmark(bookmark.id);
+      trackEvent('bookmark_navigate', {
+        module: 'bookmarks',
+        method: fromUrl ? 'url' : 'panel',
+        result: 'not_found',
+      });
+      this.deleteBookmark(bookmark.id, 'prompt');
     }
   }
 
@@ -401,22 +439,22 @@ class BookmarkModule extends BaseModule {
     const handler = e => {
       if (e.altKey && e.shiftKey && e.key === 'B') {
         e.preventDefault();
-        this.togglePanel();
+        this.togglePanel('keyboard');
       }
       if (e.altKey && !e.shiftKey && e.key === 'b') {
         e.preventDefault();
-        this.toggleCurrentMessageBookmark();
+        this.toggleCurrentMessageBookmark('keyboard');
       }
     };
     document.addEventListener('keydown', handler);
     this.unsubscribers.push(() => document.removeEventListener('keydown', handler));
   }
 
-  toggleCurrentMessageBookmark() {
+  toggleCurrentMessageBookmark(method = 'button') {
     const messages = this.dom.findMessages();
     const idx = this.dom.getCurrentVisibleMessageIndex();
     if (idx >= 0 && idx < messages.length) {
-      this.toggleBookmarkByIndex(messages[idx], idx);
+      this.toggleBookmarkByIndex(messages[idx], idx, method);
     }
   }
 

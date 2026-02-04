@@ -12,6 +12,7 @@ import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { scheduleVisualUpdate } from '../utils/AnimationScheduler.js';
 import { debugLog } from '../config/debug.js';
+import { trackEvent } from '../analytics/Analytics.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -267,7 +268,7 @@ class NavigationModule extends BaseModule {
     const topBtn = this.createButton(
       IconLibrary.arrowUpDouble('currentColor', 20),
       'Go to top (Alt+Home)',
-      () => this.navigateToTop()
+      () => this.navigateToTop('button')
     );
     topBtn.id = 'claude-nav-top';
     topBtn.disabled = true;
@@ -279,7 +280,7 @@ class NavigationModule extends BaseModule {
     const prevBtn = this.createButton(
       IconLibrary.arrowUp('currentColor', 20),
       'Previous message (Alt+↑)',
-      () => this.navigatePrevious()
+      () => this.navigatePrevious('button')
     );
     prevBtn.id = 'claude-nav-prev';
     prevBtn.disabled = true;
@@ -291,7 +292,7 @@ class NavigationModule extends BaseModule {
     const nextBtn = this.createButton(
       IconLibrary.arrowDown('currentColor', 20),
       'Next message (Alt+↓)',
-      () => this.navigateNext()
+      () => this.navigateNext('button')
     );
     nextBtn.id = 'claude-nav-next';
     nextBtn.disabled = true;
@@ -413,7 +414,7 @@ class NavigationModule extends BaseModule {
     this.log('🔒 Scroll tracking locked for navigation');
   }
 
-  navigatePrevious() {
+  navigatePrevious(method = 'button') {
     if (this.messages.length === 0) {
       return;
     }
@@ -424,14 +425,22 @@ class NavigationModule extends BaseModule {
     }
 
     if (this.currentIndex > 0) {
+      const fromIndex = this.currentIndex;
       this.currentIndex--;
       this.lockScrollTracking(); // Lock scroll detection during navigation
       this.scrollToMessage(this.currentIndex);
       this.emit(Events.NAVIGATION_PREV, this.currentIndex);
+      trackEvent('nav_prev', {
+        module: 'navigation',
+        method,
+        from_index: fromIndex,
+        to_index: this.currentIndex,
+        total_messages: this.messages.length,
+      });
     }
   }
 
-  navigateNext() {
+  navigateNext(method = 'button') {
     if (this.messages.length === 0) {
       return;
     }
@@ -442,22 +451,38 @@ class NavigationModule extends BaseModule {
     }
 
     if (this.currentIndex < this.messages.length - 1) {
+      const fromIndex = this.currentIndex;
       this.currentIndex++;
       this.lockScrollTracking(); // Lock scroll detection during navigation
       this.scrollToMessage(this.currentIndex);
       this.emit(Events.NAVIGATION_NEXT, this.currentIndex);
+      trackEvent('nav_next', {
+        module: 'navigation',
+        method,
+        from_index: fromIndex,
+        to_index: this.currentIndex,
+        total_messages: this.messages.length,
+      });
     }
   }
 
-  navigateToTop() {
+  navigateToTop(method = 'button') {
     if (this.messages.length === 0) {
       return;
     }
 
+    const fromIndex = this.currentIndex >= 0 ? this.currentIndex : undefined;
     this.currentIndex = 0;
     this.lockScrollTracking(); // Lock scroll detection during navigation
     this.scrollToMessage(0);
     this.emit(Events.NAVIGATION_TOP, 0);
+    trackEvent('nav_top', {
+      module: 'navigation',
+      method,
+      from_index: fromIndex,
+      to_index: 0,
+      total_messages: this.messages.length,
+    });
   }
 
   scrollToMessage(index) {
@@ -601,19 +626,19 @@ class NavigationModule extends BaseModule {
       // Alt + Arrow Up
       if (e.altKey && e.key === 'ArrowUp') {
         e.preventDefault();
-        this.navigatePrevious();
+        this.navigatePrevious('keyboard');
       }
 
       // Alt + Arrow Down
       if (e.altKey && e.key === 'ArrowDown') {
         e.preventDefault();
-        this.navigateNext();
+        this.navigateNext('keyboard');
       }
 
       // Alt + Home
       if (e.altKey && e.key === 'Home') {
         e.preventDefault();
-        this.navigateToTop();
+        this.navigateToTop('keyboard');
       }
     };
 

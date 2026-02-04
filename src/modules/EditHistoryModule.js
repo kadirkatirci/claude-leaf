@@ -16,6 +16,7 @@ import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
 import { panelManager } from '../components/PanelManager.js';
 import { messageHub } from '../core/MessageHub.js';
+import { trackEvent } from '../analytics/Analytics.js';
 
 const EDIT_CONFIG = MODULE_CONSTANTS.editHistory;
 
@@ -30,6 +31,10 @@ class EditHistoryModule extends BaseModule {
       () => this.getTheme(),
       (el, data) => {
         // data is now the editInfo object
+        trackEvent('edit_modal_open', {
+          module: 'editHistory',
+          method: 'badge',
+        });
         this.modal.show(el, data?.versionInfo, data?.containerId);
       }
     );
@@ -42,6 +47,10 @@ class EditHistoryModule extends BaseModule {
 
     // Listen for Branch Map open event (store handler for cleanup)
     this._branchMapHandler = e => {
+      trackEvent('edit_branch_map_open', {
+        module: 'editHistory',
+        method: 'event',
+      });
       this.branchMapModal.show(e.detail.conversationUrl);
     };
     document.addEventListener('claude:open_branch_map', this._branchMapHandler);
@@ -76,7 +85,7 @@ class EditHistoryModule extends BaseModule {
     if (!this._ui) {
       this._ui = new EditUI(
         () => this.getTheme(),
-        () => this.panel.toggle(),
+        () => this.togglePanel('ui'),
         shouldCollapse => this.handleCollapseAll(shouldCollapse)
       );
     }
@@ -101,7 +110,7 @@ class EditHistoryModule extends BaseModule {
         icon: IconLibrary.edit('currentColor', 20),
         tooltip: 'Edit History',
         position: { right: '30px', transform: 'translateY(-100px)' },
-        onClick: () => this.panel.toggle(),
+        onClick: () => this.togglePanel('button'),
         showCounter: true,
       });
 
@@ -222,6 +231,20 @@ class EditHistoryModule extends BaseModule {
     await checkForEdits();
   }
 
+  togglePanel(method = 'button') {
+    const wasVisible = this.panel.isVisible;
+    this.panel.toggle();
+    const isVisible = this.panel.isVisible;
+    trackEvent('edit_panel_toggle', {
+      module: 'editHistory',
+      method,
+      state: isVisible ? 'open' : 'close',
+    });
+    if (!wasVisible && isVisible) {
+      this.panel.updateContent(this.editedMessages);
+    }
+  }
+
   /**
    * Create Collapse/Expand All button in navigation container
    */
@@ -304,6 +327,11 @@ class EditHistoryModule extends BaseModule {
 
     if (newEdits.length > 0) {
       this.log(`➕ ${newEdits.length} new edits`);
+      trackEvent('edit_detected', {
+        module: 'editHistory',
+        method: 'auto',
+        count: newEdits.length,
+      });
     }
 
     if (removed.length > 0) {
@@ -355,6 +383,11 @@ class EditHistoryModule extends BaseModule {
 
     DOMUtils.scrollToElement(editMsg.element, 'center');
     DOMUtils.flashClass(editMsg.element, 'claude-nav-highlight', 2000);
+    trackEvent('edit_scroll', {
+      module: 'editHistory',
+      method: 'panel',
+      message_index: index,
+    });
   }
 
   /**

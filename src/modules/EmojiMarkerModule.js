@@ -17,6 +17,7 @@ import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
+import { trackEvent } from '../analytics/Analytics.js';
 
 const EMOJI_CONFIG = MODULE_CONSTANTS.emojiMarkers;
 
@@ -29,16 +30,16 @@ class EmojiMarkerModule extends BaseModule {
       () => this.getTheme(),
       this.emojiPicker,
       () => this.getFavoriteEmojis(),
-      (markerId, newEmoji) => this.updateMarker(markerId, newEmoji),
-      markerId => this.removeMarker(markerId)
+      (markerId, newEmoji) => this.updateMarker(markerId, newEmoji, 'badge'),
+      markerId => this.removeMarker(markerId, 'badge')
     );
     this.button = new MarkerButton(
       () => this.getTheme(),
       () => this.getFavoriteEmojis(),
       this.emojiPicker,
-      (messageEl, messageIndex, emoji) => this.addMarker(messageEl, messageIndex, emoji),
-      markerId => this.removeMarker(markerId),
-      (markerId, newEmoji) => this.updateMarker(markerId, newEmoji)
+      (messageEl, messageIndex, emoji) => this.addMarker(messageEl, messageIndex, emoji, 'button'),
+      markerId => this.removeMarker(markerId, 'button'),
+      (markerId, newEmoji) => this.updateMarker(markerId, newEmoji, 'button')
     );
 
     // Lazy initialization for panel (created on first use)
@@ -50,8 +51,8 @@ class EmojiMarkerModule extends BaseModule {
     if (!this._panel) {
       this._panel = new MarkerPanel(
         () => this.getTheme(),
-        marker => this.scrollToMarker(marker),
-        markerId => this.removeMarker(markerId)
+        marker => this.scrollToMarker(marker, 'panel'),
+        markerId => this.removeMarker(markerId, 'panel')
       );
     }
     return this._panel;
@@ -76,7 +77,7 @@ class EmojiMarkerModule extends BaseModule {
         icon: IconLibrary.pin('currentColor', 20),
         tooltip: 'Emoji Markers',
         position: { right: '30px', transform: 'translateY(-160px)' },
-        onClick: () => this.panel.toggle(),
+        onClick: () => this.togglePanel('button'),
         showCounter: true,
       });
 
@@ -155,10 +156,23 @@ class EmojiMarkerModule extends BaseModule {
     await this.updateUI();
   }
 
+  togglePanel(method = 'button') {
+    const wasVisible = this.panel.isVisible;
+    const isVisible = this.panel.toggle();
+    trackEvent('marker_panel_toggle', {
+      module: 'emojiMarkers',
+      method,
+      state: isVisible ? 'open' : 'close',
+    });
+    if (!wasVisible && isVisible) {
+      this.updateUI();
+    }
+  }
+
   /**
    * Add marker - checks by content signature to avoid duplicates
    */
-  async addMarker(messageEl, messageIndex, emoji) {
+  async addMarker(messageEl, messageIndex, emoji, method = 'button') {
     if (!this.dom.isOnConversationPage()) {
       return;
     }
@@ -189,22 +203,39 @@ class EmojiMarkerModule extends BaseModule {
 
     await markerStore.add(marker);
     this.log(`✅ Marker added: ${emoji} at index ${messageIndex}`);
+    trackEvent('marker_add', {
+      module: 'emojiMarkers',
+      method,
+      emoji,
+      message_index: messageIndex,
+    });
     await this.updateUI();
   }
 
-  async removeMarker(markerId) {
+  async removeMarker(markerId, method = 'panel') {
     await markerStore.remove(markerId);
     this.log(`Marker removed: ${markerId}`);
+    trackEvent('marker_remove', {
+      module: 'emojiMarkers',
+      method,
+    });
     await this.updateUI();
   }
 
-  async updateMarker(markerId, newEmoji) {
+  async updateMarker(markerId, newEmoji, method = 'panel') {
+    const existing = await markerStore.getById(markerId);
     await markerStore.update(markerId, { emoji: newEmoji });
     this.log(`Marker updated: ${markerId} -> ${newEmoji}`);
+    trackEvent('marker_update', {
+      module: 'emojiMarkers',
+      method,
+      from_emoji: existing?.emoji,
+      to_emoji: newEmoji,
+    });
     await this.updateUI();
   }
 
-  scrollToMarker(marker) {
+  scrollToMarker(marker, method = 'panel') {
     const messages = this.dom.findMessages();
     const resolved = getValidMarkers([marker], messages, { strictMode: false });
 
@@ -212,6 +243,18 @@ class EmojiMarkerModule extends BaseModule {
       const messageEl = messages[resolved[0].resolvedIndex];
       DOMUtils.scrollToElement(messageEl, 'center');
       DOMUtils.flashClass(messageEl, 'claude-nav-highlight', 2000);
+      trackEvent('marker_navigate', {
+        module: 'emojiMarkers',
+        method,
+        result: 'found',
+        message_index: resolved[0].resolvedIndex,
+      });
+    } else {
+      trackEvent('marker_navigate', {
+        module: 'emojiMarkers',
+        method,
+        result: 'not_found',
+      });
     }
   }
 
