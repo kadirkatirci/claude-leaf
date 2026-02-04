@@ -12,7 +12,7 @@ import { panelManager } from '../components/PanelManager.js'; // Shared panel
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { scheduleVisualUpdate } from '../utils/AnimationScheduler.js';
 import { debugLog } from '../config/debug.js';
-import { trackEvent } from '../analytics/Analytics.js';
+import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -43,6 +43,7 @@ class NavigationModule extends BaseModule {
   }
 
   async init() {
+    const initStart = performance.now();
     await super.init();
     if (!this.enabled) {
       return;
@@ -83,6 +84,10 @@ class NavigationModule extends BaseModule {
       this.setupIntersectionObserver();
 
       this.log('✅ Navigation active');
+      trackEvent('perf_init', {
+        module: 'navigation',
+        init_ms: Math.round(performance.now() - initStart),
+      });
     } catch (error) {
       this.error('Navigation initialization failed:', error);
       throw error;
@@ -160,6 +165,7 @@ class NavigationModule extends BaseModule {
    * Update all UI components (standard pattern for FixedButtonMixin)
    */
   updateUI() {
+    const scanStart = performance.now();
     // Don't update if not on conversation page
     if (!this.lastConversationState) {
       return;
@@ -196,6 +202,17 @@ class NavigationModule extends BaseModule {
       this.hasInitialLoadCompleted = true;
       this.log(`✅ Initial UI update: ${this.messages.length} messages`);
     }
+
+    trackPerfScan(
+      {
+        module: 'navigation',
+        method: 'update_ui',
+        scan_ms: Math.round(performance.now() - scanStart),
+        item_count: this.messages.length,
+        message_count: this.messages.length,
+      },
+      { key: 'navigation:update_ui', minIntervalMs: 5000 }
+    );
   }
 
   /**

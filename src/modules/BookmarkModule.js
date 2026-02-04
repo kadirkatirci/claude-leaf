@@ -21,7 +21,7 @@ import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
-import { trackEvent } from '../analytics/Analytics.js';
+import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
 
 const BOOKMARK_CONFIG = MODULE_CONSTANTS.bookmarks;
 
@@ -64,6 +64,7 @@ class BookmarkModule extends BaseModule {
   }
 
   async init() {
+    const initStart = performance.now();
     await super.init();
     if (!this.enabled) {
       return;
@@ -112,6 +113,10 @@ class BookmarkModule extends BaseModule {
     this.checkBookmarkNavigation();
 
     this.log(`✅ Bookmarks ready`);
+    trackEvent('perf_init', {
+      module: 'bookmarks',
+      init_ms: Math.round(performance.now() - initStart),
+    });
   }
 
   clearUIElements() {
@@ -339,6 +344,7 @@ class BookmarkModule extends BaseModule {
   }
 
   async updateUI() {
+    const scanStart = performance.now();
     if (!this.lastConversationState) {
       return;
     }
@@ -364,6 +370,17 @@ class BookmarkModule extends BaseModule {
     );
     this.sidebar.inject();
     this.sidebar.update(resolvedBookmarks, b => this.navigateToBookmark(b));
+
+    trackPerfScan(
+      {
+        module: 'bookmarks',
+        method: 'update_ui',
+        scan_ms: Math.round(performance.now() - scanStart),
+        item_count: resolvedBookmarks.length,
+        bookmark_count: resolvedBookmarks.length,
+      },
+      { key: 'bookmarks:update_ui', minIntervalMs: 5000 }
+    );
   }
 
   async waitAndUpdateUI() {

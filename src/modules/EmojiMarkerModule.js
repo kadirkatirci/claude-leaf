@@ -17,7 +17,7 @@ import { MarkerBadge } from './EmojiMarkerModule/MarkerBadge.js';
 import { MarkerPanel } from './EmojiMarkerModule/MarkerPanel.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
-import { trackEvent } from '../analytics/Analytics.js';
+import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
 
 const EMOJI_CONFIG = MODULE_CONSTANTS.emojiMarkers;
 
@@ -60,6 +60,7 @@ class EmojiMarkerModule extends BaseModule {
 
   async init() {
     try {
+      const initStart = performance.now();
       await super.init();
       if (!this.enabled) {
         return;
@@ -91,6 +92,10 @@ class EmojiMarkerModule extends BaseModule {
       });
 
       this.log('✅ Emoji Markers active');
+      trackEvent('perf_init', {
+        module: 'emojiMarkers',
+        init_ms: Math.round(performance.now() - initStart),
+      });
     } catch (error) {
       this.error('❌ Emoji Markers init failed:', error);
       throw error;
@@ -104,6 +109,7 @@ class EmojiMarkerModule extends BaseModule {
   }
 
   async updateUI() {
+    const scanStart = performance.now();
     if (!this.lastConversationState) {
       return;
     }
@@ -143,6 +149,17 @@ class EmojiMarkerModule extends BaseModule {
     }
 
     this.panel.updateContent(resolvedMarkers);
+
+    trackPerfScan(
+      {
+        module: 'emojiMarkers',
+        method: 'update_ui',
+        scan_ms: Math.round(performance.now() - scanStart),
+        item_count: resolvedMarkers.length,
+        marker_count: resolvedMarkers.length,
+      },
+      { key: 'emojiMarkers:update_ui', minIntervalMs: 5000 }
+    );
   }
 
   async waitAndUpdateUI() {

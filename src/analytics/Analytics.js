@@ -4,6 +4,7 @@
  */
 
 const MESSAGE_TYPE = 'ANALYTICS_EVENT';
+const perfScanLastSent = new Map();
 
 function getPageType() {
   try {
@@ -44,4 +45,15 @@ export function trackEvent(name, params = {}) {
   } catch {
     // Ignore analytics failures
   }
+}
+
+export function trackPerfScan(params = {}, { key, minIntervalMs = 5000 } = {}) {
+  const now = Date.now();
+  const mapKey = key || `${params.module || 'unknown'}:${params.method || 'unknown'}`;
+  const last = perfScanLastSent.get(mapKey);
+  if (last && now - last < minIntervalMs) {
+    return;
+  }
+  perfScanLastSent.set(mapKey, now);
+  trackEvent('perf_scan', params);
 }

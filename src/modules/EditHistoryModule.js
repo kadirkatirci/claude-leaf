@@ -16,7 +16,7 @@ import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
 import { panelManager } from '../components/PanelManager.js';
 import { messageHub } from '../core/MessageHub.js';
-import { trackEvent } from '../analytics/Analytics.js';
+import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
 
 const EDIT_CONFIG = MODULE_CONSTANTS.editHistory;
 
@@ -93,6 +93,7 @@ class EditHistoryModule extends BaseModule {
   }
 
   async init() {
+    const initStart = performance.now();
     await super.init();
     if (!this.enabled) {
       return;
@@ -135,6 +136,10 @@ class EditHistoryModule extends BaseModule {
       }
 
       this.log('✅ Edit History active (VersionManager integrated)');
+      trackEvent('perf_init', {
+        module: 'editHistory',
+        init_ms: Math.round(performance.now() - initStart),
+      });
     } catch (error) {
       this.error('Edit History initialization failed:', error);
       throw error;
@@ -148,10 +153,22 @@ class EditHistoryModule extends BaseModule {
     const edits = data.editedPrompts || [];
 
     // 1. Update UI
+    const scanStart = performance.now();
     this.handleEditsFound(edits);
 
     // 2. Capture History (using new service)
     await historyCaptureService.captureHistory(edits);
+
+    trackPerfScan(
+      {
+        module: 'editHistory',
+        method: 'version_change',
+        scan_ms: Math.round(performance.now() - scanStart),
+        item_count: edits.length,
+        edit_count: edits.length,
+      },
+      { key: 'editHistory:version_change', minIntervalMs: 5000 }
+    );
   }
 
   /**

@@ -49,6 +49,8 @@ const ALLOWED_EVENTS = new Set([
   'edit_modal_open',
   'edit_branch_map_open',
   'edit_scroll',
+  'perf_init',
+  'perf_scan',
   'popup_open',
   'popup_tab_view',
   'popup_module_toggle',
@@ -86,6 +88,13 @@ const ALLOWED_PARAMS = new Set([
   'tab_id',
   'data_type',
   'link_id',
+  'init_ms',
+  'scan_ms',
+  'item_count',
+  'message_count',
+  'bookmark_count',
+  'marker_count',
+  'edit_count',
 ]);
 
 let analyticsEnabledCache = null;
