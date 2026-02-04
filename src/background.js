@@ -49,6 +49,18 @@ const ALLOWED_EVENTS = new Set([
   'edit_modal_open',
   'edit_branch_map_open',
   'edit_scroll',
+  'popup_open',
+  'popup_tab_view',
+  'popup_module_toggle',
+  'popup_settings_save',
+  'popup_settings_reset',
+  'popup_data_export',
+  'popup_data_import',
+  'popup_data_clear',
+  'popup_help_click',
+  'popup_emoji_picker_open',
+  'popup_emoji_favorite_add',
+  'popup_emoji_favorite_remove',
 ]);
 
 const ALLOWED_PARAMS = new Set([
@@ -71,6 +83,9 @@ const ALLOWED_PARAMS = new Set([
   'page_type',
   'view_mode',
   'query_length',
+  'tab_id',
+  'data_type',
+  'link_id',
 ]);
 
 let analyticsEnabledCache = null;

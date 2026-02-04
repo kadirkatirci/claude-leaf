@@ -7,6 +7,9 @@
 let config = null;
 let currentSettings = null;
 let devConfig = { disabledModules: [] };
+const trackEvent = window.PopupAnalytics?.trackEvent || (() => {});
+let activeTabId = null;
+let lastSavedSettings = null;
 
 // ============================================
 // Initialization
@@ -38,6 +41,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupTabListeners();
     setupTooltips();
     setupActionButtons();
+
+    // Track popup open + initial tab
+    activeTabId = getInitialTabId();
+    switchToTab(activeTabId, { track: false });
+    trackEvent('popup_open', { tab_id: activeTabId });
+    trackEvent('popup_tab_view', { tab_id: activeTabId });
 
     console.log('[Popup] Initialized successfully');
   } catch (error) {
@@ -92,6 +101,11 @@ function renderTabs() {
   `
     )
     .join('');
+}
+
+function getInitialTabId() {
+  const first = config.tabs.find(tab => tab.id !== 'shortcuts');
+  return first ? first.id : 'features';
 }
 
 // --- Features Tab ---
@@ -328,6 +342,11 @@ function renderHelpSection() {
     item.addEventListener('click', () => {
       const url = item.getAttribute('data-url');
       if (url) {
+        const index = item.getAttribute('data-index') || 'unknown';
+        trackEvent('popup_help_click', {
+          module: 'popup',
+          link_id: index,
+        });
         chrome.tabs.create({ url });
       }
     });
@@ -457,12 +476,25 @@ function setupTabListeners() {
   });
 }
 
-function switchToTab(tabId) {
+function switchToTab(tabId, { track = true } = {}) {
+  const tabEl = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  const contentEl = document.getElementById(`tab-${tabId}`);
+  if (!tabEl || !contentEl) {
+    return;
+  }
+
+  if (track && tabId && tabId !== activeTabId) {
+    activeTabId = tabId;
+    trackEvent('popup_tab_view', { tab_id: tabId });
+  } else if (!activeTabId) {
+    activeTabId = tabId;
+  }
+
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
+  tabEl.classList.add('active');
 
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById(`tab-${tabId}`)?.classList.add('active');
+  contentEl.classList.add('active');
 }
 
 function openAccordion(moduleId) {
@@ -533,6 +565,7 @@ async function loadSettings() {
   }
 
   currentSettings = deepMerge(getDefaultSettings(), savedSettings);
+  lastSavedSettings = JSON.parse(JSON.stringify(currentSettings));
   console.log('[Popup] Settings loaded:', currentSettings);
   updateUI();
 
@@ -651,19 +684,54 @@ async function saveSettings() {
     console.log('[Popup] 🔍 Verification - storage contents:', saved);
 
     showToast('Settings saved!', 'success');
+    const enabledCount = Object.values(currentSettings || {}).filter(
+      v => v && typeof v === 'object' && v.enabled === true
+    ).length;
+    trackEvent('popup_settings_save', {
+      module: 'popup',
+      result: 'success',
+      count: enabledCount,
+    });
+
+    // Track only real (persisted) module changes
+    if (lastSavedSettings) {
+      Object.keys(config.modules)
+        .filter(id => !isModuleDevDisabled(id))
+        .forEach(id => {
+          const prevEnabled = lastSavedSettings?.[id]?.enabled ?? false;
+          const nextEnabled = currentSettings?.[id]?.enabled ?? false;
+          if (prevEnabled !== nextEnabled) {
+            trackEvent('popup_module_toggle', {
+              module: id,
+              state: nextEnabled ? 'enabled' : 'disabled',
+              method: 'save',
+            });
+          }
+        });
+    }
+
+    // Update last saved snapshot after successful persistence
+    lastSavedSettings = JSON.parse(JSON.stringify(currentSettings));
 
     // Notify content script
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          type: 'SETTINGS_UPDATED',
-          settings: currentSettings,
-        });
+      const tab = tabs[0];
+      if (tab && tab.id && tab.url && tab.url.includes('claude.ai')) {
+        chrome.tabs
+          .sendMessage(tab.id, {
+            type: 'SETTINGS_UPDATED',
+            settings: currentSettings,
+          })
+          .catch(() => {});
       }
     });
   } catch (error) {
     console.error('[Popup] ❌ Failed to save settings:', error);
     showToast('Failed to save settings', 'error');
+    trackEvent('popup_settings_save', {
+      module: 'popup',
+      result: 'error',
+    });
   }
 }
 
@@ -673,6 +741,10 @@ async function resetSettings() {
     updateUI();
     await saveSettings();
     showToast('Settings reset!', 'success');
+    trackEvent('popup_settings_reset', {
+      module: 'popup',
+      result: 'success',
+    });
   }
 }
 
@@ -712,6 +784,10 @@ function renderFavoriteEmojis() {
       e.stopPropagation();
       currentSettings.emojiMarkers.favoriteEmojis.splice(index, 1);
       renderFavoriteEmojis();
+      trackEvent('popup_emoji_favorite_remove', {
+        module: 'popup',
+        count: currentSettings.emojiMarkers.favoriteEmojis.length,
+      });
     });
 
     // Drag & drop
@@ -738,6 +814,7 @@ function renderFavoriteEmojis() {
 }
 
 function showEmojiPicker() {
+  trackEvent('popup_emoji_picker_open', { module: 'popup' });
   const modal = document.createElement('div');
   modal.className = 'emoji-modal';
   modal.style.cssText = `
@@ -787,10 +864,20 @@ function showEmojiPicker() {
 
         if (currentSettings.emojiMarkers.favoriteEmojis.includes(emoji)) {
           showToast('Already in favorites', 'warning');
+          trackEvent('popup_emoji_favorite_add', {
+            module: 'popup',
+            result: 'duplicate',
+            count: currentSettings.emojiMarkers.favoriteEmojis.length,
+          });
         } else {
           currentSettings.emojiMarkers.favoriteEmojis.push(emoji);
           renderFavoriteEmojis();
           showToast(`${emoji} added`, 'success');
+          trackEvent('popup_emoji_favorite_add', {
+            module: 'popup',
+            result: 'success',
+            count: currentSettings.emojiMarkers.favoriteEmojis.length,
+          });
         }
         modal.remove();
       });
@@ -844,6 +931,10 @@ async function handleExport() {
 
   if (selectedStores.length === 0) {
     showToast('Nothing selected', 'warning');
+    trackEvent('popup_data_export', {
+      module: 'popup',
+      result: 'none_selected',
+    });
     return;
   }
 
@@ -861,9 +952,21 @@ async function handleExport() {
 
     showToast('Exported successfully!', 'success');
     console.log('[Popup] Exported stores:', selectedStores);
+    trackEvent('popup_data_export', {
+      module: 'popup',
+      result: 'success',
+      count: selectedStores.length,
+      data_type: selectedStores.join(','),
+    });
   } catch (error) {
     console.error('[Popup] Export error:', error);
     showToast('Export failed', 'error');
+    trackEvent('popup_data_export', {
+      module: 'popup',
+      result: 'error',
+      count: selectedStores.length,
+      data_type: selectedStores.join(','),
+    });
   }
 }
 
@@ -881,6 +984,7 @@ function handleImport() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
+      const dataTypes = Object.keys(data || {}).join(',');
 
       // Use DataService for import
       const result = await window.DataService.importData(data, true);
@@ -900,9 +1004,21 @@ function handleImport() {
       if (result.success) {
         showToast(`Imported ${importedCount} items`, 'success');
         console.log('[Popup] Import result:', result);
+        trackEvent('popup_data_import', {
+          module: 'popup',
+          result: 'success',
+          count: importedCount,
+          data_type: dataTypes,
+        });
       } else {
         showToast('Import completed with errors', 'warning');
         console.warn('[Popup] Import errors:', result.errors);
+        trackEvent('popup_data_import', {
+          module: 'popup',
+          result: 'partial',
+          count: importedCount,
+          data_type: dataTypes,
+        });
       }
 
       // Notify content script
@@ -914,6 +1030,10 @@ function handleImport() {
     } catch (err) {
       console.error('[Popup] Import error:', err);
       showToast('Invalid file', 'error');
+      trackEvent('popup_data_import', {
+        module: 'popup',
+        result: 'error',
+      });
     }
   };
 
@@ -942,10 +1062,20 @@ async function handleClear() {
 
   if (selectedStores.length === 0) {
     showToast('Nothing selected', 'warning');
+    trackEvent('popup_data_clear', {
+      module: 'popup',
+      result: 'none_selected',
+    });
     return;
   }
 
   if (!confirm('⚠️ Permanently delete selected data?')) {
+    trackEvent('popup_data_clear', {
+      module: 'popup',
+      result: 'cancel',
+      count: selectedStores.length,
+      data_type: selectedStores.join(','),
+    });
     return;
   }
 
@@ -965,6 +1095,12 @@ async function handleClear() {
 
     showToast('Data cleared', 'success');
     console.log('[Popup] Cleared stores:', selectedStores);
+    trackEvent('popup_data_clear', {
+      module: 'popup',
+      result: 'success',
+      count: selectedStores.length,
+      data_type: selectedStores.join(','),
+    });
 
     // Notify content script
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -975,6 +1111,12 @@ async function handleClear() {
   } catch (error) {
     console.error('[Popup] Clear error:', error);
     showToast('Failed to clear', 'error');
+    trackEvent('popup_data_clear', {
+      module: 'popup',
+      result: 'error',
+      count: selectedStores.length,
+      data_type: selectedStores.join(','),
+    });
   }
 }
 
