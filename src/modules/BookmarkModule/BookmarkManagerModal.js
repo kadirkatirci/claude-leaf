@@ -32,21 +32,28 @@ export class BookmarkManagerModal {
     });
 
     // Create Modal Structure
+    // Use CSS transitions (not animations) to avoid FOUC flash:
+    // Element starts at opacity:0, then transitions to opacity:1 on next frame
     const modal = DOMUtils.createElement('div', {
       className: 'fixed inset-0 flex items-center justify-center',
       style: {
-        animation: 'fadeIn 0.2s ease',
-        zIndex: '2147483647', // Maximum z-index to ensure always on top
+        zIndex: '2147483647',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)', // Safari support
+        WebkitBackdropFilter: 'blur(8px)',
+        opacity: '0',
+        transition: 'opacity 0.2s ease',
       },
     });
 
     const content = DOMUtils.createElement('div', {
       className:
         'bg-bg-000 rounded-xl overflow-hidden shadow-2xl flex flex-row w-full h-[85vh] max-w-[1200px]',
-      style: { animation: 'slideUp 0.3s ease' },
+      style: {
+        opacity: '0',
+        transform: 'translateY(20px)',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
+      },
     });
 
     // Sidebar
@@ -74,8 +81,15 @@ export class BookmarkManagerModal {
     };
     document.addEventListener('keydown', escHandler);
 
-    this.activeModal = { element: modal, escHandler };
+    this.activeModal = { element: modal, content, escHandler };
     document.body.appendChild(modal);
+
+    // Trigger transition on next frame (after element is in DOM)
+    requestAnimationFrame(() => {
+      modal.style.opacity = '1';
+      content.style.opacity = '1';
+      content.style.transform = 'translateY(0)';
+    });
 
     // Initial Render
     this.renderCategories();
@@ -90,8 +104,13 @@ export class BookmarkManagerModal {
       module: 'bookmarks',
       method: reason,
     });
-    const { element, escHandler } = this.activeModal;
-    element.style.animation = 'fadeOut 0.2s ease';
+    const { element, content, escHandler } = this.activeModal;
+    // Fade out via transition
+    element.style.opacity = '0';
+    if (content) {
+      content.style.opacity = '0';
+      content.style.transform = 'translateY(20px)';
+    }
     setTimeout(() => {
       element.remove();
       document.removeEventListener('keydown', escHandler);
@@ -1132,17 +1151,22 @@ export class BookmarkManagerModal {
     const overlay = DOMUtils.createElement('div', {
       className: 'fixed inset-0 flex items-center justify-center',
       style: {
-        animation: 'fadeIn 0.1s ease',
-        zIndex: '2147483647', // Maximum z-index
+        zIndex: '2147483647',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
+        opacity: '0',
+        transition: 'opacity 0.15s ease',
       },
     });
 
     const dialog = DOMUtils.createElement('div', {
       className: 'bg-bg-000 p-6 rounded-lg shadow-xl w-[350px]',
-      style: { animation: 'scaleIn 0.1s ease' },
+      style: {
+        opacity: '0',
+        transform: 'scale(0.95)',
+        transition: 'opacity 0.15s ease, transform 0.15s ease',
+      },
     });
 
     dialog.innerHTML = `
@@ -1163,6 +1187,13 @@ export class BookmarkManagerModal {
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
+
+    // Trigger transition
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      dialog.style.opacity = '1';
+      dialog.style.transform = 'scale(1)';
+    });
 
     const input = dialog.querySelector('#new-cat-name');
     input.focus();

@@ -122,6 +122,7 @@ export class BookmarkSidebar {
     // Add click handler
     link.addEventListener('click', e => {
       e.preventDefault();
+      e.stopPropagation();
       // Open in-app modal
       import('./BookmarkManagerModal.js').then(({ BookmarkManagerModal }) => {
         new BookmarkManagerModal().show({ source: 'sidebar' });

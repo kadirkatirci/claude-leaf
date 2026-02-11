@@ -45,10 +45,13 @@ class EditModal {
     const userMessage = messageElement.querySelector('[data-testid="user-message"]');
     const messageText = userMessage ? userMessage.textContent : messageElement.textContent;
 
-    // Modal backdrop
+    // Modal backdrop - use CSS transitions (not animations) to avoid FOUC flash
     const modal = DOMUtils.createElement('div');
     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]';
-    modal.style.animation = 'fadeIn 0.2s ease';
+    Object.assign(modal.style, {
+      opacity: '0',
+      transition: 'opacity 0.2s ease',
+    });
 
     // Modal content
     const modalContent = DOMUtils.createElement('div');
@@ -56,7 +59,9 @@ class EditModal {
     Object.assign(modalContent.style, {
       maxWidth: '600px',
       maxHeight: '80vh',
-      animation: 'slideUp 0.3s ease',
+      opacity: '0',
+      transform: 'translateY(20px)',
+      transition: 'opacity 0.3s ease, transform 0.3s ease',
     });
 
     // Header
@@ -95,9 +100,16 @@ class EditModal {
     document.addEventListener('keydown', escHandler);
 
     // Store for cleanup
-    this.activeModal = { element: modal, escHandler };
+    this.activeModal = { element: modal, content: modalContent, escHandler };
 
     document.body.appendChild(modal);
+
+    // Trigger transition on next frame (after element is in DOM)
+    requestAnimationFrame(() => {
+      modal.style.opacity = '1';
+      modalContent.style.opacity = '1';
+      modalContent.style.transform = 'translateY(0)';
+    });
   }
 
   /**
@@ -315,8 +327,12 @@ class EditModal {
       return;
     }
 
-    const { element, escHandler } = this.activeModal;
-    element.style.animation = 'fadeOut 0.2s ease';
+    const { element, content, escHandler } = this.activeModal;
+    element.style.opacity = '0';
+    if (content) {
+      content.style.opacity = '0';
+      content.style.transform = 'translateY(20px)';
+    }
 
     setTimeout(() => {
       element.remove();
