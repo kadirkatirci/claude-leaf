@@ -298,6 +298,44 @@ window.claudeProductivity.modules                  // All modules
 window.__stateManager.getStorageInfo()          // Storage statistics
 ```
 
+## Analytics
+
+This extension includes **Google Analytics 4 (GA4)** tracking using the Measurement Protocol. All analytics events are whitelisted and sanitized before transmission to prevent data leakage.
+
+**Key Features:**
+- ✅ 66 whitelisted events across all modules
+- ✅ User-controlled: Can be disabled in settings
+- ✅ Privacy-first: Full parameter sanitization + whitelist validation
+- ✅ Performance monitoring: Initialization and UI scan metrics
+- ✅ HTTPS-only: GA4 Measurement Protocol endpoint
+
+**See:** [ANALYTICS.md](ANALYTICS.md) for complete reference including:
+- Event catalog and parameter definitions
+- Security & privacy implementation
+- API reference for adding new events
+- GA4 configuration and debugging
+
+**Quick Start:**
+```javascript
+import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
+
+// Basic event
+trackEvent('nav_next', {
+  method: 'button',
+  from_index: 5,
+  to_index: 6,
+  total_messages: 20,
+});
+
+// Performance metric (throttled)
+trackPerfScan({
+  module: 'myModule',
+  method: 'update_ui',
+  scan_ms: 45,
+  item_count: 12,
+}, { minIntervalMs: 5000 });
+```
+
 ## Build Info
 
 - **Bundler**: Rollup with `@rollup/plugin-node-resolve`
