@@ -21,7 +21,7 @@ import { BookmarkSidebar } from './BookmarkModule/BookmarkSidebar.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import { CategorySelector } from './BookmarkModule/CategorySelector.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
-import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
+import { trackEvent, trackPerfScan, trackFunnelStep } from '../analytics/Analytics.js';
 
 const BOOKMARK_CONFIG = MODULE_CONSTANTS.bookmarks;
 
@@ -315,6 +315,16 @@ class BookmarkModule extends BaseModule {
 
     await bookmarkStore.add(bookmark);
     this.log(`✅ Bookmark added at index ${messageIndex}`);
+
+    // Track 4-step bookmark creation funnel
+    trackFunnelStep('bookmark_creation', 1, 'initiate', 'started', { module: 'bookmarks', method });
+    trackFunnelStep('bookmark_creation', 2, 'select_message', 'completed', {
+      message_index: messageIndex,
+    });
+    trackFunnelStep('bookmark_creation', 3, 'choose_category', 'completed', {
+      category_id: categoryId,
+    });
+    trackFunnelStep('bookmark_creation', 4, 'save_bookmark', 'completed', { sender });
 
     trackEvent('bookmark_add', {
       module: 'bookmarks',

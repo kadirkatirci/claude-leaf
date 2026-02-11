@@ -16,6 +16,9 @@ import { settingsStore, bookmarkStore, markerStore, editHistoryStore } from './s
 import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
 import { isDevDisabled } from './config/DevConfig.js';
 import { debugLog } from './config/debug.js';
+import errorTracker from './utils/ErrorTracker.js';
+import sessionTracker from './utils/SessionTracker.js';
+import { trackEvent } from './analytics/Analytics.js';
 
 const GENERAL_CONFIG = MODULE_CONSTANTS.general;
 import { eventBus, Events } from './utils/EventBus.js';
@@ -67,6 +70,9 @@ class ClaudeProductivityApp {
     // Setup message listener immediately so popup can communicate
     // even before full initialization completes
     this.setupChromeMessageListener();
+
+    // Initialize global error tracking
+    errorTracker.init();
   }
 
   async init() {
@@ -106,6 +112,14 @@ class ClaudeProductivityApp {
       });
 
       console.error('[App] Initialization failed:', error);
+      errorTracker.captureError({
+        message: error.message,
+        error,
+        type: 'init_error',
+        module: 'app',
+        method: 'init',
+        fatal: true,
+      });
       this.handleInitializationError(error);
     }
   }
@@ -192,6 +206,13 @@ class ClaudeProductivityApp {
 
     const totalTime = Math.round(performance.now() - startTime);
     debugLog('performance', `Initialization complete in ${totalTime}ms`);
+
+    // Start session tracking
+    sessionTracker.start();
+    trackEvent('perf_init', {
+      module: 'app',
+      init_ms: totalTime,
+    });
   }
 
   setupNavigationListener() {
@@ -407,6 +428,7 @@ class ClaudeProductivityApp {
         debugLog('navigation', `${moduleName} initialized`);
       } catch (error) {
         console.error(`[App] Failed to initialize ${moduleName}:`, error);
+        errorTracker.trackModuleError(moduleName, error, 'init');
         this.initState.failedModules.push({
           name: moduleName,
           error: error.message,
@@ -566,6 +588,9 @@ class ClaudeProductivityApp {
 
     this.destroying = true;
     debugLog('navigation', 'Stopping extension...');
+
+    // End session
+    sessionTracker.end();
 
     if (this.restartDebounceTimer) {
       clearTimeout(this.restartDebounceTimer);

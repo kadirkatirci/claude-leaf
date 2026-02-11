@@ -5,8 +5,8 @@
 This extension implements **GA4 Measurement Protocol** for comprehensive analytics tracking across all features. The system captures user interactions, performance metrics, and feature usage while respecting privacy and user consent.
 
 **Key Facts:**
-- **66 whitelisted events** with pre-defined parameters
-- **28 allowed parameters** to prevent PII leakage
+- **73 whitelisted events** with pre-defined parameters
+- **51 allowed parameters** to prevent PII leakage
 - **User-controlled**: Analytics can be disabled in settings
 - **Privacy-first**: Full sanitization + whitelist validation
 - **Performance-monitored**: Init time and UI scan metrics tracked
@@ -232,9 +232,174 @@ Track user interactions in the extension popup.
 
 ---
 
+### 7. Error Tracking Events (1 event)
+
+Critical for production debugging and monitoring extension health.
+
+| Event | When Triggered | Parameters |
+|-------|----------------|------------|
+| `error_occurred` | Uncaught error, promise rejection, or module failure | `error_type`, `error_message`, `error_stack`, `error_location`, `fatal`, `module`, `method` |
+
+**Error Types:**
+- `uncaught_error` - Global window.onerror
+- `unhandled_promise` - Unhandled promise rejections
+- `module_error` - Module initialization/runtime errors
+- `runtime_error` - General runtime errors
+
+**Location:** `src/utils/ErrorTracker.js` + global handlers in `src/content.js`
+
+**Features:**
+- Global error handlers (`window.onerror`, `unhandledrejection`)
+- Automatic error sanitization (200 char messages, 500 char stacks)
+- Throttling to prevent spam (same error max 1 per 5 seconds)
+- Circuit breaker (max 50 errors per session)
+
+**Example:**
+```javascript
+// Automatic capture
+window.onerror = ...  // Caught automatically
+
+// Manual tracking
+import errorTracker from '../utils/ErrorTracker.js';
+errorTracker.captureError({
+  message: 'Failed to load bookmarks',
+  error: err,
+  type: 'runtime_error',
+  module: 'bookmarks',
+  method: 'load',
+  fatal: false,
+});
+```
+
+---
+
+### 8. Session Lifecycle Events (2 events)
+
+Track user sessions from initialization to cleanup.
+
+| Event | When Triggered | Parameters |
+|-------|----------------|------------|
+| `session_start` | Extension initialized | `browser_name`, `browser_version`, `os_name`, `os_version`, `screen_width`, `screen_height` |
+| `session_end` | Extension destroyed (page navigation/close) | `session_duration_ms`, `total_actions` |
+
+**Location:** `src/utils/SessionTracker.js` + integration in `src/App.js`
+
+**Browser/OS Detection:**
+- Browsers: Chrome, Edge, Firefox
+- OS: Windows, macOS, Linux
+- Screen resolution capture
+- Automatic context injection into all events
+
+**Example:**
+```javascript
+// session_start event
+{
+  module: 'app',
+  browser_name: 'chrome',
+  browser_version: '120',
+  os_name: 'macos',
+  os_version: '14.2',
+  screen_width: 1920,
+  screen_height: 1080,
+}
+
+// session_end event
+{
+  module: 'app',
+  session_duration_ms: 145000,
+  total_actions: 42,
+}
+```
+
+---
+
+### 9. Funnel Tracking Events (1 event)
+
+Track multi-step user flows to identify drop-off points.
+
+| Event | When Triggered | Parameters |
+|-------|----------------|------------|
+| `funnel_step` | User progresses through multi-step flow | `funnel_name`, `step_number`, `step_name`, `step_status` |
+
+**Supported Funnels:**
+- `bookmark_creation` - 4 steps: initiate → select_message → choose_category → save_bookmark
+- `edit_browsing` - Browse edit history
+- `marker_creation` - Add emoji marker
+
+**Step Status:**
+- `started` - User initiated step
+- `completed` - User finished step
+- `abandoned` - User left flow without completing
+
+**Location:** `trackFunnelStep()` in `src/analytics/Analytics.js`, integrated in modules
+
+**Example:**
+```javascript
+import { trackFunnelStep } from '../analytics/Analytics.js';
+
+// Bookmark creation flow
+trackFunnelStep('bookmark_creation', 1, 'initiate', 'started', { module: 'bookmarks' });
+trackFunnelStep('bookmark_creation', 2, 'select_message', 'completed', { message_index: 5 });
+trackFunnelStep('bookmark_creation', 3, 'choose_category', 'completed', { category_id: 'work' });
+trackFunnelStep('bookmark_creation', 4, 'save_bookmark', 'completed', { sender: 'assistant' });
+```
+
+**GA4 Funnel Analysis:**
+1. Open GA4 Dashboard
+2. Create custom report: Events → Group by funnel_name and step_number
+3. Analyze drop-off rates between steps
+4. Identify optimization opportunities
+
+---
+
+### 10. User Engagement Events (1 event)
+
+Measure feature adoption breadth and power user behavior.
+
+| Event | When Triggered | Parameters |
+|-------|----------------|------------|
+| `user_engagement_summary` | Session end or periodic summary | `modules_used_count`, `feature_breadth`, `power_user_score`, `total_actions` |
+
+**Metrics:**
+- `modules_used_count` - Number of distinct features user interacted with
+- `feature_breadth` - Same as modules_used_count
+- `power_user_score` - Engagement intensity (modules × avg_actions_per_module)
+- `total_actions` - Total feature interactions in session
+
+**Location:** `src/utils/EngagementTracker.js`
+
+---
+
+### 11. Frustration Detection Events (1 event)
+
+Detect user frustration through rapid repeated actions.
+
+| Event | When Triggered | Parameters |
+|-------|----------------|------------|
+| `rapid_action_detected` | 5+ identical actions within 2 seconds | `action_type`, `action_count`, `time_window_ms` |
+
+**Patterns:**
+- Rapid button clicks (5+ in 2 seconds)
+- Repeated keyboard shortcuts
+- Feature toggle spam
+
+**Location:** `src/utils/FrustrationDetector.js`
+
+**Example:**
+```javascript
+import frustrationDetector from '../utils/FrustrationDetector.js';
+
+// In button click handler
+frustrationDetector.recordAction('button_click');
+// If 5+ clicks in 2 seconds, automatically emits:
+// { action_type: 'button_click', action_count: 5, time_window_ms: 2000 }
+```
+
+---
+
 ## 🎯 Parameter Reference
 
-### Allowed Parameters (28 total)
+### Allowed Parameters (51 total - Updated with Phase 1-4 additions)
 
 All events go through sanitization to prevent sensitive data leakage.
 
@@ -268,6 +433,34 @@ All events go through sanitization to prevent sensitive data leakage.
 | `bookmark_count` | number | - | 8 | Bookmark count |
 | `marker_count` | number | - | 5 | Marker count |
 | `edit_count` | number | - | 3 | Edit count |
+| **Error Tracking** | | | | |
+| `error_type` | string | 100 | "uncaught_error" | Error category |
+| `error_message` | string | 200 | "Cannot read property" | Sanitized error message |
+| `error_stack` | string | 500 | "at Function.js:42" | Error stack trace |
+| `error_location` | string | 100 | "Analytics.js:15:3" | File location |
+| `fatal` | number | - | 1 | Is error fatal (0 or 1) |
+| **Session Tracking** | | | | |
+| `session_duration_ms` | number | - | 3600000 | Session length in milliseconds |
+| `total_actions` | number | - | 42 | Total actions in session |
+| `browser_name` | string | 100 | "chrome" | Browser type |
+| `browser_version` | string | 100 | "120" | Browser version |
+| `os_name` | string | 100 | "macos" | Operating system |
+| `os_version` | string | 100 | "14.2" | OS version |
+| `screen_width` | number | - | 1920 | Screen width in pixels |
+| `screen_height` | number | - | 1080 | Screen height in pixels |
+| **Funnel Tracking** | | | | |
+| `funnel_name` | string | 100 | "bookmark_creation" | Funnel identifier |
+| `step_number` | number | - | 2 | Step position in funnel |
+| `step_name` | string | 100 | "select_message" | Step name |
+| `step_status` | string | 100 | "completed" | Step status (started/completed/abandoned) |
+| **User Engagement** | | | | |
+| `modules_used_count` | number | - | 5 | Number of modules used |
+| `feature_breadth` | number | - | 0.71 | Feature breadth score (0-1) |
+| `power_user_score` | number | - | 0.85 | Power user score (0-1) |
+| **Frustration Detection** | | | | |
+| `action_type` | string | 100 | "click" | Type of repeated action |
+| `action_count` | number | - | 7 | Count of rapid actions |
+| `time_window_ms` | number | - | 2000 | Time window for action detection |
 
 ### Auto-Injected Parameters
 

@@ -63,6 +63,13 @@ const ALLOWED_EVENTS = new Set([
   'popup_emoji_picker_open',
   'popup_emoji_favorite_add',
   'popup_emoji_favorite_remove',
+  'error_occurred',
+  'session_start',
+  'session_end',
+  'funnel_step',
+  'user_engagement_summary',
+  'rapid_action_detected',
+  'analytics_health',
 ]);
 
 const ALLOWED_PARAMS = new Set([
@@ -95,6 +102,29 @@ const ALLOWED_PARAMS = new Set([
   'bookmark_count',
   'marker_count',
   'edit_count',
+  'error_type',
+  'error_message',
+  'error_stack',
+  'error_location',
+  'fatal',
+  'session_duration_ms',
+  'total_actions',
+  'funnel_name',
+  'step_number',
+  'step_name',
+  'step_status',
+  'browser_name',
+  'browser_version',
+  'os_name',
+  'os_version',
+  'screen_width',
+  'screen_height',
+  'modules_used_count',
+  'feature_breadth',
+  'power_user_score',
+  'action_type',
+  'action_count',
+  'time_window_ms',
 ]);
 
 let analyticsEnabledCache = null;

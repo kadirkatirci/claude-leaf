@@ -7,6 +7,7 @@ import { settingsStore } from '../stores/index.js';
 import DOMUtils from '../utils/DOMUtils.js';
 import { getThemeColors } from '../config/themes.js';
 import { debugLog } from '../config/debug.js';
+import errorTracker from '../utils/ErrorTracker.js';
 
 class BaseModule {
   /**
@@ -65,6 +66,7 @@ class BaseModule {
       this.subscribeToURLChanges();
     } catch (error) {
       console.error(`❌ Failed to initialize ${this.name} module:`, error);
+      errorTracker.trackModuleError(this.name, error, 'init');
       this.enabled = false;
       this.initialized = false;
       throw error; // Re-throw for App.js to track
