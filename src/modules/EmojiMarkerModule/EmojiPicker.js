@@ -258,9 +258,11 @@ export class EmojiPicker {
     quickSection.appendChild(moreBtn);
     picker.appendChild(quickSection);
 
-    // Position picker
-    this.positionPicker(picker, targetElement);
+    // Append first so we can measure real size before positioning
+    picker.style.visibility = 'hidden';
     document.body.appendChild(picker);
+    this.positionPicker(picker, targetElement);
+    picker.style.visibility = '';
     this.picker = picker;
 
     // Close on outside click
@@ -332,9 +334,11 @@ export class EmojiPicker {
     picker.appendChild(searchBox);
     picker.appendChild(content);
 
-    // Position picker
-    this.positionPicker(picker, targetElement);
+    // Append first so we can measure real size before positioning
+    picker.style.visibility = 'hidden';
     document.body.appendChild(picker);
+    this.positionPicker(picker, targetElement);
+    picker.style.visibility = '';
     this.picker = picker;
 
     // Focus search box
@@ -401,27 +405,49 @@ export class EmojiPicker {
    * Position picker relative to target
    */
   positionPicker(picker, targetElement) {
-    const rect = targetElement.getBoundingClientRect();
-    const pickerWidth = 320; // approximate
-
-    // Position below target, aligned to right
-    let left = rect.right - pickerWidth;
-    let top = rect.bottom + 8;
-
-    // Keep within viewport
-    if (left < 10) {
-      left = 10;
-    }
-    if (left + pickerWidth > window.innerWidth - 10) {
-      left = window.innerWidth - pickerWidth - 10;
+    if (!picker || !targetElement) {
+      return;
     }
 
-    if (top + 400 > window.innerHeight) {
-      top = rect.top - 408; // Position above
+    const targetRect = targetElement.getBoundingClientRect();
+    const pickerRect = picker.getBoundingClientRect();
+
+    const pickerWidth = pickerRect.width || 320;
+    const pickerHeight = pickerRect.height || 220;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const gap = 8;
+    const margin = 10;
+
+    // Default: below target, right-aligned with trigger
+    let left = targetRect.right - pickerWidth;
+    let top = targetRect.bottom + gap;
+
+    // Horizontal viewport bounds
+    if (left < margin) {
+      left = margin;
+    }
+    if (left + pickerWidth > viewportWidth - margin) {
+      left = viewportWidth - pickerWidth - margin;
     }
 
-    picker.style.left = `${left}px`;
-    picker.style.top = `${top}px`;
+    // Vertical viewport bounds (flip above when needed)
+    if (top + pickerHeight > viewportHeight - margin) {
+      top = targetRect.top - pickerHeight - gap;
+    }
+    if (top < margin) {
+      top = margin;
+    }
+
+    // panelClass('dropdown') is absolute; convert viewport coords to document coords
+    const isFixed = window.getComputedStyle(picker).position === 'fixed';
+    const offsetX = isFixed ? 0 : window.scrollX;
+    const offsetY = isFixed ? 0 : window.scrollY;
+
+    picker.style.left = `${left + offsetX}px`;
+    picker.style.top = `${top + offsetY}px`;
   }
 
   /**

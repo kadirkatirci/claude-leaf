@@ -136,11 +136,17 @@ export class MarkerBadge {
    * Show badge options: emoji picker + delete button
    */
   async showBadgeOptions(badge, marker) {
-    // First close existing options container (prevent duplicates)
-    const existingContainer = badge.querySelector('.emoji-marker-options');
+    // Close currently open badge-options menu (single-open behavior).
+    // If the same marker is clicked again, just close and toggle off.
+    const existingContainer = document.querySelector(
+      '.emoji-marker-options[data-owner="emoji-marker-badge"]'
+    );
     if (existingContainer) {
+      const sameMarker = existingContainer.getAttribute('data-marker-id') === String(marker.id);
       existingContainer.remove();
-      return; // Toggle behavior: Close if open
+      if (sameMarker) {
+        return;
+      }
     }
 
     const theme = this.getTheme();
@@ -150,12 +156,63 @@ export class MarkerBadge {
     const container = DOMUtils.createElement('div', {
       className: cn(
         'emoji-marker-options',
-        'absolute top-full right-0 mt-2',
+        'fixed',
         'bg-bg-000 border border-border-300 rounded-lg shadow-xl',
-        'p-2 flex flex-col gap-2 z-[1000]',
+        'p-2 flex flex-col gap-2 z-[10000]',
         'min-w-[200px]'
       ),
     });
+    container.setAttribute('data-owner', 'emoji-marker-badge');
+    container.setAttribute('data-marker-id', String(marker.id));
+
+    const positionContainer = () => {
+      if (!container.isConnected || !badge.isConnected) {
+        return;
+      }
+
+      const badgeRect = badge.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      const margin = 10;
+      const gap = 8;
+
+      let left = badgeRect.right - containerRect.width;
+      let top = badgeRect.bottom + gap;
+
+      if (left < margin) {
+        left = margin;
+      }
+      if (left + containerRect.width > window.innerWidth - margin) {
+        left = window.innerWidth - containerRect.width - margin;
+      }
+
+      if (top + containerRect.height > window.innerHeight - margin) {
+        top = badgeRect.top - containerRect.height - gap;
+      }
+      if (top < margin) {
+        top = margin;
+      }
+
+      container.style.left = `${left}px`;
+      container.style.top = `${top}px`;
+    };
+
+    let isClosed = false;
+    let closeMenu = null;
+
+    const closeContainer = () => {
+      if (isClosed) {
+        return;
+      }
+      isClosed = true;
+
+      container.remove();
+      if (closeMenu) {
+        document.removeEventListener('click', closeMenu);
+      }
+      window.removeEventListener('resize', positionContainer);
+      window.removeEventListener('scroll', closeContainer, true);
+    };
 
     // Emoji picker grid
     const emojiGrid = DOMUtils.createElement('div');
@@ -188,7 +245,7 @@ export class MarkerBadge {
 
       emojiBtn.addEventListener('click', e => {
         e.stopPropagation();
-        container.remove();
+        closeContainer();
         this.onMarkerUpdate(marker.id, emoji);
       });
 
@@ -214,37 +271,31 @@ export class MarkerBadge {
 
     deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
-      container.remove();
+      closeContainer();
       this.onMarkerRemove(marker.id);
     });
 
     container.appendChild(emojiGrid);
     container.appendChild(deleteBtn);
 
-    // Add container to badge's parent (messageEl), not to badge itself
-    // Show container WITHOUT breaking badge's position
-    const messageEl = badge.parentElement;
-    if (messageEl) {
-      // Get badge's position
-      const badgeRect = badge.getBoundingClientRect();
-      const messageRect = messageEl.getBoundingClientRect();
+    // Append first for accurate size measurement, then position with viewport clamping
+    container.style.visibility = 'hidden';
+    document.body.appendChild(container);
+    positionContainer();
+    container.style.visibility = '';
 
-      // Position container below badge (relative to message container)
-      const topPosition = badgeRect.bottom - messageRect.top + 8; // Below badge, 8px gap
-      const rightPosition = messageRect.right - badgeRect.right; // Same right alignment as badge
-
-      container.style.top = `${topPosition}px`;
-      container.style.right = `${rightPosition}px`;
-
-      messageEl.appendChild(container);
-    }
+    // Keep anchored on viewport resize; close on scroll to avoid stale anchoring.
+    window.addEventListener('resize', positionContainer);
+    window.addEventListener('scroll', closeContainer, true);
 
     // Close on outside click
     setTimeout(() => {
-      const closeMenu = e => {
+      if (isClosed || !container.isConnected) {
+        return;
+      }
+      closeMenu = e => {
         if (!container.contains(e.target) && !badge.contains(e.target)) {
-          container.remove();
-          document.removeEventListener('click', closeMenu);
+          closeContainer();
         }
       };
       document.addEventListener('click', closeMenu);
