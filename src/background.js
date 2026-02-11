@@ -289,14 +289,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-// Open welcome page on first installation
+// Open welcome page on first installation, changelog on real version updates
 chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
     openTab(WELCOME_URL);
   }
 
   if (details.reason === 'update') {
-    openTab(CHANGELOG_URL);
+    const currentVersion = chrome.runtime.getManifest().version;
+    if (details.previousVersion && details.previousVersion !== currentVersion) {
+      openTab(CHANGELOG_URL);
+    }
   }
 
   scheduleUpdateChecks();
