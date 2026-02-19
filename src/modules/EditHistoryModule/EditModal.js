@@ -12,6 +12,60 @@ class EditModal {
     this.activeModal = null;
   }
 
+  parseVersionLabel(versionLabel) {
+    if (typeof versionLabel !== 'string') {
+      return null;
+    }
+
+    const match = versionLabel.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+    if (!match) {
+      return null;
+    }
+
+    const current = Number.parseInt(match[1], 10);
+    const total = Number.parseInt(match[2], 10);
+
+    if (!Number.isFinite(current) || !Number.isFinite(total) || current < 1 || total < 1) {
+      return null;
+    }
+
+    return { current, total };
+  }
+
+  formatVersionLabel(current, total) {
+    return `${current} / ${total}`;
+  }
+
+  getTimestampValue(item) {
+    if (typeof item?.timestamp === 'number' && Number.isFinite(item.timestamp)) {
+      return item.timestamp;
+    }
+
+    const parsed = new Date(item?.timestamp).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  destroyActiveModal() {
+    const modalState = this.activeModal;
+    if (!modalState) {
+      return;
+    }
+
+    if (modalState.closeTimer) {
+      clearTimeout(modalState.closeTimer);
+    }
+
+    if (modalState.element?.isConnected) {
+      modalState.element.remove();
+    }
+
+    if (modalState.escHandler) {
+      document.removeEventListener('keydown', modalState.escHandler);
+    }
+
+    this.activeModal = null;
+  }
+
   /**
    * Get current version info from DOM
    * Reads the version span in real-time to get the up-to-date version number
@@ -21,12 +75,28 @@ class EditModal {
       return null;
     }
 
-    // Find version span (same logic as getEditedPrompts)
+    const pattern = /^\d+\s*\/\s*\d+$/;
+
+    // Fast path: version navigation container in Claude UI
+    const versionContainer = messageElement.querySelector('.inline-flex.items-center.gap-1');
+    if (versionContainer) {
+      const span = versionContainer.querySelector('span');
+      if (span && pattern.test(span.textContent.trim())) {
+        return span.textContent.trim();
+      }
+    }
+
+    // Fallback: avoid message body spans to reduce false positives
+    const userMessage = messageElement.querySelector('[data-testid="user-message"]');
     const allSpans = messageElement.querySelectorAll('span');
     for (const span of allSpans) {
+      if (userMessage && userMessage.contains(span)) {
+        continue;
+      }
+
       const text = span.textContent.trim();
-      if (/^\d+\s*\/\s*\d+$/.test(text)) {
-        return text; // Return current version like "2 / 3"
+      if (pattern.test(text)) {
+        return text;
       }
     }
 
@@ -37,6 +107,13 @@ class EditModal {
    * Show modal
    */
   async show(messageElement, versionInfo = '', containerId = null) {
+    if (!messageElement) {
+      return;
+    }
+
+    // Always keep a single active modal/listener
+    this.destroyActiveModal();
+
     // Get the CURRENT version info from DOM (not from cached badge data)
     // This ensures we show the up-to-date version number
     const currentVersionInfo = this.getCurrentVersionInfo(messageElement) || versionInfo;
@@ -72,10 +149,9 @@ class EditModal {
     // Fetch history
     // Use passed containerId or try to find it
     const finalContainerId = containerId || this.getContainerId(messageElement);
-    const history = await editHistoryStore.getHistoryForMessage(
-      window.location.pathname,
-      finalContainerId
-    );
+    const history = finalContainerId
+      ? await editHistoryStore.getHistoryForMessage(window.location.pathname, finalContainerId)
+      : [];
 
     // Content
     const content = this.createContent(messageText, history, currentVersionInfo);
@@ -143,49 +219,47 @@ class EditModal {
       return history;
     }
 
+    // Keep only valid versioned entries
+    const validHistory = history
+      .map(item => {
+        const parsed = this.parseVersionLabel(item?.versionLabel);
+        return parsed ? { item, parsed } : null;
+      })
+      .filter(Boolean);
+
+    if (validHistory.length === 0) {
+      return [];
+    }
+
     // Find maximum total version count
     let maxTotal = 0;
-    history.forEach(item => {
-      if (item.versionLabel) {
-        const parts = item.versionLabel.split('/');
-        if (parts.length === 2) {
-          const total = parseInt(parts[1].trim());
-          if (total > maxTotal) {
-            maxTotal = total;
-          }
-        }
+    validHistory.forEach(({ parsed }) => {
+      if (parsed.total > maxTotal) {
+        maxTotal = parsed.total;
       }
     });
 
     // Update all version labels to use max total
-    const normalized = history.map(item => {
-      if (item.versionLabel) {
-        const parts = item.versionLabel.split('/');
-        if (parts.length === 2) {
-          const current = parts[0].trim();
-          return {
-            ...item,
-            versionLabel: `${current} / ${maxTotal}`,
-          };
-        }
-      }
-      return item;
+    const normalized = validHistory.map(({ item, parsed }) => {
+      return {
+        ...item,
+        versionLabel: this.formatVersionLabel(parsed.current, maxTotal),
+        _versionCurrent: parsed.current,
+      };
     });
 
     // Deduplicate: Keep only the most recent entry for each version number
     const versionMap = new Map();
     normalized.forEach(item => {
       const existing = versionMap.get(item.versionLabel);
-      if (!existing || item.timestamp > existing.timestamp) {
+      if (!existing || this.getTimestampValue(item) > this.getTimestampValue(existing)) {
         versionMap.set(item.versionLabel, item);
       }
     });
 
     return Array.from(versionMap.values()).sort((a, b) => {
       // Sort by version number (descending)
-      const aNum = parseInt(a.versionLabel.split('/')[0].trim());
-      const bNum = parseInt(b.versionLabel.split('/')[0].trim());
-      return bNum - aNum;
+      return b._versionCurrent - a._versionCurrent;
     });
   }
 
@@ -210,8 +284,14 @@ class EditModal {
       const historyList = DOMUtils.createElement('div');
       historyList.className = 'flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1';
 
+      const currentVersionParsed = this.parseVersionLabel(currentVersion);
+
       normalizedHistory.forEach(item => {
-        const isCurrent = item.versionLabel === currentVersion;
+        const itemVersionParsed = this.parseVersionLabel(item.versionLabel);
+        const isCurrent =
+          currentVersionParsed && itemVersionParsed
+            ? itemVersionParsed.current === currentVersionParsed.current
+            : item.versionLabel === currentVersion;
         const itemEl = DOMUtils.createElement('div');
         itemEl.className = `p-3 rounded-lg border ${isCurrent ? 'bg-accent-main-100/10 border-accent-main-100' : 'bg-bg-100 border-border-200'} cursor-pointer hover:bg-bg-200 transition-colors`;
 
@@ -327,17 +407,22 @@ class EditModal {
       return;
     }
 
-    const { element, content, escHandler } = this.activeModal;
+    const modalState = this.activeModal;
+    const { element, content, escHandler } = modalState;
     element.style.opacity = '0';
     if (content) {
       content.style.opacity = '0';
       content.style.transform = 'translateY(20px)';
     }
 
-    setTimeout(() => {
-      element.remove();
+    modalState.closeTimer = setTimeout(() => {
+      if (element?.isConnected) {
+        element.remove();
+      }
       document.removeEventListener('keydown', escHandler);
-      this.activeModal = null;
+      if (this.activeModal === modalState) {
+        this.activeModal = null;
+      }
     }, 200);
   }
 }
