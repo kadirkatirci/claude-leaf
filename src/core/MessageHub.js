@@ -25,6 +25,7 @@ class MessageHub {
     this.debounceTimer = null;
     this.isProcessing = false;
     this.isStarted = false;
+    this.pendingRescan = false;
 
     // Configuration
     this.config = {
@@ -133,6 +134,7 @@ class MessageHub {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+    this.pendingRescan = false;
 
     ObserverManager.disconnect('message-hub');
     this.observer = null;
@@ -179,7 +181,8 @@ class MessageHub {
    */
   async process() {
     if (this.isProcessing) {
-      this.log('Already processing, skipping');
+      this.pendingRescan = true;
+      this.log('Already processing, pending rescan scheduled');
       return;
     }
 
@@ -211,6 +214,10 @@ class MessageHub {
       console.error('[MessageHub] Process error:', error);
     } finally {
       this.isProcessing = false;
+      if (this.pendingRescan) {
+        this.pendingRescan = false;
+        this.scheduleProcess();
+      }
     }
   }
 
@@ -372,6 +379,7 @@ class MessageHub {
       editedCount: 0,
       editVersions: new Map(),
     };
+    this.pendingRescan = false;
     this.log('State reset');
   }
 

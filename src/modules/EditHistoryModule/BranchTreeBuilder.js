@@ -188,7 +188,11 @@ class BranchTreeBuilder {
           // Use raw version from snapshot for display (e.g. "2/2")
           // We will update it dynamically later if we find a higher total on a shared node
           const displayVersion = m.version;
-          const messageIndex = parseInt(containerId.replace('edit-index-', ''));
+          const fallbackIndex = parseInt(String(containerId).replace('edit-index-', ''), 10);
+          let messageIndex = Number.isInteger(m.messageIndex) ? m.messageIndex : fallbackIndex;
+          if (!Number.isFinite(messageIndex)) {
+            messageIndex = Number.MAX_SAFE_INTEGER;
+          }
 
           return {
             containerId,

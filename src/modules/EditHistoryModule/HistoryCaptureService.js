@@ -9,14 +9,69 @@ import { editHistoryStore } from '../../stores/index.js';
 import { debugLog } from '../../config/debug.js';
 
 class HistoryCaptureService {
+  constructor() {
+    this.captureQueue = Promise.resolve();
+  }
+
+  getOrCreateContainerId(container, userMessage, userMessageIndex) {
+    if (!container) {
+      return null;
+    }
+
+    const expectedId = `edit-index-${userMessageIndex}`;
+    const existingId =
+      container.getAttribute('data-edit-container-id') ||
+      userMessage?.getAttribute('data-edit-container-id');
+    if (existingId === expectedId) {
+      return existingId;
+    }
+
+    container.setAttribute('data-edit-container-id', expectedId);
+    if (userMessage) {
+      userMessage.setAttribute('data-edit-container-id', expectedId);
+    }
+    return expectedId;
+  }
+
+  findVersionInfo(container, userMessage) {
+    const pattern = /^\d+\s*\/\s*\d+$/;
+
+    const versionContainer = container.querySelector('.inline-flex.items-center.gap-1');
+    if (versionContainer) {
+      const versionSpan = versionContainer.querySelector('span');
+      if (versionSpan && pattern.test(versionSpan.textContent.trim())) {
+        return versionSpan.textContent.trim();
+      }
+    }
+
+    const allSpans = container.querySelectorAll('span');
+    for (const span of allSpans) {
+      if (userMessage && userMessage.contains(span)) {
+        continue;
+      }
+      const text = span.textContent.trim();
+      if (pattern.test(text)) {
+        return text;
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Capture content for history storage
    */
-  async captureHistory(editedPrompts) {
+  captureHistory(editedPrompts) {
     if (!editedPrompts || editedPrompts.length === 0) {
       return;
     }
 
+    const run = this.captureQueue.then(() => this._captureHistory(editedPrompts));
+    this.captureQueue = run.catch(() => {});
+    return run;
+  }
+
+  async _captureHistory(editedPrompts) {
     try {
       const conversationUrl = window.location.pathname;
 
@@ -27,13 +82,18 @@ class HistoryCaptureService {
           continue;
         }
 
+        const fallbackIndex = Number.isInteger(edit.domIndex) ? edit.domIndex : 0;
+        const containerId =
+          edit.containerId || this.getOrCreateContainerId(edit.element, userMessage, fallbackIndex);
+        const parsedIndex = Number.parseInt(String(containerId).replace('edit-index-', ''), 10);
+        const messageIndex = Number.isFinite(parsedIndex) ? parsedIndex : fallbackIndex;
         const content = userMessage.textContent.trim();
 
         // Add to store
         await editHistoryStore.addOrUpdate({
           conversationUrl,
-          containerId: edit.containerId,
-          messageIndex: edit.domIndex, // Fallback
+          containerId,
+          messageIndex,
           content,
           versionLabel: edit.versionInfo, // e.g. "2 / 3"
           timestamp: Date.now(),
@@ -67,22 +127,15 @@ class HistoryCaptureService {
           return;
         }
 
-        // Check for version info
-        const allSpans = container.querySelectorAll('span');
-        let versionInfo = null;
+        const containerId = this.getOrCreateContainerId(container, userMessage, idx);
 
-        for (const span of allSpans) {
-          const text = span.textContent.trim();
-          if (/^\d+\s*\/\s*\d+$/.test(text)) {
-            versionInfo = text;
-            break;
-          }
-        }
+        const versionInfo = this.findVersionInfo(container, userMessage);
 
         // Only include edited messages (version !== null) to save storage
         if (versionInfo) {
           snapshot.messages.push({
-            containerId: `edit-index-${idx}`,
+            containerId,
+            messageIndex: idx,
             version: versionInfo, // e.g. "2/3"
             contentPreview: userMessage.textContent.trim().substring(0, 100),
           });

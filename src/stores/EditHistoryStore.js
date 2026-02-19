@@ -43,11 +43,25 @@ export class EditHistoryStore {
 
   async addOrUpdate(entry) {
     const normalizedUrl = this.normalizeUrl(entry.conversationUrl);
+    if (!entry?.containerId || !entry?.versionLabel) {
+      return;
+    }
 
     // Check if exists using granular query
     const history = await this.store.getByIndex('containerId', entry.containerId);
 
-    const existing = history.find(
+    const exactMatch = history.find(
+      h =>
+        h.conversationUrl === normalizedUrl &&
+        h.versionLabel === entry.versionLabel &&
+        h.content === entry.content &&
+        (!h.type || h.type === 'history')
+    );
+    if (exactMatch) {
+      return;
+    }
+
+    const existingSameVersion = history.find(
       h =>
         h.conversationUrl === normalizedUrl &&
         h.versionLabel === entry.versionLabel &&
@@ -58,19 +72,33 @@ export class EditHistoryStore {
       ...entry,
       type: 'history',
       conversationUrl: normalizedUrl,
-      id: existing ? existing.id : entry.id || crypto.randomUUID(),
+      id: entry.id || crypto.randomUUID(),
       timestamp: entry.timestamp || Date.now(),
       updatedAt: new Date().toISOString(),
     };
 
-    if (existing) {
-      if (existing.content === newEntry.content) {
-        return; // No change
-      }
-      return this.store.put(newEntry);
-    } else {
-      return this.store.add(newEntry);
+    if (existingSameVersion && existingSameVersion.content !== newEntry.content) {
+      // Preserve both versions when same version label has divergent content.
+      // This protects against accidental overwrite due unstable message mapping.
+      debugLog(
+        'editHistory',
+        `Conflict detected for ${entry.containerId} ${entry.versionLabel} in ${normalizedUrl}`
+      );
+      return this.store.add({
+        ...newEntry,
+        conflict: true,
+        conflictOf: existingSameVersion.id,
+      });
     }
+
+    if (existingSameVersion) {
+      return this.store.put({
+        ...newEntry,
+        id: existingSameVersion.id,
+      });
+    }
+
+    return this.store.add(newEntry);
   }
 
   async remove(id) {

@@ -38,6 +38,31 @@ const DOMUtilsParsing = {
   },
 
   /**
+   * Get or create a stable container id for a user message container.
+   * Uses a persisted data attribute when available, otherwise falls back
+   * to user-message index based id.
+   */
+  getOrCreateContainerId(container, userMessage, userMessageIndex) {
+    if (!container) {
+      return null;
+    }
+
+    const expectedId = `edit-index-${userMessageIndex}`;
+    const existingId =
+      container.getAttribute('data-edit-container-id') ||
+      userMessage?.getAttribute('data-edit-container-id');
+    if (existingId === expectedId) {
+      return existingId;
+    }
+
+    container.setAttribute('data-edit-container-id', expectedId);
+    if (userMessage) {
+      userMessage.setAttribute('data-edit-container-id', expectedId);
+    }
+    return expectedId;
+  },
+
+  /**
    * Find edited prompts
    * Detects Claude messages with edit icons
    * @returns {Array<{element: HTMLElement, editButton: HTMLElement, versionInfo: string}>}
@@ -60,6 +85,8 @@ const DOMUtilsParsing = {
         return;
       }
 
+      const containerId = this.getOrCreateContainerId(container, userMessage, idx);
+
       // Look for version counter ("e.g., 3 / 3")
       // Use optimized findVersionSpan with targeted selector
       const versionSpan = this.findVersionSpan(container);
@@ -78,11 +105,6 @@ const DOMUtilsParsing = {
             const retryButton = container
               .querySelector('button svg path[d*="M10.3857"]')
               ?.closest('button');
-
-            // Generate a STABLE containerId based on message INDEX
-            // This ensures the ID remains constant even when content is edited
-            // which is crucial for tracking history across versions.
-            const containerId = `edit-index-${idx}`;
 
             edited.push({
               element: container,
