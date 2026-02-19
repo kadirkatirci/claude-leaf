@@ -41,27 +41,44 @@ class EditBadge {
    */
   getBadgeOptions(element, editInfo) {
     const versionInfo = editInfo?.versionInfo || '';
+    const ctaLabel = 'View History';
+    const versionChip = versionInfo
+      ? `<span class="font-mono text-[10px] bg-accent-main-100 text-white px-1.5 py-0.5 rounded-md leading-none">${versionInfo}</span>`
+      : '';
+
     return {
       className: cn(
         'claude-edit-badge',
         ClaudeClasses.position.absolute,
         ClaudeClasses.layout.flex,
         ClaudeClasses.layout.itemsCenter,
-        ClaudeClasses.layout.justifyCenter,
+        ClaudeClasses.layout.justifyBetween,
         ClaudeClasses.util.cursorPointer,
         ClaudeClasses.util.transition,
-        'bg-bg-200',
+        'bg-bg-200/95',
         'text-text-000',
+        'border',
+        'border-border-300',
+        'hover:border-accent-main-100/50',
+        'hover:bg-bg-100',
+        'hover:text-accent-main-100',
         'px-2.5',
         'py-1',
         'rounded-xl',
         'text-[11px]',
         'font-semibold',
-        'gap-1',
+        'gap-2',
         'shadow-md',
+        'hover:shadow-lg',
         'z-1'
       ),
-      content: `${IconLibrary.edit('currentColor', 11)} ${versionInfo}`,
+      content: `
+        <span class="flex items-center gap-1">
+          ${IconLibrary.edit('currentColor', 11)}
+          <span class="text-[10px] tracking-[0.02em]">${ctaLabel}</span>
+        </span>
+        ${versionChip}
+      `,
       title: 'Click to see edit history',
       position: { top: '-35px', right: '8px' },
       style: {},
