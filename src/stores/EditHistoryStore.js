@@ -29,9 +29,15 @@ export class EditHistoryStore {
   }
 
   async getHistoryForMessage(conversationUrl, containerId) {
+    const normalizedUrl = this.normalizeUrl(conversationUrl);
     const history = await this.store.getByIndex('containerId', containerId);
     return history
-      .filter(item => !item.type || item.type === 'history')
+      .filter(
+        item =>
+          (!item.type || item.type === 'history') &&
+          item.containerId === containerId &&
+          item.conversationUrl === normalizedUrl
+      )
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
