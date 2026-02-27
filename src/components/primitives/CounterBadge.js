@@ -106,10 +106,10 @@ export class CounterBadge {
   static getShapeStyles(shape) {
     if (shape === 'circle') {
       return {
-        height: '18px',
-        minWidth: '18px',
+        height: '16px',
+        minWidth: '16px',
         padding: '0',
-        lineHeight: '18px',
+        lineHeight: '16px',
         boxSizing: 'border-box',
       };
     }
