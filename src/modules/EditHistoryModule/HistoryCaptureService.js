@@ -58,6 +58,107 @@ class HistoryCaptureService {
     return null;
   }
 
+  parseVersionLabel(versionLabel) {
+    if (typeof versionLabel !== 'string') {
+      return null;
+    }
+
+    const match = versionLabel.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+    if (!match) {
+      return null;
+    }
+
+    const current = Number.parseInt(match[1], 10);
+    const total = Number.parseInt(match[2], 10);
+    if (!Number.isFinite(current) || !Number.isFinite(total) || current < 1 || total < 1) {
+      return null;
+    }
+
+    return { current, total };
+  }
+
+  normalizeVersionLabel(versionLabel) {
+    const parsed = this.parseVersionLabel(versionLabel);
+    if (!parsed) {
+      return '';
+    }
+
+    return `${parsed.current} / ${parsed.total}`;
+  }
+
+  collectSnapshotMessages() {
+    const allMessages = DOMUtils.findActualMessages ? DOMUtils.findActualMessages() : [];
+    const messages = [];
+
+    allMessages.forEach((container, idx) => {
+      const userMessage = container.querySelector('[data-testid="user-message"]');
+      if (!userMessage) {
+        return;
+      }
+
+      const containerId = this.getOrCreateContainerId(container, userMessage, idx);
+      const versionInfo = this.findVersionInfo(container, userMessage);
+      if (!versionInfo) {
+        return;
+      }
+
+      messages.push({
+        containerId,
+        messageIndex: idx,
+        version: this.normalizeVersionLabel(versionInfo),
+        contentPreview: userMessage.textContent.trim().substring(0, 100),
+      });
+    });
+
+    return messages.sort((a, b) => a.messageIndex - b.messageIndex);
+  }
+
+  async captureVersionSnapshot(entry) {
+    const containerId = entry?.containerId;
+    const versionLabel = this.normalizeVersionLabel(entry?.versionLabel);
+    if (!containerId || !versionLabel) {
+      return;
+    }
+
+    const conversationUrl = entry?.conversationUrl || window.location.pathname;
+    const messages = this.collectSnapshotMessages();
+    const existingIdx = messages.findIndex(item => item.containerId === containerId);
+
+    const parsedIndex = Number.parseInt(String(containerId).replace('edit-index-', ''), 10);
+    const messageIndex = Number.isFinite(entry?.messageIndex)
+      ? entry.messageIndex
+      : Number.isFinite(parsedIndex)
+        ? parsedIndex
+        : 0;
+
+    const forcedMessage = {
+      containerId,
+      messageIndex,
+      version: versionLabel,
+      contentPreview: (entry?.content || '').substring(0, 100),
+    };
+
+    if (existingIdx >= 0) {
+      messages[existingIdx] = forcedMessage;
+    } else {
+      messages.push(forcedMessage);
+    }
+
+    messages.sort((a, b) => a.messageIndex - b.messageIndex);
+
+    if (messages.length === 0) {
+      return;
+    }
+
+    await editHistoryStore.addSnapshot({
+      conversationUrl,
+      timestamp: entry?.timestamp || Date.now(),
+      source: entry?.source || 'version_promotion',
+      messages,
+    });
+    debugLog('editHistory', `Version snapshot captured: ${containerId} ${versionLabel}`);
+  }
+
   /**
    * Capture content for history storage
    */
@@ -114,33 +215,11 @@ class HistoryCaptureService {
    */
   async captureSnapshot(conversationUrl) {
     try {
-      const allMessages = DOMUtils.findActualMessages ? DOMUtils.findActualMessages() : [];
       const snapshot = {
         conversationUrl,
         timestamp: Date.now(),
-        messages: [],
+        messages: this.collectSnapshotMessages(),
       };
-
-      allMessages.forEach((container, idx) => {
-        const userMessage = container.querySelector('[data-testid="user-message"]');
-        if (!userMessage) {
-          return;
-        }
-
-        const containerId = this.getOrCreateContainerId(container, userMessage, idx);
-
-        const versionInfo = this.findVersionInfo(container, userMessage);
-
-        // Only include edited messages (version !== null) to save storage
-        if (versionInfo) {
-          snapshot.messages.push({
-            containerId,
-            messageIndex: idx,
-            version: versionInfo, // e.g. "2/3"
-            contentPreview: userMessage.textContent.trim().substring(0, 100),
-          });
-        }
-      });
 
       // Only save snapshot if there are edited messages
       if (snapshot.messages.length > 0) {

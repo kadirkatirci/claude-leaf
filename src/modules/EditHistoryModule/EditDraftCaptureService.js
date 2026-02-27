@@ -10,6 +10,7 @@ import { hashString } from '../../utils/HashUtils.js';
 import { debugLog } from '../../config/debug.js';
 import DOMUtils from '../../utils/DOMUtils.js';
 import messageCache from '../../core/MessageCache.js';
+import { historyCaptureService } from './HistoryCaptureService.js';
 
 const DRAFT_DEBOUNCE_MS = 350;
 const FINALIZE_WAIT_MS = 2500;
@@ -343,12 +344,15 @@ class EditDraftCaptureService {
     );
   }
 
-  queueHistoryPromotion(entry) {
+  async queueHistoryPromotion(entry) {
     // Promotion is latency-sensitive for modal UX (user can click immediately after save).
     // Do not queue behind draft writes; persist directly.
-    return editHistoryStore.addOrUpdate(entry).catch(error => {
+    try {
+      await editHistoryStore.addOrUpdate(entry);
+      await historyCaptureService.captureVersionSnapshot(entry);
+    } catch (error) {
       console.error('[EditDraftCaptureService] Failed to promote draft to history:', error);
-    });
+    }
   }
 
   parseVersionLabel(versionLabel) {
