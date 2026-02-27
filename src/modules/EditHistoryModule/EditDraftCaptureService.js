@@ -24,8 +24,10 @@ class EditDraftCaptureService {
     this.pendingTimers = new Map();
     this.primedSessions = new Map();
     this.recentPromotions = new Map();
+    this.formIntents = new WeakMap();
     this.writeQueue = Promise.resolve();
     this.onDocumentClick = this.onDocumentClick.bind(this);
+    this.onDocumentKeydown = this.onDocumentKeydown.bind(this);
     this.onDocumentSubmit = this.onDocumentSubmit.bind(this);
   }
 
@@ -35,8 +37,21 @@ class EditDraftCaptureService {
     }
 
     document.addEventListener('click', this.onDocumentClick, true);
+    document.addEventListener('keydown', this.onDocumentKeydown, true);
     document.addEventListener('submit', this.onDocumentSubmit, true);
     this.isStarted = true;
+  }
+
+  prunePrimedSessions(conversationUrl = window.location.pathname, keepSessionKey = '') {
+    for (const [key, value] of this.primedSessions.entries()) {
+      if (value?.conversationUrl !== conversationUrl) {
+        continue;
+      }
+      if (keepSessionKey && key === keepSessionKey) {
+        continue;
+      }
+      this.primedSessions.delete(key);
+    }
   }
 
   ensureContainerIdentity(messageElement, userMessage, messageIndex, textarea = null) {
@@ -198,6 +213,15 @@ class EditDraftCaptureService {
       return;
     }
 
+    const cancelButton = target.closest('form button[type="button"]');
+    if (cancelButton) {
+      const form = cancelButton.closest('form');
+      if (this.isLikelyEditForm(form)) {
+        this.markCancelIntent(form);
+      }
+      return;
+    }
+
     const editButton = target.closest('button[aria-label="Edit"]');
     if (editButton) {
       const context = this.getMessageContextFromElement(editButton, null, { forceFresh: true });
@@ -206,6 +230,7 @@ class EditDraftCaptureService {
       }
 
       const sessionKey = this.buildSessionKey(context);
+      this.prunePrimedSessions(context.conversationUrl, sessionKey);
       this.primedSessions.set(sessionKey, {
         ...context,
         sessionKey,
@@ -221,7 +246,134 @@ class EditDraftCaptureService {
     }
 
     const form = saveButton.closest('form');
+    this.clearFormIntent(form);
     this.captureFormSubmission(form, 'save_click');
+  }
+
+  isPotentialSubmitKey(event) {
+    if (event.key !== 'Enter') {
+      return false;
+    }
+
+    if (event.metaKey || event.ctrlKey) {
+      return true;
+    }
+
+    if (event.shiftKey || event.altKey) {
+      return false;
+    }
+
+    return true;
+  }
+
+  scheduleEnterFallbackCapture(form, textarea) {
+    const delays = [120, 300, 600];
+
+    delays.forEach(delay => {
+      setTimeout(() => {
+        if (this.isCancelledIntent(form)) {
+          return;
+        }
+
+        const formGone = !form?.isConnected;
+        const textareaGone = !textarea?.isConnected;
+        if (!formGone && !textareaGone) {
+          return;
+        }
+
+        this.captureFormSubmission(form, 'enter_key');
+      }, delay);
+    });
+  }
+
+  onDocumentKeydown(event) {
+    if (event.key === 'Escape') {
+      const target = event.target;
+      const form = target?.closest ? target.closest('form') : null;
+      if (this.isLikelyEditForm(form)) {
+        this.markCancelIntent(form);
+      }
+      return;
+    }
+
+    if (!this.isPotentialSubmitKey(event)) {
+      return;
+    }
+
+    const target = event.target;
+    const textarea = target?.closest ? target.closest('textarea') : null;
+    if (!textarea) {
+      return;
+    }
+
+    if (textarea.closest('[data-testid="chat-input"], [data-testid="prompt-input"]')) {
+      return;
+    }
+
+    const form = textarea.closest('form');
+    if (!form) {
+      return;
+    }
+
+    if (!this.isLikelyEditForm(form)) {
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (!submitButton || submitButton.disabled) {
+      return;
+    }
+
+    this.markEnterIntent(form);
+    this.scheduleEnterFallbackCapture(form, textarea);
+  }
+
+  isLikelyEditForm(form) {
+    if (!form?.querySelector) {
+      return false;
+    }
+
+    return !!form.querySelector('textarea') && !!form.querySelector('button[type="submit"]');
+  }
+
+  markEnterIntent(form) {
+    if (!form) {
+      return;
+    }
+
+    this.formIntents.set(form, {
+      enterIntentAt: Date.now(),
+      cancelledAt: 0,
+    });
+  }
+
+  markCancelIntent(form) {
+    if (!form) {
+      return;
+    }
+
+    const existing = this.formIntents.get(form) || { enterIntentAt: 0, cancelledAt: 0 };
+    this.formIntents.set(form, {
+      ...existing,
+      cancelledAt: Date.now(),
+    });
+  }
+
+  isCancelledIntent(form) {
+    const intent = this.formIntents.get(form);
+    if (!intent) {
+      return false;
+    }
+
+    return !!intent.cancelledAt && intent.cancelledAt >= (intent.enterIntentAt || 0);
+  }
+
+  clearFormIntent(form) {
+    if (!form) {
+      return;
+    }
+
+    this.formIntents.delete(form);
   }
 
   predictNextFinalVersion(startVersion) {
@@ -319,6 +471,7 @@ class EditDraftCaptureService {
   }
 
   onDocumentSubmit(event) {
+    this.clearFormIntent(event.target);
     this.captureFormSubmission(event.target, 'submit');
   }
 
@@ -638,6 +791,7 @@ class EditDraftCaptureService {
   destroy() {
     if (this.isStarted) {
       document.removeEventListener('click', this.onDocumentClick, true);
+      document.removeEventListener('keydown', this.onDocumentKeydown, true);
       document.removeEventListener('submit', this.onDocumentSubmit, true);
       this.isStarted = false;
     }
