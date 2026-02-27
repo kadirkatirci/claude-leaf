@@ -258,6 +258,7 @@ export default class FixedButtonMixin {
         this.buttonCounter = CounterBadge.attachTo(button, {
           id: counterId,
           content: '0',
+          shape: 'circle',
           theme: theme,
           position: { top: -8, right: -8 },
           style: {

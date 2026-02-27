@@ -3,7 +3,7 @@
  * Centralized badge/counter creation for all modules
  * Uses Claude native classes exclusively
  *
- * v2.2.1 - Removed cache, fixed display property for flexbox compatibility
+ * v2.2.2 - Added optional shape support for fixed button counters
  */
 
 import { ClaudeClasses, cn } from '../../utils/ClassNames.js';
@@ -19,6 +19,7 @@ export class CounterBadge {
    * @param {string} options.id - Badge element ID
    * @param {string|number} options.content - Badge text/number
    * @param {Object} options.position - Position offsets {top, right, bottom, left}
+   * @param {'auto'|'circle'} options.shape - Badge shape mode
    * @param {string} options.className - Additional CSS classes
    * @returns {HTMLElement}
    */
@@ -27,6 +28,7 @@ export class CounterBadge {
       id = 'counter-badge',
       content = '0',
       position = { top: '-8px', right: '-8px' },
+      shape = 'auto',
       className = '',
       style = {},
     } = options;
@@ -43,6 +45,11 @@ export class CounterBadge {
 
     // Apply position styles (minimal inline styles for positioning only)
     Object.assign(badge.style, this.getPositionStyles(position));
+
+    // Optional shape normalization for counters on fixed buttons
+    if (shape === 'circle') {
+      Object.assign(badge.style, this.getShapeStyles(shape));
+    }
 
     // Apply custom styles (e.g., display: 'none' for initially hidden badges)
     if (style && typeof style === 'object') {
@@ -90,6 +97,24 @@ export class CounterBadge {
     });
 
     return styles;
+  }
+
+  /**
+   * Get shape styles for special badge layouts
+   * @private
+   */
+  static getShapeStyles(shape) {
+    if (shape === 'circle') {
+      return {
+        height: '18px',
+        minWidth: '18px',
+        padding: '0',
+        lineHeight: '18px',
+        boxSizing: 'border-box',
+      };
+    }
+
+    return {};
   }
 
   /**
