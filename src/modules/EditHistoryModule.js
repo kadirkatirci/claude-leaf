@@ -14,6 +14,7 @@ import EditModal from './EditHistoryModule/EditModal.js';
 import BranchMapModal from './EditHistoryModule/BranchMapModal.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { historyCaptureService } from './EditHistoryModule/HistoryCaptureService.js';
+import { editDraftCaptureService } from './EditHistoryModule/EditDraftCaptureService.js';
 import { panelManager } from '../components/PanelManager.js';
 import { messageHub } from '../core/MessageHub.js';
 import { trackEvent, trackPerfScan } from '../analytics/Analytics.js';
@@ -117,10 +118,14 @@ class EditHistoryModule extends BaseModule {
 
       this.setupVisibilityListener();
       this.panel.create();
+      editDraftCaptureService.start();
 
       // Subscribe to MessageHub for version changes
       this.subscribe(Events.HUB_VERSION_CHANGED, data => {
         this.handleVersionChange(data);
+      });
+      this.subscribe(Events.HUB_EDIT_SESSION_CHANGED, data => {
+        this.handleEditSessionChange(data);
       });
 
       // Create collapse button (only if CompactView is enabled)
@@ -156,7 +161,10 @@ class EditHistoryModule extends BaseModule {
     const scanStart = performance.now();
     this.handleEditsFound(edits);
 
-    // 2. Capture History (using new service)
+    // 2. Resolve pending draft sessions when a version increment is detected
+    await editDraftCaptureService.handleVersionChange(edits);
+
+    // 3. Capture History (using new service)
     await historyCaptureService.captureHistory(edits);
 
     trackPerfScan(
@@ -169,6 +177,19 @@ class EditHistoryModule extends BaseModule {
       },
       { key: 'editHistory:version_change', minIntervalMs: 5000 }
     );
+  }
+
+  handleEditSessionChange(data) {
+    if (!data?.session) {
+      return;
+    }
+
+    if (data.active) {
+      editDraftCaptureService.startSession(data.session);
+      return;
+    }
+
+    editDraftCaptureService.endSession(data.session, data.reason || 'ended');
   }
 
   /**
@@ -544,6 +565,8 @@ class EditHistoryModule extends BaseModule {
         document.removeEventListener('claude:open_branch_map', this._branchMapHandler);
         this._branchMapHandler = null;
       }
+
+      editDraftCaptureService.destroy();
 
       // Reset lazy-initialized components for proper reinit
       this._panel = null;

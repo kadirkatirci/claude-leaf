@@ -93,6 +93,7 @@ const Events = {
   HUB_MESSAGE_COUNT_CHANGED: 'hub:message_count_changed', // Message count changed
   HUB_VERSION_CHANGED: 'hub:version_changed', // Edit version changed
   HUB_CONTENT_CHANGED: 'hub:content_changed', // Any content change
+  HUB_EDIT_SESSION_CHANGED: 'hub:edit_session_changed', // Edit textarea session changed
 
   // Message events (legacy, for backward compatibility)
   MESSAGES_UPDATED: 'messages:updated',

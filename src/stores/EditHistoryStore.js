@@ -101,6 +101,41 @@ export class EditHistoryStore {
     return this.store.add(newEntry);
   }
 
+  addDraftSnapshot(entry) {
+    const normalizedUrl = this.normalizeUrl(entry.conversationUrl);
+    if (!entry?.containerId || !entry?.sessionId) {
+      return null;
+    }
+
+    const draftEntry = {
+      ...entry,
+      id: entry.id || crypto.randomUUID(),
+      type: 'draft',
+      conversationUrl: normalizedUrl,
+      timestamp: entry.timestamp || Date.now(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return this.store.add(draftEntry);
+  }
+
+  async getDraftsBySession(sessionId, conversationUrl = '') {
+    if (!sessionId) {
+      return [];
+    }
+
+    const normalizedUrl = this.normalizeUrl(conversationUrl);
+    const drafts = await this.store.getByIndex('type', 'draft');
+    return drafts
+      .filter(
+        item =>
+          item.type === 'draft' &&
+          item.sessionId === sessionId &&
+          (!normalizedUrl || item.conversationUrl === normalizedUrl)
+      )
+      .sort((a, b) => a.timestamp - b.timestamp);
+  }
+
   async remove(id) {
     return this.store.delete(id);
   }

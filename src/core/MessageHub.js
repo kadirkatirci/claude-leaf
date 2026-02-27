@@ -10,6 +10,7 @@
  * - hub:message_count_changed - When message count changes
  * - hub:version_changed - When edit version changes
  * - hub:content_changed - When any content changes
+ * - hub:edit_session_changed - When inline edit textarea starts/ends
  */
 
 import DOMUtils from '../utils/DOMUtils.js';
@@ -26,6 +27,7 @@ class MessageHub {
     this.isProcessing = false;
     this.isStarted = false;
     this.pendingRescan = false;
+    this.activeEditSession = null;
 
     // Configuration
     this.config = {
@@ -135,6 +137,7 @@ class MessageHub {
       this.debounceTimer = null;
     }
     this.pendingRescan = false;
+    this.clearActiveEditSession('observer_stopped');
 
     ObserverManager.disconnect('message-hub');
     this.observer = null;
@@ -197,6 +200,7 @@ class MessageHub {
 
       // 3. Collect all data at once
       const messages = DOMUtils.findMessages();
+      this.syncEditSession(messages);
       const editedPrompts = DOMUtils.getEditedPrompts ? DOMUtils.getEditedPrompts() : [];
 
       // 4. Detect changes
@@ -281,6 +285,135 @@ class MessageHub {
     }
 
     return changes;
+  }
+
+  getVersionInfoFromMessage(messageElement) {
+    if (!messageElement) {
+      return null;
+    }
+
+    const pattern = /^\d+\s*\/\s*\d+$/;
+
+    const versionContainer = messageElement.querySelector('.inline-flex.items-center.gap-1');
+    if (versionContainer) {
+      const versionSpan = versionContainer.querySelector('span');
+      if (versionSpan && pattern.test(versionSpan.textContent.trim())) {
+        return versionSpan.textContent.trim();
+      }
+    }
+
+    const userMessage = messageElement.querySelector('[data-testid="user-message"]');
+    const allSpans = messageElement.querySelectorAll('span');
+    for (const span of allSpans) {
+      if (userMessage && userMessage.contains(span)) {
+        continue;
+      }
+      const text = span.textContent.trim();
+      if (pattern.test(text)) {
+        return text;
+      }
+    }
+
+    return null;
+  }
+
+  findActiveEditSession(messages) {
+    const chatContainer = DOMUtils.getChatContainer();
+    if (!chatContainer) {
+      return null;
+    }
+
+    const textareas = Array.from(chatContainer.querySelectorAll('textarea'));
+    for (const textarea of textareas) {
+      if (textarea.closest('[data-testid="chat-input"], [data-testid="prompt-input"]')) {
+        continue;
+      }
+
+      const editForm = textarea.closest('form');
+      if (!editForm) {
+        continue;
+      }
+
+      const hasSubmit = !!editForm.querySelector('button[type="submit"]');
+      const hasCancel = !!editForm.querySelector('button[type="button"]');
+      if (!hasSubmit || !hasCancel) {
+        continue;
+      }
+
+      const messageIndex = messages.findIndex(message => message.contains(textarea));
+      if (messageIndex < 0) {
+        continue;
+      }
+
+      const messageElement = messages[messageIndex];
+      const containerId = `edit-index-${messageIndex}`;
+      const userMessage = messageElement.querySelector('[data-testid="user-message"]');
+      messageElement.setAttribute('data-edit-container-id', containerId);
+      if (userMessage) {
+        userMessage.setAttribute('data-edit-container-id', containerId);
+      }
+      textarea.setAttribute('data-edit-container-id', containerId);
+
+      return {
+        sessionKey: `${window.location.pathname}|${containerId}`,
+        conversationUrl: window.location.pathname,
+        containerId,
+        messageIndex,
+        versionInfo: this.getVersionInfoFromMessage(messageElement),
+        textarea,
+        messageElement,
+        timestamp: Date.now(),
+      };
+    }
+
+    return null;
+  }
+
+  emitEditSessionChanged(active, reason, session) {
+    this.log(`Emitting: hub:edit_session_changed (${reason})`);
+    eventBus.emit(Events.HUB_EDIT_SESSION_CHANGED, {
+      active,
+      reason,
+      session,
+      timestamp: Date.now(),
+    });
+  }
+
+  clearActiveEditSession(reason = 'ended') {
+    if (!this.activeEditSession) {
+      return;
+    }
+
+    const endedSession = this.activeEditSession;
+    this.activeEditSession = null;
+    this.emitEditSessionChanged(false, reason, endedSession);
+  }
+
+  syncEditSession(messages) {
+    const detectedSession = this.findActiveEditSession(messages);
+
+    if (!detectedSession) {
+      this.clearActiveEditSession('ended');
+      return;
+    }
+
+    if (!this.activeEditSession) {
+      this.activeEditSession = detectedSession;
+      this.emitEditSessionChanged(true, 'started', detectedSession);
+      return;
+    }
+
+    const isSameSession =
+      this.activeEditSession.sessionKey === detectedSession.sessionKey &&
+      this.activeEditSession.textarea === detectedSession.textarea;
+
+    if (isSameSession) {
+      return;
+    }
+
+    this.clearActiveEditSession('switched');
+    this.activeEditSession = detectedSession;
+    this.emitEditSessionChanged(true, 'started', detectedSession);
   }
 
   /**
@@ -374,6 +507,7 @@ class MessageHub {
    * Reset state (on page change)
    */
   resetState() {
+    this.clearActiveEditSession('state_reset');
     this.lastState = {
       messageCount: 0,
       editedCount: 0,
@@ -395,6 +529,7 @@ class MessageHub {
         editedCount: this.lastState.editedCount,
         editVersionCount: this.lastState.editVersions.size,
       },
+      editSessionActive: !!this.activeEditSession,
       config: { ...this.config },
     };
   }
