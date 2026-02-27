@@ -62,7 +62,7 @@ src/
 │   ├── NavigationInterceptor.js  # SPA navigation handling
 │   ├── FixedButtonMixin.js       # Sidebar button behavior
 │   ├── MessageHub.js             # Message coordination
-│   ├── MessageRegistry.js        # DOM message tracking
+│   ├── MessageCache.js           # Shared message query cache
 │   ├── storage/                  # Storage layer
 │   │   ├── Store.js              # Base store class
 │   │   └── adapters/             # Storage adapters
@@ -96,16 +96,18 @@ src/
 ### Entry Point & Initialization
 
 - **[src/content.js](src/content.js)** - Entry point, imports NavigationInterceptor FIRST (critical order)
-- **[src/App.js](src/App.js)** - Main application manager, 7-step initialization sequence
+- **[src/App.js](src/App.js)** - Main application manager with staged startup and SPA-safe restarts
 
 The initialization order is critical:
 1. NavigationInterceptor (must be on `window` before other imports)
 2. Settings load
 3. DOM ready check
 4. Core infrastructure (DOMUtils, AsyncManager, DOMManager, ButtonFactory)
-5. Managers (Theme, Keyboard, Observer)
-6. Cross-tab sync
-7. Feature modules (topologically sorted by dependencies)
+5. Core services start (`panelManager`, `messageHub`)
+6. Managers (Theme, Keyboard, Observer)
+7. Cross-tab sync (settings store)
+8. Feature modules (topologically sorted by dependencies)
+9. Global listeners + session tracking
 
 ### Module System
 
@@ -151,6 +153,29 @@ Modules with fixed sidebar buttons use **[FixedButtonMixin](src/core/FixedButton
 | **EmojiMarkerModule** | Mark messages with emojis | Yes |
 | **SidebarCollapseModule** | Collapsible sidebar sections | No (injects into sidebar) |
 | **ContentFoldingModule** | Fold headings/code blocks | No (per-element UI) |
+
+### Edit History Flow (Current)
+
+Edit history and branch map now use a two-layer capture pipeline:
+
+1. **MessageHub detection**
+   - Detects edit textarea sessions and emits `HUB_EDIT_SESSION_CHANGED`
+   - Emits `HUB_VERSION_CHANGED` when version counters change
+
+2. **Draft + immediate promotion**
+   - `EditDraftCaptureService` listens edit click/submit and textarea input
+   - Captures draft snapshots (`type: draft`) while editing
+   - Promotes pre-edit content immediately to history on save
+
+3. **History + snapshot persistence**
+   - `HistoryCaptureService.captureHistory()` stores canonical edited versions
+   - `HistoryCaptureService.captureSnapshot()` stores conversation snapshot paths
+   - `HistoryCaptureService.captureVersionSnapshot(entry)` forces a version-aware snapshot
+     on immediate promotion so Branch Map and Edit Modal stay aligned (first-edit case)
+
+4. **Branch Map rendering**
+   - `BranchMapModal` loads `snapshots + history`
+   - `BranchTreeBuilder` builds branch columns from snapshots and resolves full content via history
 
 ### Core Infrastructure
 
@@ -225,10 +250,14 @@ this.subscribe(Events.SETTINGS_CHANGED, callback);
 ```
 
 **Available Events:**
-- `MESSAGES_UPDATED` - Message list changed
+- `HUB_MESSAGE_COUNT_CHANGED` - Message count changed
+- `HUB_VERSION_CHANGED` - Edit version changed
+- `HUB_CONTENT_CHANGED` - Content changed (hub-level)
+- `HUB_EDIT_SESSION_CHANGED` - Inline edit session started/ended/switched
+- `URL_CHANGED` - SPA URL/page changed
 - `SETTINGS_CHANGED` - Settings modified
-- `THEME_CHANGED` - Theme updated
-- `NAVIGATION_CHANGED` - Page navigation occurred
+- `FEATURE_TOGGLED` - Feature toggled
+- `MESSAGES_UPDATED` - Legacy compatibility event
 
 ## Key Patterns
 
