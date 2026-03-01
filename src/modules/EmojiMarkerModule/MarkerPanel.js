@@ -15,6 +15,7 @@ export class MarkerPanel extends BasePanel {
       width: '280px',
       height: '500px',
       position: { right: '80px', top: '60px' },
+      outsideClickIgnoreSelectors: ['#claude-marker-fixed-btn'],
     });
 
     this.getTheme = getTheme;

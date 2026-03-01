@@ -13,6 +13,9 @@ export default class BasePanel {
     this.width = options.width || '400px';
     this.height = options.height || '500px';
     this.position = options.position || { right: '90px', top: '20px' };
+    this.outsideClickIgnoreSelectors = Array.isArray(options.outsideClickIgnoreSelectors)
+      ? options.outsideClickIgnoreSelectors
+      : [];
 
     this.panel = null;
     this.header = null;
@@ -226,12 +229,48 @@ export default class BasePanel {
       }
     };
 
+    const handleOutsideClick = e => {
+      if (!this.isVisible || !this.panel) {
+        return;
+      }
+
+      const target = e.target;
+      if (!target || typeof target.closest !== 'function') {
+        return;
+      }
+
+      if (this.panel.contains(target)) {
+        return;
+      }
+
+      if (this.shouldIgnoreOutsideClick(target)) {
+        return;
+      }
+
+      this.hide();
+    };
+
     document.addEventListener('keydown', handleEscape);
+    document.addEventListener('click', handleOutsideClick);
 
     // Store for cleanup
     this.eventListeners = {
       escape: { element: document, event: 'keydown', handler: handleEscape },
+      outsideClick: { element: document, event: 'click', handler: handleOutsideClick },
     };
+  }
+
+  /**
+   * Ignore outside-click close for known panel toggles.
+   */
+  shouldIgnoreOutsideClick(target) {
+    return this.outsideClickIgnoreSelectors.some(selector => {
+      try {
+        return Boolean(target.closest(selector));
+      } catch {
+        return false;
+      }
+    });
   }
 
   /**

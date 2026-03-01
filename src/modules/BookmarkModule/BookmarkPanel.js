@@ -17,6 +17,7 @@ export class BookmarkPanel extends BasePanel {
       width: '280px',
       height: '500px',
       position: { right: '80px', top: '60px' },
+      outsideClickIgnoreSelectors: ['#claude-bookmarks-fixed-btn', '#claude-bookmarks-toggle'],
     });
 
     this.dom = domUtils;
