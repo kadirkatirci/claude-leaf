@@ -106,21 +106,27 @@ export class BookmarkPanel extends BasePanel {
     }
 
     // Check if bookmarks actually changed
-    const currentIds = bookmarks
-      .map(b => b.id)
-      .sort()
-      .join(',');
+    const currentIdsArray = bookmarks.map(b => b.id).sort();
+    const currentIds = currentIdsArray.join(',');
     const lastIds = this.lastBookmarkIds.join(',');
 
     // Update counter regardless (it has its own change detection)
     this.updateCounter(bookmarks.length);
+
+    if (bookmarks.length === 0) {
+      this.lastBookmarkIds = [];
+      super.updateContent([], bookmark => {
+        return this.createBookmarkItem(bookmark);
+      });
+      return;
+    }
 
     // Skip content update if bookmarks haven't changed
     if (currentIds === lastIds) {
       return;
     }
 
-    this.lastBookmarkIds = bookmarks.map(b => b.id).sort();
+    this.lastBookmarkIds = currentIdsArray;
 
     // Sort by date (newest first)
     const sortedBookmarks = [...bookmarks].sort((a, b) => b.timestamp - a.timestamp);
