@@ -502,6 +502,12 @@ function switchToTab(tabId, { track = true } = {}) {
 
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   contentEl.classList.add('active');
+
+  // Show/hide save button only on features tab
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) {
+    saveBtn.style.display = tabId === 'features' ? 'inline-flex' : 'none';
+  }
 }
 
 function openAccordion(moduleId) {
