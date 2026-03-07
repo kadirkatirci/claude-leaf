@@ -618,6 +618,21 @@ kbd {
   height: 12px;
 }
 
+/* Featured Help Item (Support/Coffee) */
+.help-item-featured {
+  background: linear-gradient(135deg, var(--accent-light) 0%, rgba(232, 107, 74, 0.08) 100%);
+  border: 1.5px solid var(--accent);
+}
+
+.help-item-featured:hover {
+  background: linear-gradient(135deg, rgba(232, 107, 74, 0.15) 0%, rgba(232, 107, 74, 0.1) 100%);
+}
+
+.help-item-featured .help-icon {
+  background: var(--accent);
+  color: white;
+}
+
 /* ============================================
    Settings Tab - Accordion
    ============================================ */

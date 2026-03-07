@@ -305,6 +305,13 @@ function renderHelpSection() {
       description: 'Have a great idea? Suggest new features or improvements.',
       linkText: 'Request Feature',
     },
+    {
+      url: 'https://buymeacoffee.com/tedaitesnim',
+      icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M9 1v3 M12 1v3',
+      title: 'Buy Me a Coffee',
+      description: 'Support the development of Claude Productivity with a coffee ☕',
+      linkText: 'Support via Buy Me a Coffee',
+    },
   ];
 
   container.innerHTML = `
@@ -312,7 +319,7 @@ function renderHelpSection() {
       ${helpItems
         .map(
           (item, index) => `
-        <div class="help-item" data-url="${item.url}" data-index="${index}">
+        <div class="help-item${index === helpItems.length - 1 ? ' help-item-featured' : ''}" data-url="${item.url}" data-index="${index}">
           <div class="help-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="${item.icon}"/>
