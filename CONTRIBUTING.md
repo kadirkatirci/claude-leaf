@@ -1,4 +1,4 @@
-# Contributing to Claude Productivity Tools
+# Contributing to Claude Leaf
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
 

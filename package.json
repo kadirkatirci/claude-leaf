@@ -1,7 +1,7 @@
 {
-  "name": "claude-productivity-extension",
-  "version": "1.1.0",
-  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, edit history, and more",
+  "name": "claude-leaf",
+  "version": "1.0.0",
+  "description": "Claude Leaf - Productivity tools for Claude.ai including message navigation, bookmarks, emoji markers, edit version history, and more",
   "type": "module",
   "keywords": [
     "chrome-extension",

@@ -1,0 +1,44 @@
+# Claude Leaf
+
+**Claude Leaf**, Claude.ai deneyiminizi geliştirmek için tasarlanmış, mesaj navigasyonu, yer imleri ve daha fazlasını sunan bir üretkenlik eklentisidir.
+
+## Özellikler
+
+*   **Mesaj Navigasyonu:** Uzun sohbetlerde mesajlar arasında kolayca yukarı/aşağı gezinin.
+*   **Yer İmleri (Bookmarks):** Önemli konuşmaları veya spesifik mesajları kaydedin ve hızlıca erişin.
+*   **Emoji İşaretleyiciler:** Mesajları daha sonra kolayca bulmak için emojilerle işaretleyin.
+*   **Düzenleme Geçmişi:** Mesajlarınız üzerinde yaptığınız değişikliklerin geçmişini görüntüleyin.
+*   **Kullanıcı Dostu Arayüz:** Claude.ai arayüzü ile uyumlu, temiz ve modern tasarım.
+
+## Kurulum
+
+1.  Bu projeyi bilgisayarınıza indirin veya klonlayın.
+2.  Google Chrome'da `chrome://extensions/` adresine gidin.
+3.  Sağ üst köşedeki **"Geliştirici modu" (Developer mode)** anahtarını açın.
+4.  Sol üstteki **"Paketlenmemiş öğe yükle" (Load unpacked)** butonuna tıklayın.
+5.  Proje klasörünü (`claude_productivity_ext`) seçin.
+
+## Geliştirme
+
+Proje bağımlılıklarını yüklemek ve geliştirme modunda çalıştırmak için:
+
+```bash
+npm install
+npm run dev
+```
+
+Build almak için:
+
+```bash
+npm run build
+```
+
+## Teknoloji Yığını
+
+*   JavaScript (ES6+)
+*   Rollup.js
+*   Chrome Extension Manifest V3
+
+## Lisans
+
+MIT &copy; Kadir KATIRCI

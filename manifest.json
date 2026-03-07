@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Claude Productivity Tools",
+  "name": "Claude Leaf",
   "version": "1.0.0",
-  "description": "Productivity tools for Claude.ai - Message navigation, bookmarks, emoji marker, edit history, and more",
+  "description": "Claude Leaf - Productivity tools for Claude.ai including message navigation, bookmarks, and more",
   "author": "Kadir KATIRCI",
   "homepage_url": "https://tedaitesnim.com",
   "permissions": [
@@ -25,7 +25,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Claude Productivity - Settings"
+    "default_title": "Claude Leaf - Settings"
   },
   "content_scripts": [
     {

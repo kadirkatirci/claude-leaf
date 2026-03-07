@@ -1,6 +1,6 @@
-# Claude Productivity Tools
+# Claude Leaf
 
-A Chrome extension that enhances the Claude.ai web interface with productivity features for managing long conversations.
+**Claude Leaf** is a Chrome extension that enhances the Claude.ai web interface with productivity features for managing long conversations.
 
 ## Features
 
