@@ -156,6 +156,16 @@ class BookmarkModule extends BaseModule {
     window.history.replaceState({}, '', url.toString());
   }
 
+  buildBookmarkUrl(bookmarkPath, bookmarkId) {
+    const path = bookmarkPath?.startsWith('/') ? bookmarkPath : `/${bookmarkPath || ''}`;
+    return new URL(`${path}?bookmark=${bookmarkId}`, window.location.origin).toString();
+  }
+
+  openBookmarkInNewTab(bookmarkPath, bookmarkId) {
+    const targetUrl = this.buildBookmarkUrl(bookmarkPath, bookmarkId);
+    window.open(targetUrl, '_blank', 'noopener');
+  }
+
   waitForMessagesAndNavigate(bookmark, retryCount, prevCount = 0, stableCount = 0) {
     const messages = this.dom.findMessages();
     const count = messages.length;
@@ -427,8 +437,13 @@ class BookmarkModule extends BaseModule {
     }
 
     if (window.location.pathname !== bookmarkPath) {
-      if (fromUrl && bookmarkPath) {
-        window.location.href = bookmarkPath + '?bookmark=' + bookmark.id;
+      if (bookmarkPath) {
+        this.openBookmarkInNewTab(bookmarkPath, bookmark.id);
+        trackEvent('bookmark_navigate', {
+          module: 'bookmarks',
+          method: fromUrl ? 'url' : 'panel',
+          result: 'opened_tab',
+        });
       }
       return;
     }

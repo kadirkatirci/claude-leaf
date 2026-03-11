@@ -303,7 +303,11 @@ export class Store extends EventEmitter {
    * @returns {Function} - Unsubscribe function
    */
   subscribe(callback) {
-    return this.on('change', callback);
+    const unsubscribers = [this.on('change', callback), this.on('external-change', callback)];
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
   }
 
   /**

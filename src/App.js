@@ -13,14 +13,11 @@ import VisibilityManager from './utils/VisibilityManager.js';
 
 // Rest of imports
 import { settingsStore, bookmarkStore, markerStore, editHistoryStore } from './stores/index.js';
-import { MODULE_CONSTANTS } from './config/ModuleConstants.js';
 import { isDevDisabled } from './config/DevConfig.js';
 import { debugLog } from './config/debug.js';
 import errorTracker from './utils/ErrorTracker.js';
 import sessionTracker from './utils/SessionTracker.js';
 import { trackEvent } from './analytics/Analytics.js';
-
-const GENERAL_CONFIG = MODULE_CONSTANTS.general;
 import { eventBus, Events } from './utils/EventBus.js';
 import DOMUtils from './utils/DOMUtils.js';
 import ThemeManager from './managers/ThemeManager.js';
@@ -28,6 +25,7 @@ import KeyboardManager from './managers/KeyboardManager.js';
 import ObserverManager from './managers/ObserverManager.js';
 import { storageSync } from './core/StorageSync.js';
 import domReadyChecker from './utils/DOMReadyChecker.js';
+import { storeSyncChannel } from './utils/StoreSyncChannel.js';
 
 // Core Services
 import { panelManager } from './components/PanelManager.js';
@@ -66,6 +64,8 @@ class ClaudeProductivityApp {
     this.navigationUnsubscribe = null;
     this.restartDebounceTimer = null;
     this.lastNavigationTime = 0;
+    this.settingsUnsubscribe = null;
+    this.storeSyncUnsubscribe = null;
 
     // Setup message listener immediately so popup can communicate
     // even before full initialization completes
@@ -192,6 +192,7 @@ class ClaudeProductivityApp {
 
     // STEP 5: Cross-tab sync
     this.initializeCrossTabSync();
+    this.initializeStoreSync();
 
     // STEP 6: Initialize modules
     this.registerModulesWithDependencies();
@@ -313,6 +314,74 @@ class ClaudeProductivityApp {
     }
   }
 
+  initializeStoreSync() {
+    if (this.storeSyncUnsubscribe) {
+      return;
+    }
+
+    this.storeSyncUnsubscribe = storeSyncChannel.subscribe(message => {
+      this.handleStoreSyncMessage(message).catch(error => {
+        console.error('[App] Failed to handle store sync message:', error);
+      });
+    });
+  }
+
+  async handleStoreSyncMessage(message) {
+    if (!message?.storeId) {
+      return;
+    }
+
+    debugLog('sync', 'Received cross-tab store sync message', message);
+    await this.refreshModulesForStore(message.storeId);
+  }
+
+  async refreshModule(moduleName) {
+    const module = this.getModule(moduleName);
+    if (!module || !module.enabled) {
+      return;
+    }
+
+    if (typeof module.waitAndUpdateUI === 'function') {
+      await module.waitAndUpdateUI();
+      return;
+    }
+
+    if (typeof module.updateUI === 'function') {
+      await module.updateUI();
+    }
+  }
+
+  async refreshModulesForStore(storeId) {
+    switch (storeId) {
+      case 'bookmarks':
+        await this.refreshModule('bookmarks');
+        break;
+      case 'markers':
+        await this.refreshModule('emojiMarkers');
+        break;
+      case 'editHistory':
+        await this.refreshModule('editHistory');
+        break;
+      default:
+        break;
+    }
+  }
+
+  async refreshAllDataModules() {
+    await this.refreshModulesForStore('bookmarks');
+    await this.refreshModulesForStore('markers');
+    await this.refreshModulesForStore('editHistory');
+  }
+
+  handleSettingsUpdate(settings) {
+    if (!settings || typeof settings !== 'object') {
+      throw new Error('Invalid settings payload');
+    }
+
+    settingsStore.invalidateMergedCache();
+    settingsStore.store.onStorageChanged(settings);
+  }
+
   handleInitializationError(_error) {
     // Attempt graceful degradation
     try {
@@ -338,11 +407,15 @@ class ClaudeProductivityApp {
 
   applySettingsToManagers(settings) {
     ThemeManager.init(settings);
-    const debugMode = GENERAL_CONFIG.debugMode;
+    const debugMode = settings?.general?.debugMode === true;
     if (debugMode) {
       VisibilityManager.setDebugMode(true);
       KeyboardManager.setDebugMode(true);
       ObserverManager.setDebugMode(true);
+    } else {
+      VisibilityManager.setDebugMode(false);
+      KeyboardManager.setDebugMode(false);
+      ObserverManager.setDebugMode(false);
     }
   }
 
@@ -448,12 +521,11 @@ class ClaudeProductivityApp {
 
   setupGlobalListeners() {
     window.addEventListener('beforeunload', () => this.destroy());
-
-    eventBus.on(Events.SETTINGS_CHANGED, settings => {
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+    }
+    this.settingsUnsubscribe = settingsStore.subscribe(settings => {
       this.applySettingsToManagers(settings);
-      // Apply theme settings
-      ThemeManager.setTheme(GENERAL_CONFIG.colorTheme, GENERAL_CONFIG.customColor);
-      ThemeManager.setOpacity(GENERAL_CONFIG.opacity);
     });
 
     eventBus.on(Events.FEATURE_TOGGLED, ({ feature, enabled }) => {
@@ -514,10 +586,11 @@ class ClaudeProductivityApp {
           const jsonString = JSON.stringify(message.data);
           store
             .import(jsonString)
-            .then(result => {
+            .then(async result => {
               if (result && result.success === false) {
                 sendResponse({ error: result.error });
               } else {
+                await this.refreshModulesForStore(message.storeId);
                 sendResponse({ success: true });
               }
             })
@@ -526,7 +599,10 @@ class ClaudeProductivityApp {
           // Fallback to raw set()
           store.store
             .set(message.data)
-            .then(() => sendResponse({ success: true }))
+            .then(async () => {
+              await this.refreshModulesForStore(message.storeId);
+              sendResponse({ success: true });
+            })
             .catch(err => sendResponse({ error: err.message }));
         }
 
@@ -544,20 +620,41 @@ class ClaudeProductivityApp {
         if (store.clear) {
           store
             .clear()
-            .then(() => sendResponse({ success: true }))
+            .then(async () => {
+              await this.refreshModulesForStore(message.storeId);
+              sendResponse({ success: true });
+            })
             .catch(err => sendResponse({ error: err.message }));
         } else {
           // Fallback to accessing inner store directly if wrapper missing clear
           if (store.store && store.store.clear) {
             store.store
               .clear()
-              .then(() => sendResponse({ success: true }))
+              .then(async () => {
+                await this.refreshModulesForStore(message.storeId);
+                sendResponse({ success: true });
+              })
               .catch(err => sendResponse({ error: err.message }));
           } else {
             sendResponse({ error: 'Store does not support clear' });
           }
         }
 
+        return true;
+      }
+
+      if (message.type === 'SETTINGS_UPDATED') {
+        Promise.resolve()
+          .then(() => this.handleSettingsUpdate(message.settings))
+          .then(() => sendResponse({ success: true }))
+          .catch(err => sendResponse({ error: err.message }));
+        return true;
+      }
+
+      if (message.type === 'DATA_IMPORTED' || message.type === 'DATA_CLEARED') {
+        this.refreshAllDataModules()
+          .then(() => sendResponse({ success: true }))
+          .catch(err => sendResponse({ error: err.message }));
         return true;
       }
 
@@ -600,6 +697,16 @@ class ClaudeProductivityApp {
     if (this.navigationUnsubscribe) {
       this.navigationUnsubscribe();
       this.navigationUnsubscribe = null;
+    }
+
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = null;
+    }
+
+    if (this.storeSyncUnsubscribe) {
+      this.storeSyncUnsubscribe();
+      this.storeSyncUnsubscribe = null;
     }
 
     for (const [name, module] of this.modules) {

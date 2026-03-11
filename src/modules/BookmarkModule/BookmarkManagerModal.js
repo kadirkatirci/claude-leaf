@@ -1139,7 +1139,7 @@ export class BookmarkManagerModal {
         window.history.pushState({}, '', url.toString());
         window.location.reload();
       } else {
-        window.location.href = `${baseUrl}${path}?bookmark=${bookmark.id}`;
+        window.open(`${baseUrl}${path}?bookmark=${bookmark.id}`, '_blank', 'noopener');
       }
     }
   }

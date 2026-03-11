@@ -2,6 +2,7 @@ import { stateManager } from '../core/StateManager.js';
 import { getStoreConfig } from '../config/storeConfig.js';
 import { hashString } from '../utils/HashUtils.js';
 import { debugLog } from '../config/debug.js';
+import { broadcastStoreChange } from '../utils/StoreSyncChannel.js';
 
 const CONFIG = getStoreConfig('editHistory');
 
@@ -12,6 +13,10 @@ export class EditHistoryStore {
       version: CONFIG.version,
       defaultData: CONFIG.defaultData,
     });
+  }
+
+  notifyChange(action = 'updated') {
+    broadcastStoreChange('editHistory', action);
   }
 
   async getAll() {
@@ -84,21 +89,27 @@ export class EditHistoryStore {
         'editHistory',
         `Conflict detected for ${entry.containerId} ${entry.versionLabel} in ${normalizedUrl}`
       );
-      return this.store.add({
+      const result = await this.store.add({
         ...newEntry,
         conflict: true,
         conflictOf: existingSameVersion.id,
       });
+      this.notifyChange();
+      return result;
     }
 
     if (existingSameVersion) {
-      return this.store.put({
+      const result = await this.store.put({
         ...newEntry,
         id: existingSameVersion.id,
       });
+      this.notifyChange();
+      return result;
     }
 
-    return this.store.add(newEntry);
+    const result = await this.store.add(newEntry);
+    this.notifyChange();
+    return result;
   }
 
   addDraftSnapshot(entry) {
@@ -137,11 +148,15 @@ export class EditHistoryStore {
   }
 
   async remove(id) {
-    return this.store.delete(id);
+    const result = await this.store.delete(id);
+    this.notifyChange();
+    return result;
   }
 
   async clear() {
-    return this.store.clear();
+    const result = await this.store.clear();
+    this.notifyChange('cleared');
+    return result;
   }
 
   async addSnapshot(snapshot) {
@@ -163,7 +178,9 @@ export class EditHistoryStore {
     debugLog('editHistory', `Adding snapshot: ${snapshotId}`);
 
     // Using put to handle idempotency (overwrite if same hash)
-    return this.store.put(newSnapshot);
+    const result = await this.store.put(newSnapshot);
+    this.notifyChange();
+    return result;
   }
 
   async getSnapshots(conversationUrl) {
@@ -210,6 +227,7 @@ export class EditHistoryStore {
         await this.addSnapshot(snapshot);
       }
 
+      this.notifyChange();
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };

@@ -1,5 +1,6 @@
 import { stateManager } from '../core/StateManager.js';
 import { getStoreConfig } from '../config/storeConfig.js';
+import { broadcastStoreChange } from '../utils/StoreSyncChannel.js';
 
 const CONFIG = getStoreConfig('markers');
 
@@ -10,6 +11,10 @@ export class MarkerStore {
       version: CONFIG.version,
       defaultData: CONFIG.defaultData,
     });
+  }
+
+  notifyChange(action = 'updated') {
+    broadcastStoreChange('markers', action);
   }
 
   async getAll() {
@@ -42,7 +47,9 @@ export class MarkerStore {
       createdAt: marker.createdAt || new Date().toISOString(),
     };
     // Direct add via adapter
-    return this.store.add(normalized);
+    const result = await this.store.add(normalized);
+    this.notifyChange();
+    return result;
   }
 
   async update(markerId, updates) {
@@ -51,20 +58,26 @@ export class MarkerStore {
       return;
     }
 
-    return this.store.put({
+    const result = await this.store.put({
       ...marker,
       ...updates,
       id: markerId, // Ensure ID is present
       updatedAt: new Date().toISOString(),
     });
+    this.notifyChange();
+    return result;
   }
 
   async clear() {
-    return this.store.clear();
+    const result = await this.store.clear();
+    this.notifyChange('cleared');
+    return result;
   }
 
   async remove(markerId) {
-    return this.store.delete(markerId);
+    const result = await this.store.delete(markerId);
+    this.notifyChange();
+    return result;
   }
 
   normalizeUrl(url) {
@@ -94,6 +107,7 @@ export class MarkerStore {
       for (const marker of markers) {
         await this.store.put(marker);
       }
+      this.notifyChange();
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

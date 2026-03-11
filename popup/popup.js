@@ -629,6 +629,20 @@ function setSettingValue(key, value, moduleId = null) {
   target[parts[parts.length - 1]] = value;
 }
 
+async function notifyClaudeTab(message) {
+  try {
+    const targetTab = await window.DataService.findClaudeTab();
+    if (!targetTab?.id) {
+      return false;
+    }
+
+    await chrome.tabs.sendMessage(targetTab.id, message);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function updateUI() {
   // Update main toggles
   Object.keys(config.modules).forEach(id => {
@@ -726,17 +740,9 @@ async function saveSettings() {
     // Update last saved snapshot after successful persistence
     lastSavedSettings = JSON.parse(JSON.stringify(currentSettings));
 
-    // Notify content script
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      const tab = tabs[0];
-      if (tab && tab.id && tab.url && tab.url.includes('claude.ai')) {
-        chrome.tabs
-          .sendMessage(tab.id, {
-            type: 'SETTINGS_UPDATED',
-            settings: currentSettings,
-          })
-          .catch(() => {});
-      }
+    await notifyClaudeTab({
+      type: 'SETTINGS_UPDATED',
+      settings: currentSettings,
     });
   } catch (error) {
     console.error('[Popup] ❌ Failed to save settings:', error);
@@ -1034,12 +1040,7 @@ function handleImport() {
         });
       }
 
-      // Notify content script
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_IMPORTED' }).catch(() => {});
-        }
-      });
+      await notifyClaudeTab({ type: 'DATA_IMPORTED' });
     } catch (err) {
       console.error('[Popup] Import error:', err);
       showToast('Invalid file', 'error');
@@ -1115,12 +1116,7 @@ async function handleClear() {
       data_type: selectedStores.join(','),
     });
 
-    // Notify content script
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'DATA_CLEARED' }).catch(() => {});
-      }
-    });
+    await notifyClaudeTab({ type: 'DATA_CLEARED' });
   } catch (error) {
     console.error('[Popup] Clear error:', error);
     showToast('Failed to clear', 'error');

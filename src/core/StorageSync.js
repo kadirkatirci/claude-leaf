@@ -69,8 +69,15 @@ export class StorageSync {
 
       if (!newValue) {
         debugLog('sync', `Store ${key} was cleared`);
-        store.invalidateCache();
-        store.emit('external-clear');
+        const defaultData =
+          typeof store.createDefaultData === 'function' ? store.createDefaultData() : null;
+
+        if (defaultData) {
+          store.onStorageChanged(defaultData);
+        } else {
+          store.invalidateCache();
+          store.emit('external-clear');
+        }
         continue;
       }
 

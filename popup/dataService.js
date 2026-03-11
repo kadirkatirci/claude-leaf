@@ -11,6 +11,23 @@ const DataService = {
   // Will be loaded from storeConfig.json
   storeConfig: null,
 
+  isClaudeTab(tab) {
+    const url = tab?.url || '';
+    return url === 'https://claude.ai' || url.startsWith('https://claude.ai/');
+  },
+
+  queryTabs(queryInfo) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.query(queryInfo, tabs => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(tabs || []);
+      });
+    });
+  },
+
   /**
    * Initialize by loading store config
    */
@@ -64,28 +81,54 @@ const DataService = {
   },
 
   /**
+   * Find the most relevant Claude tab across windows.
+   * Priority:
+   * 1. Active Claude tab in current window
+   * 2. Any active Claude tab
+   * 3. Most recently accessed Claude tab
+   */
+  async findClaudeTab() {
+    const currentWindowTabs = await this.queryTabs({ active: true, currentWindow: true });
+    const activeCurrentWindowClaudeTab = currentWindowTabs.find(tab => this.isClaudeTab(tab));
+    if (activeCurrentWindowClaudeTab) {
+      return activeCurrentWindowClaudeTab;
+    }
+
+    const allTabs = await this.queryTabs({});
+    const claudeTabs = allTabs.filter(tab => this.isClaudeTab(tab));
+    if (claudeTabs.length === 0) {
+      return null;
+    }
+
+    const activeClaudeTab = claudeTabs.find(tab => tab.active);
+    if (activeClaudeTab) {
+      return activeClaudeTab;
+    }
+
+    return [...claudeTabs].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+  },
+
+  /**
    * Send message to content script and get response
    * Used for IndexedDB operations since popup can't access page's IndexedDB
    */
   async sendToContentScript(message) {
+    const targetTab = await this.findClaudeTab();
+    if (!targetTab?.id) {
+      throw new Error('No Claude tab found');
+    }
+
     return new Promise((resolve, reject) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        if (!tabs[0]) {
-          reject(new Error('No active tab found'));
+      chrome.tabs.sendMessage(targetTab.id, message, response => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
           return;
         }
-
-        chrome.tabs.sendMessage(tabs[0].id, message, response => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
-          }
-          if (response?.error) {
-            reject(new Error(response.error));
-            return;
-          }
-          resolve(response);
-        });
+        if (response?.error) {
+          reject(new Error(response.error));
+          return;
+        }
+        resolve(response);
       });
     });
   },

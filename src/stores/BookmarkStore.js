@@ -7,6 +7,7 @@
 
 import { stateManager } from '../core/StateManager.js';
 import { getStoreConfig } from '../config/storeConfig.js';
+import { broadcastStoreChange } from '../utils/StoreSyncChannel.js';
 
 const CONFIG = getStoreConfig('bookmarks');
 
@@ -17,6 +18,10 @@ export class BookmarkStore {
       version: CONFIG.version,
       defaultData: CONFIG.defaultData,
     });
+  }
+
+  notifyChange(action = 'updated') {
+    broadcastStoreChange('bookmarks', action);
   }
 
   async getAll() {
@@ -57,7 +62,9 @@ export class BookmarkStore {
       type: 'category',
       createdAt: new Date().toISOString(),
     };
-    return this.store.add(category);
+    const result = await this.store.add(category);
+    this.notifyChange();
+    return result;
   }
 
   async removeCategory(categoryId) {
@@ -84,11 +91,9 @@ export class BookmarkStore {
     this.store.invalidateCache();
 
     console.log(`[BookmarkStore] Deleting category ${categoryId}`);
-    return this.store.delete(categoryId);
-  }
-
-  async clear() {
-    return this.store.clear();
+    const result = await this.store.delete(categoryId);
+    this.notifyChange();
+    return result;
   }
 
   async getByConversation(conversationUrl) {
@@ -103,7 +108,9 @@ export class BookmarkStore {
   }
 
   async clear() {
-    return this.store.clear();
+    const result = await this.store.clear();
+    this.notifyChange('cleared');
+    return result;
   }
 
   async add(bookmark) {
@@ -116,7 +123,9 @@ export class BookmarkStore {
       categoryId: bookmark.categoryId || 'default',
     };
     // Direct add via adapter
-    return this.store.add(normalized);
+    const result = await this.store.add(normalized);
+    this.notifyChange();
+    return result;
   }
 
   async update(bookmarkId, updates) {
@@ -132,11 +141,15 @@ export class BookmarkStore {
       updatedAt: new Date().toISOString(),
     };
 
-    return this.store.put(updatedBookmark);
+    const result = await this.store.put(updatedBookmark);
+    this.notifyChange();
+    return result;
   }
 
   async remove(bookmarkId) {
-    return this.store.delete(bookmarkId);
+    const result = await this.store.delete(bookmarkId);
+    this.notifyChange();
+    return result;
   }
 
   normalizeUrl(url) {
@@ -182,6 +195,7 @@ export class BookmarkStore {
         }
       }
 
+      this.notifyChange();
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

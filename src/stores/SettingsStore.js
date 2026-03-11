@@ -47,6 +47,22 @@ export class SettingsStore {
     });
   }
 
+  invalidateMergedCache() {
+    this.mergedCache = null;
+    this.mergedCacheTime = 0;
+  }
+
+  unwrapLegacySettings(settings) {
+    if (settings && settings.data && settings.version && !settings.navigation) {
+      return settings.data;
+    }
+    return settings;
+  }
+
+  prepareSettings(settings) {
+    return this.mergeWithDefaults(this.unwrapLegacySettings(settings));
+  }
+
   /**
    * Load settings (auto-called on first get)
    */
@@ -61,12 +77,7 @@ export class SettingsStore {
    * @returns {Promise<any>}
    */
   async get(path = null) {
-    let settings = await this.store.get();
-
-    // AUTO-CORRECT: If data is wrapped in a 'data' property (legacy/popup error), unwrap it
-    if (settings && settings.data && settings.version && !settings.navigation) {
-      settings = settings.data;
-    }
+    const settings = await this.store.get();
 
     // Use cache if still valid (performance optimization)
     const now = Date.now();
@@ -76,7 +87,7 @@ export class SettingsStore {
     }
 
     // Cache expired - perform merge and cache result
-    const merged = this.mergeWithDefaults(settings);
+    const merged = this.prepareSettings(settings);
     this.mergedCache = merged;
     this.mergedCacheTime = now;
 
@@ -104,8 +115,7 @@ export class SettingsStore {
    */
   set(pathOrData, value = undefined) {
     // Invalidate merge cache when settings change
-    this.mergedCache = null;
-    this.mergedCacheTime = 0;
+    this.invalidateMergedCache();
     if (typeof pathOrData === 'object' && value === undefined) {
       // Full update: set({ navigation: {...} })
       return this.store.set(pathOrData);
@@ -174,7 +184,10 @@ export class SettingsStore {
    * @returns {Function} - Unsubscribe function
    */
   subscribe(callback) {
-    return this.store.subscribe(callback);
+    return this.store.subscribe(rawSettings => {
+      this.invalidateMergedCache();
+      callback(this.prepareSettings(rawSettings));
+    });
   }
 
   /**
