@@ -134,7 +134,6 @@ class PanelManager {
 
     this.container = DOMUtils.createElement('div', {
       id: 'claude-nav-container',
-      className: 'claude-nav-buttons',
       'data-nav-container': 'true',
       style: {
         position: 'fixed',

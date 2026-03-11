@@ -159,6 +159,18 @@ export class Button {
   }
 
   /**
+   * Applies a consistent disabled appearance without relying on site-specific utility variants
+   */
+  static setDisabledState(button, disabled, options = {}) {
+    const { disabledOpacity = '0.3', enabledOpacity = '1' } = options;
+
+    button.disabled = disabled;
+    button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    button.style.opacity = disabled ? disabledOpacity : enabledOpacity;
+    button.style.cursor = disabled ? 'not-allowed' : 'pointer';
+  }
+
+  /**
    * Creates a button with a counter badge
    */
   static createWithBadge(buttonOptions, badgeOptions) {

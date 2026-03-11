@@ -6,6 +6,7 @@ import BaseModule from './BaseModule.js';
 import { Events } from '../utils/EventBus.js';
 import FixedButtonMixin from '../core/FixedButtonMixin.js';
 import DOMUtils from '../utils/DOMUtils.js';
+import Button from '../components/primitives/Button.js';
 import IconLibrary from '../components/primitives/IconLibrary.js';
 import EditBadge from './EditHistoryModule/EditBadge.js';
 import EditUI from './EditHistoryModule/EditUI.js';
@@ -289,38 +290,34 @@ class EditHistoryModule extends BaseModule {
   createCollapseButton(_theme) {
     this.isAllCollapsed = false;
 
-    // Use PanelManager
-    // Use native class background (neutral background)
     const collapseBg = 'var(--claude-productivity-neutral)';
 
-    const collapseBtn = this.dom.createElement('button', {
+    const collapseBtn = Button.create({
       id: 'claude-collapse-btn',
-      className: 'claude-nav-btn', // Same class as navigation buttons (size-9 from theme)
-      innerHTML: IconLibrary.collapse('currentColor', 20),
-      'data-tooltip': 'Collapse/Expand All (Edited Messages)',
+      variant: 'fixed',
+      icon: IconLibrary.collapse('currentColor', 20),
+      title: 'Collapse/Expand All (Edited Messages)',
       style: {
         background: collapseBg,
-        display: this.editedMessages.length > 0 ? 'flex' : 'none', // Hide if no edits
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        display: this.editedMessages.length > 0 ? 'flex' : 'none',
         transition: 'transform 0.1s ease',
         color: 'white',
-        fontSize: '20px',
         position: 'relative',
       },
     });
+    collapseBtn.dataset.tooltip = 'Collapse/Expand All (Edited Messages)';
 
     // Click handler
     collapseBtn.addEventListener('click', () => {
       this.isAllCollapsed = !this.isAllCollapsed;
-      collapseBtn.innerHTML = this.isAllCollapsed
-        ? IconLibrary.expand('currentColor', 20)
-        : IconLibrary.collapse('currentColor', 20);
-      collapseBtn.setAttribute(
-        'data-tooltip',
-        this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)'
-      );
+      Button.setButtonContent(collapseBtn, {
+        icon: this.isAllCollapsed
+          ? IconLibrary.expand('currentColor', 20)
+          : IconLibrary.collapse('currentColor', 20),
+      });
+      const nextTooltip = this.isAllCollapsed ? 'Expand All' : 'Collapse All (Edited Messages)';
+      collapseBtn.title = nextTooltip;
+      collapseBtn.dataset.tooltip = nextTooltip;
       this.handleCollapseAll(this.isAllCollapsed);
     });
 

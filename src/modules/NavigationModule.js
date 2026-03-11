@@ -288,9 +288,7 @@ class NavigationModule extends BaseModule {
       () => this.navigateToTop('button')
     );
     topBtn.id = 'claude-nav-top';
-    topBtn.disabled = true;
-    topBtn.style.opacity = '0.3';
-    topBtn.style.cursor = 'not-allowed';
+    Button.setDisabledState(topBtn, true);
     panelManager.addButton(topBtn, 10); // Order 10
 
     // Previous button
@@ -300,9 +298,7 @@ class NavigationModule extends BaseModule {
       () => this.navigatePrevious('button')
     );
     prevBtn.id = 'claude-nav-prev';
-    prevBtn.disabled = true;
-    prevBtn.style.opacity = '0.3';
-    prevBtn.style.cursor = 'not-allowed';
+    Button.setDisabledState(prevBtn, true);
     panelManager.addButton(prevBtn, 20); // Order 20
 
     // Next button
@@ -312,9 +308,7 @@ class NavigationModule extends BaseModule {
       () => this.navigateNext('button')
     );
     nextBtn.id = 'claude-nav-next';
-    nextBtn.disabled = true;
-    nextBtn.style.opacity = '0.3';
-    nextBtn.style.cursor = 'not-allowed';
+    Button.setDisabledState(nextBtn, true);
     panelManager.addButton(nextBtn, 30); // Order 30
 
     // Counter badge attachment (logic remains same)
@@ -346,7 +340,6 @@ class NavigationModule extends BaseModule {
       icon: icon,
       title: tooltip,
       onClick: onClick,
-      className: 'claude-nav-btn',
       style: {
         position: 'relative',
       },
@@ -600,12 +593,8 @@ class NavigationModule extends BaseModule {
     // Only update if states changed
     if (newStates.prev !== this.lastButtonStates.prev) {
       const shouldDisable = newStates.prev;
-      prevBtn.disabled = shouldDisable;
       scheduleVisualUpdate(() => {
-        Object.assign(prevBtn.style, {
-          opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer',
-        });
+        Button.setDisabledState(prevBtn, shouldDisable);
       }, 'nav-prev-btn');
       this.lastButtonStates.prev = shouldDisable;
       this.log(`Prev button ${shouldDisable ? 'disabled' : 'enabled'}`);
@@ -613,12 +602,8 @@ class NavigationModule extends BaseModule {
 
     if (newStates.next !== this.lastButtonStates.next) {
       const shouldDisable = newStates.next;
-      nextBtn.disabled = shouldDisable;
       scheduleVisualUpdate(() => {
-        Object.assign(nextBtn.style, {
-          opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer',
-        });
+        Button.setDisabledState(nextBtn, shouldDisable);
       }, 'nav-next-btn');
       this.lastButtonStates.next = shouldDisable;
       this.log(`Next button ${shouldDisable ? 'disabled' : 'enabled'}`);
@@ -626,12 +611,8 @@ class NavigationModule extends BaseModule {
 
     if (newStates.top !== this.lastButtonStates.top) {
       const shouldDisable = newStates.top;
-      topBtn.disabled = shouldDisable;
       scheduleVisualUpdate(() => {
-        Object.assign(topBtn.style, {
-          opacity: shouldDisable ? '0.3' : '1',
-          cursor: shouldDisable ? 'not-allowed' : 'pointer',
-        });
+        Button.setDisabledState(topBtn, shouldDisable);
       }, 'nav-top-btn');
       this.lastButtonStates.top = shouldDisable;
       this.log(`Top button ${shouldDisable ? 'disabled' : 'enabled'}`);
