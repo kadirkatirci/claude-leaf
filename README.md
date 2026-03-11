@@ -1,64 +1,126 @@
-# Claude Leaf
+<p align="center">
+  <img src="icons/icon.svg" alt="Claude Leaf logo" width="88">
+</p>
 
-**Claude Leaf** is a Chrome extension that enhances the Claude.ai web interface with productivity features for managing long conversations.
+<h1 align="center">Claude Leaf</h1>
 
-## Features
+<p align="center"><strong>Bring structure back to long Claude conversations.</strong></p>
+
+<p align="center">
+  Claude Leaf is a Chrome extension for <a href="https://claude.ai">Claude.ai</a> that helps you move through long threads,
+  mark what matters, and revisit edits without losing your place.
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/module-panels-view.png" alt="Claude Leaf module panels" width="48%">
+  <img src="docs/screenshots/darkmode-lightmode.png" alt="Claude Leaf in dark and light mode" width="48%">
+</p>
+
+## Why It Exists
+
+If you use Claude for coding, research, writing, or planning, long chats become hard to scan fast.
+Claude Leaf gives you lightweight controls directly inside the conversation so you can:
+
+- move between messages without hunting through the page
+- bookmark important parts of a thread
+- tag messages with emoji markers for quick visual scanning
+- inspect edited prompts and version branches when a conversation evolves
+
+## What You Can Use Today
 
 ### Navigation
-- **Message Navigation** - Jump between messages with on-screen controls
-- **Counter Display** - Shows current position and total message count
 
-### Organization
-- **Bookmarks** - Save important messages with categories and notes
-- **Emoji Markers** - Mark messages with custom emojis for quick reference
-- **Edit History** - Track edited prompts with version history and branching visualization
+Move up and down a conversation with floating controls and a live counter so you always know where you are.
 
-### In Development
-- **Compact View** - Under active development, not enabled in the current build
-- **Content Folding** - Under active development, not enabled in the current build
-- **Sidebar Collapse** - Under active development, not enabled in the current build
+<p>
+  <img src="docs/screenshots/module-panels-view.png" alt="Navigation and module panels inside Claude" width="100%">
+</p>
+
+### Bookmarks
+
+Save important messages, organize them, and jump back when you need context again.
+
+<p>
+  <img src="docs/screenshots/add-bookmark.png" alt="Adding a bookmark in Claude Leaf" width="48%">
+  <img src="docs/screenshots/bookmarks-manager-modal-message-view.png" alt="Bookmark manager message view" width="48%">
+</p>
+
+### Emoji Markers
+
+Mark messages with lightweight visual tags so key answers stand out during long sessions.
+
+<p>
+  <img src="docs/screenshots/add-emoji-marker.png" alt="Adding an emoji marker" width="48%">
+  <img src="docs/screenshots/marked-messages-badges.png" alt="Marked messages in light mode" width="48%">
+</p>
+
+<p>
+  <img src="docs/screenshots/marked-messages-badges-darkmode.png" alt="Marked messages in dark mode" width="48%">
+</p>
+
+### Edit History
+
+See how prompts changed over time, inspect versions, and understand branching paths in edited conversations.
+
+<p>
+  <img src="docs/screenshots/edit-history-modal-view.png" alt="Edit history modal view" width="48%">
+  <img src="docs/screenshots/branch-map-view.png" alt="Branch map view" width="48%">
+</p>
+
+## Visual Tour
+
+<p>
+  <img src="docs/screenshots/bookmarks-manager-modal-grid-view.png" alt="Bookmarks manager grid view" width="32%">
+  <img src="docs/screenshots/bookmarks-manager-modal-list-view.png" alt="Bookmarks manager list view" width="32%">
+  <img src="docs/screenshots/edit-highlight-view.png" alt="Edit highlight view" width="32%">
+</p>
+
+## In Development
+
+These modules exist in the codebase but are not enabled in the current build:
+
+- **Compact View** for collapsing long responses
+- **Content Folding** for headings and code blocks
+- **Sidebar Collapse** for cleaner sidebar navigation
 
 ## Installation
 
-### From Source (Developer Mode)
+### From Source
 
-1. Clone the repository:
+1. Clone the repository.
+
    ```bash
    git clone https://github.com/kadirkatirci/claude-leaf.git
    cd claude-leaf
    ```
 
-2. Install dependencies and build:
+2. Install dependencies and build the extension.
+
    ```bash
    npm install
    npm run build
    ```
 
-3. Load in Chrome:
-   - Open `chrome://extensions`
-   - Enable "Developer mode" (top right)
-   - Click "Load unpacked"
-   - Select the extension folder
+3. Open `chrome://extensions`.
+4. Enable `Developer mode`.
+5. Click `Load unpacked`.
+6. Select the project folder.
+7. Open [claude.ai](https://claude.ai).
 
-4. Navigate to [claude.ai](https://claude.ai) to use the extension
+## Current Module Set
 
-## Usage
+Available in the current build:
 
-### Buttons
+- Navigation
+- Bookmarks
+- Emoji Markers
+- Edit History
 
-The extension adds floating buttons on the right side of the conversation:
-- **Navigation** - Up/down arrows with message counter
-- **Bookmarks** - Star icon, click to bookmark current message
-- **Markers** - Emoji icon, click to add emoji marker
-- **Edit History** - History icon, shows edit versions and branches
+Present but dev-disabled:
 
-### Settings
-
-Click the extension icon in the Chrome toolbar to:
-- Enable/disable individual features
-- View storage usage
-
-Currently available in the production build: Navigation, Bookmarks, Emoji Markers, and Edit History.
+- Compact View
+- Content Folding
+- Sidebar Collapse
 
 ## Development
 
@@ -72,51 +134,36 @@ npm run format   # Format with Prettier
 
 ### Project Structure
 
-```
+```text
 src/
-├── content.js          # Entry point
-├── App.js              # Main application manager
-├── core/               # Core infrastructure
-│   ├── storage/        # Storage adapters (Local, Sync, IndexedDB)
-│   └── ...
-├── modules/            # Feature modules
-│   ├── NavigationModule.js
-│   ├── BookmarkModule.js
-│   ├── EmojiMarkerModule.js
-│   ├── EditHistoryModule.js
-│   ├── CompactViewModule.js
-│   ├── ContentFoldingModule/
-│   └── SidebarCollapseModule.js
-├── stores/             # State management
-├── managers/           # Singleton managers
-├── utils/              # Utility functions
-└── config/             # Configuration
+├── content.js
+├── App.js
+├── core/
+├── modules/
+├── stores/
+├── managers/
+├── utils/
+└── config/
 
-popup/                  # Extension popup UI
+popup/
+docs/
+icons/
 ```
 
-`CompactViewModule`, `ContentFoldingModule`, and `SidebarCollapseModule` are present in the codebase but currently dev-disabled.
-
-See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+For architecture and internal development notes, see [CLAUDE.md](CLAUDE.md).
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+If you want to contribute, start here:
 
-### Quick Start
+1. Fork the repository.
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Make your changes.
+4. Run `npm run lint:fix`
+5. Open a pull request.
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Make your changes
-4. Run linting: `npm run lint:fix`
-5. Commit with a descriptive message
-6. Push and create a Pull Request
+Please also read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-
-- Built for [Claude.ai](https://claude.ai) by Anthropic
-- Uses [Rollup](https://rollupjs.org) for bundling
+MIT License. See [LICENSE](LICENSE).
