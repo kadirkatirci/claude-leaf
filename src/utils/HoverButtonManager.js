@@ -5,6 +5,17 @@
 
 export default class HoverButtonManager {
   /**
+   * Apply visibility state to a hover button.
+   * Keeps the existing opacity/pointer-events contract unchanged.
+   */
+  static setButtonVisibility(button, visible) {
+    button.style.opacity = visible ? '1' : '0';
+    if (button.style.pointerEvents !== undefined) {
+      button.style.pointerEvents = visible ? 'auto' : 'none';
+    }
+  }
+
+  /**
    * Attach hover listeners to show/hide button on message hover
    * @param {HTMLElement} messageElement - The message element to attach listeners to
    * @param {HTMLElement} button - The button to show/hide
@@ -32,10 +43,7 @@ export default class HoverButtonManager {
         clearTimeout(hoverTimeout);
         hoverTimeout = null;
       }
-      button.style.opacity = '1';
-      if (button.style.pointerEvents !== undefined) {
-        button.style.pointerEvents = 'auto';
-      }
+      this.setButtonVisibility(button, true);
     };
 
     /**
@@ -48,23 +56,17 @@ export default class HoverButtonManager {
 
       // Check if button should persist (e.g., bookmarked)
       if (persistWhen()) {
-        button.style.opacity = '1';
+        this.setButtonVisibility(button, true);
         return;
       }
 
       // Hide with delay if specified
       if (hideDelay > 0) {
         hoverTimeout = setTimeout(() => {
-          button.style.opacity = '0';
-          if (button.style.pointerEvents !== undefined) {
-            button.style.pointerEvents = 'none';
-          }
+          this.setButtonVisibility(button, false);
         }, hideDelay);
       } else {
-        button.style.opacity = '0';
-        if (button.style.pointerEvents !== undefined) {
-          button.style.pointerEvents = 'none';
-        }
+        this.setButtonVisibility(button, false);
       }
     };
 

@@ -15,6 +15,10 @@ export class BookmarkButton {
     this.buttonStates = new WeakMap(); // messageElement -> isBookmarked state
   }
 
+  setButtonVisibility(button, visible) {
+    HoverButtonManager.setButtonVisibility(button, visible);
+  }
+
   /**
    * Add bookmark buttons to all messages
    */
@@ -80,8 +84,8 @@ export class BookmarkButton {
     Object.assign(button.style, {
       top: '8px',
       right: '8px',
-      opacity: isBookmarked ? '1' : '0',
     });
+    this.setButtonVisibility(button, isBookmarked);
 
     // Set relative positioning on message
     if (
@@ -153,11 +157,11 @@ export class BookmarkButton {
 
     // Update opacity - bookmarked always visible, otherwise check hover
     if (isBookmarked) {
-      button.style.opacity = '1';
+      this.setButtonVisibility(button, true);
     } else {
       // Check if we're currently hovering
       const isHovering = messageElement.matches(':hover') || button.matches(':hover');
-      button.style.opacity = isHovering ? '1' : '0';
+      this.setButtonVisibility(button, isHovering);
     }
   }
 

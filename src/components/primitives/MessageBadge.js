@@ -16,6 +16,13 @@ export default class MessageBadge {
     this.badgeCache = new WeakMap(); // Track badges by message element
   }
 
+  setBadgeHoverState(badge, hovered) {
+    badge.style.transform = hovered ? 'scale(1.05)' : 'scale(1)';
+    badge.style.boxShadow = hovered
+      ? '0 4px 12px rgba(0, 0, 0, 0.25)'
+      : '0 2px 8px rgba(0, 0, 0, 0.15)';
+  }
+
   /**
    * Create and attach a badge to an element
    * @param {HTMLElement} element - Element to attach badge to
@@ -110,13 +117,11 @@ export default class MessageBadge {
    */
   attachHoverEffects(badge) {
     badge.addEventListener('mouseenter', () => {
-      badge.style.transform = 'scale(1.05)';
-      badge.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.25)';
+      this.setBadgeHoverState(badge, true);
     });
 
     badge.addEventListener('mouseleave', () => {
-      badge.style.transform = 'scale(1)';
-      badge.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+      this.setBadgeHoverState(badge, false);
     });
   }
 
