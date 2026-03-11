@@ -45,9 +45,9 @@ export default class BasePanel {
     this.panel = document.createElement('div');
     this.panel.id = this.id;
     this.panel.className = cn(
-      'claude-productivity-panel',
-      'fixed flex flex-col rounded-xl bg-bg-000 shadow-xl'
+      'fixed flex-col rounded-xl border border-border-200 bg-bg-000 shadow-xl overflow-hidden'
     );
+    this.panel.dataset.panelId = this.id;
 
     // Only apply positioning and size as inline styles
     this.panel.style.right = this.position.right;
@@ -90,8 +90,7 @@ export default class BasePanel {
     // Title
     const title = document.createElement('h3');
     title.textContent = this.title;
-    title.className = textClass({ size: 'base', weight: 'semibold' });
-    title.style.margin = '0';
+    title.className = cn(textClass({ size: 'base', weight: 'semibold' }), 'm-0');
     header.appendChild(title);
 
     // Close button
@@ -103,9 +102,8 @@ export default class BasePanel {
       'text-text-500 hover:text-text-000',
       'flex items-center justify-center',
       'transition-colors cursor-pointer',
-      'border-0'
+      'border-0 text-2xl leading-none'
     );
-    closeBtn.style.fontSize = '24px';
 
     closeBtn.addEventListener('click', () => this.hide());
     header.appendChild(closeBtn);
@@ -118,7 +116,7 @@ export default class BasePanel {
    */
   createContent() {
     const content = document.createElement('div');
-    content.className = cn('panel-content', panelSectionClass('content'));
+    content.className = cn('panel-content', panelSectionClass('content'), 'min-h-0');
 
     return content;
   }
@@ -163,7 +161,7 @@ export default class BasePanel {
 
     // Render items
     const container = document.createElement('div');
-    container.className = 'panel-items';
+    container.className = 'panel-items flex flex-col gap-2';
 
     items.forEach((item, index) => {
       const element = renderItem(item, index);

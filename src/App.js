@@ -168,12 +168,10 @@ class ClaudeProductivityApp {
 
     const { default: asyncManager } = await import('./managers/AsyncManager.js');
     const { default: domManager } = await import('./managers/DOMManager.js');
-    const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
 
     if (settings.general?.debugMode) {
       asyncManager.setDebugMode(true);
       domManager.setDebugMode(true);
-      buttonFactory.setDebugMode(true);
       settingsCache.setDebugMode(true);
       navigationInterceptor.setDebugMode(true);
       domReadyChecker.setDebugMode(true);
@@ -750,12 +748,10 @@ class ClaudeProductivityApp {
     try {
       const { default: asyncManager } = await import('./managers/AsyncManager.js');
       const { default: domManager } = await import('./managers/DOMManager.js');
-      const { default: buttonFactory } = await import('./factories/ButtonFactory.js');
       const { default: settingsCache } = await import('./core/SettingsCache.js');
 
       asyncManager.destroy();
       domManager.destroy();
-      buttonFactory.clearAll();
       settingsCache.clear();
     } catch (error) {
       console.error('[App] Error cleaning up managers:', error);

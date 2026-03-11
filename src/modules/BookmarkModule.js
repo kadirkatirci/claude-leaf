@@ -464,7 +464,7 @@ class BookmarkModule extends BaseModule {
         result: 'found',
         message_index: result.index,
       });
-      if (this.panel?.elements?.panel?.style.display === 'flex') {
+      if (this.panel?.isVisible) {
         this.panel.toggle();
       }
     } else if (!fromUrl && confirm('Bookmarked message not found. Delete?')) {

@@ -173,10 +173,6 @@ class ThemeManager {
         }
       }
 
-      .claude-productivity-panel {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-
       @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -213,36 +209,6 @@ class ThemeManager {
         scroll-margin-top: 100px;
       }
 
-      .claude-productivity-button {
-        background: var(--claude-productivity-primary);
-        opacity: var(--claude-productivity-opacity);
-        transition: all 0.3s ease;
-      }
-
-      .claude-productivity-button:hover {
-        opacity: 1;
-        transform: scale(1.05);
-        background: var(--claude-productivity-hover);
-      }
-
-      .claude-productivity-panel ::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .claude-productivity-panel ::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.05);
-        border-radius: 4px;
-      }
-
-      .claude-productivity-panel ::-webkit-scrollbar-thumb {
-        background: var(--claude-productivity-primary);
-        opacity: 0.5;
-        border-radius: 4px;
-      }
-
-      .claude-productivity-panel ::-webkit-scrollbar-thumb:hover {
-        opacity: 0.8;
-      }
     `;
   }
 
