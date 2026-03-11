@@ -183,6 +183,43 @@ export class BookmarkManagerModal {
     return sectionMap[section] || '';
   }
 
+  getComponentClass(section, options = {}) {
+    const { active = false, selected = false } = options;
+    const sectionMap = {
+      categoryItem: cn(
+        'flex items-center px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors group',
+        active
+          ? 'bg-accent-main-100/10 text-accent-main-100 font-medium'
+          : 'text-text-200 hover:bg-bg-200 hover:text-text-000'
+      ),
+      categoryDot: 'w-2.5 h-2.5 rounded-full mr-3',
+      categoryDelete:
+        'ml-2 p-1 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded opacity-0 group-hover:opacity-100 transition-opacity',
+      categoryCount: 'text-xs opacity-60 ml-2',
+      card: 'bg-bg-000 border border-border-200 rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col h-[280px] cursor-pointer group',
+      sectionHeader: 'p-4 border-b border-border-100 bg-bg-50 flex items-center justify-between',
+      sectionFooter: 'p-3 border-t border-border-100 bg-bg-50 flex items-center justify-between',
+      cardBody: 'p-4 flex-1 overflow-hidden relative',
+      rowGap2: 'flex items-center gap-2',
+      rowGap3: 'flex items-center gap-3',
+      actionRow: 'flex gap-1',
+      listItem: cn(
+        'p-3 cursor-pointer border-l-2 transition-colors',
+        selected
+          ? 'bg-accent-main-100/10 border-accent-main-100'
+          : 'border-transparent hover:bg-bg-100'
+      ),
+      listMetaRow: 'flex items-center justify-between text-xs text-text-300',
+      contentDetail:
+        'prose max-w-none font-claude-message text-text-000 whitespace-pre-wrap break-words',
+      contentFull:
+        'prose max-w-3xl mx-auto font-claude-message text-text-000 whitespace-pre-wrap break-words',
+      dateLabel: 'text-sm text-text-300',
+    };
+
+    return sectionMap[section] || '';
+  }
+
   setHidden(element, hidden) {
     if (!element) {
       return;
@@ -288,6 +325,65 @@ export class BookmarkManagerModal {
     const tmp = document.createElement('div');
     tmp.innerHTML = bookmark.fullText;
     return tmp.textContent.trim().substring(0, maxLength);
+  }
+
+  getBookmarkCategory(bookmark) {
+    return (
+      this.state.categories.find(c => c.id === bookmark.categoryId) ||
+      this.state.categories.find(c => c.id === 'default') || {
+        name: 'Unknown',
+        color: '#ccc',
+      }
+    );
+  }
+
+  getBookmarkDate(bookmark) {
+    return new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+  }
+
+  getBookmarkConversationName(bookmark) {
+    try {
+      const urlPart = bookmark.conversationUrl.split('/').pop();
+      return `${urlPart.substring(0, 8)}...`;
+    } catch {
+      return 'Conversation';
+    }
+  }
+
+  removeBookmarkContentArtifacts(contentRoot) {
+    const selectors = [
+      '.claude-expand-footer',
+      '.claude-expand-button-container',
+      '.claude-expand-btn',
+      '.absolute.bottom-0.right-2',
+      '[data-testid="action-bar-copy"]',
+      'button[aria-label="Copy"]',
+      'button[aria-label="Give positive feedback"]',
+      'button[aria-label="Give negative feedback"]',
+      '.group\\/btn',
+    ];
+
+    const toRemove = contentRoot.querySelectorAll(selectors.join(', '));
+    toRemove.forEach(el => el.remove());
+  }
+
+  createBookmarkContentNode(bookmark, variant = 'detail') {
+    const contentHtml = DOMUtils.createElement('div', {
+      className:
+        variant === 'full'
+          ? this.getComponentClass('contentFull')
+          : this.getComponentClass('contentDetail'),
+    });
+
+    const text = bookmark.fullText || bookmark.previewText || '';
+    if (text.trim().startsWith('<') && text.includes('>')) {
+      contentHtml.innerHTML = text;
+    } else {
+      contentHtml.textContent = text;
+    }
+
+    this.removeBookmarkContentArtifacts(contentHtml);
+    return contentHtml;
   }
 
   // --- UI Creation ---
@@ -666,7 +762,7 @@ export class BookmarkManagerModal {
   createCategoryItem(category, count) {
     const isActive = this.state.activeCategory === category.id;
     const item = DOMUtils.createElement('div', {
-      className: `flex items-center px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors group ${isActive ? 'bg-accent-main-100/10 text-accent-main-100 font-medium' : 'text-text-200 hover:bg-bg-200 hover:text-text-000'}`,
+      className: this.getComponentClass('categoryItem', { active: isActive }),
       onclick: () => {
         this.state.activeCategory = category.id;
         const titleEl = this.activeModal.element.querySelector('#bm-current-category-title');
@@ -686,7 +782,7 @@ export class BookmarkManagerModal {
     });
 
     const dot = DOMUtils.createElement('div', {
-      className: 'w-2.5 h-2.5 rounded-full mr-3',
+      className: this.getComponentClass('categoryDot'),
       style: { backgroundColor: category.color || '#ccc' },
     });
 
@@ -701,8 +797,7 @@ export class BookmarkManagerModal {
     // Delete Button (Before Badge)
     if (category.id !== 'all' && category.id !== 'default' && !category.isDefault) {
       const delBtn = DOMUtils.createElement('button', {
-        className:
-          'ml-2 p-1 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded opacity-0 group-hover:opacity-100 transition-opacity',
+        className: this.getComponentClass('categoryDelete'),
         title: 'Delete Category',
         onclick: e => {
           e.stopPropagation();
@@ -715,7 +810,7 @@ export class BookmarkManagerModal {
 
     // Badge (Last element to align right)
     const badge = DOMUtils.createElement('span', {
-      className: 'text-xs opacity-60 ml-2',
+      className: this.getComponentClass('categoryCount'),
       textContent: count,
     });
     item.appendChild(badge);
@@ -768,12 +863,10 @@ export class BookmarkManagerModal {
   }
 
   createBookmarkCard(bookmark) {
-    const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
-      this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
+    const category = this.getBookmarkCategory(bookmark);
 
     const card = DOMUtils.createElement('div', {
-      className:
-        'bg-bg-000 border border-border-200 rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col h-[280px] cursor-pointer group',
+      className: this.getComponentClass('card'),
       onclick: e => {
         if (!e.target.closest('button')) {
           trackEvent('bookmark_manager_bookmark_open', {
@@ -786,13 +879,13 @@ export class BookmarkManagerModal {
       },
     });
 
-    const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+    const dateStr = this.getBookmarkDate(bookmark);
     const header = DOMUtils.createElement('div', {
-      className: 'p-4 border-b border-border-100 flex justify-between items-center bg-bg-50',
+      className: this.getComponentClass('sectionHeader'),
     });
 
     const headerLeft = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-2',
+      className: this.getComponentClass('rowGap2'),
     });
     headerLeft.appendChild(this.createSenderBadge(bookmark.sender, 'px-1.5 py-0.5'));
     headerLeft.appendChild(this.createCategoryBadge(category, 'px-2 py-0.5 text-[11px]'));
@@ -806,7 +899,7 @@ export class BookmarkManagerModal {
     header.appendChild(headerDate);
 
     const body = DOMUtils.createElement('div', {
-      className: 'p-4 flex-1 overflow-hidden relative',
+      className: this.getComponentClass('cardBody'),
     });
 
     // Preview text extraction (strip HTML tags if fullText is HTML)
@@ -826,20 +919,14 @@ export class BookmarkManagerModal {
     body.appendChild(fade);
 
     const footer = DOMUtils.createElement('div', {
-      className: 'p-3 border-t border-border-100 bg-bg-50 flex justify-between items-center',
+      className: this.getComponentClass('sectionFooter'),
     });
 
-    let convoName = 'Conversation';
-    try {
-      const urlPart = bookmark.conversationUrl.split('/').pop();
-      convoName = urlPart.substring(0, 8) + '...';
-    } catch {
-      // URL parsing failed, use default
-    }
+    const loc = this.createConversationLocation(this.getBookmarkConversationName(bookmark));
 
-    const loc = this.createConversationLocation(convoName);
-
-    const actions = DOMUtils.createElement('div', { className: 'flex gap-1' });
+    const actions = DOMUtils.createElement('div', {
+      className: this.getComponentClass('actionRow'),
+    });
 
     const gotoBtn = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('ghost'),
@@ -877,15 +964,10 @@ export class BookmarkManagerModal {
   // --- List View Methods ---
 
   createBookmarkListItem(bookmark, isSelected) {
-    const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
-      this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
+    const category = this.getBookmarkCategory(bookmark);
 
     const item = DOMUtils.createElement('div', {
-      className: `p-3 cursor-pointer border-l-2 transition-colors ${
-        isSelected
-          ? 'bg-accent-main-100/10 border-accent-main-100'
-          : 'border-transparent hover:bg-bg-100'
-      }`,
+      className: this.getComponentClass('listItem', { selected: isSelected }),
     });
 
     // Use addEventListener for reliable click handling
@@ -895,7 +977,7 @@ export class BookmarkManagerModal {
 
     // Top row: Sender badge + Preview
     const topRow = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-2 mb-1',
+      className: cn(this.getComponentClass('rowGap2'), 'mb-1'),
     });
 
     const senderBadge = this.createSenderBadge(bookmark.sender, 'px-1.5 py-0.5 shrink-0');
@@ -913,12 +995,12 @@ export class BookmarkManagerModal {
 
     // Bottom row: Category + Date
     const bottomRow = DOMUtils.createElement('div', {
-      className: 'flex items-center justify-between text-xs text-text-300',
+      className: this.getComponentClass('listMetaRow'),
     });
 
     const categoryBadge = this.createCategoryBadge(category, 'px-1.5 py-0.5 text-[10px]');
 
-    const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+    const dateStr = this.getBookmarkDate(bookmark);
     const dateSpan = DOMUtils.createElement('span', {
       textContent: dateStr,
     });
@@ -989,25 +1071,23 @@ export class BookmarkManagerModal {
     }
 
     // Build header
-    const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
-      this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
-
-    const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
+    const category = this.getBookmarkCategory(bookmark);
+    const dateStr = this.getBookmarkDate(bookmark);
 
     DOMUtils.clearElement(header);
 
     const headerLeft = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-3',
+      className: this.getComponentClass('rowGap3'),
     });
     headerLeft.appendChild(this.createSenderBadge(bookmark.sender, 'px-2 py-1 text-xs'));
     headerLeft.appendChild(this.createCategoryBadge(category, 'px-2 py-1 text-xs'));
 
     const headerRight = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-3',
+      className: this.getComponentClass('rowGap3'),
     });
     headerRight.appendChild(
       DOMUtils.createElement('span', {
-        className: 'text-sm text-text-300',
+        className: this.getComponentClass('dateLabel'),
         textContent: dateStr,
       })
     );
@@ -1030,35 +1110,7 @@ export class BookmarkManagerModal {
 
     // Build body content
     DOMUtils.clearElement(body);
-    const contentHtml = DOMUtils.createElement('div', {
-      className:
-        'prose max-w-none font-claude-message text-text-000 whitespace-pre-wrap break-words',
-    });
-
-    const text = bookmark.fullText || bookmark.previewText || '';
-    if (text.trim().startsWith('<') && text.includes('>')) {
-      contentHtml.innerHTML = text;
-    } else {
-      contentHtml.textContent = text;
-    }
-
-    // Clean up UI artifacts
-    const selectors = [
-      '.claude-expand-footer',
-      '.claude-expand-button-container',
-      '.claude-expand-btn',
-      '.absolute.bottom-0.right-2',
-      '[data-testid="action-bar-copy"]',
-      'button[aria-label="Copy"]',
-      'button[aria-label="Give positive feedback"]',
-      'button[aria-label="Give negative feedback"]',
-      '.group\\/btn',
-    ];
-
-    const toRemove = contentHtml.querySelectorAll(selectors.join(', '));
-    toRemove.forEach(el => el.remove());
-
-    body.appendChild(contentHtml);
+    body.appendChild(this.createBookmarkContentNode(bookmark));
   }
 
   getFilteredBookmarks() {
@@ -1334,44 +1386,6 @@ export class BookmarkManagerModal {
 
     DOMUtils.clearElement(container);
 
-    // Render Content
-    const contentHtml = DOMUtils.createElement('div', {
-      className:
-        'prose max-w-3xl mx-auto font-claude-message text-text-000 whitespace-pre-wrap break-words',
-    });
-
-    const text = bookmark.fullText || bookmark.previewText || '';
-    if (text.trim().startsWith('<') && text.includes('>')) {
-      contentHtml.innerHTML = text;
-    } else {
-      contentHtml.textContent = text;
-    }
-
-    // Clean up content
-    // Remove 'claude-expand-footer' and other specific artifacts
-    // We use a comprehensive list of selectors to catch all unwanted UI elements
-    const selectors = [
-      '.claude-expand-footer',
-      '.claude-expand-button-container',
-      '.claude-expand-btn',
-      '.absolute.bottom-0.right-2',
-      '[data-testid="action-bar-copy"]',
-      'button[aria-label="Copy"]',
-      'button[aria-label="Give positive feedback"]',
-      'button[aria-label="Give negative feedback"]',
-      '.group\\/btn', // Matches the button group class seen in user snippet
-    ];
-
-    const toRemove = contentHtml.querySelectorAll(selectors.join(', '));
-    toRemove.forEach(el => {
-      el.remove();
-    });
-
-    // Also remove any elements purely for layout of these buttons if they are left empty or just specific containers
-    // The user snippet showed the copy button container has "absolute bottom-0 right-2"
-    const remainingOverlays = contentHtml.querySelectorAll('.absolute.bottom-0.right-2');
-    remainingOverlays.forEach(el => el.remove());
-
-    container.appendChild(contentHtml);
+    container.appendChild(this.createBookmarkContentNode(bookmark, 'full'));
   }
 }
