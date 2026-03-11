@@ -150,9 +150,9 @@ export class BookmarkManagerModal {
       secondary:
         'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
       primary:
-        'px-3 py-1.5 bg-accent-main-100 text-white hover:opacity-90 rounded text-sm flex items-center gap-2 transition-colors',
+        'px-3 py-1.5 clp-button-primary hover:opacity-90 rounded text-sm flex items-center gap-2 transition-colors',
       primaryLg:
-        'px-4 py-2 bg-accent-main-100 text-white hover:opacity-90 rounded-lg text-sm flex items-center gap-2 transition-colors',
+        'px-4 py-2 clp-button-primary hover:opacity-90 rounded-lg text-sm flex items-center gap-2 transition-colors',
       sidebarCreate:
         'm-3 p-2 bg-bg-000 border border-border-300 border-dashed rounded-lg text-text-300 hover:text-accent-main-100 hover:border-accent-main-100 hover:bg-bg-000 transition-all flex items-center justify-center gap-2 text-sm',
     };
@@ -1317,7 +1317,7 @@ export class BookmarkManagerModal {
     });
     const saveBtn = DOMUtils.createElement('button', {
       id: 'btn-cat-save',
-      className: 'px-3 py-1.5 bg-accent-main-100 text-white rounded text-sm hover:opacity-90',
+      className: 'px-3 py-1.5 clp-button-primary rounded text-sm hover:opacity-90',
       textContent: 'Create',
     });
     actions.appendChild(cancelBtn);

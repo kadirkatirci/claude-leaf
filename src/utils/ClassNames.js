@@ -26,7 +26,7 @@ export const ClaudeClasses = {
     fixed:
       'z-[1] size-9 border-0.5 overflow-hidden !rounded-full p-1 shadow-md hover:shadow-lg bg-bg-000/80 hover:bg-bg-000 backdrop-blur transition-opacity duration-200 border-border-300 opacity-100 pointer-events-auto',
     primary:
-      'px-3 py-1.5 rounded-md bg-accent-main-100 hover:bg-accent-main-200 text-white text-sm font-semibold shadow-sm hover:shadow-md hover:scale-105',
+      'px-3 py-1.5 rounded-md clp-button-primary text-sm font-semibold shadow-sm hover:shadow-md hover:scale-105',
     secondary:
       'px-3 py-1.5 rounded-md bg-bg-100 hover:bg-bg-200 text-text-000 text-sm transition-colors',
     danger: 'px-3 py-1.5 rounded text-white text-sm transition-colors', // Note: backgroundColor must be set via inline style (#ef4444)
@@ -97,7 +97,7 @@ export const ClaudeClasses = {
   badge: {
     base: 'inline-flex items-center justify-center font-semibold leading-none',
     primary: 'bg-bg-200 text-text-000',
-    accent: 'bg-accent-main-100 text-white',
+    accent: 'clp-badge-accent',
     neutral: 'bg-bg-200 text-text-000',
     error: 'bg-red-500 text-white',
     // Smaller counter for fixed buttons (navigation, bookmarks, etc.)

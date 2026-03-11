@@ -5,13 +5,72 @@
 
 :root {
   --clp-accent-bg: var(--claude-productivity-primary, #cc785c);
+  --clp-accent-bg-hover: var(--claude-productivity-primary-hover, var(--clp-accent-bg));
   --clp-accent-fg: #fff;
+  --clp-accent-bg-soft-10: color-mix(in srgb, var(--clp-accent-bg) 10%, transparent);
+  --clp-accent-border-soft-20: color-mix(in srgb, var(--clp-accent-bg) 20%, transparent);
+  --clp-accent-border-soft-50: color-mix(in srgb, var(--clp-accent-bg) 50%, transparent);
 }
 
 /* Only keep essential overrides that can't be done via classes */
 .claude-nav-btn {
   /* Native classes handle most styling, but we need to ensure overflow:visible for counter */
   overflow: visible !important;
+}
+
+/* Repo-owned accent compatibility layer for remaining utility-style class usage */
+.bg-accent-main-100 {
+  background-color: var(--clp-accent-bg);
+}
+
+.bg-accent-main-100\/10 {
+  background-color: var(--clp-accent-bg-soft-10);
+}
+
+.text-accent-main-100 {
+  color: var(--clp-accent-bg);
+}
+
+.border-accent-main-100 {
+  border-color: var(--clp-accent-bg);
+}
+
+.border-accent-main-100\/20 {
+  border-color: var(--clp-accent-border-soft-20);
+}
+
+.hover\:bg-accent-main-200:hover {
+  background-color: var(--clp-accent-bg-hover);
+}
+
+.hover\:text-accent-main-100:hover {
+  color: var(--clp-accent-bg);
+}
+
+.hover\:border-accent-main-100:hover {
+  border-color: var(--clp-accent-bg);
+}
+
+.hover\:border-accent-main-100\/50:hover {
+  border-color: var(--clp-accent-border-soft-50);
+}
+
+.focus\:border-accent-main-100:focus {
+  border-color: var(--clp-accent-bg);
+}
+
+.clp-button-primary {
+  background-color: var(--clp-accent-bg);
+  color: var(--clp-accent-fg);
+}
+
+.clp-button-primary:hover {
+  background-color: var(--clp-accent-bg-hover);
+}
+
+.clp-badge-accent {
+  background-color: var(--clp-accent-bg);
+  color: var(--clp-accent-fg);
 }
 
 .clp-counter-badge {

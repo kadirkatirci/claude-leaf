@@ -53,9 +53,7 @@ export class BookmarkButton {
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
     // Claude's native button classes
-    const bgClass = isBookmarked
-      ? 'bg-accent-main-100 hover:bg-accent-main-200'
-      : 'bg-bg-100 hover:bg-bg-200';
+    const bgClass = isBookmarked ? 'clp-button-primary' : 'bg-bg-100 hover:bg-bg-200';
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
@@ -128,9 +126,7 @@ export class BookmarkButton {
     button.setAttribute('data-bookmarked', isBookmarked ? 'true' : 'false');
 
     // Update native classes
-    const bgClass = isBookmarked
-      ? 'bg-accent-main-100 hover:bg-accent-main-200'
-      : 'bg-bg-100 hover:bg-bg-200';
+    const bgClass = isBookmarked ? 'clp-button-primary' : 'bg-bg-100 hover:bg-bg-200';
     button.className = cn(
       'claude-bookmark-btn',
       'absolute',
