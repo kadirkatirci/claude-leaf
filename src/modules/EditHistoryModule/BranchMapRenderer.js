@@ -219,6 +219,42 @@ class BranchMapRenderer {
     return fragment;
   }
 
+  setTooltipVisibility(visible) {
+    if (!this.tooltip) {
+      return;
+    }
+    this.tooltip.style.opacity = visible ? '1' : '0';
+  }
+
+  setTooltipCoordinates(x, y) {
+    if (!this.tooltip) {
+      return;
+    }
+    this.tooltip.style.left = `${x}px`;
+    this.tooltip.style.top = `${y}px`;
+  }
+
+  setSvgCursor(cursor) {
+    if (!this.svg) {
+      return;
+    }
+    this.svg.style.cursor = cursor;
+  }
+
+  setNodeCursor(nodeGroup, cursor = 'default') {
+    if (!nodeGroup) {
+      return;
+    }
+    nodeGroup.style.cursor = cursor;
+  }
+
+  setNodeHoverState(nodeRect, hovered) {
+    if (!nodeRect) {
+      return;
+    }
+    nodeRect.style.filter = hovered ? 'brightness(1.15)' : '';
+  }
+
   render() {
     debugLog('editHistory', 'BranchMapRenderer starting render with data:', this.data);
 
@@ -357,6 +393,7 @@ class BranchMapRenderer {
     this.svg.setAttribute('height', '100%');
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     Object.assign(this.svg.style, this.getElementStyles('svg'));
+    this.setSvgCursor('default');
     this.svg.style.minWidth = `${width}px`;
     this.svg.style.minHeight = `${height}px`;
 
@@ -385,7 +422,7 @@ class BranchMapRenderer {
 
     // Calculate position
     this.positionTooltip(event);
-    this.tooltip.style.opacity = '1';
+    this.setTooltipVisibility(true);
   }
 
   /**
@@ -420,15 +457,14 @@ class BranchMapRenderer {
       y = padding;
     }
 
-    this.tooltip.style.left = `${x}px`;
-    this.tooltip.style.top = `${y}px`;
+    this.setTooltipCoordinates(x, y);
   }
 
   /**
    * Hide tooltip
    */
   hideTooltip() {
-    this.tooltip.style.opacity = '0';
+    this.setTooltipVisibility(false);
   }
 
   renderStartNode() {
@@ -508,7 +544,7 @@ class BranchMapRenderer {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
     g.setAttribute('class', 'node');
-    g.style.cursor = 'default';
+    this.setNodeCursor(g);
 
     const color = this.colorMap.get(node.containerId) || '#6366f1';
 
@@ -533,7 +569,7 @@ class BranchMapRenderer {
 
     // Hover effects and tooltip
     g.addEventListener('mouseenter', e => {
-      rect.style.filter = 'brightness(1.15)';
+      this.setNodeHoverState(rect, true);
       this.showTooltip(node, e);
     });
 
@@ -542,7 +578,7 @@ class BranchMapRenderer {
     });
 
     g.addEventListener('mouseleave', () => {
-      rect.style.filter = '';
+      this.setNodeHoverState(rect, false);
       this.hideTooltip();
     });
 
@@ -740,7 +776,7 @@ class BranchMapRenderer {
         isPanning = true;
         startX = e.clientX - transform.x;
         startY = e.clientY - transform.y;
-        this.svg.style.cursor = 'grabbing';
+        this.setSvgCursor('grabbing');
       }
     });
 
@@ -758,7 +794,7 @@ class BranchMapRenderer {
 
     document.addEventListener('mouseup', () => {
       isPanning = false;
-      this.svg.style.cursor = 'default';
+      this.setSvgCursor('default');
     });
 
     // Note: passive:false is intentional - we need preventDefault() to block page scroll during SVG zoom
