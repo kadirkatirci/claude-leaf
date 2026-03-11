@@ -1,9 +1,6 @@
 /**
  * DOMUtils-Core - Core DOM utilities for Claude interface
  *
- * v2.1.0 - Refactored to use NavigationInterceptor
- * v2.1.1 - Added MessageCache for performance optimization
- *
  * Handles message finding, visibility checks, and page detection.
  * Uses NavigationInterceptor for consistent page type detection.
  * Uses MessageCache to prevent redundant DOM queries.
@@ -15,7 +12,7 @@ import { debugLog } from '../config/debug.js';
 
 const DOMUtilsCore = {
   /**
-   * Initialize - now minimal as NavigationInterceptor handles most setup
+   * Initialize DOM utilities.
    */
   init() {
     // Setup MessageCache with our findActualMessages function

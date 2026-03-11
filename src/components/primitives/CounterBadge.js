@@ -2,8 +2,6 @@
  * CounterBadge Component
  * Centralized badge/counter creation for all modules
  * Uses Claude native classes exclusively
- *
- * v2.2.2 - Added optional shape support for fixed button counters
  */
 
 import { ClaudeClasses, cn, counterBadgeClass } from '../../utils/ClassNames.js';

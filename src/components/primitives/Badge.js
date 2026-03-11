@@ -2,8 +2,6 @@
  * Universal Badge Component
  * Replaces all duplicate badge creation code across the extension
  * Used for counters, indicators, version badges, emoji markers, etc.
- *
- * REFACTORED: Uses ONLY Claude native classes, no inline styles
  */
 
 import {

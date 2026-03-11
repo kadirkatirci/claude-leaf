@@ -1,8 +1,6 @@
 /**
  * NavigationInterceptor - Unified SPA Navigation Management
  *
- * v2.3.0 - Robust interception that survives other overrides
- *
  * Uses multiple strategies to detect navigation:
  * 1. History API interception with protection
  * 2. URL polling as fallback

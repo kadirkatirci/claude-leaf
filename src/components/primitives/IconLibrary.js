@@ -59,7 +59,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get edit/pencil icon (NEW - replaces ✏️)
+   * Get edit/pencil icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -72,7 +72,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get pin/marker icon (NEW - replaces 📍)
+   * Get pin/marker icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -86,7 +86,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get arrow up double icon (NEW - replaces ⇈)
+   * Get arrow up double icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -99,7 +99,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get arrow up icon (NEW - replaces ↑)
+   * Get arrow up icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -111,7 +111,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get arrow down icon (NEW - replaces ↓)
+   * Get arrow down icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -123,7 +123,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get navigation icon (NEW - replaces 🧭)
+   * Get navigation icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -136,7 +136,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get collapse icon (NEW - replaces 📦)
+   * Get collapse icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -148,7 +148,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get expand icon (NEW - replaces 📂)
+   * Get expand icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)
    * @returns {string} SVG markup
@@ -175,7 +175,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get menu collapse icon (NEW - replaces 📄)
+   * Get menu collapse icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -190,7 +190,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get arrow up solid icon (NEW - replaces 📑)
+   * Get arrow up solid icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -202,7 +202,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get settings icon (NEW - replaces ⚙️)
+   * Get settings icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -216,7 +216,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get download icon (NEW - replaces 📤)
+   * Get download icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -229,7 +229,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get upload icon (NEW - replaces 📥)
+   * Get upload icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -242,7 +242,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get delete icon (NEW - replaces 🗑️)
+   * Get delete icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -257,7 +257,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get add icon (NEW - replaces ➕)
+   * Get add icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -270,7 +270,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get refresh icon (NEW - replaces 🔄)
+   * Get refresh icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -282,7 +282,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get checkmark icon (NEW - replaces 💾)
+   * Get checkmark icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup
@@ -295,7 +295,7 @@ export default class IconLibrary {
   }
 
   /**
-   * Get map icon (NEW - replaces 🗺️)
+   * Get map icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
    * @returns {string} SVG markup

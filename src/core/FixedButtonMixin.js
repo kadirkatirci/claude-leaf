@@ -1,8 +1,6 @@
 /**
  * FixedButtonMixin - Reusable mixin for modules with fixed sidebar buttons
  * Provides standardized visibility handling and button creation
- *
- * v2.3.0 - Added loading state (dimmed until data loads)
  */
 
 import VisibilityManager from '../utils/VisibilityManager.js';

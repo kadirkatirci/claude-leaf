@@ -1,7 +1,5 @@
 /**
  * VisibilityManager - Centralized visibility management for all UI elements
- *
- * v2.3.0 - Improved navigation event handling
  */
 
 import { debugLog } from '../config/debug.js';

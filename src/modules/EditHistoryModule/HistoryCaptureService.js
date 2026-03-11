@@ -1,7 +1,6 @@
 /**
  * HistoryCaptureService - Captures edit history to store
  *
- * Replaces legacy EditScanner.
  * Focuses ONLY on data capture logic, separated from detection loop.
  */
 import DOMUtils from '../../utils/DOMUtils.js';
