@@ -10,6 +10,9 @@
  * - Element caching for frequently accessed elements
  * - Event-based element detection
  * - Centralized DOM querying and manipulation
+ *
+ * @deprecated This manager is kept only for compatibility and removal planning.
+ * New code should use the active DOM/observer abstractions already used by the app.
  */
 
 import { debugLog } from '../config/debug.js';
@@ -564,6 +567,6 @@ class DOMManager {
   }
 }
 
-// Export as singleton
+// Deprecated singleton kept for compatibility while removal is staged.
 const domManager = new DOMManager();
 export default domManager;

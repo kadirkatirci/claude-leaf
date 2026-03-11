@@ -11,6 +11,9 @@
  * - Event-driven element waiting (no polling)
  * - Promise deduplication
  * - Retry logic with exponential backoff
+ *
+ * @deprecated This manager is kept only for compatibility and removal planning.
+ * New code should use the active local utilities already used by the app.
  */
 
 import { debugLog } from '../config/debug.js';
@@ -453,6 +456,6 @@ class AsyncManager {
   }
 }
 
-// Export as singleton
+// Deprecated singleton kept for compatibility while removal is staged.
 const asyncManager = new AsyncManager();
 export default asyncManager;
