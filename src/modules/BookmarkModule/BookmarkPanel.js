@@ -61,11 +61,7 @@ export class BookmarkPanel extends BasePanel {
       size: 'sm',
       icon: IconLibrary.bookmark(false),
       text: '',
-      style: {
-        display: 'none', // Initially hidden
-        marginLeft: '8px',
-        position: 'relative',
-      },
+      className: 'hidden ml-2 relative',
       onClick: onToggle,
     });
 
@@ -76,13 +72,9 @@ export class BookmarkPanel extends BasePanel {
       variant: 'error',
       size: 'sm',
       position: { top: -6, right: -6 },
-      style: {
-        fontSize: '10px',
-        fontWeight: '700',
-      },
+      className: 'text-[10px] font-bold',
     });
 
-    toggleBtn.style.position = 'relative';
     toggleBtn.appendChild(counter);
 
     return toggleBtn;
@@ -209,13 +201,7 @@ export class BookmarkPanel extends BasePanel {
     // Show/hide entire button based on count
     if (toggleBtn) {
       const shouldDisplay = count > 0;
-      const currentDisplay = toggleBtn.style.display;
-      const targetDisplay = shouldDisplay ? 'inline-flex' : 'none';
-
-      // Only update if display value needs to change
-      if (currentDisplay !== targetDisplay) {
-        toggleBtn.style.display = targetDisplay;
-      }
+      toggleBtn.classList.toggle('hidden', !shouldDisplay);
     }
   }
 

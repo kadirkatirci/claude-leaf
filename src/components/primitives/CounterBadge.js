@@ -6,7 +6,7 @@
  * v2.2.2 - Added optional shape support for fixed button counters
  */
 
-import { ClaudeClasses, cn } from '../../utils/ClassNames.js';
+import { ClaudeClasses, cn, counterBadgeClass } from '../../utils/ClassNames.js';
 
 /**
  * CounterBadge Class
@@ -21,6 +21,7 @@ export class CounterBadge {
    * @param {Object} options.position - Position offsets {top, right, bottom, left}
    * @param {'auto'|'circle'} options.shape - Badge shape mode
    * @param {string} options.className - Additional CSS classes
+   * @param {boolean} options.hidden - Start hidden
    * @returns {HTMLElement}
    */
   static create(options = {}) {
@@ -31,6 +32,7 @@ export class CounterBadge {
       shape = 'auto',
       className = '',
       style = {},
+      hidden = false,
     } = options;
 
     // Create badge element
@@ -41,15 +43,14 @@ export class CounterBadge {
     }
 
     // Apply Claude native classes
-    badge.className = cn(ClaudeClasses.badge.counter, ClaudeClasses.util.transition, className);
+    badge.className = cn(
+      counterBadgeClass({ hidden, shape }),
+      ClaudeClasses.util.transition,
+      className
+    );
 
     // Apply position styles (minimal inline styles for positioning only)
     Object.assign(badge.style, this.getPositionStyles(position));
-
-    // Optional shape normalization for counters on fixed buttons
-    if (shape === 'circle') {
-      Object.assign(badge.style, this.getShapeStyles(shape));
-    }
 
     // Apply custom styles (e.g., display: 'none' for initially hidden badges)
     if (style && typeof style === 'object') {
@@ -80,7 +81,7 @@ export class CounterBadge {
 
     // Auto-hide if content is 0 or empty
     const shouldHide = !contentStr || contentStr === '0' || contentStr === '0/0';
-    badge.style.display = shouldHide ? 'none' : '';
+    badge.classList.toggle(ClaudeClasses.state.hidden, shouldHide);
   }
 
   /**
@@ -97,24 +98,6 @@ export class CounterBadge {
     });
 
     return styles;
-  }
-
-  /**
-   * Get shape styles for special badge layouts
-   * @private
-   */
-  static getShapeStyles(shape) {
-    if (shape === 'circle') {
-      return {
-        height: '16px',
-        minWidth: '16px',
-        padding: '0',
-        lineHeight: '16px',
-        boxSizing: 'border-box',
-      };
-    }
-
-    return {};
   }
 
   /**
@@ -190,7 +173,7 @@ export class CounterBadge {
     const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
     if (badge) {
-      badge.style.display = 'block';
+      badge.classList.remove(ClaudeClasses.state.hidden);
     }
   }
 
@@ -202,7 +185,7 @@ export class CounterBadge {
     const badge = typeof badgeOrId === 'string' ? document.getElementById(badgeOrId) : badgeOrId;
 
     if (badge) {
-      badge.style.display = 'none';
+      badge.classList.add(ClaudeClasses.state.hidden);
     }
   }
 
@@ -217,10 +200,10 @@ export class CounterBadge {
       return;
     }
 
-    badge.style.animation = 'pulse 0.3s ease-in-out';
+    badge.classList.add(ClaudeClasses.state.pulse);
 
     setTimeout(() => {
-      badge.style.animation = '';
+      badge.classList.remove(ClaudeClasses.state.pulse);
     }, 300);
   }
 }

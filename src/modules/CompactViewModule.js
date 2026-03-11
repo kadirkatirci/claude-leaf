@@ -8,6 +8,7 @@ import IconLibrary from '../components/primitives/IconLibrary.js';
 import VisibilityManager from '../utils/VisibilityManager.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { panelManager } from '../components/PanelManager.js'; // Shared panel
+import { buttonClass } from '../utils/ClassNames.js';
 
 const COMPACT_CONFIG = MODULE_CONSTANTS.compactView;
 
@@ -210,7 +211,7 @@ class CompactViewModule extends BaseModule {
     button.title = tooltip;
 
     // Use Claude's native button classes (size-9 = 36px from buttonClasses)
-    button.className = theme.buttonClasses || '';
+    button.className = theme.buttonClasses || buttonClass('fixed');
 
     // Only set positioning (sizing handled by classes)
     // Removed color: 'white' to allow currentColor in SVGs to adapt to theme

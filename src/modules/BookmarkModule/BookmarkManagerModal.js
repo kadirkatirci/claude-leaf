@@ -2,6 +2,7 @@ import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { bookmarkStore } from '../../stores/index.js';
 import { trackEvent } from '../../analytics/Analytics.js';
+import { cn } from '../../utils/ClassNames.js';
 
 export class BookmarkManagerModal {
   constructor() {
@@ -17,6 +18,12 @@ export class BookmarkManagerModal {
       viewMode: 'grid', // 'grid' | 'list'
       selectedBookmarkId: null, // For list view selection
     };
+  }
+
+  createMarkupNode(markup) {
+    const template = document.createElement('template');
+    template.innerHTML = markup.trim();
+    return template.content.firstElementChild || document.createTextNode('');
   }
 
   async show({ source = 'unknown' } = {}) {
@@ -35,25 +42,13 @@ export class BookmarkManagerModal {
     // Use CSS transitions (not animations) to avoid FOUC flash:
     // Element starts at opacity:0, then transitions to opacity:1 on next frame
     const modal = DOMUtils.createElement('div', {
-      className: 'fixed inset-0 flex items-center justify-center',
-      style: {
-        zIndex: '2147483647',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        opacity: '0',
-        transition: 'opacity 0.2s ease',
-      },
+      className:
+        'fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/60 backdrop-blur-md opacity-0 transition-opacity duration-200',
     });
 
     const content = DOMUtils.createElement('div', {
       className:
-        'bg-bg-000 rounded-xl overflow-hidden shadow-2xl flex flex-row w-full h-[85vh] max-w-[1200px]',
-      style: {
-        opacity: '0',
-        transform: 'translateY(20px)',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
-      },
+        'bg-bg-000 rounded-xl overflow-hidden shadow-2xl flex flex-row w-full h-[85vh] max-w-[1200px] opacity-0 translate-y-5 transition-all duration-300',
     });
 
     // Sidebar
@@ -86,9 +81,10 @@ export class BookmarkManagerModal {
 
     // Trigger transition on next frame (after element is in DOM)
     requestAnimationFrame(() => {
-      modal.style.opacity = '1';
-      content.style.opacity = '1';
-      content.style.transform = 'translateY(0)';
+      modal.classList.remove('opacity-0');
+      modal.classList.add('opacity-100');
+      content.classList.remove('opacity-0', 'translate-y-5');
+      content.classList.add('opacity-100', 'translate-y-0');
     });
 
     // Initial Render
@@ -106,10 +102,11 @@ export class BookmarkManagerModal {
     });
     const { element, content, escHandler } = this.activeModal;
     // Fade out via transition
-    element.style.opacity = '0';
+    element.classList.remove('opacity-100');
+    element.classList.add('opacity-0');
     if (content) {
-      content.style.opacity = '0';
-      content.style.transform = 'translateY(20px)';
+      content.classList.remove('opacity-100', 'translate-y-0');
+      content.classList.add('opacity-0', 'translate-y-5');
     }
     setTimeout(() => {
       element.remove();
@@ -132,6 +129,137 @@ export class BookmarkManagerModal {
     this.renderBookmarks();
   }
 
+  getSegmentButtonClass(isActive, { iconOnly = false } = {}) {
+    return cn(
+      iconOnly
+        ? 'p-1.5 rounded-md transition-all flex items-center justify-center'
+        : 'px-3 py-1 text-xs rounded-md transition-all',
+      isActive
+        ? 'bg-bg-000 text-text-000 shadow-sm font-medium'
+        : 'text-text-300 hover:text-text-100'
+    );
+  }
+
+  getActionButtonClass(variant = 'ghost') {
+    const variantMap = {
+      ghost: 'p-1.5 text-text-300 hover:text-text-000 hover:bg-bg-200 rounded transition-colors',
+      ghostDanger:
+        'p-1.5 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded transition-colors',
+      close:
+        'ml-4 p-2 text-text-300 hover:text-text-000 hover:bg-bg-100 rounded-md transition-colors',
+      secondary:
+        'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
+      primary:
+        'px-3 py-1.5 bg-accent-main-100 text-white hover:opacity-90 rounded text-sm flex items-center gap-2 transition-colors',
+      primaryLg:
+        'px-4 py-2 bg-accent-main-100 text-white hover:opacity-90 rounded-lg text-sm flex items-center gap-2 transition-colors',
+      sidebarCreate:
+        'm-3 p-2 bg-bg-000 border border-border-300 border-dashed rounded-lg text-text-300 hover:text-accent-main-100 hover:border-accent-main-100 hover:bg-bg-000 transition-all flex items-center justify-center gap-2 text-sm',
+    };
+
+    return variantMap[variant] || variantMap.ghost;
+  }
+
+  setHidden(element, hidden) {
+    if (!element) {
+      return;
+    }
+    element.classList.toggle('hidden', hidden);
+  }
+
+  updateSegmentButtons(container, activeId, datasetKey, options = {}) {
+    if (!container) {
+      return;
+    }
+
+    Array.from(container.children).forEach(child => {
+      child.className = this.getSegmentButtonClass(child.dataset[datasetKey] === activeId, options);
+    });
+  }
+
+  createEmptyState(icon, title, description, className = '') {
+    const container = DOMUtils.createElement('div', {
+      className: cn('text-text-300 flex flex-col items-center justify-center', className),
+    });
+
+    const iconEl = DOMUtils.createElement('div', {
+      className: 'text-4xl mb-4',
+      textContent: icon,
+    });
+    const titleEl = DOMUtils.createElement('div', {
+      className: 'text-lg font-medium',
+      textContent: title,
+    });
+
+    container.appendChild(iconEl);
+    container.appendChild(titleEl);
+    if (description) {
+      const descEl = DOMUtils.createElement('div', {
+        className: 'text-sm',
+        textContent: description,
+      });
+      container.appendChild(descEl);
+    }
+    return container;
+  }
+
+  createSenderBadge(sender, className = '') {
+    const isUser = sender === 'user';
+    return DOMUtils.createElement('span', {
+      className: cn(
+        'rounded border text-[10px] font-medium',
+        isUser
+          ? 'bg-text-500/10 text-text-500 border-text-500/20'
+          : 'bg-accent-main-100/10 text-accent-main-100 border-accent-main-100/20',
+        className
+      ),
+      textContent: isUser ? 'User' : 'Claude',
+    });
+  }
+
+  createCategoryBadge(category, className = '') {
+    const badge = DOMUtils.createElement('span', {
+      className: cn('rounded font-medium', className),
+      textContent: category.name,
+    });
+
+    badge.style.backgroundColor = `${category.color}20`;
+    badge.style.color = category.color;
+    return badge;
+  }
+
+  createConversationLocation(conversationName) {
+    const location = DOMUtils.createElement('div', {
+      className: 'text-xs text-text-300 flex items-center gap-1',
+    });
+    location.appendChild(
+      DOMUtils.createElement('span', {
+        className: 'opacity-50',
+        textContent: '📍',
+      })
+    );
+    location.appendChild(
+      DOMUtils.createElement('span', {
+        textContent: conversationName,
+      })
+    );
+    return location;
+  }
+
+  extractPreviewText(bookmark, maxLength = 200) {
+    if (bookmark.previewText) {
+      return bookmark.previewText.substring(0, maxLength);
+    }
+
+    if (!bookmark.fullText) {
+      return '';
+    }
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = bookmark.fullText;
+    return tmp.textContent.trim().substring(0, maxLength);
+  }
+
   // --- UI Creation ---
 
   createSidebar() {
@@ -143,7 +271,13 @@ export class BookmarkManagerModal {
     const header = DOMUtils.createElement('div', {
       className: 'p-4 border-border-200 flex items-center gap-2',
     });
-    header.innerHTML = `${IconLibrary.bookmark(false, 'currentColor', 20)} <span class="font-semibold text-lg">Bookmarks</span>`;
+    header.appendChild(this.createMarkupNode(IconLibrary.bookmark(false, 'currentColor', 20)));
+    header.appendChild(
+      DOMUtils.createElement('span', {
+        className: 'font-semibold text-lg',
+        textContent: 'Bookmarks',
+      })
+    );
 
     // Category List Container
     const listContainer = DOMUtils.createElement('div', {
@@ -153,8 +287,7 @@ export class BookmarkManagerModal {
 
     // New Category Button
     const newBtn = DOMUtils.createElement('button', {
-      className:
-        'm-3 p-2 bg-bg-000 border border-border-300 border-dashed rounded-lg text-text-300 hover:text-accent-main-100 hover:border-accent-main-100 hover:bg-bg-000 transition-all flex items-center justify-center gap-2 text-sm',
+      className: this.getActionButtonClass('sidebarCreate'),
       textContent: '+ New Category',
       onclick: () => {
         trackEvent('bookmark_manager_category_create_open', {
@@ -206,14 +339,12 @@ export class BookmarkManagerModal {
 
     filterOptions.forEach(opt => {
       const btn = DOMUtils.createElement('button', {
-        className: `px-3 py-1 text-xs rounded-md transition-all ${this.state.activeSenderFilter === opt.id ? 'bg-bg-000 text-text-000 shadow-sm font-medium' : 'text-text-300 hover:text-text-100'}`,
+        className: this.getSegmentButtonClass(this.state.activeSenderFilter === opt.id),
         textContent: opt.label,
+        'data-filter-id': opt.id,
         onclick: () => {
           this.state.activeSenderFilter = opt.id;
-          // Update active state visual
-          Array.from(senderFilter.children).forEach(child => {
-            child.className = `px-3 py-1 text-xs rounded-md transition-all ${child.textContent === opt.label ? 'bg-bg-000 text-text-000 shadow-sm font-medium' : 'text-text-300 hover:text-text-100'}`;
-          });
+          this.updateSegmentButtons(senderFilter, opt.id, 'filterId');
           this.renderBookmarks();
           const filteredCount = this.getFilteredBookmarks().length;
           trackEvent('bookmark_manager_sender_filter', {
@@ -240,11 +371,11 @@ export class BookmarkManagerModal {
 
     viewOptions.forEach(opt => {
       const btn = DOMUtils.createElement('button', {
-        className: `p-1.5 rounded-md transition-all flex items-center justify-center ${this.state.viewMode === opt.id ? 'bg-bg-000 text-text-000 shadow-sm' : 'text-text-300 hover:text-text-100'}`,
-        innerHTML: opt.icon,
+        className: this.getSegmentButtonClass(this.state.viewMode === opt.id, { iconOnly: true }),
         title: opt.title,
         onclick: () => this.setViewMode(opt.id),
       });
+      btn.appendChild(this.createMarkupNode(opt.icon));
       btn.dataset.viewMode = opt.id;
       viewToggle.appendChild(btn);
     });
@@ -254,9 +385,12 @@ export class BookmarkManagerModal {
     const searchWrapper = DOMUtils.createElement('div', {
       className: 'relative w-[300px]',
     });
-    searchWrapper.innerHTML = `
-            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-text-300 text-lg">🔍</div>
-        `;
+    searchWrapper.appendChild(
+      DOMUtils.createElement('div', {
+        className: 'absolute left-3 top-1/2 -translate-y-1/2 text-text-300 text-lg',
+        textContent: '🔍',
+      })
+    );
     const searchInput = DOMUtils.createElement('input', {
       className:
         'w-full pl-10 pr-4 py-2 bg-bg-100 border border-border-200 rounded-lg text-sm text-text-000 focus:border-accent-main-100 focus:outline-none transition-colors',
@@ -281,11 +415,10 @@ export class BookmarkManagerModal {
 
     // Close Button
     const closeBtn = DOMUtils.createElement('button', {
-      className:
-        'ml-4 p-2 text-text-300 hover:text-text-000 hover:bg-bg-100 rounded-md transition-colors',
-      innerHTML: IconLibrary.close('currentColor', 20),
+      className: this.getActionButtonClass('close'),
       onclick: () => this.close('close_btn'),
     });
+    closeBtn.appendChild(this.createMarkupNode(IconLibrary.close('currentColor', 20)));
 
     header.appendChild(titleArea);
 
@@ -299,28 +432,18 @@ export class BookmarkManagerModal {
 
     // 1. Grid View Container
     const gridContainer = DOMUtils.createElement('div', {
-      className: 'flex-1 overflow-y-auto p-8',
-      style: { display: 'flex', flexDirection: 'column' },
+      className: 'flex flex-1 flex-col overflow-y-auto p-8',
       id: 'bm-grid-container',
     });
 
     // Grid Empty State (hidden by default)
-    const gridEmptyState = DOMUtils.createElement('div', {
-      className: 'text-text-300',
-      style: {
-        flex: '1',
-        display: 'none',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-      id: 'bm-grid-empty',
-    });
-    gridEmptyState.innerHTML = `
-      <div class="text-4xl mb-4">🔖</div>
-      <div class="text-lg font-medium">No bookmarks found</div>
-      <div class="text-sm">Try changing filters or add some bookmarks.</div>
-    `;
+    const gridEmptyState = this.createEmptyState(
+      '🔖',
+      'No bookmarks found',
+      'Try changing filters or add some bookmarks.',
+      'hidden flex-1'
+    );
+    gridEmptyState.id = 'bm-grid-empty';
     gridContainer.appendChild(gridEmptyState);
 
     // Adjusted Grid: Force 2 columns
@@ -332,8 +455,7 @@ export class BookmarkManagerModal {
 
     // 2. Full View Container (Hidden by default)
     const fullViewContainer = DOMUtils.createElement('div', {
-      className: 'flex-1 flex flex-col overflow-hidden',
-      style: { display: 'none' }, // Hidden initially via inline style
+      className: 'hidden flex-1 flex-col overflow-hidden',
       id: 'bm-full-view-container',
     });
 
@@ -342,16 +464,14 @@ export class BookmarkManagerModal {
       className: 'p-4 border-b border-border-100 bg-bg-50 flex justify-between items-center',
     });
     const backBtn = DOMUtils.createElement('button', {
-      className:
-        'px-3 py-1.5 bg-bg-000 border border-border-300 hover:bg-bg-100 rounded text-sm flex items-center gap-2 transition-colors',
-      innerHTML: '← Back to List',
+      className: this.getActionButtonClass('secondary'),
+      textContent: '← Back to List',
       onclick: () => this.showGridView('back'),
     });
 
     const gotoMsgBtn = DOMUtils.createElement('button', {
-      className:
-        'px-3 py-1.5 bg-accent-main-100 text-white hover:opacity-90 rounded text-sm flex items-center gap-2 transition-colors',
-      innerHTML: 'Go to Message ↗️',
+      className: this.getActionButtonClass('primary'),
+      textContent: 'Go to Message ↗️',
       id: 'bm-full-view-goto-btn',
     });
 
@@ -368,102 +488,67 @@ export class BookmarkManagerModal {
 
     // 3. List View Container (Split Pane - Master/Detail)
     const listViewContainer = DOMUtils.createElement('div', {
-      style: {
-        flex: '1',
-        display: 'none', // Hidden initially
-        flexDirection: 'row',
-        overflow: 'hidden',
-      },
+      className: 'hidden flex-1 flex-row overflow-hidden',
       id: 'bm-list-view-container',
     });
 
     // Master Panel (Left - List)
     const masterPanel = DOMUtils.createElement('div', {
-      className: 'border-r border-border-200',
-      style: {
-        width: '350px',
-        flexShrink: '0',
-        display: 'flex',
-        flexDirection: 'column',
-      },
+      className: 'w-[350px] shrink-0 border-r border-border-200 flex flex-col',
       id: 'bm-master-panel',
     });
 
     const masterList = DOMUtils.createElement('div', {
-      className: 'divide-y divide-border-100',
-      style: { flex: '1', overflowY: 'auto' },
+      className: 'flex-1 overflow-y-auto divide-y divide-border-100',
       id: 'bm-master-list',
     });
     masterPanel.appendChild(masterList);
 
     // Detail Panel (Right - Content)
     const detailPanel = DOMUtils.createElement('div', {
-      className: 'bg-bg-000',
-      style: { flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+      className: 'flex-1 flex flex-col overflow-hidden bg-bg-000',
       id: 'bm-detail-panel',
     });
 
     // Detail panel empty state
-    const detailEmpty = DOMUtils.createElement('div', {
-      className: 'text-text-300',
-      style: {
-        flex: '1',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-      id: 'bm-detail-empty',
-    });
-    detailEmpty.innerHTML = `
-      <div class="text-4xl mb-4">📖</div>
-      <div class="text-lg font-medium">Select a bookmark</div>
-      <div class="text-sm">Choose a bookmark from the list to view its content</div>
-    `;
+    const detailEmpty = this.createEmptyState(
+      '📖',
+      'Select a bookmark',
+      'Choose a bookmark from the list to view its content',
+      'flex-1'
+    );
+    detailEmpty.id = 'bm-detail-empty';
     detailPanel.appendChild(detailEmpty);
 
     // Detail content container (hidden initially)
     const detailContent = DOMUtils.createElement('div', {
-      style: {
-        flex: '1',
-        display: 'none', // Hidden initially
-        flexDirection: 'column',
-        overflow: 'hidden',
-      },
+      className: 'hidden flex-1 flex-col overflow-hidden',
       id: 'bm-detail-content',
     });
 
     // Detail header
     const detailHeader = DOMUtils.createElement('div', {
-      className: 'p-4 border-b border-border-100 bg-bg-50',
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexShrink: '0',
-      },
+      className:
+        'p-4 border-b border-border-100 bg-bg-50 flex items-center justify-between shrink-0',
       id: 'bm-detail-header',
     });
     detailContent.appendChild(detailHeader);
 
     // Detail body
     const detailBody = DOMUtils.createElement('div', {
-      className: 'p-6',
-      style: { flex: '1', overflowY: 'auto' },
+      className: 'flex-1 overflow-y-auto p-6',
       id: 'bm-detail-body',
     });
     detailContent.appendChild(detailBody);
 
     // Detail footer
     const detailFooter = DOMUtils.createElement('div', {
-      className: 'p-4 border-t border-border-100 bg-bg-50',
-      style: { display: 'flex', justifyContent: 'flex-end', flexShrink: '0' },
+      className: 'p-4 border-t border-border-100 bg-bg-50 flex justify-end shrink-0',
       id: 'bm-detail-footer',
     });
     const gotoMsgBtnList = DOMUtils.createElement('button', {
-      className:
-        'px-4 py-2 bg-accent-main-100 text-white hover:opacity-90 rounded-lg text-sm flex items-center gap-2 transition-colors',
-      innerHTML: 'Go to Message ↗️',
+      className: this.getActionButtonClass('primaryLg'),
+      textContent: 'Go to Message ↗️',
       id: 'bm-detail-goto-btn',
     });
     detailFooter.appendChild(gotoMsgBtnList);
@@ -489,15 +574,9 @@ export class BookmarkManagerModal {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
     const list = this.activeModal.element.querySelector('#bm-list-view-container');
-    if (grid) {
-      grid.style.display = '';
-    }
-    if (full) {
-      full.style.display = 'none';
-    }
-    if (list) {
-      list.style.display = 'none';
-    }
+    this.setHidden(grid, false);
+    this.setHidden(full, true);
+    this.setHidden(list, true);
     this.state.viewMode = 'grid';
     this.updateViewToggle();
     if (reason) {
@@ -513,25 +592,14 @@ export class BookmarkManagerModal {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
     const list = this.activeModal.element.querySelector('#bm-list-view-container');
-    if (grid) {
-      grid.style.display = 'none';
-    }
-    if (full) {
-      full.style.display = 'flex'; // Flex layout for header + content
-    }
-    if (list) {
-      list.style.display = 'none';
-    }
+    this.setHidden(grid, true);
+    this.setHidden(full, false);
+    this.setHidden(list, true);
   }
 
   updateViewToggle() {
     const viewToggle = this.activeModal.element.querySelector('#bm-view-toggle');
-    if (viewToggle) {
-      Array.from(viewToggle.children).forEach(btn => {
-        const isActive = btn.dataset.viewMode === this.state.viewMode;
-        btn.className = `p-1.5 rounded-md transition-all flex items-center justify-center ${isActive ? 'bg-bg-000 text-text-000 shadow-sm' : 'text-text-300 hover:text-text-100'}`;
-      });
-    }
+    this.updateSegmentButtons(viewToggle, this.state.viewMode, 'viewMode', { iconOnly: true });
   }
 
   // --- Rendering ---
@@ -541,7 +609,7 @@ export class BookmarkManagerModal {
     if (!container) {
       return;
     }
-    container.innerHTML = '';
+    DOMUtils.clearElement(container);
 
     // "All" Item
     container.appendChild(
@@ -602,13 +670,13 @@ export class BookmarkManagerModal {
       const delBtn = DOMUtils.createElement('button', {
         className:
           'ml-2 p-1 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded opacity-0 group-hover:opacity-100 transition-opacity',
-        innerHTML: IconLibrary.trash('currentColor', 14),
         title: 'Delete Category',
         onclick: e => {
           e.stopPropagation();
           this.deleteCategory(category);
         },
       });
+      delBtn.appendChild(this.createMarkupNode(IconLibrary.trash('currentColor', 14)));
       item.appendChild(delBtn);
     }
 
@@ -628,22 +696,16 @@ export class BookmarkManagerModal {
     const gridEmptyState = this.activeModal.element.querySelector('#bm-grid-empty');
 
     if (grid) {
-      grid.innerHTML = '';
+      DOMUtils.clearElement(grid);
 
       const filtered = this.getFilteredBookmarks();
 
       if (filtered.length === 0) {
-        // Show empty state, hide grid
-        grid.style.display = 'none';
-        if (gridEmptyState) {
-          gridEmptyState.style.display = 'flex';
-        }
+        this.setHidden(grid, true);
+        this.setHidden(gridEmptyState, false);
       } else {
-        // Show grid, hide empty state
-        grid.style.display = '';
-        if (gridEmptyState) {
-          gridEmptyState.style.display = 'none';
-        }
+        this.setHidden(grid, false);
+        this.setHidden(gridEmptyState, true);
         filtered.forEach(b => {
           grid.appendChild(this.createBookmarkCard(b));
         });
@@ -665,12 +727,8 @@ export class BookmarkManagerModal {
           this.state.selectedBookmarkId = null;
           const emptyState = this.activeModal.element.querySelector('#bm-detail-empty');
           const content = this.activeModal.element.querySelector('#bm-detail-content');
-          if (emptyState) {
-            emptyState.style.display = 'flex';
-          }
-          if (content) {
-            content.style.display = 'none';
-          }
+          this.setHidden(emptyState, false);
+          this.setHidden(content, true);
         }
       }
     }
@@ -700,32 +758,26 @@ export class BookmarkManagerModal {
       className: 'p-4 border-b border-border-100 flex justify-between items-center bg-bg-50',
     });
 
-    const isUser = bookmark.sender === 'user';
-    const senderBadge = isUser
-      ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-text-500/10 text-text-500 border border-text-500/20">User</span>`
-      : `<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20">Claude</span>`;
+    const headerLeft = DOMUtils.createElement('div', {
+      className: 'flex items-center gap-2',
+    });
+    headerLeft.appendChild(this.createSenderBadge(bookmark.sender, 'px-1.5 py-0.5'));
+    headerLeft.appendChild(this.createCategoryBadge(category, 'px-2 py-0.5 text-[11px]'));
 
-    header.innerHTML = `
-            <div class="flex items-center gap-2">
-                ${senderBadge}
-                <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: ${category.color}20; color: ${category.color}">
-                    ${category.name}
-                </span>
-            </div>
-            <span class="text-xs text-text-300">${dateStr}</span>
-        `;
+    const headerDate = DOMUtils.createElement('span', {
+      className: 'text-xs text-text-300',
+      textContent: dateStr,
+    });
+
+    header.appendChild(headerLeft);
+    header.appendChild(headerDate);
 
     const body = DOMUtils.createElement('div', {
       className: 'p-4 flex-1 overflow-hidden relative',
     });
 
     // Preview text extraction (strip HTML tags if fullText is HTML)
-    let preview = bookmark.previewText;
-    if (!preview && bookmark.fullText) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = bookmark.fullText;
-      preview = tmp.textContent.substring(0, 200);
-    }
+    const preview = this.extractPreviewText(bookmark, 200);
 
     const previewText = DOMUtils.createElement('div', {
       className: 'text-sm text-text-200 line-clamp-[6]',
@@ -752,18 +804,14 @@ export class BookmarkManagerModal {
       // URL parsing failed, use default
     }
 
-    const loc = DOMUtils.createElement('div', {
-      className: 'text-xs text-text-300 flex items-center gap-1',
-      innerHTML: `<span class="opacity-50">📍</span> ${convoName}`,
-    });
+    const loc = this.createConversationLocation(convoName);
 
     const actions = DOMUtils.createElement('div', { className: 'flex gap-1' });
 
     const gotoBtn = DOMUtils.createElement('button', {
-      className:
-        'p-1.5 text-text-300 hover:text-text-000 hover:bg-bg-200 rounded transition-colors',
+      className: this.getActionButtonClass('ghost'),
       title: 'Go to Message',
-      innerHTML: '↗️',
+      textContent: '↗️',
       onclick: e => {
         e.stopPropagation();
         this.navigateToBookmark(bookmark, 'grid_card_button');
@@ -771,15 +819,14 @@ export class BookmarkManagerModal {
     });
 
     const delBtn = DOMUtils.createElement('button', {
-      className:
-        'p-1.5 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded transition-colors',
+      className: this.getActionButtonClass('ghostDanger'),
       title: 'Delete',
-      innerHTML: IconLibrary.trash('currentColor', 16),
       onclick: e => {
         e.stopPropagation();
         this.deleteBookmark(bookmark.id, 'grid_card');
       },
     });
+    delBtn.appendChild(this.createMarkupNode(IconLibrary.trash('currentColor', 16)));
 
     actions.appendChild(gotoBtn);
     actions.appendChild(delBtn);
@@ -818,23 +865,10 @@ export class BookmarkManagerModal {
       className: 'flex items-center gap-2 mb-1',
     });
 
-    const isUser = bookmark.sender === 'user';
-    const senderBadge = DOMUtils.createElement('span', {
-      className: `px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${
-        isUser
-          ? 'bg-text-500/10 text-text-500 border border-text-500/20'
-          : 'bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20'
-      }`,
-      textContent: isUser ? 'User' : 'Claude',
-    });
+    const senderBadge = this.createSenderBadge(bookmark.sender, 'px-1.5 py-0.5 shrink-0');
 
     // Preview text
-    let preview = bookmark.previewText;
-    if (!preview && bookmark.fullText) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = bookmark.fullText;
-      preview = tmp.textContent.substring(0, 100);
-    }
+    const preview = this.extractPreviewText(bookmark, 100);
 
     const previewText = DOMUtils.createElement('span', {
       className: 'text-sm text-text-100 truncate flex-1',
@@ -849,11 +883,7 @@ export class BookmarkManagerModal {
       className: 'flex items-center justify-between text-xs text-text-300',
     });
 
-    const categoryBadge = DOMUtils.createElement('span', {
-      className: 'px-1.5 py-0.5 rounded text-[10px]',
-      style: { backgroundColor: `${category.color}20`, color: category.color },
-      textContent: category.name,
-    });
+    const categoryBadge = this.createCategoryBadge(category, 'px-1.5 py-0.5 text-[10px]');
 
     const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
     const dateSpan = DOMUtils.createElement('span', {
@@ -888,17 +918,14 @@ export class BookmarkManagerModal {
       return;
     }
 
-    container.innerHTML = '';
+    DOMUtils.clearElement(container);
 
     const filtered = this.getFilteredBookmarks();
 
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 200px;" class="text-text-300">
-          <div class="text-3xl mb-3">🔖</div>
-          <div class="text-sm font-medium">No bookmarks found</div>
-        </div>
-      `;
+      container.appendChild(
+        this.createEmptyState('🔖', 'No bookmarks found', '', 'min-h-[200px] h-full text-sm')
+      );
       return;
     }
 
@@ -920,10 +947,8 @@ export class BookmarkManagerModal {
     }
 
     // Hide empty state, show content
-    if (emptyState) {
-      emptyState.style.display = 'none';
-    }
-    content.style.display = 'flex';
+    this.setHidden(emptyState, true);
+    this.setHidden(content, false);
 
     // Update goto button
     if (gotoBtn) {
@@ -934,34 +959,44 @@ export class BookmarkManagerModal {
     const category = this.state.categories.find(c => c.id === bookmark.categoryId) ||
       this.state.categories.find(c => c.id === 'default') || { name: 'Unknown', color: '#ccc' };
 
-    const isUser = bookmark.sender === 'user';
     const dateStr = new Date(bookmark.createdAt || bookmark.timestamp).toLocaleDateString();
 
-    header.innerHTML = `
-      <div class="flex items-center gap-3">
-        <span class="px-2 py-1 rounded text-xs font-medium ${
-          isUser
-            ? 'bg-text-500/10 text-text-500 border border-text-500/20'
-            : 'bg-accent-main-100/10 text-accent-main-100 border border-accent-main-100/20'
-        }">${isUser ? 'User' : 'Claude'}</span>
-        <span class="px-2 py-1 rounded text-xs font-medium" style="background: ${category.color}20; color: ${category.color}">${category.name}</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="text-sm text-text-300">${dateStr}</span>
-        <button class="p-1.5 text-text-300 hover:text-danger-100 hover:bg-danger-100/10 rounded transition-colors" title="Delete" id="bm-detail-delete-btn">
-          ${IconLibrary.trash('currentColor', 16)}
-        </button>
-      </div>
-    `;
+    DOMUtils.clearElement(header);
+
+    const headerLeft = DOMUtils.createElement('div', {
+      className: 'flex items-center gap-3',
+    });
+    headerLeft.appendChild(this.createSenderBadge(bookmark.sender, 'px-2 py-1 text-xs'));
+    headerLeft.appendChild(this.createCategoryBadge(category, 'px-2 py-1 text-xs'));
+
+    const headerRight = DOMUtils.createElement('div', {
+      className: 'flex items-center gap-3',
+    });
+    headerRight.appendChild(
+      DOMUtils.createElement('span', {
+        className: 'text-sm text-text-300',
+        textContent: dateStr,
+      })
+    );
+
+    const deleteBtn = DOMUtils.createElement('button', {
+      className: this.getActionButtonClass('ghostDanger'),
+      title: 'Delete',
+      id: 'bm-detail-delete-btn',
+    });
+    deleteBtn.appendChild(this.createMarkupNode(IconLibrary.trash('currentColor', 16)));
+    headerRight.appendChild(deleteBtn);
+
+    header.appendChild(headerLeft);
+    header.appendChild(headerRight);
 
     // Attach delete handler
-    const deleteBtn = header.querySelector('#bm-detail-delete-btn');
     if (deleteBtn) {
       deleteBtn.onclick = () => this.deleteBookmark(bookmark.id, 'detail_header');
     }
 
     // Build body content
-    body.innerHTML = '';
+    DOMUtils.clearElement(body);
     const contentHtml = DOMUtils.createElement('div', {
       className:
         'prose max-w-none font-claude-message text-text-000 whitespace-pre-wrap break-words',
@@ -1036,25 +1071,15 @@ export class BookmarkManagerModal {
     const listViewContainer = this.activeModal.element.querySelector('#bm-list-view-container');
 
     // Hide all containers
-    if (gridContainer) {
-      gridContainer.style.display = 'none';
-    }
-    if (fullViewContainer) {
-      fullViewContainer.style.display = 'none';
-    }
-    if (listViewContainer) {
-      listViewContainer.style.display = 'none';
-    }
+    this.setHidden(gridContainer, true);
+    this.setHidden(fullViewContainer, true);
+    this.setHidden(listViewContainer, true);
 
     // Show the appropriate container
     if (mode === 'grid') {
-      if (gridContainer) {
-        gridContainer.style.display = '';
-      }
+      this.setHidden(gridContainer, false);
     } else if (mode === 'list') {
-      if (listViewContainer) {
-        listViewContainer.style.display = 'flex';
-      }
+      this.setHidden(listViewContainer, false);
       this.renderMasterList();
 
       // Auto-select first bookmark if none selected
@@ -1149,53 +1174,82 @@ export class BookmarkManagerModal {
   showCategoryCreationModal() {
     // Create a dialog overlay for adding category
     const overlay = DOMUtils.createElement('div', {
-      className: 'fixed inset-0 flex items-center justify-center',
-      style: {
-        zIndex: '2147483647',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        opacity: '0',
-        transition: 'opacity 0.15s ease',
-      },
+      className:
+        'fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/50 backdrop-blur-sm opacity-0 transition-opacity duration-150',
     });
 
     const dialog = DOMUtils.createElement('div', {
-      className: 'bg-bg-000 p-6 rounded-lg shadow-xl w-[350px]',
-      style: {
-        opacity: '0',
-        transform: 'scale(0.95)',
-        transition: 'opacity 0.15s ease, transform 0.15s ease',
-      },
+      className:
+        'bg-bg-000 p-6 rounded-lg shadow-xl w-[350px] opacity-0 scale-95 transition-all duration-150',
     });
 
-    dialog.innerHTML = `
-            <h3 class="text-lg font-semibold mb-4">New Category</h3>
-            <div class="mb-4">
-                <label class="block text-xs font-medium text-text-300 mb-1">Name</label>
-                <input type="text" id="new-cat-name" class="w-full px-3 py-2 bg-bg-100 border border-border-200 rounded text-sm focus:border-accent-main-100 outline-none" placeholder="e.g. Ideas">
-            </div>
-            <div class="mb-6">
-                <label class="block text-xs font-medium text-text-300 mb-1">Color</label>
-                <input type="color" id="new-cat-color" class="w-full h-10 p-1 bg-bg-100 border border-border-200 rounded cursor-pointer" value="#667eea">
-            </div>
-            <div class="flex justify-end gap-2">
-                <button id="btn-cat-cancel" class="px-3 py-1.5 text-text-300 hover:bg-bg-100 rounded text-sm">Cancel</button>
-                <button id="btn-cat-save" class="px-3 py-1.5 bg-accent-main-100 text-white rounded text-sm hover:opacity-90">Create</button>
-            </div>
-        `;
+    const title = DOMUtils.createElement('h3', {
+      className: 'text-lg font-semibold mb-4',
+      textContent: 'New Category',
+    });
+    const nameField = DOMUtils.createElement('div', { className: 'mb-4' });
+    nameField.appendChild(
+      DOMUtils.createElement('label', {
+        className: 'block text-xs font-medium text-text-300 mb-1',
+        textContent: 'Name',
+      })
+    );
+    const input = DOMUtils.createElement('input', {
+      id: 'new-cat-name',
+      type: 'text',
+      className:
+        'w-full px-3 py-2 bg-bg-100 border border-border-200 rounded text-sm focus:border-accent-main-100 outline-none',
+      placeholder: 'e.g. Ideas',
+    });
+    nameField.appendChild(input);
+
+    const colorField = DOMUtils.createElement('div', { className: 'mb-6' });
+    colorField.appendChild(
+      DOMUtils.createElement('label', {
+        className: 'block text-xs font-medium text-text-300 mb-1',
+        textContent: 'Color',
+      })
+    );
+    const colorInput = DOMUtils.createElement('input', {
+      id: 'new-cat-color',
+      type: 'color',
+      className: 'w-full h-10 p-1 bg-bg-100 border border-border-200 rounded cursor-pointer',
+      value: '#667eea',
+    });
+    colorField.appendChild(colorInput);
+
+    const actions = DOMUtils.createElement('div', {
+      className: 'flex justify-end gap-2',
+    });
+    const cancelBtn = DOMUtils.createElement('button', {
+      id: 'btn-cat-cancel',
+      className: 'px-3 py-1.5 text-text-300 hover:bg-bg-100 rounded text-sm',
+      textContent: 'Cancel',
+    });
+    const saveBtn = DOMUtils.createElement('button', {
+      id: 'btn-cat-save',
+      className: 'px-3 py-1.5 bg-accent-main-100 text-white rounded text-sm hover:opacity-90',
+      textContent: 'Create',
+    });
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+
+    dialog.appendChild(title);
+    dialog.appendChild(nameField);
+    dialog.appendChild(colorField);
+    dialog.appendChild(actions);
 
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
     // Trigger transition
     requestAnimationFrame(() => {
-      overlay.style.opacity = '1';
-      dialog.style.opacity = '1';
-      dialog.style.transform = 'scale(1)';
+      overlay.classList.remove('opacity-0');
+      overlay.classList.add('opacity-100');
+      dialog.classList.remove('opacity-0', 'scale-95');
+      dialog.classList.add('opacity-100', 'scale-100');
     });
 
-    const input = dialog.querySelector('#new-cat-name');
     input.focus();
 
     const close = (reason = 'close') => {
@@ -1207,10 +1261,10 @@ export class BookmarkManagerModal {
       overlay.remove();
     };
 
-    dialog.querySelector('#btn-cat-cancel').onclick = () => close('cancel_button');
-    dialog.querySelector('#btn-cat-save').onclick = async () => {
+    cancelBtn.onclick = () => close('cancel_button');
+    saveBtn.onclick = async () => {
       const name = input.value.trim();
-      const color = dialog.querySelector('#new-cat-color').value;
+      const color = colorInput.value;
       if (name) {
         trackEvent('bookmark_manager_category_create', {
           module: 'bookmarks',
@@ -1245,7 +1299,7 @@ export class BookmarkManagerModal {
       return;
     }
 
-    container.innerHTML = '';
+    DOMUtils.clearElement(container);
 
     // Render Content
     const contentHtml = DOMUtils.createElement('div', {

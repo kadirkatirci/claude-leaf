@@ -357,7 +357,6 @@ function renderHelpSection() {
         chrome.tabs.create({ url });
       }
     });
-    item.style.cursor = 'pointer';
   });
 }
 
@@ -812,9 +811,9 @@ function renderFavoriteEmojis() {
     // Drag & drop
     chip.addEventListener('dragstart', e => {
       e.dataTransfer.setData('text/plain', index);
-      chip.style.opacity = '0.5';
+      chip.classList.add('dragging');
     });
-    chip.addEventListener('dragend', () => (chip.style.opacity = '1'));
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
     chip.addEventListener('dragover', e => e.preventDefault());
     chip.addEventListener('drop', e => {
       e.preventDefault();
@@ -836,43 +835,32 @@ function showEmojiPicker() {
   trackEvent('popup_emoji_picker_open', { module: 'popup' });
   const modal = document.createElement('div');
   modal.className = 'emoji-modal';
-  modal.style.cssText = `
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.4); display: flex;
-    align-items: center; justify-content: center; z-index: 10000;
-  `;
 
   const picker = document.createElement('div');
-  picker.style.cssText = `
-    background: white; border-radius: 12px; padding: 16px;
-    max-width: 320px; max-height: 400px; overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-  `;
-  picker.innerHTML =
-    '<h3 style="margin:0 0 12px;font-size:14px;font-weight:600;">Select Emoji</h3>';
+  picker.className = 'emoji-picker';
+
+  const title = document.createElement('h3');
+  title.className = 'emoji-picker-title';
+  title.textContent = 'Select Emoji';
+  picker.appendChild(title);
 
   Object.entries(config.emojiCategories).forEach(([name, emojis]) => {
     const section = document.createElement('div');
-    section.innerHTML = `<div style="font-size:11px;color:#86868b;margin:12px 0 8px;font-weight:500;">${name}</div>`;
+    section.className = 'emoji-picker-section';
+
+    const sectionTitle = document.createElement('div');
+    sectionTitle.className = 'emoji-picker-section-title';
+    sectionTitle.textContent = name;
+    section.appendChild(sectionTitle);
 
     const grid = document.createElement('div');
-    grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+    grid.className = 'emoji-picker-grid';
 
     emojis.forEach(emoji => {
       const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'emoji-picker-button';
       btn.textContent = emoji;
-      btn.style.cssText = `
-        width:36px;height:36px;font-size:18px;border:1px solid #e5e7eb;
-        border-radius:8px;background:#f9fafb;cursor:pointer;transition:all 0.15s;
-      `;
-      btn.addEventListener('mouseenter', () => {
-        btn.style.background = '#e5e7eb';
-        btn.style.transform = 'scale(1.1)';
-      });
-      btn.addEventListener('mouseleave', () => {
-        btn.style.background = '#f9fafb';
-        btn.style.transform = 'scale(1)';
-      });
       btn.addEventListener('click', () => {
         if (!currentSettings.emojiMarkers) {
           currentSettings.emojiMarkers = {};

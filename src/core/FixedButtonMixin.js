@@ -9,6 +9,7 @@ import VisibilityManager from '../utils/VisibilityManager.js';
 import navigationInterceptor from './NavigationInterceptor.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import { eventBus, Events } from '../utils/EventBus.js';
+import { buttonClass } from '../utils/ClassNames.js';
 
 // Loading state opacity (dimmed until data loads)
 const LOADING_OPACITY = 0.3;
@@ -225,12 +226,13 @@ export default class FixedButtonMixin {
 
       // Create button element
       const button = document.createElement('button');
+      button.type = 'button';
       button.id = id;
       button.innerHTML = icon; // Use innerHTML to support SVG strings
       button.title = tooltip || '';
 
       // Use Claude's native classes (always)
-      button.className = theme.buttonClasses || '';
+      button.className = theme.buttonClasses || buttonClass('fixed');
 
       // Apply positioning and other necessary inline styles
       // Only use inline styles for positioning - everything else via classes
@@ -261,9 +263,7 @@ export default class FixedButtonMixin {
           shape: 'circle',
           theme: theme,
           position: { top: -8, right: -8 },
-          style: {
-            display: 'none', // Start hidden, will show when count > 0
-          },
+          hidden: true,
         });
       }
 

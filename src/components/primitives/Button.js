@@ -5,7 +5,14 @@
  * Supports all button variants: fixed, inline, icon, chevron, close, etc.
  */
 
-import { cn, buttonClass, ClaudeClasses } from '../../utils/ClassNames.js';
+import {
+  cn,
+  buttonClass,
+  badgeClass,
+  buttonGroupClass,
+  textClass,
+  ClaudeClasses,
+} from '../../utils/ClassNames.js';
 
 /**
  * Button Component Class
@@ -25,6 +32,7 @@ export class Button {
    * @param {Function} options.onClick - Click handler
    * @param {boolean} options.disabled - Disabled state
    * @param {Object} options.position - Position for fixed buttons { top, right, bottom, left, transform }
+   * @param {Object} options.style - Inline styles for dynamic layout/state only
    * @returns {HTMLButtonElement}
    */
   static create(options = {}) {
@@ -39,10 +47,12 @@ export class Button {
       onClick = null,
       disabled = false,
       position = null,
+      style = null,
     } = options;
 
     // Create button element
     const button = document.createElement('button');
+    button.type = 'button';
 
     // Set ID if provided
     if (id) {
@@ -71,6 +81,10 @@ export class Button {
       this.applyFixedPosition(button, position);
     }
 
+    if (style && typeof style === 'object') {
+      Object.assign(button.style, style);
+    }
+
     // Attach click handler
     if (onClick) {
       button.addEventListener('click', onClick);
@@ -83,19 +97,8 @@ export class Button {
    * Gets the appropriate CSS classes for the button
    */
   static getButtonClasses(variant, size, additionalClasses) {
-    // Map variants to native Claude classes
-    const variantClassMap = {
-      primary: buttonClass('primary'),
-      secondary: buttonClass('secondary'),
-      danger: buttonClass('danger'),
-      icon: buttonClass('icon'),
-      small: buttonClass('small'),
-      fixed: buttonClass('fixed'),
-      chevron: cn(ClaudeClasses.button.icon, 'transition-transform duration-200'),
-      close: cn(ClaudeClasses.button.icon, 'hover:bg-red-500 hover:text-white'),
-    };
-
-    return cn(variantClassMap[variant] || variantClassMap.primary, additionalClasses);
+    void size;
+    return buttonClass(variant, additionalClasses);
   }
 
   /**
@@ -106,14 +109,14 @@ export class Button {
 
     if (icon) {
       const iconSpan = document.createElement('span');
-      iconSpan.className = cn(ClaudeClasses.text.xl, 'leading-none');
+      iconSpan.className = cn(textClass({ size: 'xl' }), 'leading-none');
       iconSpan.innerHTML = icon; // Use innerHTML to support SVG strings
       contentParts.push(iconSpan);
     }
 
     if (text) {
       const textSpan = document.createElement('span');
-      textSpan.className = cn(ClaudeClasses.text.sm, ClaudeClasses.text.semibold);
+      textSpan.className = textClass({ size: 'sm', weight: 'semibold' });
       textSpan.textContent = text;
       contentParts.push(textSpan);
     }
@@ -178,20 +181,14 @@ export class Button {
    */
   static createBadge({ count, variant = 'primary' }) {
     const badge = document.createElement('div');
-
-    const baseClasses = cn(
-      ClaudeClasses.position.absolute,
-      'top-0 right-0 -mt-1 -mr-1',
-      'px-1.5 py-0.5',
-      ClaudeClasses.util.roundedFull,
-      'text-xs font-bold min-w-[20px] text-center',
-      'pointer-events-none'
+    badge.className = badgeClass(
+      {
+        variant: variant === 'primary' ? 'accent' : 'neutral',
+        size: 'sm',
+        rounded: true,
+      },
+      'absolute top-0 right-0 -mt-1 -mr-1 pointer-events-none'
     );
-
-    const variantClasses =
-      variant === 'primary' ? 'bg-accent-main-100 text-white' : 'bg-bg-200 text-text-000';
-
-    badge.className = cn(baseClasses, variantClasses);
     badge.textContent = count;
 
     return badge;
@@ -280,13 +277,8 @@ export class Button {
    */
   static createGroup(buttons, options = {}) {
     const group = document.createElement('div');
-
-    const directionClass =
-      options.direction === 'vertical'
-        ? ClaudeClasses.layout.flexCol
-        : ClaudeClasses.layout.flexRow;
-
-    group.className = cn(directionClass, ClaudeClasses.layout.gap2, options.className);
+    const direction = options.direction === 'vertical' ? 'col' : 'row';
+    group.className = buttonGroupClass(direction, 2, options.className);
 
     buttons.forEach(buttonOptions => {
       const button = this.create(buttonOptions);

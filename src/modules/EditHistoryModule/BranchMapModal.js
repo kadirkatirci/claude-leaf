@@ -3,6 +3,7 @@ import { editHistoryStore } from '../../stores/index.js';
 import BranchTreeBuilder from './BranchTreeBuilder.js';
 import BranchMapRenderer from './BranchMapRenderer.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
+import Badge from '../../components/primitives/Badge.js';
 import { debugLog } from '../../config/debug.js';
 
 /**
@@ -21,6 +22,12 @@ class BranchMapModal {
     this.modal = null;
     this.isVisible = false;
     this.renderer = null;
+  }
+
+  createMarkupNode(markup) {
+    const template = document.createElement('template');
+    template.innerHTML = markup.trim();
+    return template.content.firstElementChild || document.createTextNode('');
   }
 
   /**
@@ -70,22 +77,62 @@ class BranchMapModal {
     document.body.style.overflow = '';
   }
 
+  createCenteredState(icon, title, description) {
+    const container = DOMUtils.createElement('div', {
+      className: 'flex flex-col items-center justify-center h-full text-text-300',
+    });
+
+    const iconEl = DOMUtils.createElement('span', {
+      className: 'text-4xl mb-4',
+      textContent: icon,
+    });
+    const titleEl = DOMUtils.createElement('p', {
+      className: 'text-lg',
+      textContent: title,
+    });
+    const descriptionEl = DOMUtils.createElement('p', {
+      className: 'text-sm mt-2 text-text-400',
+      textContent: description,
+    });
+
+    container.appendChild(iconEl);
+    container.appendChild(titleEl);
+    container.appendChild(descriptionEl);
+    return container;
+  }
+
+  createStatsBadge(content) {
+    return Badge.create({
+      content,
+      variant: 'neutral',
+      size: 'xs',
+      rounded: true,
+      className: 'font-normal text-text-300',
+    });
+  }
+
   /**
    * Show empty state
    */
   showEmptyState() {
     const toast = DOMUtils.createElement('div');
     toast.className =
-      'fixed bottom-4 right-4 bg-bg-200 text-text-100 px-4 py-3 rounded-lg shadow-lg z-[10002] flex items-center gap-2';
-    toast.innerHTML = `
-            <span>📭</span>
-            <span>No edit history captured yet. Navigate through edited messages to capture snapshots.</span>
-        `;
+      'fixed bottom-4 right-4 bg-bg-200 text-text-100 px-4 py-3 rounded-lg shadow-lg z-[10002] flex items-center gap-2 transition-opacity duration-300';
+    toast.appendChild(
+      DOMUtils.createElement('span', {
+        textContent: '📭',
+      })
+    );
+    toast.appendChild(
+      DOMUtils.createElement('span', {
+        textContent:
+          'No edit history captured yet. Navigate through edited messages to capture snapshots.',
+      })
+    );
     document.body.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.transition = 'opacity 0.3s';
-      toast.style.opacity = '0';
+      toast.classList.add('opacity-0');
       setTimeout(() => toast.remove(), 300);
     }, 4000);
   }
@@ -99,8 +146,7 @@ class BranchMapModal {
     // Overlay
     this.overlay = DOMUtils.createElement('div');
     this.overlay.className =
-      'fixed inset-0 bg-black/60 flex items-center justify-center p-6 backdrop-blur-sm';
-    this.overlay.style.zIndex = '999999';
+      'fixed inset-0 z-[999999] bg-black/60 flex items-center justify-center p-6 backdrop-blur-sm';
     this.overlay.addEventListener('click', e => {
       if (e.target === this.overlay) {
         this.hide();
@@ -138,13 +184,10 @@ class BranchMapModal {
         this.renderBranchMap(content, snapshots, history);
       } catch (error) {
         console.error('[BranchMapModal] Render error:', error);
-        content.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-text-300">
-                        <span class="text-4xl mb-4">😕</span>
-                        <p class="text-lg">Failed to render branch map</p>
-                        <p class="text-sm mt-2 text-text-400">${error.message}</p>
-                    </div>
-                `;
+        DOMUtils.clearElement(content);
+        content.appendChild(
+          this.createCenteredState('😕', 'Failed to render branch map', error.message)
+        );
       }
     });
   }
@@ -164,17 +207,15 @@ class BranchMapModal {
 
     const title = DOMUtils.createElement('h2');
     title.className = 'text-lg font-semibold text-text-100 flex items-center gap-2';
-    title.innerHTML = `${IconLibrary.map('currentColor', 20)} Chat Branch Map`;
+    title.appendChild(this.createMarkupNode(IconLibrary.map('currentColor', 20)));
+    title.appendChild(document.createTextNode('Chat Branch Map'));
 
     // Stats badges
     const statsContainer = DOMUtils.createElement('div');
     statsContainer.className = 'flex items-center gap-2';
 
     if (snapshots.length > 0) {
-      const snapshotBadge = DOMUtils.createElement('span');
-      snapshotBadge.className =
-        'text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full';
-      snapshotBadge.textContent = `${snapshots.length} snapshots`;
+      const snapshotBadge = this.createStatsBadge(`${snapshots.length} snapshots`);
       statsContainer.appendChild(snapshotBadge);
     }
 
@@ -182,9 +223,7 @@ class BranchMapModal {
     const uniqueMessages = new Set();
     history.forEach(h => uniqueMessages.add(h.containerId));
     if (uniqueMessages.size > 0) {
-      const msgBadge = DOMUtils.createElement('span');
-      msgBadge.className = 'text-xs font-normal text-text-300 bg-bg-200 px-2 py-0.5 rounded-full';
-      msgBadge.textContent = `${uniqueMessages.size} edited messages`;
+      const msgBadge = this.createStatsBadge(`${uniqueMessages.size} edited messages`);
       statsContainer.appendChild(msgBadge);
     }
 
@@ -195,8 +234,7 @@ class BranchMapModal {
     const closeBtn = DOMUtils.createElement('button');
     closeBtn.className =
       'p-2 hover:bg-bg-200 rounded-lg transition-colors text-text-300 hover:text-text-100';
-    closeBtn.innerHTML =
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    closeBtn.appendChild(this.createMarkupNode(IconLibrary.close('currentColor', 20)));
     closeBtn.addEventListener('click', () => this.hide());
 
     header.appendChild(titleContainer);
@@ -222,13 +260,14 @@ class BranchMapModal {
 
     // Empty data check
     if (!data.columns || data.columns.length === 0) {
-      container.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full text-text-300">
-                    <span class="text-4xl mb-4">🌱</span>
-                    <p class="text-lg">No branches to display</p>
-                    <p class="text-sm mt-2 text-text-400">Edit some messages and navigate between versions to see the branch map.</p>
-                </div>
-            `;
+      DOMUtils.clearElement(container);
+      container.appendChild(
+        this.createCenteredState(
+          '🌱',
+          'No branches to display',
+          'Edit some messages and navigate between versions to see the branch map.'
+        )
+      );
       return;
     }
 

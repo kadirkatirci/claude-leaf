@@ -4,12 +4,19 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
-import { textClass } from '../../utils/ClassNames.js';
+import Badge from '../../components/primitives/Badge.js';
+import { cn, textClass } from '../../utils/ClassNames.js';
 import { editHistoryStore } from '../../stores/index.js';
 
 class EditModal {
   constructor() {
     this.activeModal = null;
+  }
+
+  createMarkupNode(markup) {
+    const template = document.createElement('template');
+    template.innerHTML = markup.trim();
+    return template.content.firstElementChild || document.createTextNode('');
   }
 
   parseVersionLabel(versionLabel) {
@@ -64,6 +71,25 @@ class EditModal {
     }
 
     this.activeModal = null;
+  }
+
+  getHistoryItemClass(isCurrent) {
+    return cn(
+      'p-3 rounded-lg border cursor-pointer transition-colors',
+      isCurrent
+        ? 'bg-accent-main-100/10 border-accent-main-100'
+        : 'bg-bg-100 border-border-200 hover:bg-bg-200'
+    );
+  }
+
+  createVersionBadge(content, { variant = 'neutral', className = '' } = {}) {
+    return Badge.create({
+      content,
+      variant,
+      size: 'xs',
+      rounded: true,
+      className: cn('font-mono font-bold', className),
+    });
   }
 
   /**
@@ -124,22 +150,13 @@ class EditModal {
 
     // Modal backdrop - use CSS transitions (not animations) to avoid FOUC flash
     const modal = DOMUtils.createElement('div');
-    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]';
-    Object.assign(modal.style, {
-      opacity: '0',
-      transition: 'opacity 0.2s ease',
-    });
+    modal.className =
+      'fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center opacity-0 transition-opacity duration-200';
 
     // Modal content
     const modalContent = DOMUtils.createElement('div');
-    modalContent.className = 'bg-bg-000 rounded-xl p-6 overflow-auto shadow-2xl';
-    Object.assign(modalContent.style, {
-      maxWidth: '600px',
-      maxHeight: '80vh',
-      opacity: '0',
-      transform: 'translateY(20px)',
-      transition: 'opacity 0.3s ease, transform 0.3s ease',
-    });
+    modalContent.className =
+      'bg-bg-000 rounded-xl p-6 overflow-auto shadow-2xl max-w-[600px] max-h-[80vh] opacity-0 translate-y-5 transition-all duration-300';
 
     // Header
     const header = this.createHeader(currentVersionInfo);
@@ -182,9 +199,10 @@ class EditModal {
 
     // Trigger transition on next frame (after element is in DOM)
     requestAnimationFrame(() => {
-      modal.style.opacity = '1';
-      modalContent.style.opacity = '1';
-      modalContent.style.transform = 'translateY(0)';
+      modal.classList.remove('opacity-0');
+      modal.classList.add('opacity-100');
+      modalContent.classList.remove('opacity-0', 'translate-y-5');
+      modalContent.classList.add('opacity-100', 'translate-y-0');
     });
   }
 
@@ -196,13 +214,22 @@ class EditModal {
     header.className = 'flex justify-between items-center mb-5 pb-4 border-b-2 border-border-300';
 
     const title = DOMUtils.createElement('h2');
-    title.className = textClass({ size: 'xl', weight: 'semibold' });
-    title.innerHTML = `${IconLibrary.edit('currentColor', 16)} Edit History ${versionInfo ? `<span class="text-accent-main-100 text-base">${versionInfo}</span>` : ''}`;
+    title.className = cn(textClass({ size: 'xl', weight: 'semibold' }), 'flex items-center gap-2');
+    title.appendChild(this.createMarkupNode(IconLibrary.edit('currentColor', 16)));
+    title.appendChild(document.createTextNode('Edit History'));
+    if (versionInfo) {
+      title.appendChild(
+        DOMUtils.createElement('span', {
+          className: 'text-accent-main-100 text-base',
+          textContent: versionInfo,
+        })
+      );
+    }
 
     const closeBtn = DOMUtils.createElement('button');
     closeBtn.className =
       'bg-transparent border-0 text-2xl text-text-400 hover:bg-bg-200 hover:text-text-000 cursor-pointer p-0 size-8 rounded-full transition-all flex items-center justify-center';
-    closeBtn.innerHTML = '✕';
+    closeBtn.textContent = '✕';
 
     header.appendChild(title);
     header.appendChild(closeBtn);
@@ -279,7 +306,7 @@ class EditModal {
 
       const historyLabel = DOMUtils.createElement('div');
       historyLabel.className = 'mb-2 text-sm font-semibold text-text-300';
-      historyLabel.innerHTML = '📜 Saved Versions:';
+      historyLabel.textContent = '📜 Saved Versions:';
 
       const historyList = DOMUtils.createElement('div');
       historyList.className = 'flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1';
@@ -293,14 +320,22 @@ class EditModal {
             ? itemVersionParsed.current === currentVersionParsed.current
             : item.versionLabel === currentVersion;
         const itemEl = DOMUtils.createElement('div');
-        itemEl.className = `p-3 rounded-lg border ${isCurrent ? 'bg-accent-main-100/10 border-accent-main-100' : 'bg-bg-100 border-border-200'} cursor-pointer hover:bg-bg-200 transition-colors`;
+        itemEl.className = this.getHistoryItemClass(isCurrent);
 
         const header = DOMUtils.createElement('div');
         header.className = 'flex justify-between items-center mb-1';
-        header.innerHTML = `
-          <span class="text-xs font-mono font-bold ${isCurrent ? 'text-accent-main-100' : 'text-text-300'}">${item.versionLabel}</span>
-          <span class="text-[10px] text-text-400">${new Date(item.timestamp).toLocaleTimeString()}</span>
-        `;
+
+        const versionBadge = this.createVersionBadge(item.versionLabel, {
+          variant: isCurrent ? 'accent' : 'neutral',
+          className: isCurrent ? '' : 'text-text-300',
+        });
+        const timeLabel = DOMUtils.createElement('span', {
+          className: 'text-[10px] text-text-400',
+          textContent: new Date(item.timestamp).toLocaleTimeString(),
+        });
+
+        header.appendChild(versionBadge);
+        header.appendChild(timeLabel);
 
         const preview = DOMUtils.createElement('div');
         preview.className = 'text-xs text-text-200 line-clamp-2';
@@ -324,7 +359,9 @@ class EditModal {
       // Info note only if no history
       const infoBox = DOMUtils.createElement('div');
       infoBox.className = 'mb-4 p-3 bg-bg-100 rounded-lg text-sm';
-      infoBox.innerHTML = `ℹ️ <strong>Note:</strong> Past versions are saved as you browse.`;
+      infoBox.appendChild(document.createTextNode('ℹ️ '));
+      infoBox.appendChild(DOMUtils.createElement('strong', { textContent: 'Note:' }));
+      infoBox.appendChild(document.createTextNode(' Past versions are saved as you browse.'));
       container.appendChild(infoBox);
     }
 
@@ -335,7 +372,18 @@ class EditModal {
 
     const messageLabel = DOMUtils.createElement('div');
     messageLabel.className = 'mb-3 text-sm font-semibold text-accent-main-100 flex justify-between';
-    messageLabel.innerHTML = `<span>📝 Displayed Content</span> <span id="claude-edit-view-version" class="text-xs bg-accent-main-100 text-white px-2 py-0.5 rounded">${currentVersion}</span>`;
+
+    const messageLabelText = DOMUtils.createElement('span', {
+      textContent: '📝 Displayed Content',
+    });
+    const messageVersion = this.createVersionBadge(currentVersion, {
+      variant: 'accent',
+      className: 'text-white',
+    });
+    messageVersion.id = 'claude-edit-view-version';
+
+    messageLabel.appendChild(messageLabelText);
+    messageLabel.appendChild(messageVersion);
 
     const messageContent = DOMUtils.createElement('div');
     messageContent.id = 'claude-edit-view-content';
@@ -349,7 +397,13 @@ class EditModal {
     // Tip box
     const tipBox = DOMUtils.createElement('div');
     tipBox.className = 'mt-5 p-3 bg-bg-100 rounded-lg text-xs text-text-300';
-    tipBox.innerHTML = `💡 <strong>Tip:</strong> Use the <strong>◀ / ▶</strong> buttons on the message to navigate between versions.`;
+    tipBox.appendChild(document.createTextNode('💡 '));
+    tipBox.appendChild(DOMUtils.createElement('strong', { textContent: 'Tip:' }));
+    tipBox.appendChild(document.createTextNode(' Use the '));
+    tipBox.appendChild(DOMUtils.createElement('strong', { textContent: '◀ / ▶' }));
+    tipBox.appendChild(
+      document.createTextNode(' buttons on the message to navigate between versions.')
+    );
 
     container.appendChild(messageBox);
     container.appendChild(tipBox);
@@ -409,10 +463,11 @@ class EditModal {
 
     const modalState = this.activeModal;
     const { element, content, escHandler } = modalState;
-    element.style.opacity = '0';
+    element.classList.remove('opacity-100');
+    element.classList.add('opacity-0');
     if (content) {
-      content.style.opacity = '0';
-      content.style.transform = 'translateY(20px)';
+      content.classList.remove('opacity-100', 'translate-y-0');
+      content.classList.add('opacity-0', 'translate-y-5');
     }
 
     modalState.closeTimer = setTimeout(() => {

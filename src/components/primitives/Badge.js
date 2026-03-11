@@ -6,7 +6,14 @@
  * REFACTORED: Uses ONLY Claude native classes, no inline styles
  */
 
-import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
+import {
+  cn,
+  badgeClass,
+  badgeSizeClass,
+  badgeVariantClass,
+  buttonGroupClass,
+  ClaudeClasses,
+} from '../../utils/ClassNames.js';
 
 /**
  * Badge Component Class
@@ -25,6 +32,9 @@ export class Badge {
    * @param {boolean} options.rounded - Use rounded-full (default: false, uses rounded-md)
    * @param {boolean} options.clickable - Whether the badge is clickable
    * @param {Function} options.onClick - Click handler
+   * @param {Object} options.position - Inline position offsets for dynamic placement
+   * @param {Object} options.style - Inline styles for dynamic values only
+   * @param {boolean} options.allowEmpty - Keep badge visible when content is empty
    * @returns {HTMLElement}
    */
   static create(options = {}) {
@@ -38,6 +48,9 @@ export class Badge {
       rounded = false,
       clickable = false,
       onClick = null,
+      position = null,
+      style = null,
+      allowEmpty = false,
     } = options;
 
     // Create badge element
@@ -53,11 +66,25 @@ export class Badge {
       badge.title = title;
     }
 
+    this.setBadgeMetadata(badge, {
+      variant,
+      size,
+      rounded,
+      clickable,
+      className,
+      allowEmpty,
+    });
+
     // Apply classes
     badge.className = this.getBadgeClasses(variant, size, rounded, clickable, className);
+    this.applyPositionStyles(badge, position);
+
+    if (style && typeof style === 'object') {
+      Object.assign(badge.style, style);
+    }
 
     // Set content
-    this.setBadgeContent(badge, content);
+    this.setBadgeContent(badge, content, { allowEmpty });
 
     // Add click handler if clickable
     if (clickable && onClick) {
@@ -71,15 +98,13 @@ export class Badge {
    * Gets the appropriate CSS classes for the badge
    */
   static getBadgeClasses(variant, size, rounded, clickable, additionalClasses) {
-    const variantClass = this.getVariantClass(variant);
-    const sizeClass = this.getSizeClass(size);
-    const roundedClass = rounded ? ClaudeClasses.util.roundedFull : ClaudeClasses.util.rounded;
-
-    return cn(
-      variantClass,
-      sizeClass,
-      roundedClass,
-      clickable && cn(ClaudeClasses.util.cursorPointer, 'hover:scale-110 transition-transform'),
+    return badgeClass(
+      {
+        variant,
+        size,
+        rounded,
+        clickable,
+      },
       additionalClasses
     );
   }
@@ -88,33 +113,20 @@ export class Badge {
    * Gets the variant-specific class
    */
   static getVariantClass(variant) {
-    const variantMap = {
-      primary: 'px-2 py-1 bg-bg-200 text-text-000 text-xs font-semibold',
-      accent: ClaudeClasses.badge.accent,
-      neutral: ClaudeClasses.badge.neutral,
-      counter: ClaudeClasses.badge.counter,
-    };
-
-    return variantMap[variant] || variantMap.accent;
+    return badgeVariantClass(variant);
   }
 
   /**
    * Gets the size-specific class
    */
   static getSizeClass(size) {
-    const sizeMap = {
-      xs: 'text-xs px-1 py-0.5 min-w-[16px]',
-      sm: 'text-xs px-1.5 py-0.5 min-w-[20px]',
-      base: 'text-xs px-2 py-1 min-w-[24px]',
-    };
-
-    return sizeMap[size] || sizeMap.base;
+    return badgeSizeClass(size);
   }
 
   /**
    * Sets the badge content
    */
-  static setBadgeContent(badge, content) {
+  static setBadgeContent(badge, content, { allowEmpty = false } = {}) {
     if (typeof content === 'number') {
       // Add special formatting for large numbers
       if (content > 999) {
@@ -127,9 +139,61 @@ export class Badge {
     }
 
     // Hide badge if no content
-    if (!content && content !== 0) {
-      badge.className = cn(badge.className, 'hidden');
+    this.toggleHidden(badge, !allowEmpty && !content && content !== 0);
+  }
+
+  /**
+   * Store badge rendering metadata for future updates
+   */
+  static setBadgeMetadata(badge, { variant, size, rounded, clickable, className, allowEmpty }) {
+    badge.dataset.badgeVariant = variant;
+    badge.dataset.badgeSize = size;
+    badge.dataset.badgeRounded = String(Boolean(rounded));
+    badge.dataset.badgeClickable = String(Boolean(clickable));
+    badge.dataset.badgeClassName = className || '';
+    badge.dataset.badgeAllowEmpty = String(Boolean(allowEmpty));
+  }
+
+  /**
+   * Read badge rendering metadata
+   */
+  static getBadgeMetadata(badge) {
+    return {
+      variant: badge.dataset.badgeVariant || 'accent',
+      size: badge.dataset.badgeSize || 'base',
+      rounded: badge.dataset.badgeRounded === 'true',
+      clickable: badge.dataset.badgeClickable === 'true',
+      className: badge.dataset.badgeClassName || '',
+      allowEmpty: badge.dataset.badgeAllowEmpty === 'true',
+    };
+  }
+
+  /**
+   * Apply only positional inline styles
+   */
+  static applyPositionStyles(badge, position) {
+    if (!position || typeof position !== 'object') {
+      return;
     }
+
+    const styles = {};
+    ['top', 'right', 'bottom', 'left'].forEach(prop => {
+      if (position[prop] !== undefined) {
+        styles[prop] = typeof position[prop] === 'number' ? `${position[prop]}px` : position[prop];
+      }
+    });
+
+    if (Object.keys(styles).length > 0) {
+      styles.position = 'absolute';
+      Object.assign(badge.style, styles);
+    }
+  }
+
+  /**
+   * Toggle hidden class without mutating the rest of the class list
+   */
+  static toggleHidden(badge, shouldHide) {
+    badge.classList.toggle(ClaudeClasses.state.hidden, shouldHide);
   }
 
   /**
@@ -199,6 +263,7 @@ export class Badge {
       variant: options.variant || 'accent',
       className: cn('w-2 h-2 min-w-[8px] p-0', options.className),
       rounded: true,
+      allowEmpty: true,
     });
   }
 
@@ -210,24 +275,35 @@ export class Badge {
       return;
     }
 
-    // Update content
-    this.setBadgeContent(badge, content);
+    const currentMeta = this.getBadgeMetadata(badge);
+    const nextMeta = {
+      variant: options.variant || currentMeta.variant,
+      size: options.size || currentMeta.size,
+      rounded: options.rounded ?? currentMeta.rounded,
+      clickable: options.clickable ?? currentMeta.clickable,
+      className: options.className ?? currentMeta.className,
+      allowEmpty: options.allowEmpty ?? currentMeta.allowEmpty,
+    };
 
-    // Update visibility by toggling hidden class
-    if (!content && content !== 0) {
-      badge.className = cn(badge.className, 'hidden');
-    } else {
-      badge.className = badge.className.replace(/\bhidden\b/g, '').trim();
+    this.setBadgeMetadata(badge, nextMeta);
+    badge.className = this.getBadgeClasses(
+      nextMeta.variant,
+      nextMeta.size,
+      nextMeta.rounded,
+      nextMeta.clickable,
+      nextMeta.className
+    );
+
+    if (options.position) {
+      this.applyPositionStyles(badge, options.position);
     }
 
-    // Update variant if provided
-    if (options.variant) {
-      // Remove old variant classes and add new ones
-      const oldVariantPattern =
-        /\b(px-2 py-1 bg-bg-200 text-text-000|px-2 py-1 rounded-md bg-accent-main-100 text-white|px-2 py-1 rounded-md bg-bg-200 text-text-000|absolute top-0 right-0 -mt-1 -mr-1 px-1\.5 py-0\.5 rounded-full bg-accent-main-100 text-white)\b/g;
-      badge.className = badge.className.replace(oldVariantPattern, '').trim();
-      badge.className = cn(badge.className, this.getVariantClass(options.variant));
+    if (options.style && typeof options.style === 'object') {
+      Object.assign(badge.style, options.style);
     }
+
+    // Update content after class recomputation so hidden state stays correct
+    this.setBadgeContent(badge, content, { allowEmpty: nextMeta.allowEmpty });
   }
 
   /**
@@ -236,12 +312,7 @@ export class Badge {
   static createGroup(badges, options = {}) {
     const group = document.createElement('div');
     const direction = options.direction === 'vertical' ? 'col' : 'row';
-    group.className = cn(
-      ClaudeClasses.layout[`flex${direction === 'col' ? 'Col' : 'Row'}`],
-      ClaudeClasses.layout.gap2,
-      ClaudeClasses.layout.itemsCenter,
-      options.className
-    );
+    group.className = buttonGroupClass(direction, 2, options.className);
 
     badges.forEach(badgeOptions => {
       const badge = this.create(badgeOptions);
@@ -260,11 +331,11 @@ export class Badge {
     }
 
     // Add animation class
-    badge.className = cn(badge.className, 'animate-pulse');
+    badge.classList.add(ClaudeClasses.state.pulse);
 
     // Remove after animation
     setTimeout(() => {
-      badge.className = badge.className.replace(/\banimate-pulse\b/g, '').trim();
+      badge.classList.remove(ClaudeClasses.state.pulse);
     }, 250);
   }
 

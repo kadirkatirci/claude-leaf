@@ -4,7 +4,7 @@
  * Uses ONLY Claude native classes for automatic dark/light mode adaptation
  */
 
-import { cn, textClass } from '../utils/ClassNames.js';
+import { cn, panelSectionClass, textClass } from '../utils/ClassNames.js';
 
 export default class BasePanel {
   constructor(options = {}) {
@@ -85,11 +85,7 @@ export default class BasePanel {
    */
   createHeader() {
     const header = document.createElement('div');
-    header.className = cn(
-      'panel-header',
-      'flex items-center justify-between px-5 py-4',
-      'border-b border-border-300 rounded-t-xl bg-bg-100'
-    );
+    header.className = cn('panel-header', panelSectionClass('header'));
 
     // Title
     const title = document.createElement('h3');
@@ -122,12 +118,7 @@ export default class BasePanel {
    */
   createContent() {
     const content = document.createElement('div');
-    content.className = cn(
-      'panel-content',
-      'flex-1 p-4',
-      'overflow-y-auto overflow-x-hidden',
-      'relative bg-bg-000'
-    );
+    content.className = cn('panel-content', panelSectionClass('content'));
 
     return content;
   }
@@ -137,7 +128,7 @@ export default class BasePanel {
    */
   createFooter() {
     const footer = document.createElement('div');
-    footer.className = cn('panel-footer', 'px-5 py-3', 'border-t border-border-300 bg-bg-100');
+    footer.className = cn('panel-footer', panelSectionClass('footer'));
 
     return footer;
   }

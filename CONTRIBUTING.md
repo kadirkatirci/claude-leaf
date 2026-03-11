@@ -33,6 +33,22 @@ npm run format      # Format code
 
 Pre-commit hooks automatically run linting on staged files.
 
+### Styling Rules
+
+Keep the styling model narrow. The project currently supports two paths:
+
+- `popup/` is CSS-first. Add visual styles in `popup/popup.css` and keep inline styles only for runtime positioning, sizing, or transient visibility.
+- Content-script UI is helper-first. Prefer `src/utils/ClassNames.js` and shared primitives such as `Button`, `Badge`, `CounterBadge`, and `BasePanel` over long raw class strings.
+- Do not add a parallel component theme layer such as `cp-*` classes.
+- Reserve `innerHTML` for trusted rich message content or inline SVG/icon fragments. For static UI structure, prefer DOM node creation.
+
+Before opening a PR, run quick style regressions:
+
+```bash
+rg -n "cp-" src popup
+rg -n "style:\\s*\\{|style\\.display|style\\.[A-Za-z]+\\s*=|cssText" src/modules popup/popup.js
+```
+
 ### Commit Messages
 
 Use clear, descriptive commit messages:

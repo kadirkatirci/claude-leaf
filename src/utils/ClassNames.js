@@ -33,6 +33,10 @@ export const ClaudeClasses = {
     icon: 'size-9 text-xl border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 flex items-center justify-center hover:scale-110',
     small:
       'size-8 text-lg border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 flex items-center justify-center hover:scale-110',
+    chevron:
+      'size-9 text-xl border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 flex items-center justify-center hover:scale-110 transition-transform duration-200',
+    close:
+      'size-9 text-xl border border-border-300 rounded-md bg-bg-100 hover:bg-bg-200 flex items-center justify-center hover:scale-110 hover:bg-red-500 hover:text-white',
   },
 
   // Cards & Panels
@@ -91,12 +95,19 @@ export const ClaudeClasses = {
 
   // Badges
   badge: {
-    base: 'px-2 py-1 rounded-md text-xs font-semibold',
-    accent: 'px-2 py-1 rounded-md bg-accent-main-100 text-white text-xs font-semibold',
-    neutral: 'px-2 py-1 rounded-md bg-bg-200 text-text-000 text-xs font-semibold',
+    base: 'inline-flex items-center justify-center font-semibold leading-none',
+    primary: 'bg-bg-200 text-text-000',
+    accent: 'bg-accent-main-100 text-white',
+    neutral: 'bg-bg-200 text-text-000',
+    error: 'bg-red-500 text-white',
     // Smaller counter for fixed buttons (navigation, bookmarks, etc.)
     counter:
-      'absolute -top-1 -right-1 px-1 py-0.5 rounded-full bg-accent-main-100 text-white text-[10px] font-bold min-w-[18px] leading-none text-center',
+      'absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 rounded-full bg-accent-main-100 text-white text-[10px] font-bold min-w-[18px] leading-none text-center',
+    sizeXs: 'text-xs px-1 py-0.5 min-w-[16px]',
+    sizeSm: 'text-xs px-1.5 py-0.5 min-w-[20px]',
+    sizeBase: 'text-xs px-2 py-1 min-w-[24px]',
+    clickable: 'cursor-pointer hover:scale-110 transition-transform',
+    circle: 'h-4 min-w-4 p-0 leading-4 box-border',
   },
 
   // Menus & Dropdowns
@@ -135,6 +146,12 @@ export const ClaudeClasses = {
     hidden: 'opacity-0 pointer-events-none',
     visible: 'opacity-100 pointer-events-auto',
   },
+
+  // State
+  state: {
+    hidden: 'hidden',
+    pulse: 'animate-pulse',
+  },
 };
 
 /**
@@ -144,7 +161,8 @@ export const ClaudeClasses = {
  * @returns {string}
  */
 export function buttonClass(variant = 'primary', additionalClasses = '') {
-  return cn(ClaudeClasses.button.base, ClaudeClasses.button[variant], additionalClasses);
+  const variantClass = ClaudeClasses.button[variant] || ClaudeClasses.button.primary;
+  return cn(ClaudeClasses.button.base, variantClass, additionalClasses);
 }
 
 /**
@@ -169,6 +187,23 @@ export function panelClass(variant = 'base', additionalClasses = '') {
 }
 
 /**
+ * Builds a panel section class string
+ * @param {'header'|'content'|'footer'} section - Panel section
+ * @param {string} additionalClasses - Additional classes
+ * @returns {string}
+ */
+export function panelSectionClass(section = 'content', additionalClasses = '') {
+  const sectionMap = {
+    header:
+      'flex items-center justify-between px-5 py-4 border-b border-border-300 rounded-t-xl bg-bg-100',
+    content: 'flex-1 p-4 overflow-y-auto overflow-x-hidden relative bg-bg-000',
+    footer: 'px-5 py-3 border-t border-border-300 bg-bg-100',
+  };
+
+  return cn(sectionMap[section] || sectionMap.content, additionalClasses);
+}
+
+/**
  * Builds a flex layout class string
  * @param {'row'|'col'} direction - Flex direction
  * @param {number} gap - Gap size (1-3)
@@ -179,6 +214,17 @@ export function flexClass(direction = 'row', gap = 2, additionalClasses = '') {
   const dir = direction === 'col' ? ClaudeClasses.layout.flexCol : ClaudeClasses.layout.flexRow;
   const gapClass = ClaudeClasses.layout[`gap${gap}`] || ClaudeClasses.layout.gap2;
   return cn(dir, gapClass, additionalClasses);
+}
+
+/**
+ * Builds a button group class string
+ * @param {'row'|'col'} direction - Button group direction
+ * @param {number} gap - Gap size (1-3)
+ * @param {string} additionalClasses - Additional classes
+ * @returns {string}
+ */
+export function buttonGroupClass(direction = 'row', gap = 2, additionalClasses = '') {
+  return flexClass(direction, gap, cn(ClaudeClasses.layout.itemsCenter, additionalClasses));
 }
 
 /**
@@ -204,12 +250,95 @@ export function textClass(
   );
 }
 
+/**
+ * Gets the variant-specific classes for a badge
+ * @param {'primary'|'accent'|'neutral'|'error'|'counter'} variant - Badge variant
+ * @returns {string}
+ */
+export function badgeVariantClass(variant = 'accent') {
+  const variantMap = {
+    primary: ClaudeClasses.badge.primary,
+    accent: ClaudeClasses.badge.accent,
+    neutral: ClaudeClasses.badge.neutral,
+    error: ClaudeClasses.badge.error,
+    counter: ClaudeClasses.badge.counter,
+  };
+
+  return variantMap[variant] || variantMap.accent;
+}
+
+/**
+ * Gets the size-specific classes for a badge
+ * @param {'xs'|'sm'|'base'} size - Badge size
+ * @returns {string}
+ */
+export function badgeSizeClass(size = 'base') {
+  const sizeMap = {
+    xs: ClaudeClasses.badge.sizeXs,
+    sm: ClaudeClasses.badge.sizeSm,
+    base: ClaudeClasses.badge.sizeBase,
+  };
+
+  return sizeMap[size] || sizeMap.base;
+}
+
+/**
+ * Builds a badge class string
+ * @param {Object} options - Badge options
+ * @param {'primary'|'accent'|'neutral'|'error'|'counter'} options.variant - Badge variant
+ * @param {'xs'|'sm'|'base'} options.size - Badge size
+ * @param {boolean} options.rounded - Use rounded-full
+ * @param {boolean} options.clickable - Add interactive classes
+ * @param {boolean} options.hidden - Hide badge
+ * @param {string} additionalClasses - Additional classes
+ * @returns {string}
+ */
+export function badgeClass(
+  { variant = 'accent', size = 'base', rounded = false, clickable = false, hidden = false } = {},
+  additionalClasses = ''
+) {
+  const isCounterVariant = variant === 'counter';
+
+  return cn(
+    !isCounterVariant && ClaudeClasses.badge.base,
+    badgeVariantClass(variant),
+    !isCounterVariant && badgeSizeClass(size),
+    !isCounterVariant && (rounded ? ClaudeClasses.util.roundedFull : ClaudeClasses.util.rounded),
+    clickable && ClaudeClasses.badge.clickable,
+    hidden && ClaudeClasses.state.hidden,
+    additionalClasses
+  );
+}
+
+/**
+ * Builds a counter badge class string
+ * @param {Object} options - Counter options
+ * @param {boolean} options.hidden - Hide counter
+ * @param {'auto'|'circle'} options.shape - Counter shape
+ * @param {string} additionalClasses - Additional classes
+ * @returns {string}
+ */
+export function counterBadgeClass({ hidden = false, shape = 'auto' } = {}, additionalClasses = '') {
+  return cn(
+    ClaudeClasses.badge.counter,
+    shape === 'circle' && ClaudeClasses.badge.circle,
+    hidden && ClaudeClasses.state.hidden,
+    additionalClasses
+  );
+}
+
 export default {
   cn,
   ClaudeClasses,
   buttonClass,
   cardClass,
   panelClass,
+  panelSectionClass,
   flexClass,
+  buttonGroupClass,
   textClass,
+  badgeVariantClass,
+  badgeSizeClass,
+  badgeClass,
+  counterBadgeClass,
 };
