@@ -12,6 +12,7 @@ import navigationInterceptor from '../core/NavigationInterceptor.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import { debugLog } from '../config/debug.js';
+import { applyFloatingVisibility, setFloatingOpacity } from '../utils/FloatingVisibility.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -61,15 +62,14 @@ class PanelManager {
       if (currentDisplay !== expectedDisplay) {
         debugLog('panel', 'Health check: Fixing visibility mismatch');
         if (isConversationPage) {
-          this.container.style.display = 'flex';
-          this.container.style.visibility = 'visible';
-          this.container.style.pointerEvents = 'auto';
-          this.container.style.opacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
+          applyFloatingVisibility(this.container, {
+            visible: true,
+            opacity: this.isReady ? this.cachedOpacity : LOADING_OPACITY,
+          });
         } else {
-          this.container.style.display = 'none';
-          this.container.style.visibility = 'hidden';
-          this.container.style.opacity = '0';
-          this.container.style.pointerEvents = 'none';
+          applyFloatingVisibility(this.container, {
+            visible: false,
+          });
         }
       }
     }, 2000);
@@ -89,7 +89,7 @@ class PanelManager {
 
       // Transition to normal opacity
       if (this.container && this.visible) {
-        this.container.style.opacity = this.cachedOpacity;
+        setFloatingOpacity(this.container, this.cachedOpacity);
       }
     };
 
@@ -103,7 +103,7 @@ class PanelManager {
       if (event.isConversationPage && !event.wasConversationPage) {
         this.isReady = false;
         if (this.container) {
-          this.container.style.opacity = LOADING_OPACITY.toString();
+          setFloatingOpacity(this.container, LOADING_OPACITY);
         }
       }
     });
@@ -140,21 +140,22 @@ class PanelManager {
         [position]: '30px',
         bottom: '100px',
         zIndex: '9999',
-        display: isConversationPage ? 'flex' : 'none',
         flexDirection: 'column',
         gap: '8px',
-        opacity: initialOpacity,
         transition: 'opacity 0.3s ease', // Smooth transition when ready
-        visibility: isConversationPage ? 'visible' : 'hidden',
       },
+    });
+    applyFloatingVisibility(this.container, {
+      visible: isConversationPage,
+      opacity: initialOpacity,
     });
 
     // Hover effect
     this.container.addEventListener('mouseenter', () => {
-      this.container.style.opacity = '1';
+      setFloatingOpacity(this.container, 1);
     });
     this.container.addEventListener('mouseleave', () => {
-      this.container.style.opacity = this.cachedOpacity;
+      setFloatingOpacity(this.container, this.cachedOpacity);
     });
 
     document.body.appendChild(this.container);
@@ -217,22 +218,17 @@ class PanelManager {
 
       if (this.container) {
         if (isConversationPage) {
-          // Show container
-          this.container.style.display = 'flex';
-          this.container.style.visibility = 'visible';
-          this.container.style.pointerEvents = 'auto';
-
-          // Use loading opacity if not ready yet, otherwise cached opacity
-          this.container.style.opacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
+          applyFloatingVisibility(this.container, {
+            visible: true,
+            opacity: this.isReady ? this.cachedOpacity : LOADING_OPACITY,
+          });
 
           // Reset ready state on new page (will be set again when data loads)
           this.isReady = false;
         } else {
-          // Hide container
-          this.container.style.display = 'none';
-          this.container.style.visibility = 'hidden';
-          this.container.style.opacity = '0';
-          this.container.style.pointerEvents = 'none';
+          applyFloatingVisibility(this.container, {
+            visible: false,
+          });
         }
       }
     });

@@ -10,6 +10,7 @@ import navigationInterceptor from './NavigationInterceptor.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import { buttonClass } from '../utils/ClassNames.js';
+import { applyFloatingVisibility, setFloatingOpacity } from '../utils/FloatingVisibility.js';
 
 // Loading state opacity (dimmed until data loads)
 const LOADING_OPACITY = 0.3;
@@ -103,7 +104,7 @@ export default class FixedButtonMixin {
       if (event.isConversationPage && !event.wasConversationPage) {
         module._isButtonReady = false;
         if (module.fixedButton && module.lastConversationState) {
-          module.fixedButton.style.opacity = LOADING_OPACITY.toString();
+          setFloatingOpacity(module.fixedButton, LOADING_OPACITY);
         }
       }
     });
@@ -122,7 +123,7 @@ export default class FixedButtonMixin {
 
       // Transition to target opacity
       if (this.fixedButton && this.lastConversationState) {
-        this.fixedButton.style.opacity = this._targetOpacity.toString();
+        setFloatingOpacity(this.fixedButton, this._targetOpacity);
       }
     }.bind(module);
   }
@@ -143,21 +144,17 @@ export default class FixedButtonMixin {
       // Update button visibility with multiple methods for stability
       if (this.fixedButton) {
         if (isConversationPage) {
-          // Make visible - use multiple properties for robustness
-          this.fixedButton.style.display = 'flex';
-          this.fixedButton.style.visibility = 'visible';
-          this.fixedButton.style.pointerEvents = 'auto';
-
           // Use loading opacity if not ready, target opacity if ready
           // Note: _isButtonReady is reset by navigation listener, not here
           const opacity = this._isButtonReady ? this._targetOpacity : LOADING_OPACITY;
-          this.fixedButton.style.opacity = opacity.toString();
+          applyFloatingVisibility(this.fixedButton, {
+            visible: true,
+            opacity,
+          });
         } else {
-          // Hide completely - use display:none for guaranteed hiding
-          this.fixedButton.style.display = 'none';
-          this.fixedButton.style.visibility = 'hidden';
-          this.fixedButton.style.opacity = '0';
-          this.fixedButton.style.pointerEvents = 'none';
+          applyFloatingVisibility(this.fixedButton, {
+            visible: false,
+          });
         }
         module.log(`Button visibility set to: ${isConversationPage ? 'visible' : 'hidden'}`);
       }
@@ -270,19 +267,15 @@ export default class FixedButtonMixin {
       // Set initial visibility based on page type
       const isConversationPage = VisibilityManager.isOnConversationPage();
       if (!isConversationPage) {
-        // Start hidden on non-conversation pages
-        button.style.display = 'none';
-        button.style.visibility = 'hidden';
-        button.style.opacity = '0';
-        button.style.pointerEvents = 'none';
+        applyFloatingVisibility(button, {
+          visible: false,
+        });
         module.log(`Button created hidden (not on conversation page)`);
       } else {
-        // Start visible but dimmed (loading state) on conversation pages
-        button.style.display = 'flex';
-        button.style.visibility = 'visible';
-        button.style.pointerEvents = 'auto';
-        // Use loading opacity - will transition to target when data loads
-        button.style.opacity = LOADING_OPACITY.toString();
+        applyFloatingVisibility(button, {
+          visible: true,
+          opacity: LOADING_OPACITY,
+        });
         module.log(`Button created in loading state (on conversation page)`);
       }
 
