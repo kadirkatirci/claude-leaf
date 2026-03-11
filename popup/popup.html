@@ -1,72 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Leaf</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Leaf</title>
-  <link rel="stylesheet" href="popup.css">
-</head>
-
-<body>
-  <div class="popup-container">
-    <!-- Header -->
-    <header class="popup-header">
-      <div class="header-content">
-        <div class="header-left">
-          <img src="../icons/icon48.png" alt="Logo" class="header-logo">
-          <h1>Claude Leaf</h1>
+  <body>
+    <div class="popup-container">
+      <!-- Header -->
+      <header class="popup-header">
+        <div class="header-content">
+          <div class="header-left">
+            <img src="../icons/icon48.png" alt="Logo" class="header-logo" />
+            <h1>Claude Leaf</h1>
+          </div>
+          <span class="version" id="version"></span>
         </div>
-        <span class="version" id="version"></span>
-      </div>
-    </header>
+      </header>
 
-    <!-- Tabs - Generated from JS -->
-    <nav class="tabs" id="tabs-nav"></nav>
+      <!-- Tabs - Generated from JS -->
+      <nav class="tabs" id="tabs-nav"></nav>
 
-    <!-- Tab Contents -->
-    <main class="tab-contents">
-      <div class="tab-content active" id="tab-features">
-        <div class="feature-list" id="feature-list"></div>
-      </div>
+      <!-- Tab Contents -->
+      <main class="tab-contents">
+        <div class="tab-content active" id="tab-features">
+          <div class="feature-list" id="feature-list"></div>
+        </div>
 
-      <!-- 
+        <!-- 
       <div class="tab-content" id="tab-shortcuts">
         <div class="shortcuts-list" id="shortcuts-list"></div>
       </div>
       -->
 
-      <div class="tab-content" id="tab-data">
-        <div class="data-section" id="data-section"></div>
-      </div>
+        <div class="tab-content" id="tab-data">
+          <div class="data-section" id="data-section"></div>
+        </div>
 
-      <div class="tab-content" id="tab-help">
-        <div class="help-section" id="help-section"></div>
-      </div>
-    </main>
+        <div class="tab-content" id="tab-help">
+          <div class="help-section" id="help-section"></div>
+        </div>
+      </main>
 
-    <!-- Footer -->
-    <footer class="popup-footer">
-      <button class="btn btn-primary" id="save-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-          <polyline points="17 21 17 13 7 13 7 21" />
-          <polyline points="7 3 7 8 15 8" />
-        </svg>
-        Save
-      </button>
-    </footer>
+      <!-- Footer -->
+      <footer class="popup-footer">
+        <button class="btn btn-primary" id="save-btn">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          Save
+        </button>
+      </footer>
 
-    <!-- Toast notification -->
-    <div id="toast" class="toast hidden"></div>
+      <!-- Toast notification -->
+      <div id="toast" class="toast hidden"></div>
 
-    <!-- Tooltip -->
-    <div id="tooltip" class="tooltip hidden"></div>
-  </div>
+      <!-- Tooltip -->
+      <div id="tooltip" class="tooltip hidden"></div>
+    </div>
 
-  <script src="dataService.js"></script>
-  <script src="analytics.js"></script>
-  <script src="popup.js"></script>
-</body>
-
+    <script src="dataService.js"></script>
+    <script src="analytics.js"></script>
+    <script type="module" src="popup.js"></script>
+  </body>
 </html>

@@ -1,0 +1,10 @@
+/*
+ * Claude Productivity Extension Styles
+ * Minimal CSS - most styling is done via Claude native classes
+ */
+
+/* Only keep essential overrides that can't be done via classes */
+.claude-nav-btn {
+  /* Native classes handle most styling, but we need to ensure overflow:visible for counter */
+  overflow: visible !important;
+}

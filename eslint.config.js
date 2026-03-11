@@ -5,7 +5,7 @@ export default [
     ignores: ['dist/**', 'node_modules/**', '*.bundle.js'],
   },
   {
-    files: ['**/*.js'],
+    files: ['src/**/*.js', 'popup/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -70,6 +70,42 @@ export default [
       'prefer-promise-reject-errors': 'error',
 
       // Code quality
+      'no-duplicate-imports': 'error',
+      'no-template-curly-in-string': 'warn',
+      'no-unreachable-loop': 'error',
+      'no-use-before-define': ['error', { functions: false, classes: true }],
+    },
+  },
+  {
+    files: ['scripts/**/*.js', 'scripts/**/*.mjs', 'test/**/*.js', 'test-support/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        globalThis: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
+    plugins: {
+      prettier,
+    },
+    rules: {
+      'prettier/prettier': 'warn',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
+      'no-throw-literal': 'error',
+      'no-return-await': 'error',
+      'require-await': 'warn',
+      'no-async-promise-executor': 'error',
+      'no-promise-executor-return': 'error',
+      'prefer-promise-reject-errors': 'error',
       'no-duplicate-imports': 'error',
       'no-template-curly-in-string': 'warn',
       'no-unreachable-loop': 'error',
