@@ -14,7 +14,7 @@ A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with 
 ### Key Features
 | Feature | Description |
 |---------|-------------|
-| **Message Navigation** | Jump between messages with keyboard shortcuts (J/K) |
+| **Message Navigation** | Jump between messages with on-screen navigation controls |
 | **Edit History** | Track all prompt edits with version comparison |
 | **Bookmarks** | Save and categorize important messages |
 | **Emoji Markers** | Mark messages with emojis for quick reference |
@@ -68,9 +68,9 @@ src/
 │   │   └── adapters/             # Storage adapters
 │   └── ...
 ├── managers/               # Centralized managers
-│   ├── AsyncManager.js     # Timer/interval management
-│   ├── DOMManager.js       # DOM operations
-│   ├── KeyboardManager.js  # Keyboard shortcuts
+│   ├── AsyncManager.js     # Deprecated compatibility manager
+│   ├── DOMManager.js       # Deprecated compatibility manager
+│   ├── KeyboardManager.js  # Internal keyboard shortcut infrastructure
 │   ├── ObserverManager.js  # MutationObserver lifecycle
 │   └── ThemeManager.js     # Dynamic theming
 ├── stores/                 # State management
@@ -102,7 +102,7 @@ The initialization order is critical:
 1. NavigationInterceptor (must be on `window` before other imports)
 2. Settings load
 3. DOM ready check
-4. Core infrastructure (DOMUtils, AsyncManager, DOMManager, ButtonFactory)
+4. Core infrastructure (`DOMUtils`, legacy compatibility managers, fixed-button factory wiring)
 5. Core services start (`panelManager`, `messageHub`)
 6. Managers (Theme, Keyboard, Observer)
 7. Cross-tab sync (settings store)
@@ -148,11 +148,11 @@ Modules with fixed sidebar buttons use **[FixedButtonMixin](src/core/FixedButton
 |--------|---------|--------------|
 | **NavigationModule** | Message-to-message navigation | Yes (container with 3 buttons) |
 | **EditHistoryModule** | Track edited prompts with version history | Yes |
-| **CompactViewModule** | Collapse/expand long responses | Inside Navigation container |
+| **CompactViewModule** | In development, currently dev-disabled | Inside Navigation container |
 | **BookmarkModule** | Save important messages | Yes |
 | **EmojiMarkerModule** | Mark messages with emojis | Yes |
-| **SidebarCollapseModule** | Collapsible sidebar sections | No (injects into sidebar) |
-| **ContentFoldingModule** | Fold headings/code blocks | No (per-element UI) |
+| **SidebarCollapseModule** | In development, currently dev-disabled | No (injects into sidebar) |
+| **ContentFoldingModule** | In development, currently dev-disabled | No (per-element UI) |
 
 ### Edit History Flow (Current)
 
@@ -183,8 +183,10 @@ Edit history and branch map now use a two-layer capture pipeline:
 - **KeyboardManager** - Global keyboard shortcuts, prevents conflicts
 - **ThemeManager** - Dynamic CSS custom properties
 - **ObserverManager** - MutationObserver lifecycle
-- **AsyncManager** - Centralized timer/interval management
-- **DOMManager** - Single MutationObserver, safe HTML methods
+- **AsyncManager** - Deprecated compatibility manager, removal planned
+- **DOMManager** - Deprecated compatibility manager, removal planned
+
+> **Note:** `AsyncManager` and `DOMManager` remain in the codebase for staged removal only. Do not add new usages.
 
 **State Management (`src/stores/`)**:
 - **SettingsStore** - Global settings with caching
