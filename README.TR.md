@@ -16,7 +16,7 @@
 2.  Google Chrome'da `chrome://extensions/` adresine gidin.
 3.  Sağ üst köşedeki **"Geliştirici modu" (Developer mode)** anahtarını açın.
 4.  Sol üstteki **"Paketlenmemiş öğe yükle" (Load unpacked)** butonuna tıklayın.
-5.  Proje klasörünü (`claude_productivity_ext`) seçin.
+5.  Proje klasörünü (`claude-leaf`) seçin.
 
 ## Geliştirme
 

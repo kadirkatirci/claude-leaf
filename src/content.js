@@ -1,5 +1,5 @@
 /**
- * Claude Productivity Extension - Content Script Entry
+ * Claude Leaf - Content Script Entry
  *
  * CRITICAL: NavigationInterceptor MUST be imported and initialized FIRST.
  * It sets up window.__navigationInterceptor which other modules depend on.

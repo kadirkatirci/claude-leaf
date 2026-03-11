@@ -239,7 +239,7 @@ const DataService = {
       __export: {
         version: 2,
         timestamp: new Date().toISOString(),
-        source: 'claude-productivity-extension',
+        source: 'claude-leaf',
       },
     };
 

@@ -191,7 +191,7 @@ export function renderHelpSection(trackEvent) {
       url: 'https://github.com/anthropics/claude-code/issues',
       icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
       title: 'Documentation',
-      description: 'Learn how to use Claude Productivity features and keyboard shortcuts.',
+      description: 'Learn how to use Claude Leaf features and keyboard shortcuts.',
       linkText: 'Read the Docs',
     },
     {
@@ -212,7 +212,7 @@ export function renderHelpSection(trackEvent) {
       url: 'https://buymeacoffee.com/tedaitesnim',
       icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M9 1v3 M12 1v3',
       title: 'Buy Me a Coffee',
-      description: 'Support the development of Claude Productivity with a coffee ☕',
+      description: 'Support the development of Claude Leaf with a coffee ☕',
       linkText: 'Support via Buy Me a Coffee',
     },
   ];

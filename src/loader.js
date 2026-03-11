@@ -22,7 +22,7 @@
     const { default: app } = await import(`${baseUrl}/src/App.js`);
     await app.init();
 
-    console.log('✅ Claude Productivity Extension ready!');
+    console.log('✅ Claude Leaf ready!');
     console.log('💡 Tip: Access the extension via window.claudeProductivity');
   } catch (error) {
     console.error('❌ Failed to load app:', error);

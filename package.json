@@ -13,12 +13,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/kadirkatirci/claude-productivity-ext.git"
+    "url": "https://github.com/kadirkatirci/claude-leaf.git"
   },
   "bugs": {
-    "url": "https://github.com/kadirkatirci/claude-productivity-ext/issues"
+    "url": "https://github.com/kadirkatirci/claude-leaf/issues"
   },
-  "homepage": "https://github.com/kadirkatirci/claude-productivity-ext",
+  "homepage": "https://github.com/kadirkatirci/claude-leaf",
   "author": "Kadir Katirci",
   "license": "MIT",
   "scripts": {

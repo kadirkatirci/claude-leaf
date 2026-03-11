@@ -24,8 +24,8 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/kadirkatirci/claude-productivity-ext.git
-   cd claude-productivity-ext
+   git clone https://github.com/kadirkatirci/claude-leaf.git
+   cd claude-leaf
    ```
 
 2. Install dependencies and build:
