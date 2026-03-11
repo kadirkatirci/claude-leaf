@@ -102,7 +102,7 @@ export const ClaudeClasses = {
     error: 'bg-red-500 text-white',
     // Smaller counter for fixed buttons (navigation, bookmarks, etc.)
     counter:
-      'absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 rounded-full bg-accent-main-100 text-white text-[10px] font-bold min-w-[18px] leading-none text-center',
+      'absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 rounded-full clp-counter-badge text-[10px] font-bold min-w-[18px] leading-none text-center',
     sizeXs: 'text-xs px-1 py-0.5 min-w-[16px]',
     sizeSm: 'text-xs px-1.5 py-0.5 min-w-[20px]',
     sizeBase: 'text-xs px-2 py-1 min-w-[24px]',

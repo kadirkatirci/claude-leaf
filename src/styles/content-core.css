@@ -3,8 +3,18 @@
  * Minimal CSS - most styling is done via Claude native classes
  */
 
+:root {
+  --clp-accent-bg: var(--claude-productivity-primary, #cc785c);
+  --clp-accent-fg: #fff;
+}
+
 /* Only keep essential overrides that can't be done via classes */
 .claude-nav-btn {
   /* Native classes handle most styling, but we need to ensure overflow:visible for counter */
   overflow: visible !important;
+}
+
+.clp-counter-badge {
+  background-color: var(--clp-accent-bg);
+  color: var(--clp-accent-fg);
 }
