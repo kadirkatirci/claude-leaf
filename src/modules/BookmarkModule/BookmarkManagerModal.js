@@ -173,7 +173,7 @@ export class BookmarkManagerModal {
       subHeader:
         'p-4 border-b border-border-100 bg-bg-50 flex items-center justify-between shrink-0',
       scrollBody: 'p-8 flex-1 min-h-0 overflow-y-auto',
-      masterPanel: 'border-r border-border-200 w-[350px] min-h-0 flex flex-col shrink-0',
+      masterPanel: 'border-r border-border-200 min-h-0 flex flex-col shrink-0',
       masterList: 'divide-y divide-border-100 flex-1 min-h-0 overflow-y-auto',
       detailPanel: 'bg-bg-000 flex flex-1 flex-col min-h-0 min-w-0 overflow-hidden',
       detailBody: 'p-6 flex-1 min-h-0 overflow-y-auto',
@@ -625,6 +625,10 @@ export class BookmarkManagerModal {
     const masterPanel = DOMUtils.createElement('div', {
       className: this.getLayoutClass('masterPanel'),
       id: 'bm-master-panel',
+      style: {
+        width: 'clamp(260px, 30%, 320px)',
+        flexBasis: 'clamp(260px, 30%, 320px)',
+      },
     });
 
     const masterList = DOMUtils.createElement('div', {

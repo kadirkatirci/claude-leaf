@@ -341,6 +341,7 @@ class NavigationModule extends BaseModule {
       title: tooltip,
       onClick: onClick,
       style: {
+        overflow: 'visible',
         position: 'relative',
       },
     });
