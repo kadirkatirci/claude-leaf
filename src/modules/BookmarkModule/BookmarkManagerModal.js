@@ -167,6 +167,13 @@ export class BookmarkManagerModal {
     element.classList.toggle('hidden', hidden);
   }
 
+  setDisplay(element, visible, displayValue = 'block') {
+    if (!element) {
+      return;
+    }
+    element.style.display = visible ? displayValue : 'none';
+  }
+
   updateSegmentButtons(container, activeId, datasetKey, options = {}) {
     if (!container) {
       return;
@@ -265,6 +272,9 @@ export class BookmarkManagerModal {
   createSidebar() {
     const sidebar = DOMUtils.createElement('div', {
       className: 'w-[260px] bg-bg-100 border-r border-border-200 flex flex-col shrink-0',
+      style: {
+        minHeight: '0',
+      },
     });
 
     // Header
@@ -283,6 +293,9 @@ export class BookmarkManagerModal {
     const listContainer = DOMUtils.createElement('div', {
       className: 'flex-1 overflow-y-auto p-3 space-y-1',
       id: 'bm-category-list',
+      style: {
+        minHeight: '0',
+      },
     });
 
     // New Category Button
@@ -307,12 +320,25 @@ export class BookmarkManagerModal {
 
   createMainArea() {
     const main = DOMUtils.createElement('div', {
-      className: 'flex-1 flex flex-col bg-bg-000 min-w-0 relative', // relative for positioning overlays if needed
+      className: 'bg-bg-000 relative', // relative for positioning overlays if needed
+      style: {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '0',
+        minWidth: '0',
+      },
     });
 
     // Header
     const header = DOMUtils.createElement('div', {
-      className: 'p-6 border-b border-border-200 flex justify-between items-center bg-bg-000',
+      className: 'p-6 border-b border-border-200 bg-bg-000',
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: '0',
+      },
     });
 
     // Title & Filter Info
@@ -432,8 +458,15 @@ export class BookmarkManagerModal {
 
     // 1. Grid View Container
     const gridContainer = DOMUtils.createElement('div', {
-      className: 'flex flex-1 flex-col overflow-y-auto p-8',
+      className: 'p-8',
       id: 'bm-grid-container',
+      style: {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '0',
+        overflowY: 'auto',
+      },
     });
 
     // Grid Empty State (hidden by default)
@@ -441,9 +474,16 @@ export class BookmarkManagerModal {
       '🔖',
       'No bookmarks found',
       'Try changing filters or add some bookmarks.',
-      'hidden flex-1'
+      'flex-1'
     );
     gridEmptyState.id = 'bm-grid-empty';
+    Object.assign(gridEmptyState.style, {
+      display: 'none',
+      flex: '1',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
     gridContainer.appendChild(gridEmptyState);
 
     // Adjusted Grid: Force 2 columns
@@ -455,13 +495,26 @@ export class BookmarkManagerModal {
 
     // 2. Full View Container (Hidden by default)
     const fullViewContainer = DOMUtils.createElement('div', {
-      className: 'hidden flex-1 flex-col overflow-hidden',
+      className: '',
       id: 'bm-full-view-container',
+      style: {
+        flex: '1',
+        display: 'none',
+        flexDirection: 'column',
+        minHeight: '0',
+        overflow: 'hidden',
+      },
     });
 
     // Header for Full View (Back button + Go to Message)
     const fullViewHeader = DOMUtils.createElement('div', {
-      className: 'p-4 border-b border-border-100 bg-bg-50 flex justify-between items-center',
+      className: 'p-4 border-b border-border-100 bg-bg-50',
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: '0',
+      },
     });
     const backBtn = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('secondary'),
@@ -479,8 +532,13 @@ export class BookmarkManagerModal {
     fullViewHeader.appendChild(gotoMsgBtn);
 
     const fullViewContent = DOMUtils.createElement('div', {
-      className: 'flex-1 overflow-y-auto p-8',
+      className: 'p-8',
       id: 'bm-full-view-content',
+      style: {
+        flex: '1',
+        minHeight: '0',
+        overflowY: 'auto',
+      },
     });
 
     fullViewContainer.appendChild(fullViewHeader);
@@ -488,26 +546,54 @@ export class BookmarkManagerModal {
 
     // 3. List View Container (Split Pane - Master/Detail)
     const listViewContainer = DOMUtils.createElement('div', {
-      className: 'hidden flex-1 flex-row overflow-hidden',
+      className: '',
       id: 'bm-list-view-container',
+      style: {
+        flex: '1',
+        display: 'none',
+        minHeight: '0',
+        minWidth: '0',
+        flexDirection: 'row',
+        overflow: 'hidden',
+      },
     });
 
     // Master Panel (Left - List)
     const masterPanel = DOMUtils.createElement('div', {
-      className: 'w-[350px] shrink-0 border-r border-border-200 flex flex-col',
+      className: 'border-r border-border-200',
       id: 'bm-master-panel',
+      style: {
+        width: '350px',
+        minHeight: '0',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: '0',
+      },
     });
 
     const masterList = DOMUtils.createElement('div', {
-      className: 'flex-1 overflow-y-auto divide-y divide-border-100',
+      className: 'divide-y divide-border-100',
       id: 'bm-master-list',
+      style: {
+        flex: '1',
+        minHeight: '0',
+        overflowY: 'auto',
+      },
     });
     masterPanel.appendChild(masterList);
 
     // Detail Panel (Right - Content)
     const detailPanel = DOMUtils.createElement('div', {
-      className: 'flex-1 flex flex-col overflow-hidden bg-bg-000',
+      className: 'bg-bg-000',
       id: 'bm-detail-panel',
+      style: {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '0',
+        minWidth: '0',
+        overflow: 'hidden',
+      },
     });
 
     // Detail panel empty state
@@ -518,33 +604,62 @@ export class BookmarkManagerModal {
       'flex-1'
     );
     detailEmpty.id = 'bm-detail-empty';
+    Object.assign(detailEmpty.style, {
+      flex: '1',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
     detailPanel.appendChild(detailEmpty);
 
     // Detail content container (hidden initially)
     const detailContent = DOMUtils.createElement('div', {
-      className: 'hidden flex-1 flex-col overflow-hidden',
+      className: '',
       id: 'bm-detail-content',
+      style: {
+        flex: '1',
+        display: 'none',
+        minHeight: '0',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      },
     });
 
     // Detail header
     const detailHeader = DOMUtils.createElement('div', {
-      className:
-        'p-4 border-b border-border-100 bg-bg-50 flex items-center justify-between shrink-0',
+      className: 'p-4 border-b border-border-100 bg-bg-50',
       id: 'bm-detail-header',
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: '0',
+      },
     });
     detailContent.appendChild(detailHeader);
 
     // Detail body
     const detailBody = DOMUtils.createElement('div', {
-      className: 'flex-1 overflow-y-auto p-6',
+      className: 'p-6',
       id: 'bm-detail-body',
+      style: {
+        flex: '1',
+        minHeight: '0',
+        overflowY: 'auto',
+      },
     });
     detailContent.appendChild(detailBody);
 
     // Detail footer
     const detailFooter = DOMUtils.createElement('div', {
-      className: 'p-4 border-t border-border-100 bg-bg-50 flex justify-end shrink-0',
+      className: 'p-4 border-t border-border-100 bg-bg-50',
       id: 'bm-detail-footer',
+      style: {
+        display: 'flex',
+        justifyContent: 'flex-end',
+        flexShrink: '0',
+      },
     });
     const gotoMsgBtnList = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('primaryLg'),
@@ -574,9 +689,9 @@ export class BookmarkManagerModal {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
     const list = this.activeModal.element.querySelector('#bm-list-view-container');
-    this.setHidden(grid, false);
-    this.setHidden(full, true);
-    this.setHidden(list, true);
+    this.setDisplay(grid, true, 'flex');
+    this.setDisplay(full, false);
+    this.setDisplay(list, false);
     this.state.viewMode = 'grid';
     this.updateViewToggle();
     if (reason) {
@@ -592,9 +707,9 @@ export class BookmarkManagerModal {
     const grid = this.activeModal.element.querySelector('#bm-grid-container');
     const full = this.activeModal.element.querySelector('#bm-full-view-container');
     const list = this.activeModal.element.querySelector('#bm-list-view-container');
-    this.setHidden(grid, true);
-    this.setHidden(full, false);
-    this.setHidden(list, true);
+    this.setDisplay(grid, false);
+    this.setDisplay(full, true, 'flex');
+    this.setDisplay(list, false);
   }
 
   updateViewToggle() {
@@ -701,11 +816,11 @@ export class BookmarkManagerModal {
       const filtered = this.getFilteredBookmarks();
 
       if (filtered.length === 0) {
-        this.setHidden(grid, true);
-        this.setHidden(gridEmptyState, false);
+        this.setDisplay(grid, false);
+        this.setDisplay(gridEmptyState, true, 'flex');
       } else {
-        this.setHidden(grid, false);
-        this.setHidden(gridEmptyState, true);
+        this.setDisplay(grid, true, 'grid');
+        this.setDisplay(gridEmptyState, false);
         filtered.forEach(b => {
           grid.appendChild(this.createBookmarkCard(b));
         });
@@ -727,8 +842,8 @@ export class BookmarkManagerModal {
           this.state.selectedBookmarkId = null;
           const emptyState = this.activeModal.element.querySelector('#bm-detail-empty');
           const content = this.activeModal.element.querySelector('#bm-detail-content');
-          this.setHidden(emptyState, false);
-          this.setHidden(content, true);
+          this.setDisplay(emptyState, true, 'flex');
+          this.setDisplay(content, false);
         }
       }
     }
@@ -947,8 +1062,8 @@ export class BookmarkManagerModal {
     }
 
     // Hide empty state, show content
-    this.setHidden(emptyState, true);
-    this.setHidden(content, false);
+    this.setDisplay(emptyState, false);
+    this.setDisplay(content, true, 'flex');
 
     // Update goto button
     if (gotoBtn) {
@@ -1071,15 +1186,15 @@ export class BookmarkManagerModal {
     const listViewContainer = this.activeModal.element.querySelector('#bm-list-view-container');
 
     // Hide all containers
-    this.setHidden(gridContainer, true);
-    this.setHidden(fullViewContainer, true);
-    this.setHidden(listViewContainer, true);
+    this.setDisplay(gridContainer, false);
+    this.setDisplay(fullViewContainer, false);
+    this.setDisplay(listViewContainer, false);
 
     // Show the appropriate container
     if (mode === 'grid') {
-      this.setHidden(gridContainer, false);
+      this.setDisplay(gridContainer, true, 'flex');
     } else if (mode === 'list') {
-      this.setHidden(listViewContainer, false);
+      this.setDisplay(listViewContainer, true, 'flex');
       this.renderMasterList();
 
       // Auto-select first bookmark if none selected
