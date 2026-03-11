@@ -16,6 +16,26 @@ class EditBadge {
     });
   }
 
+  createVersionChip(versionInfo) {
+    if (!versionInfo) {
+      return '';
+    }
+
+    return `<span class="font-mono text-[10px] bg-accent-main-100 text-white px-1.5 py-0.5 rounded-md leading-none">${versionInfo}</span>`;
+  }
+
+  createBadgeContent(versionInfo) {
+    const ctaLabel = 'View History';
+
+    return `
+        <span class="flex items-center gap-1">
+          ${IconLibrary.edit('currentColor', 11)}
+          <span class="text-[10px] tracking-[0.02em]">${ctaLabel}</span>
+        </span>
+        ${this.createVersionChip(versionInfo)}
+      `;
+  }
+
   /**
    * Update badges
    */
@@ -41,10 +61,6 @@ class EditBadge {
    */
   getBadgeOptions(element, editInfo) {
     const versionInfo = editInfo?.versionInfo || '';
-    const ctaLabel = 'View History';
-    const versionChip = versionInfo
-      ? `<span class="font-mono text-[10px] bg-accent-main-100 text-white px-1.5 py-0.5 rounded-md leading-none">${versionInfo}</span>`
-      : '';
 
     return {
       className: cn(
@@ -72,13 +88,7 @@ class EditBadge {
         'hover:shadow-lg',
         'z-1'
       ),
-      content: `
-        <span class="flex items-center gap-1">
-          ${IconLibrary.edit('currentColor', 11)}
-          <span class="text-[10px] tracking-[0.02em]">${ctaLabel}</span>
-        </span>
-        ${versionChip}
-      `,
+      content: this.createBadgeContent(versionInfo),
       title: 'Click to see edit history',
       position: { top: '-35px', right: '8px' },
       style: {},

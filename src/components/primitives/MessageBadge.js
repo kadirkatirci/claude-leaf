@@ -23,6 +23,37 @@ export default class MessageBadge {
       : '0 2px 8px rgba(0, 0, 0, 0.15)';
   }
 
+  getBadgeBaseStyle(position) {
+    return {
+      position: 'absolute',
+      ...position,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.2s ease',
+    };
+  }
+
+  getBadgeMarkup(badge) {
+    return badge?.innerHTML || '';
+  }
+
+  hasBadgeContentChanged(badge, content) {
+    return this.getBadgeMarkup(badge) !== content;
+  }
+
+  setBadgeContent(badge, content) {
+    badge.innerHTML = content;
+  }
+
+  ensureParentPosition(element) {
+    const computedPosition = window.getComputedStyle(element).position;
+    if (computedPosition === 'static') {
+      element.style.position = 'relative';
+    }
+  }
+
   /**
    * Create and attach a badge to an element
    * @param {HTMLElement} element - Element to attach badge to
@@ -50,8 +81,8 @@ export default class MessageBadge {
     const existingBadge = this.badgeCache.get(element);
     if (existingBadge) {
       // Update existing badge
-      if (existingBadge.innerHTML !== content) {
-        existingBadge.innerHTML = content; // Use innerHTML to support SVG strings
+      if (this.hasBadgeContentChanged(existingBadge, content)) {
+        this.setBadgeContent(existingBadge, content); // Use innerHTML to support SVG strings
       }
       if (title && existingBadge.title !== title) {
         existingBadge.title = title;
@@ -60,15 +91,7 @@ export default class MessageBadge {
     }
 
     // Create badge element
-    const baseStyle = {
-      position: 'absolute',
-      ...position,
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      transition: 'all 0.2s ease',
-    };
+    const baseStyle = this.getBadgeBaseStyle(position);
 
     // Allow callers to override or provide zIndex via options.style.
     // Do not force a hardcoded z-index here so CSS/classes can control stacking.
@@ -81,7 +104,7 @@ export default class MessageBadge {
     });
 
     // Set content
-    badge.innerHTML = content; // Use innerHTML to support SVG strings
+    this.setBadgeContent(badge, content); // Use innerHTML to support SVG strings
 
     // Add hover effects
     this.attachHoverEffects(badge);
@@ -96,10 +119,7 @@ export default class MessageBadge {
 
     // Set parent position if needed
     if (setParentPosition) {
-      const computedPosition = window.getComputedStyle(element).position;
-      if (computedPosition === 'static') {
-        element.style.position = 'relative';
-      }
+      this.ensureParentPosition(element);
     }
 
     // Append badge
@@ -134,7 +154,7 @@ export default class MessageBadge {
   update(element, content, title) {
     const badge = this.badgeCache.get(element);
     if (badge) {
-      badge.innerHTML = content; // Use innerHTML to support SVG strings
+      this.setBadgeContent(badge, content); // Use innerHTML to support SVG strings
       if (title) {
         badge.title = title;
       }
@@ -202,7 +222,7 @@ export default class MessageBadge {
         } else {
           // Update existing badge if content changed
           const existingBadge = this.get(element);
-          if (badgeData.content && existingBadge.innerHTML !== badgeData.content) {
+          if (badgeData.content && this.hasBadgeContentChanged(existingBadge, badgeData.content)) {
             this.update(element, badgeData.content, badgeData.title);
           }
         }
