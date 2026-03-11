@@ -98,17 +98,133 @@ class BranchMapRenderer {
     }
   }
 
+  getElementStyles(section, overrides = {}) {
+    const styles = {
+      noData: {
+        padding: '2rem',
+        textAlign: 'center',
+        color: this.theme.textTertiary,
+      },
+      svg: {
+        background: this.theme.bgPrimary,
+      },
+      tooltip: {
+        position: 'fixed',
+        zIndex: '10010',
+        maxWidth: '400px',
+        maxHeight: '300px',
+        padding: '12px 14px',
+        borderRadius: '10px',
+        background: this.theme.tooltipBg,
+        border: `1px solid ${this.theme.tooltipBorder}`,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+        pointerEvents: 'none',
+        opacity: '0',
+        transition: 'opacity 0.15s ease',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+      },
+      tooltipHeader: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        paddingBottom: '8px',
+        borderBottom: `1px solid ${this.theme.border}`,
+        flexShrink: '0',
+      },
+      tooltipSwatch: {
+        width: '12px',
+        height: '12px',
+        borderRadius: '3px',
+        flexShrink: '0',
+      },
+      tooltipTitle: {
+        fontWeight: '600',
+        fontSize: '13px',
+        color: this.theme.textPrimary,
+      },
+      tooltipVersion: {
+        fontSize: '12px',
+        color: this.theme.textTertiary,
+        marginLeft: 'auto',
+      },
+      tooltipBody: {
+        fontSize: '13px',
+        lineHeight: '1.5',
+        color: this.theme.textSecondary,
+        overflowY: 'auto',
+        flex: '1',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      },
+    };
+
+    return {
+      ...(styles[section] || {}),
+      ...overrides,
+    };
+  }
+
+  createNoDataState() {
+    const noDataDiv = document.createElement('div');
+    Object.assign(noDataDiv.style, this.getElementStyles('noData'));
+    noDataDiv.textContent = 'No data to display';
+    return noDataDiv;
+  }
+
+  createTooltipHeader(node, color) {
+    const header = document.createElement('div');
+    Object.assign(header.style, this.getElementStyles('tooltipHeader'));
+
+    const swatch = document.createElement('div');
+    Object.assign(
+      swatch.style,
+      this.getElementStyles('tooltipSwatch', {
+        background: color,
+      })
+    );
+
+    const title = document.createElement('span');
+    Object.assign(title.style, this.getElementStyles('tooltipTitle'));
+    title.textContent = `Message #${node.messageIndex}`;
+
+    const version = document.createElement('span');
+    Object.assign(version.style, this.getElementStyles('tooltipVersion'));
+    version.textContent = node.version;
+
+    header.appendChild(swatch);
+    header.appendChild(title);
+    header.appendChild(version);
+
+    return header;
+  }
+
+  createTooltipBody(content) {
+    const body = document.createElement('div');
+    Object.assign(body.style, this.getElementStyles('tooltipBody'));
+    body.textContent = content;
+    return body;
+  }
+
+  createTooltipContent(node) {
+    const color = this.colorMap.get(node.containerId) || '#6366f1';
+    const content = node.content || node.contentPreview || 'No content available';
+    const fragment = document.createDocumentFragment();
+
+    fragment.appendChild(this.createTooltipHeader(node, color));
+    fragment.appendChild(this.createTooltipBody(content));
+
+    return fragment;
+  }
+
   render() {
     debugLog('editHistory', 'BranchMapRenderer starting render with data:', this.data);
 
     if (!this.data.columns || this.data.columns.length === 0) {
-      const noDataDiv = document.createElement('div');
-      noDataDiv.style.padding = '2rem';
-      noDataDiv.style.textAlign = 'center';
-      noDataDiv.style.color = this.theme.textTertiary;
-      noDataDiv.textContent = 'No data to display';
       this.container.innerHTML = '';
-      this.container.appendChild(noDataDiv);
+      this.container.appendChild(this.createNoDataState());
       return;
     }
 
@@ -240,7 +356,7 @@ class BranchMapRenderer {
     this.svg.setAttribute('width', '100%');
     this.svg.setAttribute('height', '100%');
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    this.svg.style.background = this.theme.bgPrimary;
+    Object.assign(this.svg.style, this.getElementStyles('svg'));
     this.svg.style.minWidth = `${width}px`;
     this.svg.style.minHeight = `${height}px`;
 
@@ -256,24 +372,7 @@ class BranchMapRenderer {
   createTooltip() {
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'branch-map-tooltip';
-    this.tooltip.style.cssText = `
-      position: fixed;
-      z-index: 10010;
-      max-width: 400px;
-      max-height: 300px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: ${this.theme.tooltipBg};
-      border: 1px solid ${this.theme.tooltipBorder};
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    `;
+    Object.assign(this.tooltip.style, this.getElementStyles('tooltip'));
 
     this.container.appendChild(this.tooltip);
   }
@@ -282,46 +381,7 @@ class BranchMapRenderer {
    * Show tooltip
    */
   showTooltip(node, event) {
-    const color = this.colorMap.get(node.containerId) || '#6366f1';
-    const content = node.content || node.contentPreview || 'No content available';
-
-    this.tooltip.innerHTML = `
-      <div style="
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid ${this.theme.border};
-        flex-shrink: 0;
-      ">
-        <div style="
-          width: 12px;
-          height: 12px;
-          border-radius: 3px;
-          background: ${color};
-          flex-shrink: 0;
-        "></div>
-        <span style="
-          font-weight: 600;
-          font-size: 13px;
-          color: ${this.theme.textPrimary};
-        ">Message #${node.messageIndex}</span>
-        <span style="
-          font-size: 12px;
-          color: ${this.theme.textTertiary};
-          margin-left: auto;
-        ">${node.version}</span>
-      </div>
-      <div style="
-        font-size: 13px;
-        line-height: 1.5;
-        color: ${this.theme.textSecondary};
-        overflow-y: auto;
-        flex: 1;
-        white-space: pre-wrap;
-        word-break: break-word;
-      ">${this.escapeHtml(content)}</div>
-    `;
+    this.tooltip.replaceChildren(this.createTooltipContent(node));
 
     // Calculate position
     this.positionTooltip(event);
@@ -369,15 +429,6 @@ class BranchMapRenderer {
    */
   hideTooltip() {
     this.tooltip.style.opacity = '0';
-  }
-
-  /**
-   * HTML escape
-   */
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   renderStartNode() {
