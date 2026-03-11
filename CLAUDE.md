@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with productivity features: message navigation, edit history tracking, bookmarks, emoji markers, sidebar section collapse, content folding, and compact view for managing long conversations.
+A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with productivity features such as message navigation, edit history tracking, bookmarks, and emoji markers. Compact view, sidebar collapse, and content folding remain in development and are currently dev-disabled.
 
 ### Target Users
 - Power users who have long conversations with Claude
@@ -18,9 +18,9 @@ A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with 
 | **Edit History** | Track all prompt edits with version comparison |
 | **Bookmarks** | Save and categorize important messages |
 | **Emoji Markers** | Mark messages with emojis for quick reference |
-| **Compact View** | Collapse long messages to manageable previews |
-| **Sidebar Collapse** | Collapsible sidebar sections for cleaner UI |
-| **Content Folding** | Fold code blocks and headings |
+| **Compact View** | In development, currently dev-disabled |
+| **Sidebar Collapse** | In development, currently dev-disabled |
+| **Content Folding** | In development, currently dev-disabled |
 
 ## Development Commands
 

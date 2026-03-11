@@ -5,7 +5,7 @@
 ## Features
 
 ### Navigation
-- **Message Navigation** - Jump between messages with keyboard shortcuts or buttons
+- **Message Navigation** - Jump between messages with on-screen controls
 - **Counter Display** - Shows current position and total message count
 
 ### Organization
@@ -13,10 +13,10 @@
 - **Emoji Markers** - Mark messages with custom emojis for quick reference
 - **Edit History** - Track edited prompts with version history and branching visualization
 
-### UI Enhancements
-- **Compact View** - Collapse long responses to see more context
-- **Content Folding** - Fold headings and code blocks within messages
-- **Sidebar Collapse** - Collapsible sidebar sections for cleaner navigation
+### In Development
+- **Compact View** - Under active development, not enabled in the current build
+- **Content Folding** - Under active development, not enabled in the current build
+- **Sidebar Collapse** - Under active development, not enabled in the current build
 
 ## Installation
 
@@ -44,16 +44,6 @@
 
 ## Usage
 
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Alt + ↑` | Previous message |
-| `Alt + ↓` | Next message |
-| `Alt + Home` | First message |
-| `Alt + End` | Last message |
-| `Alt + B` | Toggle bookmark on current message |
-
 ### Buttons
 
 The extension adds floating buttons on the right side of the conversation:
@@ -67,6 +57,8 @@ The extension adds floating buttons on the right side of the conversation:
 Click the extension icon in the Chrome toolbar to:
 - Enable/disable individual features
 - View storage usage
+
+Currently available in the production build: Navigation, Bookmarks, Emoji Markers, and Edit History.
 
 ## Development
 
@@ -102,6 +94,8 @@ src/
 
 popup/                  # Extension popup UI
 ```
+
+`CompactViewModule`, `ContentFoldingModule`, and `SidebarCollapseModule` are present in the codebase but currently dev-disabled.
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 

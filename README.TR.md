@@ -10,6 +10,12 @@
 *   **Düzenleme Geçmişi:** Mesajlarınız üzerinde yaptığınız değişikliklerin geçmişini görüntüleyin.
 *   **Kullanıcı Dostu Arayüz:** Claude.ai arayüzü ile uyumlu, temiz ve modern tasarım.
 
+## Geliştirme Aşamasındaki Modüller
+
+*   **Compact View:** Hâlen geliştirme aşamasında, mevcut build içinde aktif değil.
+*   **Content Folding:** Hâlen geliştirme aşamasında, mevcut build içinde aktif değil.
+*   **Sidebar Collapse:** Hâlen geliştirme aşamasında, mevcut build içinde aktif değil.
+
 ## Kurulum
 
 1.  Bu projeyi bilgisayarınıza indirin veya klonlayın.
@@ -32,6 +38,8 @@ Build almak için:
 ```bash
 npm run build
 ```
+
+Mevcut build içinde aktif modüller: Mesaj Navigasyonu, Yer İmleri, Emoji İşaretleyiciler ve Düzenleme Geçmişi.
 
 ## Teknoloji Yığını
 

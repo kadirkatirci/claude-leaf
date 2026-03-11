@@ -191,7 +191,7 @@ export function renderHelpSection(trackEvent) {
       url: 'https://github.com/anthropics/claude-code/issues',
       icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
       title: 'Documentation',
-      description: 'Learn how to use Claude Leaf features and keyboard shortcuts.',
+      description: 'Learn how to use Claude Leaf features.',
       linkText: 'Read the Docs',
     },
     {

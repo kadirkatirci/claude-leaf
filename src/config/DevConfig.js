@@ -26,7 +26,7 @@ export const DEV_CONFIG = {
 
     compactView: {
       DEV_DISABLED: true,
-      reason: 'Needs improvement',
+      reason: 'Still under development',
     },
 
     bookmarks: {
@@ -41,12 +41,12 @@ export const DEV_CONFIG = {
 
     sidebarCollapse: {
       DEV_DISABLED: true,
-      reason: 'Needs improvement',
+      reason: 'Still under development',
     },
 
     contentFolding: {
       DEV_DISABLED: true,
-      reason: 'Needs improvement',
+      reason: 'Still under development',
     },
   },
 };
