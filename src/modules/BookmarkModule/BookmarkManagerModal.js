@@ -26,6 +26,13 @@ export class BookmarkManagerModal {
     return template.content.firstElementChild || document.createTextNode('');
   }
 
+  appendButtonLabelWithIcon(button, label, iconMarkup) {
+    const textNode = document.createElement('span');
+    textNode.textContent = label;
+    button.appendChild(textNode);
+    button.appendChild(this.createMarkupNode(iconMarkup));
+  }
+
   async show({ source = 'unknown' } = {}) {
     this.openSource = source;
     // Load Data
@@ -599,9 +606,9 @@ export class BookmarkManagerModal {
 
     const gotoMsgBtn = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('primary'),
-      textContent: 'Go to Message ↗️',
       id: 'bm-full-view-goto-btn',
     });
+    this.appendButtonLabelWithIcon(gotoMsgBtn, 'Go to Message', IconLibrary.openInNew());
 
     fullViewHeader.appendChild(backBtn);
     fullViewHeader.appendChild(gotoMsgBtn);
@@ -681,9 +688,9 @@ export class BookmarkManagerModal {
     });
     const gotoMsgBtnList = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('primaryLg'),
-      textContent: 'Go to Message ↗️',
       id: 'bm-detail-goto-btn',
     });
+    this.appendButtonLabelWithIcon(gotoMsgBtnList, 'Go to Message', IconLibrary.openInNew());
     detailFooter.appendChild(gotoMsgBtnList);
     detailContent.appendChild(detailFooter);
 
@@ -935,12 +942,12 @@ export class BookmarkManagerModal {
     const gotoBtn = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('ghost'),
       title: 'Go to Message',
-      textContent: '↗️',
       onclick: e => {
         e.stopPropagation();
         this.navigateToBookmark(bookmark, 'grid_card_button');
       },
     });
+    gotoBtn.appendChild(this.createMarkupNode(IconLibrary.openInNew('currentColor', 16)));
 
     const delBtn = DOMUtils.createElement('button', {
       className: this.getActionButtonClass('ghostDanger'),

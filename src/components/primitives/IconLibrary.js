@@ -161,6 +161,20 @@ export default class IconLibrary {
   }
 
   /**
+   * Get open-in-new / external link icon
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 16)
+   * @returns {string} SVG markup
+   */
+  static openInNew(color = 'currentColor', size = 16) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
+      <path d="M14 5H19V10" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 14L19 5" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M19 14V16.2C19 17.8802 19 18.7202 18.673 19.362C18.3854 19.9265 17.9265 20.3854 17.362 20.673C16.7202 21 15.8802 21 14.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V9.8C3 8.11984 3 7.27976 3.32698 6.63803C3.6146 6.07354 4.07354 5.6146 4.63803 5.32698C5.27976 5 6.11984 5 7.8 5H10" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  /**
    * Get menu collapse icon (NEW - replaces 📄)
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 16)
@@ -379,6 +393,8 @@ export default class IconLibrary {
         return this.collapse(color, size);
       case 'expand':
         return this.expand(color, size);
+      case 'open-in-new':
+        return this.openInNew(color, size);
       case 'menu-collapse':
         return this.menuCollapse(color, size);
       case 'arrow-up-solid':
