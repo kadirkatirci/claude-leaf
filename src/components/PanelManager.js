@@ -12,7 +12,11 @@ import navigationInterceptor from '../core/NavigationInterceptor.js';
 import { MODULE_CONSTANTS } from '../config/ModuleConstants.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import { debugLog } from '../config/debug.js';
-import { applyFloatingVisibility, setFloatingOpacity } from '../utils/FloatingVisibility.js';
+import {
+  applyFloatingVisibility,
+  getFloatingContainerLayout,
+  setFloatingOpacity,
+} from '../utils/FloatingVisibility.js';
 
 const NAV_CONFIG = MODULE_CONSTANTS.navigation;
 
@@ -135,15 +139,7 @@ class PanelManager {
     this.container = DOMUtils.createElement('div', {
       id: 'claude-nav-container',
       'data-nav-container': 'true',
-      style: {
-        position: 'fixed',
-        [position]: '30px',
-        bottom: '100px',
-        zIndex: '9999',
-        flexDirection: 'column',
-        gap: '8px',
-        transition: 'opacity 0.3s ease', // Smooth transition when ready
-      },
+      style: getFloatingContainerLayout(position),
     });
     applyFloatingVisibility(this.container, {
       visible: isConversationPage,

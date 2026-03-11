@@ -10,7 +10,11 @@ import navigationInterceptor from './NavigationInterceptor.js';
 import CounterBadge from '../components/primitives/CounterBadge.js';
 import { eventBus, Events } from '../utils/EventBus.js';
 import { buttonClass } from '../utils/ClassNames.js';
-import { applyFloatingVisibility, setFloatingOpacity } from '../utils/FloatingVisibility.js';
+import {
+  applyFloatingButtonLayout,
+  applyFloatingVisibility,
+  setFloatingOpacity,
+} from '../utils/FloatingVisibility.js';
 
 // Loading state opacity (dimmed until data loads)
 const LOADING_OPACITY = 0.3;
@@ -233,14 +237,11 @@ export default class FixedButtonMixin {
 
       // Apply positioning and other necessary inline styles
       // Only use inline styles for positioning - everything else via classes
-      button.style.position = 'fixed';
-      button.style.right = position.right;
-      button.style.top = '50%';
-      button.style.transform = position.transform;
-      button.style.zIndex = '9999';
-      // button.style.color = 'white'; // Commented to allow currentColor in SVGs to adapt
-      button.style.overflow = 'visible'; // Override overflow-hidden from buttonClasses to show counter badge
-      button.style.transition = 'opacity 0.3s ease'; // Smooth transition when ready
+      applyFloatingButtonLayout(button, {
+        right: position.right,
+        top: '50%',
+        transform: position.transform,
+      });
 
       // Native classes already have hover effects defined in buttonClasses
 
