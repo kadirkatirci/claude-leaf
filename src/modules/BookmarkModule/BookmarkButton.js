@@ -5,6 +5,9 @@ import IconLibrary from '../../components/primitives/IconLibrary.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
 import { cn } from '../../utils/ClassNames.js';
 
+const BOOKMARK_BUTTON_TOP = '8px';
+const BOOKMARK_BUTTON_OUTSIDE_RIGHT = '-72px';
+
 export class BookmarkButton {
   constructor(domUtils, getTheme) {
     this.dom = domUtils;
@@ -80,25 +83,23 @@ export class BookmarkButton {
 
     // Only positioning and visibility styles (must be inline for calculated values)
     Object.assign(button.style, {
-      top: '8px',
-      right: '8px',
+      top: BOOKMARK_BUTTON_TOP,
+      right: BOOKMARK_BUTTON_OUTSIDE_RIGHT,
     });
     this.setButtonVisibility(button, isBookmarked);
 
     // Set relative positioning on message
-    if (
-      messageElement.style.position !== 'relative' &&
-      messageElement.style.position !== 'absolute'
-    ) {
+    if (window.getComputedStyle(messageElement).position === 'static') {
       messageElement.style.position = 'relative';
     }
 
-    // Attach hover listeners using HoverButtonManager
-    const cleanup = HoverButtonManager.attachPersistentHover(
-      messageElement,
-      button,
-      () => button.getAttribute('data-bookmarked') === 'true' // Persist when bookmarked
-    );
+    // Keep the outside button interactive while the pointer moves off the message box.
+    const cleanup = HoverButtonManager.attachHoverListeners(messageElement, button, {
+      persistWhen: () => button.getAttribute('data-bookmarked') === 'true',
+      hideDelay: 100,
+      keepVisibleOnButtonHover: true,
+      checkMessageBounds: true,
+    });
 
     // Store cleanup function
     this.hoverCleanups.set(messageElement, cleanup);
