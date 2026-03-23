@@ -4,7 +4,30 @@ import { bookmarkStore } from '../../stores/index.js';
 import { trackEvent } from '../../analytics/Analytics.js';
 import { cn } from '../../utils/ClassNames.js';
 
+let activeBookmarkManagerModal = null;
+
 export class BookmarkManagerModal {
+  static getActiveInstance() {
+    if (activeBookmarkManagerModal?.activeModal?.element?.isConnected) {
+      return activeBookmarkManagerModal;
+    }
+
+    activeBookmarkManagerModal = null;
+    return null;
+  }
+
+  static async showSingleton(options = {}) {
+    const activeInstance = BookmarkManagerModal.getActiveInstance();
+    if (activeInstance) {
+      await activeInstance.refreshData();
+      return activeInstance;
+    }
+
+    const modal = new BookmarkManagerModal();
+    await modal.show(options);
+    return modal;
+  }
+
   constructor() {
     this.activeModal = null;
     this.openSource = 'unknown';
@@ -34,6 +57,16 @@ export class BookmarkManagerModal {
   }
 
   async show({ source = 'unknown' } = {}) {
+    const activeInstance = BookmarkManagerModal.getActiveInstance();
+    if (activeInstance && activeInstance !== this) {
+      await activeInstance.refreshData();
+      return activeInstance;
+    }
+    if (this.activeModal?.element?.isConnected) {
+      await this.refreshData();
+      return this;
+    }
+
     this.openSource = source;
     // Load Data
     await this.loadData();
@@ -84,6 +117,7 @@ export class BookmarkManagerModal {
     document.addEventListener('keydown', escHandler);
 
     this.activeModal = { element: modal, content, escHandler };
+    activeBookmarkManagerModal = this;
     document.body.appendChild(modal);
 
     // Trigger transition on next frame (after element is in DOM)
@@ -97,6 +131,7 @@ export class BookmarkManagerModal {
     // Initial Render
     this.renderCategories();
     this.renderBookmarks();
+    return this;
   }
 
   close(reason = 'unknown') {
@@ -119,6 +154,9 @@ export class BookmarkManagerModal {
       element.remove();
       document.removeEventListener('keydown', escHandler);
       this.activeModal = null;
+      if (activeBookmarkManagerModal === this) {
+        activeBookmarkManagerModal = null;
+      }
     }, 200);
   }
 
