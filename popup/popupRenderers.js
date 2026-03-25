@@ -188,21 +188,21 @@ export function renderHelpSection(trackEvent) {
   const container = document.getElementById('help-section');
   const helpItems = [
     {
-      url: 'https://github.com/anthropics/claude-code/issues',
+      url: 'https://www.tedaitesnim.com/extensions/claude-extension#documentation',
       icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
       title: 'Documentation',
       description: 'Learn how to use Claude Leaf features.',
       linkText: 'Read the Docs',
     },
     {
-      url: 'https://github.com/anthropics/claude-code/issues/new?labels=bug',
+      url: 'https://www.tedaitesnim.com/extensions/claude-extension#feedback',
       icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 14v-4m0-4h.01',
       title: 'Report an Issue',
       description: 'Found a bug or something not working as expected? Let us know.',
       linkText: 'Report Issue',
     },
     {
-      url: 'https://github.com/anthropics/claude-code/issues/new?labels=enhancement',
+      url: 'https://www.tedaitesnim.com/extensions/claude-extension#feedback',
       icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
       title: 'Request a Feature',
       description: 'Have a great idea? Suggest new features or improvements.',
