@@ -181,7 +181,14 @@ export class BookmarkStore {
 
       // Import bookmarks
       for (const bookmark of data.bookmarks || []) {
-        await this.add(bookmark);
+        await this.store.put({
+          ...bookmark,
+          type: 'bookmark',
+          conversationUrl: this.normalizeUrl(bookmark.conversationUrl),
+          id: bookmark.id || crypto.randomUUID(),
+          createdAt: bookmark.createdAt || new Date().toISOString(),
+          categoryId: bookmark.categoryId || 'default',
+        });
       }
 
       // Import categories (skip defaults)
