@@ -141,7 +141,7 @@ export async function handleExport({ config, currentSettings, trackEvent, showTo
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `claude-productivity-${Date.now()}.json`;
+    anchor.download = `claude-leaf-${Date.now()}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
 

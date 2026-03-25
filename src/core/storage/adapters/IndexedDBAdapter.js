@@ -4,7 +4,7 @@
  * Quota: Unlimited (with unlimitedStorage permission)
  *
  * Uses a simple key-value store pattern:
- * - Database: 'claude-productivity'
+ * - Database: 'claude-leaf'
  * - Object Store: 'keyvalue'
  * - Index: key (unique)
  */
@@ -15,7 +15,7 @@ import { STORE_CONFIG } from '../../../config/storeConfig.js';
 export class IndexedDBAdapter extends BaseAdapter {
   constructor() {
     super();
-    this.dbName = 'claude-productivity';
+    this.dbName = 'claude-leaf';
     this.dbVersion = 2; // Incremented for schema changes
     this.db = null;
   }
