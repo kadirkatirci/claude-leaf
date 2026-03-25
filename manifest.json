@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Claude Leaf - Productivity tools for Claude.ai including message navigation, bookmarks, and more",
   "author": "Kadir KATIRCI",
-  "homepage_url": "https://tedaitesnim.com",
+  "homepage_url": "https://www.tedaitesnim.com/extensions/claude-extension/",
   "permissions": [
     "storage",
     "activeTab",
