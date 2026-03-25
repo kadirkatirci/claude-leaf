@@ -830,10 +830,6 @@ class ClaudeProductivityApp {
 
     return { navState, visState };
   }
-
-  getVersion() {
-    return '2.2.0';
-  }
 }
 
 const app = new ClaudeProductivityApp();
