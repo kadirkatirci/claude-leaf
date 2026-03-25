@@ -3,8 +3,8 @@
  * Handles extension-level events like installation and updates
  */
 
-const WELCOME_URL = 'http://tedaitesnim.com/claude-extension/welcome';
-const CHANGELOG_URL = 'http://tedaitesnim.com/claude-extension/changelog';
+const WELCOME_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/welcome';
+const CHANGELOG_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/changelog';
 const UPDATE_CHECK_ALARM = 'update-check';
 const UPDATE_CHECK_INTERVAL_MINUTES = 360; // 6 hours
 
