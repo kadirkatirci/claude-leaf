@@ -6,9 +6,7 @@
   "author": "Kadir KATIRCI",
   "homepage_url": "https://www.tedaitesnim.com/extensions/claude-extension/",
   "permissions": [
-    "storage",
-    "activeTab",
-    "alarms"
+    "storage"
   ],
   "host_permissions": [
     "https://claude.ai/*",

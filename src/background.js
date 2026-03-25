@@ -1,12 +1,10 @@
 /**
  * Background Service Worker
- * Handles extension-level events like installation and updates
+ * Handles extension-level events like installation, updates, and analytics
  */
 
 const WELCOME_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/welcome';
 const CHANGELOG_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/changelog';
-const UPDATE_CHECK_ALARM = 'update-check';
-const UPDATE_CHECK_INTERVAL_MINUTES = 360; // 6 hours
 
 // GA4 Measurement Protocol (background-only, no content access)
 const GA4_MEASUREMENT_ID = 'G-75M7YXJ9X7';
@@ -133,24 +131,6 @@ const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function openTab(url) {
   chrome.tabs.create({ url });
-}
-
-function scheduleUpdateChecks() {
-  chrome.alarms.create(UPDATE_CHECK_ALARM, {
-    periodInMinutes: UPDATE_CHECK_INTERVAL_MINUTES,
-  });
-}
-
-function checkForUpdates() {
-  chrome.runtime.requestUpdateCheck((status, details) => {
-    if (status === 'update_available') {
-      chrome.runtime.reload();
-      return;
-    }
-    if (status === 'throttled') {
-      console.debug('Update check throttled:', details);
-    }
-  });
 }
 
 async function getOrCreateClientId() {
@@ -301,25 +281,11 @@ chrome.runtime.onInstalled.addListener(details => {
       openTab(CHANGELOG_URL);
     }
   }
-
-  scheduleUpdateChecks();
-  checkForUpdates();
 });
 
-// Check on browser startup
-chrome.runtime.onStartup.addListener(() => {
-  scheduleUpdateChecks();
-  checkForUpdates();
-});
-
-// Periodic update checks
-chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === UPDATE_CHECK_ALARM) {
-    checkForUpdates();
-  }
-});
-
-// Apply updates as soon as they are ready
+// Chrome already downloads updates automatically. Reload only after
+// an update is available so the new version is applied without waiting
+// for the extension to become idle on its own.
 chrome.runtime.onUpdateAvailable.addListener(() => {
   chrome.runtime.reload();
 });
