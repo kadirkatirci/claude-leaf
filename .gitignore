@@ -2,6 +2,13 @@ node_modules/
 dist/
 .DS_Store
 *.log
+release/
+*.crx
+*.pem
+*.key
+.env
+.env.*
+.claude/
 
 # Auto-generated from src/config/DevConfig.js during build
 popup/devConfig.json
