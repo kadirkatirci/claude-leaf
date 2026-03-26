@@ -12,6 +12,12 @@
 </p>
 
 <p align="center">
+  <a href="https://chromewebstore.google.com/detail/claude-leaf/dpodfmfbkdnighbaajagchhbkblememp">Chrome Web Store</a>
+  ·
+  <a href="https://www.youtube.com/watch?v=rRNJ9Rvw-Rg">Watch Demo</a>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/module-panels-view.png" alt="Claude Leaf module panels" width="48%">
   <img src="docs/screenshots/darkmode-lightmode.png" alt="Claude Leaf in dark and light mode" width="48%">
 </p>
@@ -84,6 +90,12 @@ These modules exist in the codebase but are not enabled in the current build:
 - **Sidebar Collapse** for cleaner sidebar navigation
 
 ## Installation
+
+### From Chrome Web Store
+
+Install Claude Leaf from the Chrome Web Store:
+
+https://chromewebstore.google.com/detail/claude-leaf/dpodfmfbkdnighbaajagchhbkblememp
 
 ### From Source
 

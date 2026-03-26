@@ -2,6 +2,8 @@
 
 **Claude Leaf**, Claude.ai deneyiminizi geliştirmek için tasarlanmış, mesaj navigasyonu, yer imleri ve daha fazlasını sunan bir üretkenlik eklentisidir.
 
+[Chrome Web Mağazası](https://chromewebstore.google.com/detail/claude-leaf/dpodfmfbkdnighbaajagchhbkblememp) · [Tanıtım Videosu](https://www.youtube.com/watch?v=rRNJ9Rvw-Rg)
+
 ## Özellikler
 
 *   **Mesaj Navigasyonu:** Uzun sohbetlerde mesajlar arasında kolayca yukarı/aşağı gezinin.
@@ -17,6 +19,12 @@
 *   **Sidebar Collapse:** Hâlen geliştirme aşamasında, mevcut build içinde aktif değil.
 
 ## Kurulum
+
+### Chrome Web Mağazası Üzerinden
+
+Claude Leaf'i doğrudan Chrome Web Mağazası üzerinden kurabilirsiniz:
+
+https://chromewebstore.google.com/detail/claude-leaf/dpodfmfbkdnighbaajagchhbkblememp
 
 1.  Bu projeyi bilgisayarınıza indirin veya klonlayın.
 2.  Google Chrome'da `chrome://extensions/` adresine gidin.
