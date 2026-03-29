@@ -5,6 +5,7 @@ A standalone Chrome extension project for **live-page canary monitoring** on `cl
 ## What it does
 
 - Runs canary checks automatically on Claude page changes.
+- Detects SPA route changes through Chrome navigation events rather than page timers.
 - Keeps a low-frequency heartbeat check (via `chrome.alarms`) as a fallback.
 - Monitors route, DOM, edit-history, sidebar, and theme selector contracts.
 - Stores report history in `chrome.storage.local`.

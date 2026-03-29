@@ -5,6 +5,45 @@ const AUTO_RUN_DEDUP_WINDOW_MS = 15000;
 const pendingAutoRuns = new Map();
 const recentAutoRuns = new Map();
 
+function isClaudeUrl(url) {
+  return typeof url === 'string' && url.startsWith('https://claude.ai/');
+}
+
+function detectPageType(pathname = '') {
+  if (pathname === '/new' || pathname.endsWith('/new')) {
+    return 'new_chat';
+  }
+  if (/\/project\/[^/]+\/chat\/[^/]+/.test(pathname)) {
+    return 'project_chat';
+  }
+  if (/\/project\/[^/]+/.test(pathname) && !pathname.includes('/chat/')) {
+    return 'project';
+  }
+  if (/\/chat\/[^/]+/.test(pathname)) {
+    return 'conversation';
+  }
+  if (pathname.startsWith('/settings')) {
+    return 'settings';
+  }
+  return 'other';
+}
+
+function buildSignalFromUrl(url, trigger) {
+  if (!isClaudeUrl(url)) {
+    return null;
+  }
+
+  const parsedUrl = new URL(url);
+  return {
+    trigger,
+    href: url,
+    pathname: parsedUrl.pathname,
+    pageType: detectPageType(parsedUrl.pathname),
+    signalledAt: Date.now(),
+    source: 'web_navigation',
+  };
+}
+
 async function getSettings() {
   const result = await chrome.storage.local.get(STORAGE_KEYS.settings);
   return { ...DEFAULT_SETTINGS, ...(result[STORAGE_KEYS.settings] || {}) };
@@ -237,6 +276,15 @@ chrome.alarms.onAlarm.addListener(async alarm => {
     return;
   }
   await runCanary('heartbeat');
+});
+
+chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
+  const signal = buildSignalFromUrl(details.url, 'history_state_updated');
+  if (!signal) {
+    return;
+  }
+
+  queueAutoRunForTab(details.tabId, signal);
 });
 
 chrome.tabs.onRemoved.addListener(tabId => {

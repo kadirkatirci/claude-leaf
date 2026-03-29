@@ -26,7 +26,6 @@ const MESSAGE_SELECTOR =
 const PROMPT_INPUT_SELECTOR =
   '[data-testid="chat-input"], [data-testid="prompt-input"], textarea[placeholder]';
 const VERSION_PATTERN = /^(\d+)\s*\/\s*(\d+)$/;
-const AUTO_MONITOR_EVENT = 'cwg:locationchange';
 const AUTO_SIGNAL_DEBOUNCE_MS = 1200;
 const AUTO_SIGNAL_RETRY_MS = 700;
 const AUTO_SIGNAL_MAX_ATTEMPTS = 6;
@@ -191,37 +190,6 @@ function handlePossibleRouteChange(trigger = 'route_change', force = false) {
   scheduleAutoSignal(trigger);
 }
 
-function emitSyntheticLocationChange(trigger) {
-  window.dispatchEvent(
-    new CustomEvent(AUTO_MONITOR_EVENT, {
-      detail: { trigger },
-    })
-  );
-}
-
-function patchHistoryMethods() {
-  if (window.__cwgHistoryPatched) {
-    return;
-  }
-
-  window.__cwgHistoryPatched = true;
-
-  const originalPushState = history.pushState;
-  const originalReplaceState = history.replaceState;
-
-  history.pushState = function (...args) {
-    const result = originalPushState.apply(this, args);
-    emitSyntheticLocationChange('push_state');
-    return result;
-  };
-
-  history.replaceState = function (...args) {
-    const result = originalReplaceState.apply(this, args);
-    emitSyntheticLocationChange('replace_state');
-    return result;
-  };
-}
-
 function initAutoMonitoring() {
   if (autoMonitorInitialized) {
     return;
@@ -229,12 +197,6 @@ function initAutoMonitoring() {
 
   autoMonitorInitialized = true;
   lastObservedRouteKey = buildRouteKey();
-
-  patchHistoryMethods();
-
-  window.addEventListener(AUTO_MONITOR_EVENT, event => {
-    handlePossibleRouteChange(event.detail?.trigger || 'history_state');
-  });
 
   window.addEventListener('popstate', () => {
     handlePossibleRouteChange('popstate');

@@ -143,4 +143,14 @@ $('captureFixtureBtn').addEventListener('click', async () => {
   }
 });
 
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') {
+    return;
+  }
+
+  if (changes.cwg_reports || changes.cwg_last_run_at || changes.cwg_settings) {
+    refresh().catch(error => setStatus(error?.message || String(error), 'error'));
+  }
+});
+
 refresh().catch(error => setStatus(error?.message || String(error), 'error'));

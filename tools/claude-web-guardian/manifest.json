@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Claude Web Guardian",
   "version": "0.1.0",
-  "description": "Live-page canary monitoring for Claude.ai selectors/routes/theme contracts with scheduled checks.",
-  "permissions": ["storage", "alarms", "tabs"],
+  "description": "Live-page canary monitoring for Claude.ai selectors/routes/theme contracts with event-driven checks and heartbeat fallback.",
+  "permissions": ["storage", "alarms", "tabs", "webNavigation"],
   "host_permissions": ["https://claude.ai/*", "https://www.google-analytics.com/*", "https://region1.google-analytics.com/*"],
   "background": {
     "service_worker": "src/background.js",
