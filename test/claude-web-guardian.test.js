@@ -21,7 +21,7 @@ function loadGuardianChecks() {
     },
   });
 
-  new vm.Script(`${contentScriptSource}\nthis.__CWG_TEST__ = { runChecks };`, {
+  new vm.Script(`${contentScriptSource}\nthis.__CWG_TEST__ = { runChecks, runChecksWhenStable };`, {
     filename: 'claude-web-guardian-content.js',
   }).runInContext(context);
 
@@ -107,6 +107,37 @@ test('code workspace routes are recognized without treating them as selector dri
     assert.equal(result.pageMeta?.pageType, 'code');
     assert.equal(routeCheck?.pass, true);
     assert.match(routeCheck?.message || '', /code/i);
+  } finally {
+    cleanup();
+  }
+});
+
+test('runChecksWhenStable waits for conversation messages before reporting', async () => {
+  const cleanup = setupDom('<main><div id="placeholder">Loading</div></main>');
+
+  try {
+    window.history.replaceState({}, '', '/chat/test-thread');
+    const { runChecksWhenStable } = loadGuardianChecks();
+
+    window.setTimeout(() => {
+      const main = document.querySelector('main');
+      const message = document.createElement('div');
+      const userMessage = document.createElement('div');
+      message.setAttribute('data-testid', 'conversation-turn-1');
+      userMessage.setAttribute('data-testid', 'user-message');
+      userMessage.textContent = 'Prompt A';
+      message.appendChild(userMessage);
+      main.appendChild(message);
+    }, 40);
+
+    const result = await runChecksWhenStable(
+      { domCore: true },
+      { timeoutMs: 400, intervalMs: 30, requiredStableSamples: 2 }
+    );
+    const messageCheck = result.checks.find(check => check.id === 'message_nodes');
+
+    assert.equal(messageCheck?.pass, true);
+    assert.ok((messageCheck?.details?.count || 0) >= 1);
   } finally {
     cleanup();
   }

@@ -36,6 +36,9 @@ const VERSION_PATTERN = /^(\d+)\s*\/\s*(\d+)$/;
 const AUTO_SIGNAL_DEBOUNCE_MS = 1200;
 const AUTO_SIGNAL_RETRY_MS = 700;
 const AUTO_SIGNAL_MAX_ATTEMPTS = 6;
+const CANARY_READY_TIMEOUT_MS = 5000;
+const CANARY_SAMPLE_INTERVAL_MS = 300;
+const CANARY_REQUIRED_STABLE_SAMPLES = 2;
 
 let autoSignalTimer = null;
 let autoSignalToken = 0;
@@ -124,20 +127,85 @@ function buildRouteKey() {
   return `${window.location.pathname}${window.location.search}`;
 }
 
-function isPageReadyForSignal(pageType) {
+function sleep(ms) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function getReadinessSnapshot(pageType = detectPageType(window.location.pathname)) {
+  const explicitMain = getExplicitMain();
   const contentRoot = getContentRoot();
   const messages = getMessageNodes(contentRoot);
   const promptInput = document.querySelector(PROMPT_INPUT_SELECTOR);
 
-  if (isConversationLikePage(pageType)) {
-    return messages.length > 0;
+  return {
+    routeKey: buildRouteKey(),
+    pageType,
+    readyState: document.readyState,
+    hasMain: !!explicitMain,
+    messageCount: messages.length,
+    hasPromptInput: !!promptInput,
+  };
+}
+
+function buildReadinessSignature(snapshot) {
+  return [
+    snapshot.routeKey,
+    snapshot.pageType,
+    snapshot.readyState,
+    snapshot.hasMain,
+    snapshot.messageCount,
+    snapshot.hasPromptInput,
+  ].join('|');
+}
+
+function isSnapshotReady(snapshot) {
+  if (!isMonitoredPageType(snapshot.pageType)) {
+    return true;
   }
 
-  if (pageType === 'new_chat') {
-    return !!promptInput;
+  if (isConversationLikePage(snapshot.pageType)) {
+    return snapshot.messageCount > 0 && snapshot.readyState !== 'loading';
   }
 
-  return !!getExplicitMain() || document.readyState !== 'loading';
+  if (snapshot.pageType === 'new_chat') {
+    return snapshot.hasPromptInput && snapshot.readyState !== 'loading';
+  }
+
+  return snapshot.hasMain || snapshot.readyState === 'complete';
+}
+
+async function waitForStablePage(pageType, options = {}) {
+  const timeoutMs = options.timeoutMs ?? CANARY_READY_TIMEOUT_MS;
+  const intervalMs = options.intervalMs ?? CANARY_SAMPLE_INTERVAL_MS;
+  const requiredStableSamples = options.requiredStableSamples ?? CANARY_REQUIRED_STABLE_SAMPLES;
+  const startedAt = Date.now();
+  let stableSamples = 0;
+  let lastSignature = '';
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const snapshot = getReadinessSnapshot(pageType);
+    const signature = buildReadinessSignature(snapshot);
+
+    if (isSnapshotReady(snapshot)) {
+      stableSamples = signature === lastSignature ? stableSamples + 1 : 1;
+      if (stableSamples >= requiredStableSamples) {
+        return snapshot;
+      }
+    } else {
+      stableSamples = 0;
+    }
+
+    lastSignature = signature;
+    await sleep(intervalMs);
+  }
+
+  return getReadinessSnapshot(pageType);
+}
+
+function isPageReadyForSignal(pageType) {
+  return isSnapshotReady(getReadinessSnapshot(pageType));
 }
 
 function scheduleAutoSignal(trigger = 'page_change', attempt = 0) {
@@ -397,6 +465,12 @@ function runChecks(options = {}) {
   };
 }
 
+async function runChecksWhenStable(options = {}, stabilityOptions = {}) {
+  const pageType = detectPageType(window.location.pathname);
+  await waitForStablePage(pageType, stabilityOptions);
+  return runChecks(options);
+}
+
 function sanitizeHtml(root) {
   const clone = root.cloneNode(true);
 
@@ -449,7 +523,24 @@ function captureFixture() {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'CWG_RUN_CANARY') {
     const options = message.payload?.checks || {};
-    sendResponse(runChecks(options));
+    const stabilityOptions = message.payload?.stabilityOptions || {};
+    void runChecksWhenStable(options, stabilityOptions)
+      .then(result => sendResponse(result))
+      .catch(error => {
+        sendResponse({
+          checks: [
+            check('run_canary_error', false, 'high', error?.message || String(error), {
+              stage: 'runChecksWhenStable',
+            }),
+          ],
+          pageMeta: {
+            pageType: detectPageType(window.location.pathname),
+            pathname: window.location.pathname,
+            title: document.title,
+            timestamp: Date.now(),
+          },
+        });
+      });
     return true;
   }
 
