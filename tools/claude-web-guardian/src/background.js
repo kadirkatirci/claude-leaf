@@ -231,9 +231,29 @@ async function runCanary(reason = 'manual') {
   return runCanaryForTab(tabs[0], reason);
 }
 
+async function runManualCanaryForPreferredTab(preferredTabId = null) {
+  if (preferredTabId) {
+    const targetedResult = await runCanaryForTabId(preferredTabId, 'manual');
+    if (targetedResult?.ok || targetedResult?.reason !== 'tab_unreachable') {
+      return targetedResult;
+    }
+  }
+
+  return runCanary('manual');
+}
+
 async function runCanaryForTabId(tabId, reason = 'manual', monitorMeta = null) {
   try {
     const tab = await chrome.tabs.get(tabId);
+    if (!tab?.url) {
+      return { ok: false, reason: 'tab_missing_url' };
+    }
+
+    const pageType = detectPageType(new URL(tab.url).pathname);
+    if (!isMonitoredPageType(pageType)) {
+      return { ok: false, reason: 'unsupported_tab', pageType };
+    }
+
     return await runCanaryForTab(tab, reason, monitorMeta);
   } catch (error) {
     return { ok: false, reason: 'tab_unreachable', error: error?.message || String(error) };
@@ -340,7 +360,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     if (message?.type === 'CWG_RUN_NOW') {
-      const result = await runCanary('manual');
+      const result = await runManualCanaryForPreferredTab(message.payload?.tabId || null);
       sendResponse(result);
       return;
     }

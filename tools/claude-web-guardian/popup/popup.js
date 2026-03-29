@@ -110,7 +110,8 @@ $('saveBtn').addEventListener('click', async () => {
 
 $('runNowBtn').addEventListener('click', async () => {
   setStatus('Running canary...');
-  const result = await sendMessage('CWG_RUN_NOW');
+  const tab = await findClaudeTab();
+  const result = await sendMessage('CWG_RUN_NOW', { tabId: tab?.id || null });
   if (!result?.ok) {
     setStatus(`Run failed: ${result?.reason || result?.error || 'unknown'}`, 'error');
   } else {
