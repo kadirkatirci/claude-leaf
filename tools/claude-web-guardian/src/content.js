@@ -26,6 +26,15 @@ const MESSAGE_SELECTOR =
 const PROMPT_INPUT_SELECTOR =
   '[data-testid="chat-input"], [data-testid="prompt-input"], textarea[placeholder]';
 const VERSION_PATTERN = /^(\d+)\s*\/\s*(\d+)$/;
+const AUTO_MONITOR_EVENT = 'cwg:locationchange';
+const AUTO_SIGNAL_DEBOUNCE_MS = 1200;
+const AUTO_SIGNAL_RETRY_MS = 700;
+const AUTO_SIGNAL_MAX_ATTEMPTS = 6;
+
+let autoSignalTimer = null;
+let autoSignalToken = 0;
+let autoMonitorInitialized = false;
+let lastObservedRouteKey = null;
 
 function getExplicitMain() {
   return document.querySelector('main, [role="main"]');
@@ -101,10 +110,149 @@ function findRetryControl(root = document) {
   return null;
 }
 
+function isConversationLikePage(pageType) {
+  return pageType === 'conversation' || pageType === 'project_chat';
+}
+
+function buildRouteKey() {
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+function isPageReadyForSignal(pageType) {
+  const contentRoot = getContentRoot();
+  const messages = getMessageNodes(contentRoot);
+  const promptInput = document.querySelector(PROMPT_INPUT_SELECTOR);
+
+  if (isConversationLikePage(pageType)) {
+    return messages.length > 0;
+  }
+
+  if (pageType === 'new_chat') {
+    return !!promptInput;
+  }
+
+  return !!getExplicitMain() || document.readyState !== 'loading';
+}
+
+function scheduleAutoSignal(trigger = 'page_change', attempt = 0) {
+  autoSignalToken += 1;
+  const token = autoSignalToken;
+
+  if (autoSignalTimer) {
+    clearTimeout(autoSignalTimer);
+  }
+
+  autoSignalTimer = window.setTimeout(
+    () => {
+      void emitAutoSignal(trigger, attempt, token);
+    },
+    attempt === 0 ? AUTO_SIGNAL_DEBOUNCE_MS : AUTO_SIGNAL_RETRY_MS
+  );
+}
+
+async function emitAutoSignal(trigger, attempt, token) {
+  if (token !== autoSignalToken) {
+    return;
+  }
+
+  const pageType = detectPageType(window.location.pathname);
+  if (!isPageReadyForSignal(pageType)) {
+    if (attempt >= AUTO_SIGNAL_MAX_ATTEMPTS) {
+      return;
+    }
+    scheduleAutoSignal(trigger, attempt + 1);
+    return;
+  }
+
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'CWG_PAGE_SIGNAL',
+      payload: {
+        trigger,
+        pageType,
+        pathname: window.location.pathname,
+        href: window.location.href,
+        attempt,
+        signalledAt: Date.now(),
+      },
+    });
+  } catch (error) {
+    console.warn('[CWG] Auto signal failed:', error?.message || error);
+  }
+}
+
+function handlePossibleRouteChange(trigger = 'route_change', force = false) {
+  const routeKey = buildRouteKey();
+  if (!force && routeKey === lastObservedRouteKey) {
+    return;
+  }
+
+  lastObservedRouteKey = routeKey;
+  scheduleAutoSignal(trigger);
+}
+
+function emitSyntheticLocationChange(trigger) {
+  window.dispatchEvent(
+    new CustomEvent(AUTO_MONITOR_EVENT, {
+      detail: { trigger },
+    })
+  );
+}
+
+function patchHistoryMethods() {
+  if (window.__cwgHistoryPatched) {
+    return;
+  }
+
+  window.__cwgHistoryPatched = true;
+
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  history.pushState = function (...args) {
+    const result = originalPushState.apply(this, args);
+    emitSyntheticLocationChange('push_state');
+    return result;
+  };
+
+  history.replaceState = function (...args) {
+    const result = originalReplaceState.apply(this, args);
+    emitSyntheticLocationChange('replace_state');
+    return result;
+  };
+}
+
+function initAutoMonitoring() {
+  if (autoMonitorInitialized) {
+    return;
+  }
+
+  autoMonitorInitialized = true;
+  lastObservedRouteKey = buildRouteKey();
+
+  patchHistoryMethods();
+
+  window.addEventListener(AUTO_MONITOR_EVENT, event => {
+    handlePossibleRouteChange(event.detail?.trigger || 'history_state');
+  });
+
+  window.addEventListener('popstate', () => {
+    handlePossibleRouteChange('popstate');
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      handlePossibleRouteChange('tab_visible', true);
+    }
+  });
+
+  scheduleAutoSignal('page_load');
+}
+
 function runChecks(options = {}) {
   const checks = [];
   const pageType = detectPageType(window.location.pathname);
-  const isConversationLike = pageType === 'conversation' || pageType === 'project_chat';
+  const isConversationLike = isConversationLikePage(pageType);
   const explicitMain = getExplicitMain();
   const contentRoot = getContentRoot();
   const messages = getMessageNodes(contentRoot);
@@ -333,3 +481,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   return false;
 });
+
+if (!window.__CWG_DISABLE_AUTO_MONITOR__) {
+  initAutoMonitoring();
+}

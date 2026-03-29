@@ -4,10 +4,11 @@ A standalone Chrome extension project for **live-page canary monitoring** on `cl
 
 ## What it does
 
-- Runs scheduled canary checks (via `chrome.alarms`) against live Claude.ai pages.
+- Runs canary checks automatically on Claude page changes.
+- Keeps a low-frequency heartbeat check (via `chrome.alarms`) as a fallback.
 - Monitors route, DOM, edit-history, sidebar, and theme selector contracts.
 - Stores report history in `chrome.storage.local`.
-- Lets you configure all optional checks and schedule interval from popup.
+- Lets you configure all optional checks and heartbeat interval from popup.
 - Supports optional webhook bridge for pushing report payloads.
 - Captures sanitized fixture snapshots from a real Claude tab.
 
@@ -21,7 +22,7 @@ A standalone Chrome extension project for **live-page canary monitoring** on `cl
 ## Popup controls
 
 - Enable/disable automatic monitoring
-- Interval in minutes (min 5)
+- Heartbeat interval in minutes (min 5)
 - Optional checks toggles:
   - Core DOM
   - Edit history
@@ -38,7 +39,7 @@ A standalone Chrome extension project for **live-page canary monitoring** on `cl
 Reports are saved to `chrome.storage.local` under key `cwg_reports`.
 Each report includes:
 - timestamp
-- reason (`scheduled` / `manual`)
+- reason (`page_change` / `heartbeat` / `manual`)
 - url + page meta
 - check results array with severity/pass/message
 
@@ -48,4 +49,3 @@ Use webhook payloads from this project to trigger automation in your main extens
 - selector drift issue creation
 - regression test fixture refresh
 - risk score updates
-

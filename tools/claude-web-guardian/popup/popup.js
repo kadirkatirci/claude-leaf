@@ -19,6 +19,7 @@ function reportSummary(report) {
       timestamp: toIso(report.timestamp),
       reason: report.reason,
       url: report.url,
+      monitorMeta: report.monitorMeta,
       pageMeta: report.pageMeta,
       totalChecks: report.checks?.length || 0,
       failedChecks: failures.map(f => ({ id: f.id, message: f.message, severity: f.severity })),

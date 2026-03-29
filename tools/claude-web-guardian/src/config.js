@@ -1,6 +1,6 @@
 export const DEFAULT_SETTINGS = {
   enabled: true,
-  intervalMinutes: 60,
+  intervalMinutes: 360,
   checks: {
     domCore: true,
     editHistory: true,

@@ -8,6 +8,7 @@ const contentScriptPath = new URL('../tools/claude-web-guardian/src/content.js',
 const contentScriptSource = fs.readFileSync(contentScriptPath, 'utf8');
 
 function loadGuardianChecks() {
+  window.__CWG_DISABLE_AUTO_MONITOR__ = true;
   const context = vm.createContext({
     window,
     document,
