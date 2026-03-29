@@ -94,3 +94,20 @@ test('retry_icon_signature still fails when edited prompts exist without a retry
     cleanup();
   }
 });
+
+test('code workspace routes are recognized without treating them as selector drift', () => {
+  const cleanup = setupDom('<main><div>Claude Code</div></main>');
+
+  try {
+    window.history.replaceState({}, '', '/code/test-workspace');
+    const { runChecks } = loadGuardianChecks();
+    const result = runChecks({ routes: true });
+    const routeCheck = result.checks.find(check => check.id === 'route_detection');
+
+    assert.equal(result.pageMeta?.pageType, 'code');
+    assert.equal(routeCheck?.pass, true);
+    assert.match(routeCheck?.message || '', /code/i);
+  } finally {
+    cleanup();
+  }
+});

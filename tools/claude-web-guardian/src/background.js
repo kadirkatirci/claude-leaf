@@ -13,6 +13,9 @@ function detectPageType(pathname = '') {
   if (pathname === '/new' || pathname.endsWith('/new')) {
     return 'new_chat';
   }
+  if (pathname === '/code' || pathname.startsWith('/code/')) {
+    return 'code';
+  }
   if (/\/project\/[^/]+\/chat\/[^/]+/.test(pathname)) {
     return 'project_chat';
   }
@@ -28,17 +31,26 @@ function detectPageType(pathname = '') {
   return 'other';
 }
 
+function isMonitoredPageType(pageType) {
+  return pageType !== 'code';
+}
+
 function buildSignalFromUrl(url, trigger) {
   if (!isClaudeUrl(url)) {
     return null;
   }
 
   const parsedUrl = new URL(url);
+  const pageType = detectPageType(parsedUrl.pathname);
+  if (!isMonitoredPageType(pageType)) {
+    return null;
+  }
+
   return {
     trigger,
     href: url,
     pathname: parsedUrl.pathname,
-    pageType: detectPageType(parsedUrl.pathname),
+    pageType,
     signalledAt: Date.now(),
     source: 'web_navigation',
   };
@@ -73,7 +85,18 @@ async function scheduleAlarm() {
 
 async function getClaudeTabs() {
   const tabs = await chrome.tabs.query({ url: ['https://claude.ai/*'] });
-  return tabs.filter(tab => tab.id && !tab.discarded);
+  return tabs.filter(tab => {
+    if (!tab.id || tab.discarded || !tab.url) {
+      return false;
+    }
+
+    try {
+      const pageType = detectPageType(new URL(tab.url).pathname);
+      return isMonitoredPageType(pageType);
+    } catch {
+      return false;
+    }
+  });
 }
 
 function buildSummary(report) {

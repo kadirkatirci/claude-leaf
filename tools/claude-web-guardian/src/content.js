@@ -2,6 +2,9 @@ function detectPageType(pathname) {
   if (pathname === '/new' || pathname.endsWith('/new')) {
     return 'new_chat';
   }
+  if (pathname === '/code' || pathname.startsWith('/code/')) {
+    return 'code';
+  }
   if (/\/project\/[^/]+\/chat\/[^/]+/.test(pathname)) {
     return 'project_chat';
   }
@@ -19,6 +22,10 @@ function detectPageType(pathname) {
 
 function check(id, pass, severity, message, details = null) {
   return { id, pass: !!pass, severity, message, details };
+}
+
+function isMonitoredPageType(pageType) {
+  return pageType !== 'code';
 }
 
 const MESSAGE_SELECTOR =
@@ -155,6 +162,10 @@ async function emitAutoSignal(trigger, attempt, token) {
   }
 
   const pageType = detectPageType(window.location.pathname);
+  if (!isMonitoredPageType(pageType)) {
+    return;
+  }
+
   if (!isPageReadyForSignal(pageType)) {
     if (attempt >= AUTO_SIGNAL_MAX_ATTEMPTS) {
       return;
@@ -232,9 +243,15 @@ function runChecks(options = {}) {
     checks.push(
       check(
         'route_detection',
-        ['new_chat', 'project_chat', 'project', 'conversation', 'settings', 'other'].includes(
-          pageType
-        ),
+        [
+          'new_chat',
+          'project_chat',
+          'project',
+          'conversation',
+          'settings',
+          'other',
+          'code',
+        ].includes(pageType),
         'high',
         `Route detection resolved as ${pageType}`,
         { pathname: window.location.pathname }
