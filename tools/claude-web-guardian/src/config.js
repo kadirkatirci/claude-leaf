@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   settings: 'cwg_settings',
   reports: 'cwg_reports',
   lastRunAt: 'cwg_last_run_at',
+  pendingAlerts: 'cwg_pending_alerts',
 };
 
 export const ALARM_NAME = 'cwg_scheduled_canary';

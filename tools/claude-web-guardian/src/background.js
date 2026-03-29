@@ -2,6 +2,13 @@ import { ALARM_NAME, DEFAULT_SETTINGS, STORAGE_KEYS } from './config.js';
 
 const AUTO_RUN_DEBOUNCE_MS = 1200;
 const AUTO_RUN_DEDUP_WINDOW_MS = 15000;
+const FAILURE_ALERT_ALARM_PREFIX = 'cwg_failure_alert:';
+const FAILURE_ALERT_REPEAT_COUNT = 3;
+const FAILURE_ALERT_REPEAT_DELAY_MINUTES = 0.5;
+const FAILURE_ALERT_RETENTION_MS = 6 * 60 * 60 * 1000;
+const FAILURE_ALERT_ICON_URL = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#D32F2F"/><path fill="#fff" d="M56 24h16l-3 54H59zm8 84a10 10 0 1 1 0-20 10 10 0 0 1 0 20"/></svg>'
+)}`;
 const pendingAutoRuns = new Map();
 const recentAutoRuns = new Map();
 
@@ -109,6 +116,220 @@ function buildSummary(report) {
   };
 }
 
+function getFailedChecks(report) {
+  return (report?.checks || []).filter(check => !check.pass);
+}
+
+function getReportPathname(report) {
+  if (report?.pageMeta?.pathname) {
+    return report.pageMeta.pathname;
+  }
+
+  if (!report?.url) {
+    return 'unknown';
+  }
+
+  try {
+    return new URL(report.url).pathname;
+  } catch {
+    return 'unknown';
+  }
+}
+
+function buildFailureSignature(report) {
+  const failedChecks = getFailedChecks(report);
+  if (failedChecks.length === 0 || !report?.url) {
+    return null;
+  }
+
+  return `${getReportPathname(report)}|${failedChecks.map(check => check.id || 'unknown').join(',')}`;
+}
+
+function shouldScheduleFailureNotifications(report, previousReport) {
+  const currentSignature = buildFailureSignature(report);
+  if (!currentSignature) {
+    return false;
+  }
+
+  return currentSignature !== buildFailureSignature(previousReport);
+}
+
+function buildFailureAlertPayload(report) {
+  const failedChecks = getFailedChecks(report);
+  if (failedChecks.length === 0 || !report?.url) {
+    return null;
+  }
+
+  return {
+    createdAt: Date.now(),
+    tabId: report.tabId || null,
+    url: report.url,
+    pathname: getReportPathname(report),
+    failureCount: failedChecks.length,
+    failures: failedChecks.slice(0, 3).map(check => ({
+      id: check.id || 'unknown',
+      message: check.message || 'Check failed',
+      severity: check.severity || 'unknown',
+    })),
+  };
+}
+
+function buildFailureNotificationTitle(payload, attempt, totalAttempts) {
+  const failureLabel =
+    payload.failureCount === 1 ? '1 failing check' : `${payload.failureCount} failing checks`;
+  return `Claude Web Guardian Alert (${attempt}/${totalAttempts}) • ${failureLabel}`;
+}
+
+function buildFailureNotificationMessage(payload) {
+  const lines = [payload.pathname];
+
+  payload.failures.slice(0, 2).forEach(failure => {
+    lines.push(`${failure.id}: ${failure.message}`);
+  });
+
+  if (payload.failureCount > 2) {
+    lines.push(`+${payload.failureCount - 2} more failing checks`);
+  }
+
+  return lines.join('\n');
+}
+
+function buildFailureAlertBatchId(report) {
+  return `${report.timestamp}-${report.tabId || 'no-tab'}`;
+}
+
+function buildFailureAlertAlarmName(batchId, attempt) {
+  return `${FAILURE_ALERT_ALARM_PREFIX}${batchId}:${attempt}`;
+}
+
+function parseFailureAlertAlarmName(alarmName = '') {
+  if (!alarmName.startsWith(FAILURE_ALERT_ALARM_PREFIX)) {
+    return null;
+  }
+
+  const payload = alarmName.slice(FAILURE_ALERT_ALARM_PREFIX.length);
+  const separatorIndex = payload.lastIndexOf(':');
+  if (separatorIndex < 0) {
+    return null;
+  }
+
+  return {
+    batchId: payload.slice(0, separatorIndex),
+    attempt: Number(payload.slice(separatorIndex + 1)),
+  };
+}
+
+async function getPendingAlerts() {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.pendingAlerts);
+  const alerts = result[STORAGE_KEYS.pendingAlerts] || {};
+  const prunedAlerts = Object.fromEntries(
+    Object.entries(alerts).filter(([, payload]) => {
+      return Date.now() - (payload?.createdAt || 0) < FAILURE_ALERT_RETENTION_MS;
+    })
+  );
+
+  if (Object.keys(prunedAlerts).length !== Object.keys(alerts).length) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.pendingAlerts]: prunedAlerts });
+  }
+
+  return prunedAlerts;
+}
+
+async function savePendingAlerts(alerts) {
+  await chrome.storage.local.set({ [STORAGE_KEYS.pendingAlerts]: alerts });
+}
+
+async function showFailureNotification(batchId, payload, attempt, totalAttempts) {
+  if (!chrome.notifications?.create) {
+    return;
+  }
+
+  const notificationId = buildFailureAlertAlarmName(batchId, attempt);
+  await chrome.notifications.create(notificationId, {
+    type: 'basic',
+    iconUrl: FAILURE_ALERT_ICON_URL,
+    title: buildFailureNotificationTitle(payload, attempt, totalAttempts),
+    message: buildFailureNotificationMessage(payload),
+    priority: 2,
+    requireInteraction: true,
+  });
+}
+
+async function scheduleFailureNotifications(report, previousReport) {
+  if (!shouldScheduleFailureNotifications(report, previousReport)) {
+    return;
+  }
+
+  const payload = buildFailureAlertPayload(report);
+  if (!payload) {
+    return;
+  }
+
+  const batchId = buildFailureAlertBatchId(report);
+  const pendingAlerts = await getPendingAlerts();
+  pendingAlerts[batchId] = payload;
+  await savePendingAlerts(pendingAlerts);
+
+  await showFailureNotification(batchId, payload, 1, FAILURE_ALERT_REPEAT_COUNT);
+
+  for (let attempt = 2; attempt <= FAILURE_ALERT_REPEAT_COUNT; attempt += 1) {
+    chrome.alarms.create(buildFailureAlertAlarmName(batchId, attempt), {
+      delayInMinutes: FAILURE_ALERT_REPEAT_DELAY_MINUTES * (attempt - 1),
+    });
+  }
+}
+
+async function handleFailureAlertAlarm(alarmName) {
+  const parsed = parseFailureAlertAlarmName(alarmName);
+  if (!parsed) {
+    return false;
+  }
+
+  const pendingAlerts = await getPendingAlerts();
+  const payload = pendingAlerts[parsed.batchId];
+  if (!payload) {
+    return true;
+  }
+
+  await showFailureNotification(
+    parsed.batchId,
+    payload,
+    parsed.attempt,
+    FAILURE_ALERT_REPEAT_COUNT
+  );
+  return true;
+}
+
+async function focusFailureAlertTarget(notificationId) {
+  const parsed = parseFailureAlertAlarmName(notificationId);
+  if (!parsed) {
+    return;
+  }
+
+  const pendingAlerts = await getPendingAlerts();
+  const payload = pendingAlerts[parsed.batchId];
+  if (!payload) {
+    return;
+  }
+
+  if (payload.tabId) {
+    try {
+      const tab = await chrome.tabs.get(payload.tabId);
+      await chrome.tabs.update(tab.id, { active: true });
+      if (typeof tab.windowId === 'number' && chrome.windows?.update) {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      return;
+    } catch {
+      // Fall through to opening a new tab below.
+    }
+  }
+
+  if (payload.url) {
+    await chrome.tabs.create({ url: payload.url });
+  }
+}
+
 async function appendReport(report) {
   const settings = await getSettings();
   const { [STORAGE_KEYS.reports]: existing = [] } = await chrome.storage.local.get(
@@ -122,6 +343,8 @@ async function appendReport(report) {
     [STORAGE_KEYS.reports]: updated,
     [STORAGE_KEYS.lastRunAt]: report.timestamp,
   });
+
+  return existing[0] || null;
 }
 
 async function updateBadge(report) {
@@ -200,9 +423,10 @@ async function runCanaryForTab(tab, reason = 'manual', monitorMeta = null) {
     monitorMeta,
   };
 
-  await appendReport(report);
+  const previousReport = await appendReport(report);
   await updateBadge(report);
   await sendBridgePayloadIfEnabled(report);
+  await scheduleFailureNotifications(report, previousReport);
   return { ok: true, report };
 }
 
@@ -315,6 +539,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onStartup.addListener(scheduleAlarm);
 
 chrome.alarms.onAlarm.addListener(async alarm => {
+  if (await handleFailureAlertAlarm(alarm.name)) {
+    return;
+  }
+
   if (alarm.name !== ALARM_NAME) {
     return;
   }
@@ -333,6 +561,10 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
 chrome.tabs.onRemoved.addListener(tabId => {
   clearPendingAutoRun(tabId);
   recentAutoRuns.delete(tabId);
+});
+
+chrome.notifications.onClicked.addListener(notificationId => {
+  void focusFailureAlertTarget(notificationId);
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
