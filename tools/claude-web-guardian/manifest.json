@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Web Guardian",
+  "version": "0.1.0",
+  "description": "Live-page canary monitoring for Claude.ai selectors/routes/theme contracts with scheduled checks.",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://claude.ai/*", "https://www.google-analytics.com/*", "https://region1.google-analytics.com/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Claude Web Guardian"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

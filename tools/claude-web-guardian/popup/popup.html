@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Web Guardian</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Claude Web Guardian</h1>
+      <p class="muted">Live canary monitoring on real Claude.ai pages.</p>
+
+      <section>
+        <label class="row">
+          <span>Automatic monitoring</span>
+          <input id="enabled" type="checkbox" />
+        </label>
+
+        <label>
+          Interval (minutes)
+          <input id="intervalMinutes" type="number" min="5" step="5" />
+        </label>
+      </section>
+
+      <section>
+        <h2>Optional checks</h2>
+        <label class="row"><span>Core DOM</span><input id="check_domCore" type="checkbox" /></label>
+        <label class="row"><span>Edit history</span><input id="check_editHistory" type="checkbox" /></label>
+        <label class="row"><span>Sidebar</span><input id="check_sidebar" type="checkbox" /></label>
+        <label class="row"><span>Theme</span><input id="check_theme" type="checkbox" /></label>
+        <label class="row"><span>Routes</span><input id="check_routes" type="checkbox" /></label>
+      </section>
+
+      <section>
+        <h2>Bridge (optional)</h2>
+        <label class="row">
+          <span>Send to webhook</span>
+          <input id="bridgeEnabled" type="checkbox" />
+        </label>
+        <label>
+          Webhook URL
+          <input id="webhookUrl" type="url" placeholder="https://..." />
+        </label>
+      </section>
+
+      <section class="buttons">
+        <button id="saveBtn">Save settings</button>
+        <button id="runNowBtn" class="secondary">Run now</button>
+        <button id="exportBtn" class="secondary">Export JSON</button>
+      </section>
+
+      <section class="buttons">
+        <button id="captureFixtureBtn" class="secondary">Capture fixture</button>
+      </section>
+
+      <section>
+        <h2>Status</h2>
+        <div id="statusBox" class="status">Loading...</div>
+      </section>
+
+      <section>
+        <h2>Last report</h2>
+        <pre id="reportBox">-</pre>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
