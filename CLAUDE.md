@@ -40,6 +40,21 @@ npm run format     # Format code with Prettier
 3. Click "Load unpacked" and select this folder
 4. Navigate to https://claude.ai to test
 
+### Standalone Guardian Tool
+
+The repo also contains `tools/claude-web-guardian/`, a separate MV3 unpacked extension for live-page canary monitoring on `claude.ai`.
+
+- It is not bundled into the main Claude Leaf extension or release zip.
+- It auto-runs on monitored page changes, keeps a heartbeat fallback, and sends up to three desktop notifications for new failures.
+- It ignores `https://claude.ai/code/...` routes.
+- Manual `Run now` targets the active Claude tab from the popup.
+
+Guardian-specific tests:
+
+```bash
+node --test test/claude-web-guardian.test.js test/claude-web-guardian-background.test.js
+```
+
 ### Pre-commit Hooks
 The project uses Husky + lint-staged for pre-commit validation:
 - ESLint runs on staged `.js` files
@@ -88,9 +103,11 @@ src/
 │   ├── EventBus.js         # Pub/sub event system
 │   ├── DOMUtils.js         # DOM helpers
 │   └── ...
-└── components/             # UI components
-    ├── primitives/         # Basic UI elements
-    └── theme/              # Theme utilities
+├── components/             # UI components
+│   ├── primitives/         # Basic UI elements
+│   └── theme/              # Theme utilities
+└── tools/
+    └── claude-web-guardian/ # Standalone monitoring extension
 ```
 
 ### Entry Point & Initialization

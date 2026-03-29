@@ -144,6 +144,22 @@ npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
 ```
 
+### Auxiliary Tool
+
+This repository also contains a separate unpacked extension at `tools/claude-web-guardian/`.
+
+- It is not part of the main Claude Leaf build or release zip.
+- It watches live `claude.ai` routes and selector contracts.
+- It auto-runs on monitored page changes, keeps a heartbeat fallback, and sends up to three desktop alerts for new failures.
+- It ignores `https://claude.ai/code/...` routes.
+
+To use it locally:
+
+1. Open `chrome://extensions`
+2. Enable `Developer mode`
+3. Click `Load unpacked`
+4. Select `tools/claude-web-guardian`
+
 ### Project Structure
 
 ```text
@@ -160,6 +176,8 @@ src/
 popup/
 docs/
 icons/
+tools/
+└── claude-web-guardian/
 ```
 
 For architecture and internal development notes, see [CLAUDE.md](CLAUDE.md).
