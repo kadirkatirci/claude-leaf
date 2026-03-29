@@ -21,9 +21,102 @@ function check(id, pass, severity, message, details = null) {
   return { id, pass: !!pass, severity, message, details };
 }
 
+const MESSAGE_SELECTOR =
+  '[data-test-render-count], [data-testid*="conversation-turn"], [data-testid*="message"]';
+const PROMPT_INPUT_SELECTOR =
+  '[data-testid="chat-input"], [data-testid="prompt-input"], textarea[placeholder]';
+const VERSION_PATTERN = /^(\d+)\s*\/\s*(\d+)$/;
+
+function getExplicitMain() {
+  return document.querySelector('main, [role="main"]');
+}
+
+function getContentRoot() {
+  return getExplicitMain() || document.body;
+}
+
+function getMessageNodes(root = document) {
+  return Array.from(root.querySelectorAll(MESSAGE_SELECTOR));
+}
+
+function parseVersionLabel(text) {
+  const match = text.trim().match(VERSION_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    label: `${match[1]} / ${match[2]}`,
+    current: Number(match[1]),
+    total: Number(match[2]),
+  };
+}
+
+function collectVersionSignals(root = document) {
+  const seen = new Set();
+  const signals = [];
+
+  function addSignal(element, source) {
+    if (!element || seen.has(element)) {
+      return;
+    }
+
+    const parsed = parseVersionLabel(element.textContent || '');
+    if (!parsed) {
+      return;
+    }
+
+    seen.add(element);
+    signals.push({
+      ...parsed,
+      source,
+    });
+  }
+
+  root.querySelectorAll('.inline-flex.items-center.gap-1 span').forEach(span => {
+    addSignal(span, 'version_container');
+  });
+
+  root.querySelectorAll('span').forEach(span => {
+    if (span.closest('[data-testid="user-message"]')) {
+      return;
+    }
+    addSignal(span, 'span_fallback');
+  });
+
+  return signals;
+}
+
+function findRetryControl(root = document) {
+  const labelledControl = root.querySelector('button[aria-label="Retry"], [aria-label="Retry"]');
+  if (labelledControl) {
+    return { element: labelledControl, strategy: 'aria_label' };
+  }
+
+  const iconPath = root.querySelector('button svg path[d*="M10.3857"]');
+  if (iconPath) {
+    return { element: iconPath.closest('button') || iconPath, strategy: 'path_signature' };
+  }
+
+  return null;
+}
+
 function runChecks(options = {}) {
   const checks = [];
   const pageType = detectPageType(window.location.pathname);
+  const isConversationLike = pageType === 'conversation' || pageType === 'project_chat';
+  const explicitMain = getExplicitMain();
+  const contentRoot = getContentRoot();
+  const messages = getMessageNodes(contentRoot);
+  const promptInput = document.querySelector(PROMPT_INPUT_SELECTOR);
+  const hasViableContent =
+    !!explicitMain ||
+    (isConversationLike
+      ? messages.length > 0
+      : pageType === 'new_chat'
+        ? !!promptInput
+        : !!contentRoot);
+  const contentStrategy = explicitMain ? 'main' : hasViableContent ? 'body_fallback' : 'missing';
 
   if (options.routes) {
     checks.push(
@@ -40,22 +133,30 @@ function runChecks(options = {}) {
   }
 
   if (options.domCore) {
-    const main = document.querySelector('main, [role="main"]');
-    const messages = document.querySelectorAll(
-      '[data-test-render-count], [data-testid*="conversation-turn"], [data-testid*="message"]'
-    );
     checks.push(
       check(
         'main_container',
-        !!main,
+        hasViableContent,
         'high',
-        main ? 'Main container found' : 'Main container missing'
+        explicitMain
+          ? 'Main container found'
+          : hasViableContent
+            ? pageType === 'new_chat'
+              ? 'Main container missing; prompt input resolved via body fallback'
+              : 'Main container missing; page content resolved via body fallback'
+            : 'Main container missing and no viable fallback content found',
+        {
+          strategy: contentStrategy,
+          hasMain: !!explicitMain,
+          messageCount: messages.length,
+          hasPromptInput: !!promptInput,
+        }
       )
     );
     checks.push(
       check(
         'message_nodes',
-        messages.length > 0 || pageType !== 'conversation',
+        messages.length > 0 || !isConversationLike,
         'high',
         `Message node count: ${messages.length}`,
         { count: messages.length }
@@ -64,24 +165,47 @@ function runChecks(options = {}) {
   }
 
   if (options.editHistory) {
-    const versionContainer = document.querySelector('.inline-flex.items-center.gap-1');
-    const retryPath = document.querySelector('button svg path[d*="M10.3857"]');
+    const versionSignals = collectVersionSignals(contentRoot);
+    const editedPromptSignals = versionSignals.filter(signal => signal.total > 1);
+    const hasVersionContainer = versionSignals.some(
+      signal => signal.source === 'version_container'
+    );
+    const retryControl = findRetryControl(contentRoot);
     checks.push(
       check(
         'version_container_class',
-        !!versionContainer || pageType !== 'conversation',
+        !isConversationLike || editedPromptSignals.length === 0 || hasVersionContainer,
         'medium',
-        versionContainer ? 'Version container found' : 'Version container not found on this view'
+        !isConversationLike
+          ? 'Version container check skipped outside conversation views'
+          : editedPromptSignals.length === 0
+            ? 'No edited prompts detected; version container not required'
+            : hasVersionContainer
+              ? 'Version container found for edited prompt UI'
+              : 'Edited prompts detected but version container class is missing',
+        {
+          editedPromptCount: editedPromptSignals.length,
+          versionSignalCount: versionSignals.length,
+          fallbackOnly: editedPromptSignals.length > 0 && !hasVersionContainer,
+        }
       )
     );
     checks.push(
       check(
         'retry_icon_signature',
-        !!retryPath || pageType !== 'conversation',
+        !isConversationLike || editedPromptSignals.length === 0 || !!retryControl,
         'low',
-        retryPath
-          ? 'Retry icon signature found'
-          : 'Retry icon signature not found in current DOM snapshot'
+        !isConversationLike
+          ? 'Retry control check skipped outside conversation views'
+          : editedPromptSignals.length === 0
+            ? 'No edited prompts detected; retry control not required'
+            : retryControl
+              ? `Retry control found via ${retryControl.strategy}`
+              : 'Edited prompts detected but retry control signature is missing',
+        {
+          editedPromptCount: editedPromptSignals.length,
+          strategy: retryControl?.strategy || null,
+        }
       )
     );
   }
@@ -138,7 +262,9 @@ function runChecks(options = {}) {
       pageType,
       pathname: window.location.pathname,
       title: document.title,
-      hasMain: !!document.querySelector('main, [role="main"]'),
+      hasMain: !!explicitMain,
+      contentStrategy,
+      messageCount: messages.length,
       timestamp: Date.now(),
     },
   };
@@ -176,7 +302,7 @@ function sanitizeHtml(root) {
 }
 
 function captureFixture() {
-  const container = document.querySelector('main, [role="main"]') || document.body;
+  const container = getContentRoot();
   const sanitizedHtml = sanitizeHtml(container);
 
   return {
