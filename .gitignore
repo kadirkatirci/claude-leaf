@@ -8,7 +8,8 @@ release/
 *.key
 .env
 .env.*
-.claude/
+.claude/settings.json
+.claude/claude.local.json
 
 # Auto-generated from src/config/DevConfig.js during build
 popup/devConfig.json
