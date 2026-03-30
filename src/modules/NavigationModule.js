@@ -264,18 +264,30 @@ class NavigationModule extends BaseModule {
       this.visibilityUnsubscribe = null;
     }
 
-    // Clean up fixed button and its listeners (FixedButtonMixin)
     if (this.destroyFixedButton) {
       this.destroyFixedButton();
     }
+
+    this.removePanelButtons();
 
     // Note: MessageHub subscriptions are automatically cleaned up by BaseModule.destroy()
 
     super.destroy();
   }
 
+  shouldShowFloatingUI(settings = this.settings) {
+    return settings?.navigation?.showFloatingUI !== false;
+  }
+
+  removePanelButtons() {
+    ['claude-nav-top', 'claude-nav-prev', 'claude-nav-next'].forEach(buttonId => {
+      panelManager.removeButton(buttonId);
+    });
+  }
+
   createUI() {
     this.cachedOpacity = NAV_CONFIG.opacity;
+    const ownerVisible = this.shouldShowFloatingUI();
 
     // Use PanelManager to get/create container
     // PanelManager handles visibility and creation logic
@@ -289,7 +301,7 @@ class NavigationModule extends BaseModule {
     );
     topBtn.id = 'claude-nav-top';
     Button.setDisabledState(topBtn, true);
-    panelManager.addButton(topBtn, 10); // Order 10
+    panelManager.addButton(topBtn, 10, { owner: 'navigation', visible: ownerVisible });
 
     // Previous button
     const prevBtn = this.createButton(
@@ -299,7 +311,7 @@ class NavigationModule extends BaseModule {
     );
     prevBtn.id = 'claude-nav-prev';
     Button.setDisabledState(prevBtn, true);
-    panelManager.addButton(prevBtn, 20); // Order 20
+    panelManager.addButton(prevBtn, 20, { owner: 'navigation', visible: ownerVisible });
 
     // Next button
     const nextBtn = this.createButton(
@@ -309,7 +321,7 @@ class NavigationModule extends BaseModule {
     );
     nextBtn.id = 'claude-nav-next';
     Button.setDisabledState(nextBtn, true);
-    panelManager.addButton(nextBtn, 30); // Order 30
+    panelManager.addButton(nextBtn, 30, { owner: 'navigation', visible: ownerVisible });
 
     // Counter badge attachment (logic remains same)
     if (NAV_CONFIG.showCounter) {
@@ -735,11 +747,15 @@ class NavigationModule extends BaseModule {
   onSettingsChanged(settings) {
     try {
       this.log('Settings updated:', settings);
+      const navigationSettings = settings.navigation || {};
+      const generalSettings = settings.general || {};
+
+      panelManager.setOwnerVisibility('navigation', this.shouldShowFloatingUI(settings));
 
       // Only update position if it actually changed
-      if (this.elements.container && settings.navigation) {
+      if (this.elements.container && navigationSettings) {
         try {
-          const newPosition = settings.navigation.position || 'right';
+          const newPosition = navigationSettings.position || 'right';
           const currentLeft = this.elements.container.style.left;
 
           const shouldBeLeft = newPosition === 'left';
@@ -755,11 +771,11 @@ class NavigationModule extends BaseModule {
       }
 
       // Only update opacity if it actually changed
-      if (this.elements.container && settings.general && settings.general.opacity !== undefined) {
+      if (this.elements.container && generalSettings.opacity !== undefined) {
         try {
-          const newOpacity = settings.general.opacity.toString();
+          const newOpacity = generalSettings.opacity.toString();
           if (this.elements.container.style.opacity !== newOpacity) {
-            this.cachedOpacity = settings.general.opacity; // Update cache
+            this.cachedOpacity = generalSettings.opacity; // Update cache
             this.elements.container.style.opacity = newOpacity;
           }
         } catch (error) {
@@ -769,9 +785,9 @@ class NavigationModule extends BaseModule {
 
       // Show/hide counter - only if changed
       const counter = document.getElementById('claude-nav-counter');
-      if (counter && settings.navigation) {
+      if (counter && navigationSettings) {
         try {
-          const shouldShow = settings.navigation.showCounter;
+          const shouldShow = navigationSettings.showCounter;
           const currentDisplay = counter.style.display;
           const targetDisplay = shouldShow ? 'block' : 'none';
 
@@ -785,14 +801,12 @@ class NavigationModule extends BaseModule {
 
       // Did keyboard shortcuts change?
       try {
-        if (
-          settings.navigation &&
-          settings.navigation.keyboardShortcuts !== NAV_CONFIG.keyboardShortcuts
-        ) {
-          if (settings.navigation.keyboardShortcuts) {
+        if (this.settingsChanged(['navigation.keyboardShortcuts'], settings)) {
+          if (navigationSettings.keyboardShortcuts) {
             this.setupKeyboardShortcuts();
           } else if (this.keydownHandler) {
             document.removeEventListener('keydown', this.keydownHandler);
+            this.keydownHandler = null;
           }
         }
       } catch (error) {
@@ -801,7 +815,7 @@ class NavigationModule extends BaseModule {
 
       // Did theme change? (check from general settings)
       try {
-        if (this.settings && this.settings.general) {
+        if (this.settingsChanged(['general.colorTheme', 'general.customColor'], settings)) {
           this.recreateUI();
         }
       } catch (error) {
@@ -816,10 +830,7 @@ class NavigationModule extends BaseModule {
    * Recreate UI (on theme change)
    */
   recreateUI() {
-    // Remove old container
-    if (this.elements.container) {
-      this.elements.container.remove();
-    }
+    this.removePanelButtons();
 
     // Create new container
     this.createUI();

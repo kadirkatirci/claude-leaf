@@ -129,12 +129,7 @@ class EditHistoryModule extends BaseModule {
         this.handleEditSessionChange(data);
       });
 
-      // Create collapse button (only if CompactView is enabled)
-      const compactViewEnabled =
-        this.settings && this.settings.compactView && this.settings.compactView.enabled;
-      if (compactViewEnabled) {
-        this.createCollapseButton(this.getTheme());
-      }
+      this.syncCollapseButton();
 
       // Update panel if data exists
       if (this.editedMessages.length > 0) {
@@ -299,7 +294,6 @@ class EditHistoryModule extends BaseModule {
       title: 'Collapse/Expand All (Edited Messages)',
       style: {
         background: collapseBg,
-        display: this.editedMessages.length > 0 ? 'flex' : 'none',
         transition: 'transform 0.1s ease',
         color: 'white',
         position: 'relative',
@@ -331,10 +325,51 @@ class EditHistoryModule extends BaseModule {
     });
 
     // Add to shared panel (Order 50 = bottom)
-    panelManager.addButton(collapseBtn, 50);
+    panelManager.addButton(collapseBtn, 50, {
+      owner: 'editHistory',
+      visible: this.shouldShowCollapseButton(),
+    });
     this.elements.collapseBtn = collapseBtn;
 
     this.log('✅ Collapse button added to panel');
+  }
+
+  shouldShowFloatingUI(settings = this.settings) {
+    return settings?.editHistory?.showFloatingUI !== false;
+  }
+
+  isCompactViewModuleAvailable() {
+    const app = window.claudeProductivity;
+    const compactViewModule = app?.getModule?.('compactView');
+    return !!(compactViewModule && compactViewModule.enabled);
+  }
+
+  shouldShowCollapseButton(settings = this.settings) {
+    return (
+      this.isCompactViewModuleAvailable() &&
+      this.shouldShowFloatingUI(settings) &&
+      this.editedMessages.length > 0
+    );
+  }
+
+  syncCollapseButton(settings = this.settings) {
+    if (!this.isCompactViewModuleAvailable()) {
+      if (this.elements.collapseBtn) {
+        panelManager.removeButton(this.elements.collapseBtn.id);
+        this.elements.collapseBtn = null;
+      }
+      return;
+    }
+
+    if (!this.elements.collapseBtn) {
+      this.createCollapseButton(this.getTheme());
+      return;
+    }
+
+    panelManager.setButtonVisibility(
+      this.elements.collapseBtn.id,
+      this.shouldShowCollapseButton(settings)
+    );
   }
 
   /**
@@ -391,9 +426,7 @@ class EditHistoryModule extends BaseModule {
     this.updateButtonCounter(this.editedMessages.length);
 
     // Show/hide collapse button based on edit count
-    if (this.elements.collapseBtn) {
-      this.elements.collapseBtn.style.display = this.editedMessages.length > 0 ? 'flex' : 'none';
-    }
+    this.syncCollapseButton();
 
     // Update panel
     this.panel.updateContent(this.editedMessages);
@@ -453,12 +486,19 @@ class EditHistoryModule extends BaseModule {
   /**
    * When settings change
    */
-  onSettingsChanged() {
+  onSettingsChanged(settings) {
     this.log('⚙️ Settings changed');
 
+    if (this.refreshFixedButtonVisibility) {
+      this.refreshFixedButtonVisibility();
+    }
+
+    this.syncCollapseButton(settings);
+
     // Refresh UI if theme changed
-    if (this.settings && this.settings.general) {
+    if (this.settingsChanged(['general.colorTheme', 'general.customColor'], settings)) {
       this.recreateUI();
+      return;
     }
 
     // Re-scan
@@ -469,20 +509,13 @@ class EditHistoryModule extends BaseModule {
    * Recreate UI (on theme change)
    */
   recreateUI() {
-    const theme = this.getTheme();
-
     // Remove old collapse button
     if (this.elements.collapseBtn) {
-      this.elements.collapseBtn.remove();
+      panelManager.removeButton(this.elements.collapseBtn.id);
       this.elements.collapseBtn = null;
     }
 
-    // Recreate collapse button if CompactView is enabled
-    const compactViewEnabled =
-      this.settings && this.settings.compactView && this.settings.compactView.enabled;
-    if (compactViewEnabled) {
-      this.createCollapseButton(theme);
-    }
+    this.syncCollapseButton();
 
     // Recreate panel
     this.panel.remove();

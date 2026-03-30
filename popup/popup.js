@@ -9,6 +9,7 @@ import {
   renderFeatures,
   renderHelpSection,
   renderShortcuts,
+  syncFloatingVisibilityButton,
   renderTabs,
   setupActionButtons,
   setupTabListeners,
@@ -78,6 +79,7 @@ function renderUI() {
     currentSettings: currentSettings || {},
     devConfig,
     onToggle: handleModuleToggle,
+    onVisibilityToggle: handleFloatingVisibilityToggle,
     onSettingsClick: moduleId => {
       switchToTab('settings');
       openAccordion(moduleId);
@@ -133,6 +135,14 @@ function handleModuleToggle(moduleId, enabled) {
   console.log(`[Popup] Toggle changed: ${moduleId}.enabled =`, enabled);
 }
 
+function handleFloatingVisibilityToggle(moduleId, visible) {
+  if (!currentSettings[moduleId]) {
+    currentSettings[moduleId] = {};
+  }
+  currentSettings[moduleId].showFloatingUI = visible;
+  console.log(`[Popup] Toggle changed: ${moduleId}.showFloatingUI =`, visible);
+}
+
 async function loadSettings() {
   const result = await chrome.storage.sync.get(['settings']);
   let savedSettings = {};
@@ -182,6 +192,15 @@ function updateUI() {
     const toggle = document.getElementById(`${id}-enabled`);
     if (toggle) {
       toggle.checked = currentSettings[id]?.enabled ?? false;
+    }
+
+    const visibilityToggle = document.getElementById(`${id}-floating-ui`);
+    if (visibilityToggle) {
+      syncFloatingVisibilityButton(
+        visibilityToggle,
+        config,
+        currentSettings[id]?.showFloatingUI !== false
+      );
     }
   });
 

@@ -43,7 +43,37 @@ export function getInitialTabId(config) {
   return first ? first.id : 'features';
 }
 
-export function renderFeatures({ config, currentSettings, devConfig, onToggle, onSettingsClick }) {
+function getFloatingVisibilityTitle(isVisible) {
+  return isVisible ? 'Hide floating controls' : 'Show floating controls';
+}
+
+function getFloatingVisibilityIcon(config, isVisible) {
+  return `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="${isVisible ? config.icons.eye : config.icons.eyeOff}"/>
+    </svg>
+  `;
+}
+
+export function syncFloatingVisibilityButton(button, config, isVisible) {
+  if (!button) {
+    return;
+  }
+
+  button.dataset.visible = isVisible ? 'true' : 'false';
+  button.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+  button.setAttribute('title', getFloatingVisibilityTitle(isVisible));
+  button.innerHTML = getFloatingVisibilityIcon(config, isVisible);
+}
+
+export function renderFeatures({
+  config,
+  currentSettings,
+  devConfig,
+  onToggle,
+  onVisibilityToggle,
+  onSettingsClick,
+}) {
   const container = document.getElementById('feature-list');
   const enabledModules = Object.entries(config.modules).filter(
     ([id]) => !isModuleDevDisabled(devConfig, id)
@@ -67,6 +97,22 @@ export function renderFeatures({ config, currentSettings, devConfig, onToggle, o
         </button>
       </div>
       <div class="feature-actions">
+        ${
+          module.supportsFloatingVisibility
+            ? `
+        <button
+          type="button"
+          class="visibility-btn"
+          id="${id}-floating-ui"
+          data-visible="${currentSettings[id]?.showFloatingUI !== false ? 'true' : 'false'}"
+          aria-pressed="${currentSettings[id]?.showFloatingUI !== false ? 'true' : 'false'}"
+          title="${getFloatingVisibilityTitle(currentSettings[id]?.showFloatingUI !== false)}"
+        >
+          ${getFloatingVisibilityIcon(config, currentSettings[id]?.showFloatingUI !== false)}
+        </button>
+        `
+            : ''
+        }
         <label class="toggle">
           <input type="checkbox" id="${id}-enabled" ${currentSettings[id]?.enabled ? 'checked' : ''}>
           <span class="toggle-slider"></span>
@@ -82,6 +128,15 @@ export function renderFeatures({ config, currentSettings, devConfig, onToggle, o
     if (toggle) {
       toggle.addEventListener('change', event => {
         onToggle(id, event.target.checked);
+      });
+    }
+
+    const visibilityToggle = document.getElementById(`${id}-floating-ui`);
+    if (visibilityToggle) {
+      visibilityToggle.addEventListener('click', () => {
+        const nextVisible = visibilityToggle.dataset.visible !== 'true';
+        syncFloatingVisibilityButton(visibilityToggle, config, nextVisible);
+        onVisibilityToggle(id, nextVisible);
       });
     }
   });

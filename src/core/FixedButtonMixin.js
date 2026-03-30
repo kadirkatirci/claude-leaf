@@ -18,6 +18,10 @@ import {
 const LOADING_OPACITY = 0.3;
 
 export default class FixedButtonMixin {
+  static shouldShowFloatingUI(module) {
+    return module.settings?.[module.name]?.showFloatingUI !== false;
+  }
+
   /**
    * Initialize fixed button functionality
    * @param {Object} module - The module instance to enhance
@@ -38,6 +42,9 @@ export default class FixedButtonMixin {
     module.destroyFixedButton = this.createButtonDestroyer(module);
     module._markButtonReady = this.createReadyMarker(module);
     module._startHealthCheck = this.createHealthCheck(module);
+    module.refreshFixedButtonVisibility = () => {
+      module.handleVisibilityChange(VisibilityManager.isOnConversationPage());
+    };
 
     // Listen for MessageHub events to mark as ready
     this.setupReadyListener(module);
@@ -72,7 +79,8 @@ export default class FixedButtonMixin {
         // Verify visibility matches expected state
         const isConversationPage = VisibilityManager.isOnConversationPage();
         const currentDisplay = this.fixedButton.style.display;
-        const expectedDisplay = isConversationPage ? 'flex' : 'none';
+        const expectedDisplay =
+          isConversationPage && FixedButtonMixin.shouldShowFloatingUI(module) ? 'flex' : 'none';
 
         if (currentDisplay !== expectedDisplay) {
           module.log('Health check: Fixing visibility mismatch');
@@ -142,10 +150,12 @@ export default class FixedButtonMixin {
 
       // Store state
       this.lastConversationState = isConversationPage;
+      const shouldShowFloatingUI =
+        isConversationPage && FixedButtonMixin.shouldShowFloatingUI(module);
 
       // Update button visibility with multiple methods for stability
       if (this.fixedButton) {
-        if (isConversationPage) {
+        if (shouldShowFloatingUI) {
           // Use loading opacity if not ready, target opacity if ready
           // Note: _isButtonReady is reset by navigation listener, not here
           const opacity = this._isButtonReady ? this._targetOpacity : LOADING_OPACITY;
@@ -158,7 +168,7 @@ export default class FixedButtonMixin {
             visible: false,
           });
         }
-        module.log(`Button visibility set to: ${isConversationPage ? 'visible' : 'hidden'}`);
+        module.log(`Button visibility set to: ${shouldShowFloatingUI ? 'visible' : 'hidden'}`);
       }
 
       // Handle page-specific logic
@@ -265,7 +275,9 @@ export default class FixedButtonMixin {
 
       // Set initial visibility based on page type
       const isConversationPage = VisibilityManager.isOnConversationPage();
-      if (!isConversationPage) {
+      const shouldShowFloatingUI =
+        isConversationPage && FixedButtonMixin.shouldShowFloatingUI(module);
+      if (!shouldShowFloatingUI) {
         applyFloatingVisibility(button, {
           visible: false,
         });

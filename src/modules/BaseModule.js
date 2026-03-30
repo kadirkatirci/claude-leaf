@@ -19,9 +19,12 @@ class BaseModule {
     this.options = options;
     this.enabled = false;
     this.initialized = false;
+    this.settings = {};
+    this.previousSettings = {};
     this.elements = {}; // DOM elements storage
     this.unsubscribers = []; // Event cleanup functions
-    // ✅ Settings cache removed! Now using settingsStore directly
+    this._settingsSubscriptionActive = false;
+    this._urlSubscriptionActive = false;
   }
 
   /**
@@ -40,7 +43,11 @@ class BaseModule {
       debugLog('module', `${this.name} loading settings from storage...`);
       await settingsStore.load();
 
-      const enabled = await settingsStore.get(`${this.name}.enabled`);
+      const allSettings = await settingsStore.get();
+      this.previousSettings = this.settings;
+      this.settings = allSettings || {};
+
+      const enabled = allSettings?.[this.name]?.enabled;
       debugLog('module', `${this.name} enabled check: ${enabled}`);
 
       if (enabled !== true) {
@@ -82,6 +89,8 @@ class BaseModule {
     // Clean up event listeners
     this.unsubscribers.forEach(unsub => unsub());
     this.unsubscribers = [];
+    this._settingsSubscriptionActive = false;
+    this._urlSubscriptionActive = false;
 
     // Clean up DOM elements
     Object.values(this.elements).forEach(element => {
@@ -163,16 +172,19 @@ class BaseModule {
    * Listen to settings changes
    */
   subscribeToSettings() {
+    if (this._settingsSubscriptionActive) {
+      return;
+    }
+
+    this._settingsSubscriptionActive = true;
+
     // Subscribe to settingsStore changes
     const storeUnsub = settingsStore.subscribe(async settings => {
       try {
-        const moduleSettings = settings[this.name];
-
-        // If only general changed (theme, etc.)
-        if (!moduleSettings && settings.general) {
-          this.onSettingsChanged({});
-          return;
-        }
+        const previousSettings = this.settings || {};
+        this.previousSettings = previousSettings;
+        this.settings = settings || {};
+        const moduleSettings = this.settings[this.name];
 
         if (!moduleSettings) {
           return;
@@ -195,7 +207,9 @@ class BaseModule {
         }
 
         // Notify module when settings are updated
-        this.onSettingsChanged(moduleSettings);
+        if (this.enabled) {
+          this.onSettingsChanged(this.settings);
+        }
       } catch (error) {
         console.error(`❌ Error in settings subscription for ${this.name}:`, error);
       }
@@ -206,10 +220,11 @@ class BaseModule {
     // Also listen to EventBus for backward compatibility (App.js emits this)
     const eventUnsub = eventBus.on('settings:changed', settings => {
       try {
-        // Just call onSettingsChanged, settingsStore subscription handles the rest
-        const moduleSettings = settings[this.name];
-        if (moduleSettings) {
-          this.onSettingsChanged(moduleSettings);
+        const moduleSettings = settings?.[this.name];
+        if (moduleSettings && this.enabled) {
+          this.previousSettings = this.settings || {};
+          this.settings = settings;
+          this.onSettingsChanged(settings);
         }
       } catch (error) {
         console.error(`❌ Error in EventBus settings handler for ${this.name}:`, error);
@@ -299,6 +314,12 @@ class BaseModule {
    * Subscribe to centralized URL change events from App
    */
   subscribeToURLChanges() {
+    if (this._urlSubscriptionActive) {
+      return;
+    }
+
+    this._urlSubscriptionActive = true;
+
     const unsub = eventBus.on(Events.URL_CHANGED, newUrl => {
       this.log(`📩 Received URL_CHANGED event: ${newUrl}`);
       this.onUrlChanged(newUrl);
@@ -378,13 +399,14 @@ class BaseModule {
    * @returns {boolean} True if any of the specified settings changed
    */
   settingsChanged(keys, newSettings) {
+    const previousSettings = this.previousSettings || {};
     return keys.some(key => {
       const newValue = key.includes('.')
         ? key.split('.').reduce((obj, k) => obj?.[k], newSettings)
         : newSettings[key];
       const oldValue = key.includes('.')
-        ? key.split('.').reduce((obj, k) => obj?.[k], this.settings)
-        : this.settings[key];
+        ? key.split('.').reduce((obj, k) => obj?.[k], previousSettings)
+        : previousSettings[key];
       return newValue !== oldValue;
     });
   }

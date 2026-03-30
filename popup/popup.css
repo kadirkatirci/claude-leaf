@@ -323,6 +323,51 @@ body {
   flex-shrink: 0;
 }
 
+.visibility-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.visibility-btn svg {
+  flex-shrink: 0;
+}
+
+.visibility-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.visibility-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visibility-btn[data-visible='true'] {
+  background: var(--accent-light);
+  border-color: rgba(232, 107, 74, 0.22);
+  color: var(--accent);
+}
+
+.visibility-btn[data-visible='false'] {
+  opacity: 0.82;
+}
+
 .settings-btn {
   display: flex;
   align-items: center;

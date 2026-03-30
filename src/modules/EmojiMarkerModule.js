@@ -325,7 +325,16 @@ class EmojiMarkerModule extends BaseModule {
     await this.updateUI();
   }
 
-  async onSettingsChanged() {
+  async onSettingsChanged(settings) {
+    if (this.refreshFixedButtonVisibility) {
+      this.refreshFixedButtonVisibility();
+    }
+
+    if (this.settingsChanged(['general.colorTheme', 'general.customColor'], settings)) {
+      await this.recreateUI();
+      return;
+    }
+
     await this.updateUI();
   }
 

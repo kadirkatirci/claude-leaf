@@ -91,6 +91,22 @@ class StoreSyncChannel {
     const timer = setTimeout(send, debounceMs);
     this.pendingBroadcasts.set(key, timer);
   }
+
+  destroy() {
+    this.pendingBroadcasts.forEach(timer => {
+      clearTimeout(timer);
+    });
+    this.pendingBroadcasts.clear();
+    this.listeners.clear();
+
+    if (this.channel) {
+      this.channel.onmessage = null;
+      if (typeof this.channel.close === 'function') {
+        this.channel.close();
+      }
+      this.channel = null;
+    }
+  }
 }
 
 export const storeSyncChannel = new StoreSyncChannel();

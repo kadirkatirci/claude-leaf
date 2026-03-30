@@ -17,18 +17,22 @@ export class SettingsStore {
     this.defaults = {
       navigation: {
         enabled: true,
+        showFloatingUI: true,
       },
       editHistory: {
         enabled: true,
+        showFloatingUI: true,
       },
       compactView: {
         enabled: true,
       },
       bookmarks: {
         enabled: true,
+        showFloatingUI: true,
       },
       emojiMarkers: {
         enabled: true,
+        showFloatingUI: true,
       },
       sidebarCollapse: {
         enabled: true,

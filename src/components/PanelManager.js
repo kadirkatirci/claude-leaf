@@ -26,7 +26,7 @@ const LOADING_OPACITY = 0.3;
 class PanelManager {
   constructor() {
     this.container = null;
-    this.buttons = new Map(); // id -> element
+    this.buttons = new Map(); // id -> { element, order, owner, visible }
     this.visible = false;
     this.cachedOpacity = NAV_CONFIG.opacity || 0.7;
     this.isReady = false; // Track if initial data has loaded
@@ -61,11 +61,11 @@ class PanelManager {
       // Verify visibility matches expected state
       const isConversationPage = VisibilityManager.isOnConversationPage();
       const currentDisplay = this.container.style.display;
-      const expectedDisplay = isConversationPage ? 'flex' : 'none';
+      const expectedDisplay = isConversationPage && this.hasVisibleButtons() ? 'flex' : 'none';
 
       if (currentDisplay !== expectedDisplay) {
         debugLog('panel', 'Health check: Fixing visibility mismatch');
-        if (isConversationPage) {
+        if (isConversationPage && this.hasVisibleButtons()) {
           applyFloatingVisibility(this.container, {
             visible: true,
             opacity: this.isReady ? this.cachedOpacity : LOADING_OPACITY,
@@ -132,6 +132,7 @@ class PanelManager {
   createContainer() {
     const position = NAV_CONFIG.position || 'right';
     const isConversationPage = VisibilityManager.isOnConversationPage();
+    const shouldShowContainer = isConversationPage && this.hasVisibleButtons();
 
     // Start with loading opacity until data is ready
     const initialOpacity = this.isReady ? this.cachedOpacity : LOADING_OPACITY;
@@ -142,7 +143,7 @@ class PanelManager {
       style: getFloatingContainerLayout(position),
     });
     applyFloatingVisibility(this.container, {
-      visible: isConversationPage,
+      visible: shouldShowContainer,
       opacity: initialOpacity,
     });
 
@@ -156,10 +157,7 @@ class PanelManager {
 
     document.body.appendChild(this.container);
 
-    // Re-append existing buttons if any (in case of recreation)
-    this.buttons.forEach(btn => {
-      this.container.appendChild(btn);
-    });
+    this.renderButtons();
 
     return this.container;
   }
@@ -169,27 +167,34 @@ class PanelManager {
    * @param {HTMLElement} button - Button element
    * @param {number} [order=0] - Order index (lower is higher up)
    */
-  addButton(button, order = 0) {
+  addButton(button, order = 0, options = {}) {
+    const { owner = null, visible = true } = options;
     const container = this.getContainer();
-    button.dataset.order = order;
-    this.buttons.set(button.id, button);
 
-    // Insert in correct order
-    const existingButtons = Array.from(container.children);
-    let inserted = false;
-
-    for (const existing of existingButtons) {
-      const existingOrder = parseInt(existing.dataset.order || '0');
-      if (order < existingOrder) {
-        container.insertBefore(button, existing);
-        inserted = true;
-        break;
-      }
+    if (this.buttons.has(button.id)) {
+      const existing = this.buttons.get(button.id);
+      existing.element.remove();
     }
 
-    if (!inserted) {
-      container.appendChild(button);
-    }
+    const displayValue =
+      button.style.display && button.style.display !== 'none'
+        ? button.style.display
+        : 'inline-flex';
+
+    const record = {
+      element: button,
+      order,
+      owner,
+      visible,
+      displayValue,
+    };
+
+    button.dataset.order = String(order);
+    button.dataset.panelOwner = owner || '';
+    this.buttons.set(button.id, record);
+    this.renderButtons(container);
+    this.updateButtonElementVisibility(record);
+    this.syncContainerVisibility();
   }
 
   /**
@@ -197,12 +202,84 @@ class PanelManager {
    */
   removeButton(buttonId) {
     if (this.buttons.has(buttonId)) {
-      const btn = this.buttons.get(buttonId);
-      btn.remove();
+      const { element } = this.buttons.get(buttonId);
+      element.remove();
       this.buttons.delete(buttonId);
     }
+    this.syncContainerVisibility();
+  }
 
-    // Auto-hide container if empty? Maybe not, keep it stable.
+  setButtonVisibility(buttonId, visible) {
+    const record = this.buttons.get(buttonId);
+    if (!record) {
+      return;
+    }
+
+    record.visible = visible;
+    this.updateButtonElementVisibility(record);
+    this.syncContainerVisibility();
+  }
+
+  setOwnerVisibility(owner, visible) {
+    let changed = false;
+
+    this.buttons.forEach(record => {
+      if (record.owner === owner) {
+        record.visible = visible;
+        this.updateButtonElementVisibility(record);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      this.syncContainerVisibility();
+    }
+  }
+
+  hasVisibleButtons() {
+    return Array.from(this.buttons.values()).some(record => record.visible);
+  }
+
+  renderButtons(container = this.container) {
+    if (!container) {
+      return;
+    }
+
+    Array.from(this.buttons.values())
+      .sort((a, b) => a.order - b.order)
+      .forEach(record => {
+        record.element.dataset.order = String(record.order);
+        container.appendChild(record.element);
+      });
+  }
+
+  updateButtonElementVisibility(record) {
+    if (!record?.element) {
+      return;
+    }
+
+    if (record.visible) {
+      record.element.style.display = record.displayValue;
+      record.element.style.visibility = 'visible';
+      record.element.style.pointerEvents = 'auto';
+      return;
+    }
+
+    record.element.style.display = 'none';
+    record.element.style.visibility = 'hidden';
+    record.element.style.pointerEvents = 'none';
+  }
+
+  syncContainerVisibility() {
+    if (!this.container) {
+      return;
+    }
+
+    const shouldShowContainer = this.visible && this.hasVisibleButtons();
+    applyFloatingVisibility(this.container, {
+      visible: shouldShowContainer,
+      opacity: this.isReady ? this.cachedOpacity : LOADING_OPACITY,
+    });
   }
 
   /**
@@ -213,7 +290,7 @@ class PanelManager {
       this.visible = isConversationPage;
 
       if (this.container) {
-        if (isConversationPage) {
+        if (isConversationPage && this.hasVisibleButtons()) {
           applyFloatingVisibility(this.container, {
             visible: true,
             opacity: this.isReady ? this.cachedOpacity : LOADING_OPACITY,

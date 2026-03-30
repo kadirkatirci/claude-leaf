@@ -12,8 +12,10 @@ import {
   renderFeatures,
   renderHelpSection,
   renderTabs,
+  syncFloatingVisibilityButton,
   showToast,
 } from '../popup/popupRenderers.js';
+import { saveSettings } from '../popup/popupActions.js';
 import { setupDom } from '../test-support/dom.js';
 
 test('popup state helpers preserve nested merge and path updates', () => {
@@ -60,10 +62,13 @@ test('popup renderers preserve existing tab, feature, data and toast markup cont
           name: 'Bookmarks',
           tooltip: 'Mark important messages',
           icon: 'M2 2',
+          supportsFloatingVisibility: true,
         },
       },
       icons: {
         info: 'M3 3',
+        eye: 'M7 7',
+        eyeOff: 'M8 8',
         export: 'M4 4',
         import: 'M5 5',
         trash: 'M6 6',
@@ -75,13 +80,17 @@ test('popup renderers preserve existing tab, feature, data and toast markup cont
     };
 
     let toggled = null;
+    let visibilityToggled = null;
     renderTabs(config);
     renderFeatures({
       config,
-      currentSettings: { bookmarks: { enabled: true } },
+      currentSettings: { bookmarks: { enabled: true, showFloatingUI: false } },
       devConfig: { disabledModules: [] },
       onToggle: (moduleId, enabled) => {
         toggled = { moduleId, enabled };
+      },
+      onVisibilityToggle: (moduleId, visible) => {
+        visibilityToggled = { moduleId, visible };
       },
       onSettingsClick: () => {},
     });
@@ -96,11 +105,136 @@ test('popup renderers preserve existing tab, feature, data and toast markup cont
     toggle.dispatchEvent(new Event('change', { bubbles: true }));
     assert.deepEqual(toggled, { moduleId: 'bookmarks', enabled: false });
 
+    const visibilityButton = document.getElementById('bookmarks-floating-ui');
+    assert.equal(visibilityButton?.dataset.visible, 'false');
+    visibilityButton.dispatchEvent(new Event('click', { bubbles: true }));
+    assert.deepEqual(visibilityToggled, { moduleId: 'bookmarks', visible: true });
+    assert.equal(visibilityButton?.dataset.visible, 'true');
+
     assert.ok(document.getElementById('export-btn'));
     showToast('Saved!', 'success');
     assert.equal(document.getElementById('toast').className, 'toast success hidden');
   } finally {
     globalThis.setTimeout = originalSetTimeout;
+    cleanup();
+  }
+});
+
+test('popup floating visibility controls sync button state and save payload', async () => {
+  const cleanup = setupDom('<div id="feature-list"></div>');
+  const originalChrome = globalThis.chrome;
+  const originalDataService = globalThis.window?.DataService;
+
+  try {
+    const storedPayloads = [];
+    const sentMessages = [];
+    const toasts = [];
+    const trackedEvents = [];
+
+    globalThis.window.DataService = {
+      findClaudeTab() {
+        return Promise.resolve({ id: 42 });
+      },
+    };
+
+    globalThis.chrome = {
+      storage: {
+        sync: {
+          set(payload) {
+            storedPayloads.push(payload);
+            return Promise.resolve();
+          },
+          get() {
+            return Promise.resolve({});
+          },
+        },
+      },
+      tabs: {
+        sendMessage(tabId, message) {
+          sentMessages.push({ tabId, message });
+          return Promise.resolve();
+        },
+      },
+    };
+
+    const currentSettings = {
+      bookmarks: {
+        enabled: true,
+        showFloatingUI: false,
+      },
+    };
+
+    await saveSettings({
+      config: {
+        modules: {
+          bookmarks: {
+            name: 'Bookmarks',
+          },
+        },
+      },
+      currentSettings,
+      lastSavedSettings: {
+        bookmarks: {
+          enabled: true,
+          showFloatingUI: true,
+        },
+      },
+      devConfig: { disabledModules: [] },
+      trackEvent: (name, params) => trackedEvents.push({ name, params }),
+      showToast: (message, type) => toasts.push({ message, type }),
+    });
+
+    assert.deepEqual(storedPayloads, [{ settings: currentSettings }]);
+    assert.deepEqual(sentMessages, [
+      {
+        tabId: 42,
+        message: {
+          type: 'SETTINGS_UPDATED',
+          settings: currentSettings,
+        },
+      },
+    ]);
+    assert.deepEqual(toasts, [{ message: 'Settings saved!', type: 'success' }]);
+    assert.equal(trackedEvents[0]?.name, 'popup_settings_save');
+  } finally {
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+
+    if (originalDataService === undefined) {
+      delete globalThis.window.DataService;
+    } else {
+      globalThis.window.DataService = originalDataService;
+    }
+
+    cleanup();
+  }
+});
+
+test('popup floating visibility button helper updates aria and icon state', () => {
+  const cleanup = setupDom('<button id="floating-ui"></button>');
+
+  try {
+    const button = document.getElementById('floating-ui');
+    const config = {
+      icons: {
+        eye: 'M1 1',
+        eyeOff: 'M2 2',
+      },
+    };
+
+    syncFloatingVisibilityButton(button, config, false);
+    assert.equal(button.dataset.visible, 'false');
+    assert.equal(button.getAttribute('aria-pressed'), 'false');
+    assert.match(button.innerHTML, /M2 2/);
+
+    syncFloatingVisibilityButton(button, config, true);
+    assert.equal(button.dataset.visible, 'true');
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.match(button.innerHTML, /M1 1/);
+  } finally {
     cleanup();
   }
 });

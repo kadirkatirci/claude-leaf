@@ -501,10 +501,17 @@ class BookmarkModule extends BaseModule {
   }
 
   async onSettingsChanged(settings) {
-    if (settings.position) {
-      this.panel.updatePosition(settings.position);
+    const bookmarkSettings = settings.bookmarks || {};
+
+    if (bookmarkSettings.position) {
+      this.panel.updatePosition(bookmarkSettings.position);
     }
-    if (this.settingsChanged(['colorTheme', 'customColor'], settings)) {
+
+    if (this.refreshFixedButtonVisibility) {
+      this.refreshFixedButtonVisibility();
+    }
+
+    if (this.settingsChanged(['general.colorTheme', 'general.customColor'], settings)) {
       await this.recreateUI();
     }
   }
@@ -520,6 +527,9 @@ class BookmarkModule extends BaseModule {
   destroy() {
     if (this.chromeMessageListener) {
       chrome.runtime.onMessage.removeListener(this.chromeMessageListener);
+    }
+    if (this.destroyFixedButton) {
+      this.destroyFixedButton();
     }
     this.buttonManager?.removeAll?.();
     this.panel.destroy();
