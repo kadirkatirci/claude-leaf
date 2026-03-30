@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   deepMerge,
   getDefaultSettings,
@@ -17,6 +18,14 @@ import {
 } from '../popup/popupRenderers.js';
 import { handleImport, saveSettings } from '../popup/popupActions.js';
 import { setupDom } from '../test-support/dom.js';
+
+test('popup css includes floating visibility button theme styles', () => {
+  const css = readFileSync(new URL('../popup/popup.css', import.meta.url), 'utf8');
+
+  assert.match(css, /\.visibility-btn\s*\{/);
+  assert.match(css, /\.visibility-btn\[data-visible='true'\]\s*\{/);
+  assert.match(css, /@media \(prefers-color-scheme: dark\)/);
+});
 
 test('popup state helpers preserve nested merge and path updates', () => {
   const defaults = {
