@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-03-30
+type: patch
+title: Popup visibility and settings sync fixes
+
+### Fixed
+- Hid in-development modules consistently in the popup so disabled features no longer appear in packaged builds
+- Preserved full extension settings when saving popup changes so navigation counters and other hidden options no longer disappear
+
 ## [1.0.1] - 2026-03-30
 type: patch
 title: Floating controls and update link polish
