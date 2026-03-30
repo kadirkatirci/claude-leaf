@@ -144,6 +144,18 @@ npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
 ```
 
+## Release
+
+1. Add the new release block at the top of `CHANGELOG.md`.
+2. For a live release, copy `env.release.example` to `.env` and fill in the credentials.
+3. Run `./release.sh --dry-run --yes` to validate the changelog, versions, git state, and payloads without external calls.
+4. Run `./release.sh --yes` for the actual release.
+
+To keep the process trustworthy:
+
+- `npm test` now includes a release-script smoke test.
+- The script rejects untracked files, records the release commit before external publish steps, and packages tracked source files plus fresh build output.
+
 ### Auxiliary Tool
 
 This repository also contains a separate unpacked extension at `tools/claude-web-guardian/`.

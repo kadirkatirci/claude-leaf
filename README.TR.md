@@ -49,6 +49,18 @@ npm run build
 
 Mevcut build içinde aktif modüller: Mesaj Navigasyonu, Yer İmleri, Emoji İşaretleyiciler ve Düzenleme Geçmişi.
 
+## Release
+
+1. `CHANGELOG.md` dosyasının en üstüne yeni sürüm bloğunu ekleyin.
+2. Canlı yayın için `env.release.example` dosyasını `.env` olarak kopyalayıp credential alanlarını doldurun.
+3. Dış çağrı yapmadan changelog, sürüm, git durumu ve payload kontrolü için `./release.sh --dry-run --yes` çalıştırın.
+4. Gerçek yayın için `./release.sh --yes` çalıştırın.
+
+Sürecin güvenilir kalması için:
+
+- `npm test` artık release script smoke testini de çalıştırır.
+- Script untracked dosyaları reddeder, release commit'ini dış publish adımlarından önce oluşturur ve paketi tracked kaynaklar ile taze build çıktısından üretir.
+
 ## Teknoloji Yığını
 
 *   JavaScript (ES6+)
