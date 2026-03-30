@@ -10,6 +10,7 @@ import {
   getInitialTabId,
   renderDataSection,
   renderFeatures,
+  renderHelpSection,
   renderTabs,
   showToast,
 } from '../popup/popupRenderers.js';
@@ -100,6 +101,67 @@ test('popup renderers preserve existing tab, feature, data and toast markup cont
     assert.equal(document.getElementById('toast').className, 'toast success hidden');
   } finally {
     globalThis.setTimeout = originalSetTimeout;
+    cleanup();
+  }
+});
+
+test('popup help links include tracking params and stable analytics ids', () => {
+  const cleanup = setupDom(`<div id="help-section"></div>`);
+  const originalChrome = globalThis.chrome;
+
+  try {
+    const createdTabs = [];
+    const trackedEvents = [];
+
+    globalThis.chrome = {
+      tabs: {
+        create({ url }) {
+          createdTabs.push(url);
+        },
+      },
+    };
+
+    renderHelpSection((name, params) => {
+      trackedEvents.push({ name, params });
+    });
+
+    const helpItems = document.querySelectorAll('.help-item');
+    assert.equal(helpItems.length, 4);
+
+    helpItems[0].dispatchEvent(new Event('click', { bubbles: true }));
+    helpItems[3].dispatchEvent(new Event('click', { bubbles: true }));
+
+    assert.deepEqual(trackedEvents, [
+      {
+        name: 'popup_help_click',
+        params: {
+          module: 'popup',
+          link_id: 'documentation',
+        },
+      },
+      {
+        name: 'popup_help_click',
+        params: {
+          module: 'popup',
+          link_id: 'support',
+        },
+      },
+    ]);
+
+    assert.equal(
+      createdTabs[0],
+      'https://www.tedaitesnim.com/extensions/claude-extension?utm_source=claude_leaf_extension&utm_medium=extension_popup&utm_campaign=help_links&utm_content=documentation&source=extension-popup-help&link_id=documentation#documentation'
+    );
+    assert.equal(
+      createdTabs[1],
+      'https://buymeacoffee.com/tedaitesnim?utm_source=claude_leaf_extension&utm_medium=extension_popup&utm_campaign=help_links&utm_content=support'
+    );
+  } finally {
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
     cleanup();
   }
 });

@@ -1,5 +1,26 @@
 import { isModuleDevDisabled } from './popupState.js';
 
+const POPUP_HELP_SOURCE = 'extension-popup-help';
+const POPUP_HELP_UTM_SOURCE = 'claude_leaf_extension';
+const POPUP_HELP_UTM_MEDIUM = 'extension_popup';
+const POPUP_HELP_UTM_CAMPAIGN = 'help_links';
+
+function buildTrackedHelpUrl(rawUrl, linkId) {
+  const url = new URL(rawUrl);
+
+  url.searchParams.set('utm_source', POPUP_HELP_UTM_SOURCE);
+  url.searchParams.set('utm_medium', POPUP_HELP_UTM_MEDIUM);
+  url.searchParams.set('utm_campaign', POPUP_HELP_UTM_CAMPAIGN);
+  url.searchParams.set('utm_content', linkId);
+
+  if (url.hostname === 'www.tedaitesnim.com' || url.hostname === 'tedaitesnim.com') {
+    url.searchParams.set('source', POPUP_HELP_SOURCE);
+    url.searchParams.set('link_id', linkId);
+  }
+
+  return url.toString();
+}
+
 export function renderTabs(config) {
   const container = document.getElementById('tabs-nav');
   container.innerHTML = config.tabs
@@ -188,6 +209,7 @@ export function renderHelpSection(trackEvent) {
   const container = document.getElementById('help-section');
   const helpItems = [
     {
+      id: 'documentation',
       url: 'https://www.tedaitesnim.com/extensions/claude-extension#documentation',
       icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
       title: 'Documentation',
@@ -195,6 +217,7 @@ export function renderHelpSection(trackEvent) {
       linkText: 'Read the Docs',
     },
     {
+      id: 'report-issue',
       url: 'https://www.tedaitesnim.com/extensions/claude-extension#feedback',
       icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 14v-4m0-4h.01',
       title: 'Report an Issue',
@@ -202,6 +225,7 @@ export function renderHelpSection(trackEvent) {
       linkText: 'Report Issue',
     },
     {
+      id: 'request-feature',
       url: 'https://www.tedaitesnim.com/extensions/claude-extension#feedback',
       icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
       title: 'Request a Feature',
@@ -209,6 +233,7 @@ export function renderHelpSection(trackEvent) {
       linkText: 'Request Feature',
     },
     {
+      id: 'support',
       url: 'https://buymeacoffee.com/tedaitesnim',
       icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M9 1v3 M12 1v3',
       title: 'Buy Me a Coffee',
@@ -222,7 +247,7 @@ export function renderHelpSection(trackEvent) {
       ${helpItems
         .map(
           (item, index) => `
-        <div class="help-item${index === helpItems.length - 1 ? ' help-item-featured' : ''}" data-url="${item.url}" data-index="${index}">
+        <div class="help-item${index === helpItems.length - 1 ? ' help-item-featured' : ''}" data-url="${buildTrackedHelpUrl(item.url, item.id)}" data-link-id="${item.id}">
           <div class="help-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="${item.icon}"/>
@@ -251,10 +276,10 @@ export function renderHelpSection(trackEvent) {
     item.addEventListener('click', () => {
       const url = item.getAttribute('data-url');
       if (url) {
-        const index = item.getAttribute('data-index') || 'unknown';
+        const linkId = item.getAttribute('data-link-id') || 'unknown';
         trackEvent('popup_help_click', {
           module: 'popup',
-          link_id: index,
+          link_id: linkId,
         });
         chrome.tabs.create({ url });
       }
