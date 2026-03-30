@@ -5,6 +5,7 @@
 
 const WELCOME_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/welcome';
 const CHANGELOG_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/changelog';
+const CHANGELOG_SOURCE_UPDATE = 'extension-update';
 
 // GA4 Measurement Protocol (background-only, no content access)
 const GA4_MEASUREMENT_ID = 'G-75M7YXJ9X7';
@@ -131,6 +132,14 @@ const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function openTab(url) {
   chrome.tabs.create({ url });
+}
+
+function buildChangelogUrl(previousVersion, currentVersion) {
+  const url = new URL(CHANGELOG_URL);
+  url.searchParams.set('source', CHANGELOG_SOURCE_UPDATE);
+  url.searchParams.set('from', previousVersion);
+  url.searchParams.set('to', currentVersion);
+  return url.toString();
 }
 
 async function getOrCreateClientId() {
@@ -278,7 +287,7 @@ chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === 'update') {
     const currentVersion = chrome.runtime.getManifest().version;
     if (details.previousVersion && details.previousVersion !== currentVersion) {
-      openTab(CHANGELOG_URL);
+      openTab(buildChangelogUrl(details.previousVersion, currentVersion));
     }
   }
 });
