@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-03-30
+type: patch
+title: Floating controls and update link polish
+
+### Improved
+- Added separate popup controls to hide floating buttons without turning the related feature off
+- Improved help and update links so they open with clearer release-specific context
+
+### Fixed
+- Restored the floating visibility button styling in the popup
+
 ## [1.0.0] - 2026-03-26
 type: major
 title: First stable release

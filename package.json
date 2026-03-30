@@ -1,6 +1,6 @@
 {
   "name": "claude-leaf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Claude Leaf - Productivity tools for Claude.ai including message navigation, bookmarks, emoji markers, edit version history, and more",
   "type": "module",
   "keywords": [
