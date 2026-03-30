@@ -1,9 +1,14 @@
+import { cloneDefaultSettings } from '../src/config/defaultSettings.js';
+
 export function isModuleDevDisabled(devConfig, moduleId) {
   return devConfig.disabledModules.includes(moduleId);
 }
 
 export function getDefaultSettings(config) {
-  return JSON.parse(JSON.stringify(config.defaultSettings));
+  return deepMerge(
+    cloneDefaultSettings(),
+    JSON.parse(JSON.stringify(config.defaultSettings || {}))
+  );
 }
 
 export function deepMerge(target, source) {

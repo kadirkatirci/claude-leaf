@@ -37,7 +37,11 @@ test('popup state helpers preserve nested merge and path updates', () => {
     navigation: { mode: 'unread' },
   });
 
-  assert.deepEqual(getDefaultSettings({ defaultSettings: defaults }), defaults);
+  const popupDefaults = getDefaultSettings({ defaultSettings: defaults });
+  assert.equal(popupDefaults.navigation.enabled, true);
+  assert.equal(popupDefaults.navigation.mode, 'all');
+  assert.equal(popupDefaults.navigation.showCounter, true);
+  assert.equal(popupDefaults.general.opacity, 0.7);
   assert.equal(merged.navigation.enabled, true);
   assert.equal(merged.navigation.mode, 'unread');
 

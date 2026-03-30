@@ -16,9 +16,11 @@ test('settings store backfills showFloatingUI for legacy settings', async () => 
     });
 
     assert.equal(merged.navigation.showFloatingUI, true);
+    assert.equal(merged.navigation.showCounter, true);
     assert.equal(merged.bookmarks.showFloatingUI, true);
     assert.equal(merged.emojiMarkers.showFloatingUI, false);
     assert.equal(merged.editHistory.showFloatingUI, true);
+    assert.equal(merged.general.opacity, 0.7);
   } finally {
     cleanup();
   }

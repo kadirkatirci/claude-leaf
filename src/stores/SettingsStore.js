@@ -4,6 +4,7 @@
  */
 
 import { stateManager } from '../core/StateManager.js';
+import { cloneDefaultSettings } from '../config/defaultSettings.js';
 
 export class SettingsStore {
   constructor() {
@@ -12,35 +13,7 @@ export class SettingsStore {
     this.mergedCacheTime = 0;
     this.mergeCacheTTL = 30000; // 30 seconds
 
-    // Default settings structure - ONLY enabled/disabled
-    // All other settings are in ModuleConstants.js
-    this.defaults = {
-      navigation: {
-        enabled: true,
-        showFloatingUI: true,
-      },
-      editHistory: {
-        enabled: true,
-        showFloatingUI: true,
-      },
-      compactView: {
-        enabled: true,
-      },
-      bookmarks: {
-        enabled: true,
-        showFloatingUI: true,
-      },
-      emojiMarkers: {
-        enabled: true,
-        showFloatingUI: true,
-      },
-      sidebarCollapse: {
-        enabled: true,
-      },
-      contentFolding: {
-        enabled: true,
-      },
-    };
+    this.defaults = cloneDefaultSettings();
 
     // Create store with sync adapter (settings should sync across devices)
     this.store = stateManager.createStore('settings', {
