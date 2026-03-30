@@ -25,6 +25,7 @@
     "build:css": "node scripts/build-css.mjs",
     "build": "npm run build:css && rollup -c",
     "package:zip": "npm run build && mkdir -p release && rm -f \"release/claude-leaf-webstore-$npm_package_version.zip\" && zip -r \"release/claude-leaf-webstore-$npm_package_version.zip\" manifest.json styles.css dist src popup icons -x \"*.DS_Store\" \"*/.DS_Store\"",
+    "release": "./release.sh",
     "watch": "npm run build:css && rollup -c -w",
     "dev": "npm run build:css && rollup -c -w",
     "test": "node --test",
