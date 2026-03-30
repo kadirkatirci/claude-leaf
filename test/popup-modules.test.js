@@ -15,7 +15,7 @@ import {
   syncFloatingVisibilityButton,
   showToast,
 } from '../popup/popupRenderers.js';
-import { saveSettings } from '../popup/popupActions.js';
+import { handleImport, saveSettings } from '../popup/popupActions.js';
 import { setupDom } from '../test-support/dom.js';
 
 test('popup state helpers preserve nested merge and path updates', () => {
@@ -197,6 +197,168 @@ test('popup floating visibility controls sync button state and save payload', as
     assert.deepEqual(toasts, [{ message: 'Settings saved!', type: 'success' }]);
     assert.equal(trackedEvents[0]?.name, 'popup_settings_save');
   } finally {
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+
+    if (originalDataService === undefined) {
+      delete globalThis.window.DataService;
+    } else {
+      globalThis.window.DataService = originalDataService;
+    }
+
+    cleanup();
+  }
+});
+
+test('settings export preserves showFloatingUI values', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+
+  try {
+    globalThis.fetch = () =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            stores: {
+              settings: {
+                storageType: 'sync',
+                version: 1,
+                exportable: true,
+                label: 'Settings',
+              },
+            },
+          }),
+      });
+
+    await import('../popup/dataService.js');
+
+    const exported = await window.DataService.exportData(['settings'], {
+      navigation: {
+        enabled: true,
+        showFloatingUI: false,
+      },
+      bookmarks: {
+        enabled: true,
+        showFloatingUI: true,
+      },
+    });
+
+    assert.equal(exported.settings.navigation.showFloatingUI, false);
+    assert.equal(exported.settings.bookmarks.showFloatingUI, true);
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    cleanup();
+  }
+});
+
+test('settings import backfills showFloatingUI for legacy backups', async () => {
+  const cleanup = setupDom();
+  const originalChrome = globalThis.chrome;
+  const originalCreateElement = document.createElement.bind(document);
+  const originalDataService = globalThis.window?.DataService;
+
+  try {
+    let capturedInput = null;
+    let nextSettings = null;
+    let saveCount = 0;
+    let updateCount = 0;
+    const toasts = [];
+
+    document.createElement = tagName => {
+      const element = originalCreateElement(tagName);
+      if (tagName === 'input') {
+        capturedInput = element;
+      }
+      return element;
+    };
+
+    globalThis.window.DataService = {
+      importData() {
+        return Promise.resolve({
+          success: true,
+          imported: {
+            settings: true,
+          },
+          errors: [],
+        });
+      },
+      findClaudeTab() {
+        return Promise.resolve(null);
+      },
+    };
+
+    globalThis.chrome = {
+      tabs: {
+        sendMessage() {
+          return Promise.resolve();
+        },
+      },
+    };
+
+    handleImport({
+      getDefaultSettings: () => ({
+        navigation: { enabled: true, showFloatingUI: true },
+        bookmarks: { enabled: true, showFloatingUI: true },
+      }),
+      deepMerge,
+      saveCurrentSettings: () => {
+        saveCount += 1;
+        return Promise.resolve();
+      },
+      setCurrentSettings: settings => {
+        nextSettings = settings;
+      },
+      updateUI: () => {
+        updateCount += 1;
+      },
+      trackEvent: () => {},
+      showToast: (message, type) => {
+        toasts.push({ message, type });
+      },
+    });
+
+    assert.ok(capturedInput);
+
+    await capturedInput.onchange({
+      target: {
+        files: [
+          {
+            text: () =>
+              Promise.resolve(
+                JSON.stringify({
+                  __export: {
+                    version: 2,
+                  },
+                  settings: {
+                    bookmarks: {
+                      enabled: false,
+                    },
+                  },
+                })
+              ),
+          },
+        ],
+      },
+    });
+
+    assert.deepEqual(nextSettings, {
+      navigation: { enabled: true, showFloatingUI: true },
+      bookmarks: { enabled: false, showFloatingUI: true },
+    });
+    assert.equal(saveCount, 1);
+    assert.equal(updateCount, 1);
+    assert.deepEqual(toasts, [{ message: 'Imported 0 items', type: 'success' }]);
+  } finally {
+    document.createElement = originalCreateElement;
+
     if (originalChrome === undefined) {
       delete globalThis.chrome;
     } else {
