@@ -154,7 +154,7 @@ npm run format   # Format with Prettier
 To keep the process trustworthy:
 
 - `npm test` now includes a release-script smoke test.
-- The script rejects untracked files, records the release commit before external publish steps, and packages tracked source files plus fresh build output.
+- The script rejects untracked files, records the release commit before external publish steps, packages tracked source files plus fresh build output, and uploads the generated zip to the matching GitHub Release.
 
 ### Auxiliary Tool
 

@@ -57,6 +57,10 @@ function createFixtureRepo(options = {}) {
       {
         name: 'release-smoke-fixture',
         version: '1.0.0',
+        repository: {
+          type: 'git',
+          url: 'https://github.com/kadirkatirci/claude-leaf.git',
+        },
         scripts: {
           build: 'echo build',
         },
@@ -148,6 +152,7 @@ function createFixtureRepo(options = {}) {
         'TEDAI_API_BASE_URL=https://www.example.com/api/external/v1',
         'TEDAI_API_KEY=test-api-key',
         'TEDAI_EXTENSION_ID=test-extension-uuid',
+        'GITHUB_TOKEN=test-github-token',
         '',
       ].join('\n')
     );
@@ -178,11 +183,27 @@ printf 'body { color: #abcdef; }\\n' > popup/popup.css
       `#!/usr/bin/env bash
 set -euo pipefail
 url=""
-for arg in "$@"; do
+output_file=""
+status_format=""
+args=("$@")
+for ((i=0; i<\${#args[@]}; i++)); do
+  arg="\${args[$i]}"
+  if [[ "$arg" == "-o" ]]; then
+    i=$((i + 1))
+    output_file="\${args[$i]}"
+    continue
+  fi
+  if [[ "$arg" == "-w" ]]; then
+    i=$((i + 1))
+    status_format="\${args[$i]}"
+    continue
+  fi
   if [[ "$arg" == http* ]]; then
     url="$arg"
   fi
 done
+
+printf '%s\\n' "$url" >> mock-curl-urls.log
 
 if [[ -z "$url" ]]; then
   echo "unexpected curl args: $*" >&2
@@ -205,6 +226,33 @@ case "$url" in
   https://www.example.com/api/external/v1/extensions/test-extension-uuid/changelog)
     printf '{"ok":true}\\n201'
     ;;
+  https://api.github.com/repos/kadirkatirci/claude-leaf/releases/tags/v1.0.1)
+    if [[ -n "$output_file" ]]; then
+      printf '{"message":"Not Found"}' > "$output_file"
+      printf '%s' "$status_format" | sed 's/%{http_code}/404/g'
+    else
+      printf '{"message":"Not Found"}'
+    fi
+    exit 0
+    ;;
+  https://api.github.com/repos/kadirkatirci/claude-leaf/releases)
+    if [[ -n "$output_file" ]]; then
+      printf '{"id":101,"html_url":"https://github.com/kadirkatirci/claude-leaf/releases/tag/v1.0.1","upload_url":"https://uploads.github.com/repos/kadirkatirci/claude-leaf/releases/101/assets{?name,label}","assets":[]}' > "$output_file"
+      printf '%s' "$status_format" | sed 's/%{http_code}/201/g'
+    else
+      printf '{"id":101,"html_url":"https://github.com/kadirkatirci/claude-leaf/releases/tag/v1.0.1","upload_url":"https://uploads.github.com/repos/kadirkatirci/claude-leaf/releases/101/assets{?name,label}","assets":[]}'
+    fi
+    exit 0
+    ;;
+  https://uploads.github.com/repos/kadirkatirci/claude-leaf/releases/101/assets?name=claude-leaf-webstore-1.0.1.zip)
+    if [[ -n "$output_file" ]]; then
+      printf '{"browser_download_url":"https://github.com/kadirkatirci/claude-leaf/releases/download/v1.0.1/claude-leaf-webstore-1.0.1.zip"}' > "$output_file"
+      printf '%s' "$status_format" | sed 's/%{http_code}/201/g'
+    else
+      printf '{"browser_download_url":"https://github.com/kadirkatirci/claude-leaf/releases/download/v1.0.1/claude-leaf-webstore-1.0.1.zip"}'
+    fi
+    exit 0
+    ;;
   *)
     echo "unexpected curl url: $url" >&2
     exit 1
@@ -226,7 +274,7 @@ exit 0
     };
   }
 
-  return { env, repoDir, rootDir };
+  return { env, repoDir, rootDir, originDir };
 }
 
 function runRelease(repoDir, args, env) {
@@ -255,6 +303,27 @@ test('release script dry-run succeeds without .env when only CHANGELOG.md is mod
   assert.equal(git(fixture.repoDir, ['status', '--short']), ' M CHANGELOG.md\n');
 });
 
+test('release script fails before publishing when origin/main is ahead of local main', t => {
+  const fixture = createFixtureRepo();
+  t.after(() => rmSync(fixture.rootDir, { force: true, recursive: true }));
+
+  const remoteCloneDir = path.join(fixture.rootDir, 'remote-clone');
+  git(fixture.rootDir, ['clone', fixture.originDir, remoteCloneDir]);
+  git(remoteCloneDir, ['checkout', 'main']);
+  git(remoteCloneDir, ['config', 'user.name', 'Remote Test']);
+  git(remoteCloneDir, ['config', 'user.email', 'remote-test@example.com']);
+  writeFile(remoteCloneDir, '.github/FUNDING.yml', 'github: [kadirkatirci]\n');
+  git(remoteCloneDir, ['add', '.github/FUNDING.yml']);
+  git(remoteCloneDir, ['commit', '-m', 'remote change']);
+  git(remoteCloneDir, ['push', 'origin', 'main']);
+
+  const result = runRelease(fixture.repoDir, ['--dry-run', '--yes'], fixture.env);
+
+  assert.notEqual(result.status, 0, formatFailure(result));
+  assert.match(result.stdout, /Checking remote sync/);
+  assert.match(result.stdout, /origin\/main has 1 commit\(s\) that are not in local main/);
+});
+
 test('release script smoke test completes a mocked live release and pushes the tag', t => {
   const fixture = createFixtureRepo({ withEnv: true, withMocks: true });
   t.after(() => rmSync(fixture.rootDir, { force: true, recursive: true }));
@@ -265,6 +334,10 @@ test('release script smoke test completes a mocked live release and pushes the t
   assert.match(result.stdout, /Upload still processing; polling Chrome Web Store/);
   assert.match(result.stdout, /Chrome Web Store:.*PENDING_REVIEW/s);
   assert.match(result.stdout, /tedaitesnim\.com:.*HTTP 201/s);
+  assert.match(
+    result.stdout,
+    /GitHub Release:.*https:\/\/github\.com\/kadirkatirci\/claude-leaf\/releases\/tag\/v1\.0\.1/s
+  );
 
   assert.equal(git(fixture.repoDir, ['status', '--short']), '');
   assert.equal(git(fixture.repoDir, ['tag', '--list', 'v1.0.1']), 'v1.0.1\n');
@@ -289,6 +362,12 @@ test('release script smoke test completes a mocked live release and pushes the t
     'body { color: #abcdef; }\n'
   );
   assert.ok(existsSync(path.join(fixture.repoDir, 'release', 'claude-leaf-webstore-1.0.1.zip')));
+  const curlLog = readFileSync(path.join(fixture.repoDir, 'mock-curl-urls.log'), 'utf8');
+  assert.match(curlLog, /https:\/\/api\.github\.com\/repos\/kadirkatirci\/claude-leaf\/releases/);
+  assert.match(
+    curlLog,
+    /https:\/\/uploads\.github\.com\/repos\/kadirkatirci\/claude-leaf\/releases\/101\/assets\?name=claude-leaf-webstore-1.0.1.zip/
+  );
   assert.match(
     git(fixture.repoDir, ['ls-remote', '--tags', 'origin', 'refs/tags/v1.0.1']),
     /refs\/tags\/v1\.0\.1/

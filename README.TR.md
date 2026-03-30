@@ -59,7 +59,7 @@ Mevcut build içinde aktif modüller: Mesaj Navigasyonu, Yer İmleri, Emoji İş
 Sürecin güvenilir kalması için:
 
 - `npm test` artık release script smoke testini de çalıştırır.
-- Script untracked dosyaları reddeder, release commit'ini dış publish adımlarından önce oluşturur ve paketi tracked kaynaklar ile taze build çıktısından üretir.
+- Script untracked dosyaları reddeder, release commit'ini dış publish adımlarından önce oluşturur, paketi tracked kaynaklar ile taze build çıktısından üretir ve oluşan zip dosyasını ilgili GitHub Release'e yükler.
 
 ## Teknoloji Yığını
 

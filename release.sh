@@ -19,6 +19,8 @@ set -euo pipefail
 #   TEDAI_API_BASE_URL   — e.g. https://www.tedaitesnim.com/api/external/v1
 #   TEDAI_API_KEY         — x-api-key for tedaitesnim.com external API
 #   TEDAI_EXTENSION_ID   — Extension UUID in tedaitesnim.com DB
+#   GITHUB_TOKEN         — optional GitHub token for creating releases/assets
+#                          (falls back to GH_TOKEN or stored git credentials)
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -118,6 +120,254 @@ except json.JSONDecodeError:
   fail "Timed out waiting for Chrome Web Store upload processing"
 }
 
+extract_github_repository() {
+  local candidate="${1:-}"
+  [[ -z "$candidate" ]] && return 0
+
+  CANDIDATE="$candidate" python3 - <<'PY'
+import os
+import re
+
+candidate = os.environ['CANDIDATE'].strip()
+match = re.search(r'github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$', candidate)
+if match:
+    print(f"{match.group('owner')}/{match.group('repo')}")
+PY
+}
+
+resolve_github_repository() {
+  local repo remote_url package_repo
+
+  if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+    echo "$GITHUB_REPOSITORY"
+    return 0
+  fi
+
+  remote_url=$(git config --get remote.origin.url || true)
+  repo=$(extract_github_repository "$remote_url")
+  if [[ -n "$repo" ]]; then
+    echo "$repo"
+    return 0
+  fi
+
+  package_repo=$(python3 - <<'PY'
+import json
+from pathlib import Path
+
+package_path = Path('package.json')
+if not package_path.exists():
+    raise SystemExit()
+
+data = json.loads(package_path.read_text(encoding='utf-8'))
+repo = data.get('repository')
+if isinstance(repo, str):
+    print(repo)
+elif isinstance(repo, dict):
+    print(repo.get('url', ''))
+PY
+)
+  repo=$(extract_github_repository "$package_repo")
+  if [[ -n "$repo" ]]; then
+    echo "$repo"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_github_token() {
+  local creds token
+
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    echo "$GITHUB_TOKEN"
+    return 0
+  fi
+
+  if [[ -n "${GH_TOKEN:-}" ]]; then
+    echo "$GH_TOKEN"
+    return 0
+  fi
+
+  if ! creds=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill 2>/dev/null); then
+    return 1
+  fi
+
+  token=$(printf '%s\n' "$creds" | sed -n 's/^password=//p')
+  [[ -n "$token" ]] || return 1
+  echo "$token"
+}
+
+publish_github_release() {
+  local repo token release_json release_code create_code delete_code upload_code
+  local release_id release_html_url release_upload_template release_asset_id release_asset_url
+
+  step "Publishing GitHub Release"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    GITHUB_RELEASE_SUMMARY="dry-run"
+    info "[dry-run] Would create or update a GitHub release and upload ${ZIP_NAME}"
+    return 0
+  fi
+
+  if ! repo=$(resolve_github_repository); then
+    fail "Could not resolve GitHub repository. Set GITHUB_REPOSITORY or fix package.json/remote origin."
+  fi
+
+  if ! token=$(resolve_github_token); then
+    fail "Could not resolve GitHub credentials. Set GITHUB_TOKEN/GH_TOKEN or configure git credentials for github.com."
+  fi
+
+  info "GitHub repo: ${repo}"
+
+  GITHUB_RELEASE_PAYLOAD=$(NEW_VERSION="$NEW_VERSION" CHANGELOG_BLOCK="$CHANGELOG_BLOCK" python3 - <<'PY'
+import json
+import os
+
+block_lines = os.environ['CHANGELOG_BLOCK'].strip().splitlines()
+title = ''
+body_lines = []
+
+for line in block_lines[1:]:
+    if line.startswith('type:'):
+        continue
+    if line.startswith('title:'):
+        title = line.split(':', 1)[1].strip()
+        continue
+    body_lines.append(line.rstrip())
+
+body = '\n'.join(body_lines).strip()
+if title:
+    body = f'{title}\n\n{body}' if body else title
+
+payload = {
+    'tag_name': f"v{os.environ['NEW_VERSION']}",
+    'target_commitish': 'main',
+    'name': f"Claude Leaf {os.environ['NEW_VERSION']}",
+    'body': body,
+    'draft': False,
+    'prerelease': False,
+    'generate_release_notes': False,
+}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+
+  release_code=$(curl -sS -o /tmp/claude_leaf_release_lookup.json -w "%{http_code}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/${repo}/releases/tags/v${NEW_VERSION}")
+
+  case "$release_code" in
+    200)
+      ok "Found existing GitHub release for v${NEW_VERSION}"
+      ;;
+    404)
+      create_code=$(curl -sS -o /tmp/claude_leaf_release_create.json -w "%{http_code}" \
+        -X POST \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer ${token}" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/${repo}/releases" \
+        -d "$GITHUB_RELEASE_PAYLOAD")
+
+      if [[ "$create_code" != "201" ]]; then
+        echo "Release creation failed with status ${create_code}"
+        cat /tmp/claude_leaf_release_create.json
+        fail "Failed to create GitHub release"
+      fi
+
+      cp /tmp/claude_leaf_release_create.json /tmp/claude_leaf_release_lookup.json
+      ok "Created GitHub release for v${NEW_VERSION}"
+      ;;
+    *)
+      echo "Release lookup failed with status ${release_code}"
+      cat /tmp/claude_leaf_release_lookup.json
+      fail "Failed to look up GitHub release"
+      ;;
+  esac
+
+  release_id=$(python3 - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path('/tmp/claude_leaf_release_lookup.json').read_text())
+print(data['id'])
+PY
+)
+  release_html_url=$(python3 - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path('/tmp/claude_leaf_release_lookup.json').read_text())
+print(data['html_url'])
+PY
+)
+  release_upload_template=$(python3 - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path('/tmp/claude_leaf_release_lookup.json').read_text())
+print(data['upload_url'])
+PY
+)
+  release_asset_id=$(ZIP_NAME="$ZIP_NAME" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data = json.loads(Path('/tmp/claude_leaf_release_lookup.json').read_text())
+asset = next((asset for asset in data.get('assets', []) if asset.get('name') == os.environ['ZIP_NAME']), None)
+print(asset['id'] if asset else '')
+PY
+)
+
+  if [[ -n "$release_asset_id" ]]; then
+    delete_code=$(curl -sS -o /tmp/claude_leaf_release_delete_asset.json -w "%{http_code}" \
+      -X DELETE \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "https://api.github.com/repos/${repo}/releases/assets/${release_asset_id}")
+
+    if [[ "$delete_code" != "204" ]]; then
+      echo "Asset delete failed with status ${delete_code}"
+      cat /tmp/claude_leaf_release_delete_asset.json
+      fail "Failed to replace existing GitHub release asset"
+    fi
+
+    ok "Replaced existing GitHub release asset ${ZIP_NAME}"
+  fi
+
+  release_asset_url=$(UPLOAD_URL="$release_upload_template" ZIP_NAME="$ZIP_NAME" python3 - <<'PY'
+import os
+from urllib.parse import quote
+
+upload_url = os.environ['UPLOAD_URL'].split('{', 1)[0]
+asset_name = quote(os.environ['ZIP_NAME'])
+print(f'{upload_url}?name={asset_name}')
+PY
+)
+
+  upload_code=$(curl -sS -o /tmp/claude_leaf_release_upload_asset.json -w "%{http_code}" \
+    -X POST \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "Content-Type: application/zip" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    --data-binary @"${ZIP_PATH}" \
+    "${release_asset_url}")
+
+  if [[ "$upload_code" != "201" ]]; then
+    echo "Asset upload failed with status ${upload_code}"
+    cat /tmp/claude_leaf_release_upload_asset.json
+    fail "Failed to upload GitHub release asset"
+  fi
+
+  GITHUB_RELEASE_SUMMARY="$release_html_url"
+  ok "GitHub release ready: ${release_html_url}"
+}
+
 # ── Load .env ───────────────────────────────────────────────────────────────
 step "Loading .env"
 if [[ "$DRY_RUN" == false ]]; then
@@ -175,6 +425,33 @@ if [[ "$CURRENT_BRANCH" != "main" ]]; then
 fi
 
 ok "On branch: main"
+
+# ── Remote sync check ───────────────────────────────────────────────────────
+step "Checking remote sync"
+
+if git remote get-url origin >/dev/null 2>&1; then
+  git fetch origin
+
+  if git show-ref --verify --quiet refs/remotes/origin/main; then
+    REMOTE_AHEAD_COUNT=$(git rev-list --count HEAD..origin/main)
+    LOCAL_AHEAD_COUNT=$(git rev-list --count origin/main..HEAD)
+
+    if [[ "$REMOTE_AHEAD_COUNT" -gt 0 ]]; then
+      fail "origin/main has ${REMOTE_AHEAD_COUNT} commit(s) that are not in local main.
+    Pull/rebase and retry before releasing."
+    fi
+
+    ok "Local main is up to date with origin/main"
+
+    if [[ "$LOCAL_AHEAD_COUNT" -gt 0 ]]; then
+      info "Local main is ${LOCAL_AHEAD_COUNT} commit(s) ahead of origin/main; release push will include them"
+    fi
+  else
+    warn "origin/main not found; skipping remote sync validation"
+  fi
+else
+  warn "No origin remote configured; skipping remote sync validation"
+fi
 
 # ── Parse CHANGELOG.md ──────────────────────────────────────────────────────
 step "Parsing CHANGELOG.md"
@@ -445,11 +722,12 @@ fi
 # ── Build & Zip ─────────────────────────────────────────────────────────────
 step "Building and creating zip package"
 
+ZIP_NAME="claude-leaf-webstore-${NEW_VERSION}.zip"
+
 if [[ "$DRY_RUN" == false ]]; then
   npm run build
 
   mkdir -p release
-  ZIP_NAME="claude-leaf-webstore-${NEW_VERSION}.zip"
   rm -f "release/${ZIP_NAME}"
   ZIP_PATH="release/${ZIP_NAME}"
   ZIP_PATH="$ZIP_PATH" python3 - <<'PY'
@@ -703,6 +981,8 @@ else
   info "[dry-run] Would tag v${NEW_VERSION} and push HEAD + tag"
 fi
 
+publish_github_release
+
 # ── Done ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -712,4 +992,5 @@ echo ""
 echo -e "  ${CYAN}Chrome Web Store:${NC}  ${CWS_PUBLISH_SUMMARY:-not-run}"
 echo -e "  ${CYAN}tedaitesnim.com:${NC}   ${TEDAI_SUMMARY:-not-run}"
 echo -e "  ${CYAN}Git tag:${NC}           v${NEW_VERSION}"
+echo -e "  ${CYAN}GitHub Release:${NC}    ${GITHUB_RELEASE_SUMMARY:-not-run}"
 echo ""
