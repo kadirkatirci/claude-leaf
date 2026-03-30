@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 
+import { loadPopupDevConfig } from './devConfig.js';
 import { handleClear, handleExport, handleImport, saveSettings } from './popupActions.js';
 import { deepMerge, getDefaultSettings, getSettingValue, setSettingValue } from './popupState.js';
 import {
@@ -30,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     config = await loadConfig();
-    devConfig = await loadDevConfig();
+    devConfig = await loadPopupDevConfig();
     console.log('[Popup] Config loaded');
 
     const manifest = chrome.runtime.getManifest();
@@ -58,18 +59,6 @@ async function loadConfig() {
     throw new Error('Failed to load config.json');
   }
   return response.json();
-}
-
-async function loadDevConfig() {
-  try {
-    const response = await fetch('./devConfig.json');
-    if (!response.ok) {
-      return { disabledModules: [] };
-    }
-    return response.json();
-  } catch {
-    return { disabledModules: [] };
-  }
 }
 
 function renderUI() {
