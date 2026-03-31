@@ -47,8 +47,11 @@ export const CHAT_TEST_SURFACES = Object.freeze({
   visuals: Object.freeze({
     nav: REAL_CHAT_FIXTURES.short,
     bookmarks: REAL_CHAT_FIXTURES.short,
+    bookmarkPopover: REAL_CHAT_FIXTURES.short,
+    bookmarkManager: REAL_CHAT_FIXTURES.short,
     marker: REAL_CHAT_FIXTURES.medium,
     edit: REAL_CHAT_FIXTURES.medium,
+    branchMap: REAL_CHAT_FIXTURES.medium,
   }),
 });
 
