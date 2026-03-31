@@ -11,10 +11,13 @@ test('sanitizeLiveCaptureHtml redacts message text, chat links and keeps edit/ve
           <div class="fixed">
             <nav aria-label="Sidebar">
               <h3>Recent</h3>
-              <a href="/chat/508038a5-ac24-4241-bf82-301805282362">Sensitive title</a>
+              <a href="/chat/original-chat-id">Sensitive title</a>
+              <button aria-label="More options for Sensitive title" title="Sensitive title">...</button>
             </nav>
           </div>
           <div id="main-content">
+            <button data-testid="chat-title-button">Sensitive title</button>
+            <button data-testid="chat-menu-trigger" aria-label="More options for Sensitive title"></button>
             <div data-test-render-count="1">
               <div data-testid="user-message">
                 <p>Private prompt content</p>
@@ -60,7 +63,10 @@ test('sanitizeLiveCaptureHtml redacts message text, chat links and keeps edit/ve
   assert.match(result.sourceHtml, /redacted-link/);
   assert.match(result.sourceHtml, /2 \/ 3/);
   assert.match(result.sourceHtml, /action-bar-retry/);
+  assert.match(result.sourceHtml, /Redacted conversation title/);
+  assert.match(result.sourceHtml, /More options for redacted conversation/);
+  assert.match(result.sourceHtml, /Redacted sidebar action/);
   assert.doesNotMatch(result.sourceHtml, /Private prompt content/);
   assert.doesNotMatch(result.sourceHtml, /Sensitive title/);
-  assert.doesNotMatch(result.sourceHtml, /508038a5-ac24-4241-bf82-301805282362/);
+  assert.doesNotMatch(result.sourceHtml, /original-chat-id/);
 });

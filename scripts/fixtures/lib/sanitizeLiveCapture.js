@@ -188,6 +188,35 @@ function redactSidebar(sidebarRoot) {
     anchor.setAttribute('href', `/chat/redacted-sidebar-${index + 1}`);
     replaceElementText(anchor, `Redacted chat ${index + 1}`);
   });
+
+  sidebarRoot.querySelectorAll('[aria-label], [title]').forEach(element => {
+    if (element.hasAttribute('aria-label')) {
+      element.setAttribute('aria-label', 'Redacted sidebar action');
+    }
+
+    if (element.hasAttribute('title')) {
+      element.setAttribute('title', 'Redacted sidebar action');
+    }
+  });
+}
+
+function redactConversationChrome(conversationRoot) {
+  if (!conversationRoot) {
+    return;
+  }
+
+  const titleButton = conversationRoot.querySelector('[data-testid="chat-title-button"]');
+  if (titleButton) {
+    replaceElementText(titleButton, 'Redacted conversation title');
+    titleButton.setAttribute('aria-label', 'Redacted conversation title');
+    titleButton.setAttribute('title', 'Redacted conversation title');
+  }
+
+  const menuTrigger = conversationRoot.querySelector('[data-testid="chat-menu-trigger"]');
+  if (menuTrigger) {
+    menuTrigger.setAttribute('aria-label', 'More options for redacted conversation');
+    menuTrigger.setAttribute('title', 'More options for redacted conversation');
+  }
 }
 
 function redactMessageContainer(container, messageIndex, userIndexRef, assistantIndexRef) {
@@ -366,6 +395,7 @@ export function sanitizeLiveCaptureHtml({
 
   sanitizeAttributes(conversationRoot);
   redactConversationContent(conversationRoot);
+  redactConversationChrome(conversationRoot);
 
   const shell = document.implementation.createHTMLDocument('Claude Fixture Sanitized Snapshot');
   const mountRoot = shell.createElement('div');

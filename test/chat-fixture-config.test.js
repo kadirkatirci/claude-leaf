@@ -18,7 +18,7 @@ test('resolveChatTarget joins tracked fixture metadata with local live chat urls
       },
     },
     liveTargets: {
-      short: 'https://claude.ai/chat/508038a5-ac24-4241-bf82-301805282362',
+      short: 'https://claude.ai/chat/redacted-short-chat-id',
     },
   });
 
@@ -26,7 +26,7 @@ test('resolveChatTarget joins tracked fixture metadata with local live chat urls
   assert.equal(target.captureId, 'chat-live-short');
   assert.equal(target.fixtureId, 'chat-real-short');
   assert.equal(target.route, '/chat/fixture-real-short');
-  assert.equal(target.url, 'https://claude.ai/chat/508038a5-ac24-4241-bf82-301805282362');
+  assert.equal(target.url, 'https://claude.ai/chat/redacted-short-chat-id');
 });
 
 test('resolveChatTarget rejects non-chat claude.ai urls', async () => {
