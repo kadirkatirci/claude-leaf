@@ -35,6 +35,7 @@ export const CHAT_TEST_SURFACES = Object.freeze({
     advanced: REAL_CHAT_FIXTURES.medium,
   }),
   history: Object.freeze({
+    short: REAL_CHAT_FIXTURES.short,
     natural: REAL_CHAT_FIXTURES.medium,
     dense: REAL_CHAT_FIXTURES.long,
     controlled: SYNTHETIC_CHAT_FIXTURES.editedThread,

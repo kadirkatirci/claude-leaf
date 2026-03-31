@@ -2,6 +2,23 @@ import { assertNoPageErrors, openFixture, test, expect } from './support/extensi
 import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('edit history module', () => {
+  test('does not show false-positive edit UI on the short real chat fixture', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.short);
+
+    await expect(fixturePage.locator('.claude-edit-badge')).toHaveCount(0);
+
+    await fixturePage.locator('#claude-edit-fixed-btn').click();
+    await expect(fixturePage.locator('#claude-edit-panel')).toBeVisible();
+    await expect(
+      fixturePage.locator('#claude-edit-panel .p-2.overflow-y-auto.flex-1.bg-bg-000 > div')
+    ).toHaveCount(0);
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
   test('renders edit badges, modal and branch map on the medium real chat fixture', async ({
     fixturePage,
     harnessPage,
@@ -31,6 +48,36 @@ test.describe('edit history module', () => {
     assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
   });
 
+  test('opens badge modals against the correct edited prompt context', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.natural);
+
+    const firstBadge = fixturePage.locator('.claude-edit-badge').first();
+    const secondBadge = fixturePage.locator('.claude-edit-badge').nth(1);
+
+    await firstBadge.evaluate(element => element.click());
+    await expect(fixturePage.locator('#claude-edit-modal-view')).toBeVisible();
+    const firstVersion =
+      (await fixturePage.locator('#claude-edit-view-version').textContent()) || '';
+    const firstContent =
+      (await fixturePage.locator('#claude-edit-view-content').textContent()) || '';
+    await fixturePage.keyboard.press('Escape');
+
+    await secondBadge.evaluate(element => element.click());
+    await expect(fixturePage.locator('#claude-edit-modal-view')).toBeVisible();
+    const secondVersion =
+      (await fixturePage.locator('#claude-edit-view-version').textContent()) || '';
+    const secondContent =
+      (await fixturePage.locator('#claude-edit-view-content').textContent()) || '';
+
+    expect(secondVersion.trim()).not.toEqual(firstVersion.trim());
+    expect(secondContent.trim()).not.toEqual(firstContent.trim());
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
   test('detects multiple edited prompts on the long real chat fixture', async ({
     fixturePage,
     harnessPage,
@@ -46,6 +93,69 @@ test.describe('edit history module', () => {
       '#claude-edit-panel .p-2.overflow-y-auto.flex-1.bg-bg-000 > div'
     );
     await expect(panelItems).toHaveCount(3);
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
+  test('scrolls back to the selected edit when a panel item is clicked', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.dense);
+
+    await fixturePage.evaluate(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
+    });
+    const scrollBefore = await fixturePage.evaluate(() => window.scrollY);
+
+    await fixturePage.locator('#claude-edit-fixed-btn').click();
+    await expect(fixturePage.locator('#claude-edit-panel')).toBeVisible();
+    const firstPanelItem = fixturePage
+      .locator('#claude-edit-panel .p-2.overflow-y-auto.flex-1.bg-bg-000 > div')
+      .first();
+    await firstPanelItem.click();
+    await fixturePage.waitForTimeout(700);
+
+    const scrollAfter = await fixturePage.evaluate(() => window.scrollY);
+    expect(scrollAfter).toBeLessThan(scrollBefore);
+    await expect(fixturePage.locator('.claude-nav-highlight')).toHaveCount(1);
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
+  test('opens the branch map modal shell and dismisses it cleanly', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.natural);
+
+    await fixturePage
+      .locator('.claude-edit-badge')
+      .first()
+      .evaluate(element => element.click());
+    await expect(fixturePage.locator('#claude-edit-modal-view')).toBeVisible();
+    await fixturePage.keyboard.press('Escape');
+
+    await fixturePage.locator('#claude-edit-fixed-btn').click();
+    const branchMapButton = fixturePage.locator(
+      '#claude-edit-panel button:has-text("Show Chat Branch Map")'
+    );
+    await branchMapButton.scrollIntoViewIfNeeded();
+    await branchMapButton.click({ force: true });
+
+    const branchMap = fixturePage.locator('#branch-map-content');
+    await fixturePage.waitForTimeout(300);
+    await expect(branchMap).toBeVisible();
+    await expect(branchMap).toContainText('Drag to pan');
+
+    await branchMap.evaluate(element => {
+      element.parentElement?.parentElement?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+        })
+      );
+    });
+    await expect(branchMap).toHaveCount(0);
 
     assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
   });
