@@ -37,14 +37,20 @@ Gerçek Claude DOM'unun lokal fixture suite ile hâlâ uyumlu olduğundan emin o
    npm run test:e2e:live
    ```
 
-4. Canlı smoke temizse deterministik lokal gate'leri çalıştırın:
+4. Claude Leaf `Test` profilinde kuruluysa tek-chat derin smoke çalıştırın:
+
+   ```bash
+   npm run test:e2e:live:deep
+   ```
+
+5. Canlı smoke temizse deterministik lokal gate'leri çalıştırın:
 
    ```bash
    npm test
    npm run test:e2e
    ```
 
-5. Canlı smoke drift bildirirse fixture'ları yenileyin:
+6. Canlı smoke drift bildirirse fixture'ları yenileyin:
 
    ```bash
    npm run fixtures:capture -- --target short
@@ -122,6 +128,13 @@ Canlı smoke şu sorulara cevap verir:
 - fixture yenilemek gerekecek kadar DOM drift oldu mu?
 - `Test` profilinde Claude Leaf kuruluysa temel canlı modül yüzeyleri attach oluyor mu?
 
+Canlı deep smoke şu sorulara cevap verir:
+
+- tek bir gerçek long chat üzerinde çekirdek modüller birlikte doğru davranıyor mu?
+- bookmark ve marker ekleme/navigasyon akışları hâlâ güvenli biçimde çalışıyor mu?
+- edit-history overlay'leri doğru açılıyor mu?
+- popup save sonrası navigation görünürlüğü canlı taba geri yansıyor mu?
+
 Fixture E2E şu sorulara cevap verir:
 
 - modüller doğru yerlere attach oluyor mu?
@@ -138,6 +151,8 @@ extension yükleme artık çalışmıyor. Bu yüzden:
 - `npm run test:e2e:live` yalnız route sağlığı ve capture hazırlığını garanti eder
 - `npm run test:e2e:live:modules` için Claude Leaf'in Chrome `Test`
   profilinde zaten kurulu olması gerekir
+- `npm run test:e2e:live:deep` aynı tek seferlik kurulum üstünde, canlı `long`
+  chat için daha derin ama güvenli bir etkileşim smoke'u çalıştırır
 
 Tek seferlik kurulum:
 

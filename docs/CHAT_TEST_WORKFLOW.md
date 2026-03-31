@@ -37,14 +37,20 @@ Use this when you need confidence that the real Claude DOM still matches the loc
    npm run test:e2e:live
    ```
 
-4. If smoke is clean, run the deterministic local gates:
+4. If Claude Leaf is installed in the `Test` profile, run the single-chat deep smoke:
+
+   ```bash
+   npm run test:e2e:live:deep
+   ```
+
+5. If smoke is clean, run the deterministic local gates:
 
    ```bash
    npm test
    npm run test:e2e
    ```
 
-5. If live smoke reports drift, refresh fixtures:
+6. If live smoke reports drift, refresh fixtures:
 
    ```bash
    npm run fixtures:capture -- --target short
@@ -122,6 +128,13 @@ Live smoke should answer:
 - did the DOM drift enough that fixture refresh is needed?
 - if the Test profile already has Claude Leaf installed, do core live module surfaces still attach?
 
+Live deep smoke should answer:
+
+- on one real long chat, do the core modules still behave correctly together?
+- can Claude Leaf still add and navigate bookmarks and markers safely?
+- do edit-history overlays still open correctly?
+- does popup save still sync navigation visibility back to the live tab?
+
 Fixture E2E should answer:
 
 - do modules attach in the right places?
@@ -138,6 +151,8 @@ Official Google Chrome 137+ no longer loads unpacked extensions from
 - `npm run test:e2e:live` only guarantees route health and capture readiness
 - `npm run test:e2e:live:modules` requires Claude Leaf to already be installed
   in the Chrome `Test` profile
+- `npm run test:e2e:live:deep` builds on the same one-time setup and runs a
+  deeper safe interaction sweep against the configured live `long` chat
 
 One-time setup:
 

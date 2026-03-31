@@ -144,6 +144,7 @@ npm run test:e2e # Playwright fixture E2E suite
 npm run live:refresh-profile # Clone the real Chrome Test profile for local live smoke/capture
 npm run test:e2e:live # Read-only live Claude smoke against the cloned Test profile
 npm run test:e2e:live:modules # Live smoke plus module assertions when Claude Leaf is installed in Test
+npm run test:e2e:live:deep # Single-chat deep smoke on the configured live long chat
 npm run lint     # Run ESLint
 npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
@@ -217,6 +218,20 @@ npm run test:e2e:live:modules
 ```
 
 This extra setup is required because Chrome 137+ official branded builds no longer honor the `--load-extension` flag for local automation. Route smoke and capture still work without it.
+
+For a higher-signal live pass on a single real chat, run:
+
+```bash
+npm run test:e2e:live:deep
+```
+
+This deep smoke stays safe with respect to Claude itself, but it does exercise real Claude Leaf interactions on the configured live `long` chat:
+
+- navigation next/prev/top and keyboard shortcuts
+- bookmark add and panel navigation
+- emoji marker add and panel navigation
+- edit history panel / modal / branch map
+- popup-driven navigation visibility save/sync
 
 ### Refreshing Fixtures
 

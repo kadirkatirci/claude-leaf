@@ -33,6 +33,7 @@
     "test:e2e:ui": "npm run build && playwright test -c playwright.config.js --ui",
     "test:e2e:live": "npm run build && node scripts/test/run-live-e2e.mjs",
     "test:e2e:live:modules": "npm run build && node scripts/test/run-live-e2e.mjs --require-extension",
+    "test:e2e:live:deep": "npm run build && node scripts/test/run-live-e2e.mjs --require-extension test/e2e-live/live-deep-smoke.spec.js --target long",
     "lint": "eslint src/ popup/ scripts/ test/ test-support/",
     "lint:fix": "eslint src/ popup/ --fix",
     "format": "prettier --write \"src/**/*.js\" \"popup/**/*.js\"",

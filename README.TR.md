@@ -56,6 +56,7 @@ npm run test:e2e:ui
 npm run live:refresh-profile
 npm run test:e2e:live
 npm run test:e2e:live:modules
+npm run test:e2e:live:deep
 ```
 
 Mevcut build içinde aktif modüller: Mesaj Navigasyonu, Yer İmleri, Emoji İşaretleyiciler ve Düzenleme Geçmişi.
@@ -152,6 +153,20 @@ npm run test:e2e:live:modules
 ```
 
 Bu ek kurulum gerekir; çünkü Chrome 137+ resmi Google Chrome build’leri otomasyonda `--load-extension` bayrağını artık dikkate almıyor. Route smoke ve capture ise bu kurulum olmadan da çalışır.
+
+Tek bir gerçek `long` chat üzerinde daha yüksek sinyalli canlı doğrulama için şunu çalıştırın:
+
+```bash
+npm run test:e2e:live:deep
+```
+
+Bu derin smoke Claude tarafında mesaj göndermez veya thread’i mutate etmez; ama gerçek Claude Leaf etkileşimlerini canlı `long` chat üzerinde dener:
+
+- navigation next/prev/top ve klavye kısayolları
+- bookmark ekleme ve panelden geri dönme
+- emoji marker ekleme ve panelden geri dönme
+- edit history panel / modal / branch map
+- popup üzerinden navigation görünürlüğünü kaydetme ve sayfaya yansıtma
 
 Canlı fixture yenileme akışı artık şu sırayı izler:
 

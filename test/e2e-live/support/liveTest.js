@@ -144,7 +144,8 @@ export async function ensureHarnessPage(liveSession) {
     return liveSession.harnessPage;
   }
 
-  const extensionId = await waitForExtensionId(liveSession.context);
+  const extensionId =
+    liveSession.installedExtension?.id || (await waitForExtensionId(liveSession.context));
   const harnessPage = await openExtensionHarness(liveSession.context, extensionId);
 
   await harnessPage.evaluate(async seededSettings => {
@@ -218,6 +219,52 @@ export async function navigateAndCollect(
     ...snapshot,
     evaluation,
   };
+}
+
+export function getRenderedMessage(page, index) {
+  return page.locator('[data-test-render-count]').nth(index);
+}
+
+export async function getLiveTabId(harnessPage, routePath) {
+  return harnessPage.evaluate(async pathname => {
+    const tab = await window.__clLeafTestHarness.getTabByRoute(pathname);
+    return tab?.id ?? null;
+  }, routePath);
+}
+
+export async function resetLiveTab(harnessPage, tabId) {
+  await harnessPage.evaluate(async targetTabId => {
+    await window.__clLeafTestHarness.resetForTab(targetTabId);
+  }, tabId);
+}
+
+export async function seedLiveSettings(harnessPage, settings, tabId) {
+  await harnessPage.evaluate(
+    async payload => {
+      await window.__clLeafTestHarness.setSettings(payload.settings, payload.tabId);
+    },
+    { settings, tabId }
+  );
+}
+
+export async function openLivePopupForTab(harnessPage, liveSession, tabId) {
+  const popupUrl = await harnessPage.evaluate(
+    targetTabId => window.__clLeafTestHarness.getPopupUrl(targetTabId),
+    tabId
+  );
+
+  const popupPage = await liveSession.context.newPage();
+  await popupPage.goto(popupUrl, { waitUntil: 'domcontentloaded' });
+  await popupPage.waitForSelector('.feature-item[data-module="navigation"]');
+  return popupPage;
+}
+
+export function assertNoPageErrors(page, allowlist = []) {
+  const errors = (page.__clLeafErrors || []).filter(entry => {
+    return !allowlist.some(pattern => entry.includes(pattern));
+  });
+
+  expect(errors).toEqual([]);
 }
 
 export async function writeLiveReport(artifactDir, report) {
