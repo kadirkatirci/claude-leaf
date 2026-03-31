@@ -145,6 +145,21 @@ async function setSettings(settings, tabId = null) {
   }
 }
 
+async function readStore(tabId, storeId) {
+  return sendToTab(tabId, {
+    type: 'STORE_READ',
+    storeId,
+  });
+}
+
+async function writeStore(tabId, storeId, data) {
+  return sendToTab(tabId, {
+    type: 'STORE_WRITE',
+    storeId,
+    data,
+  });
+}
+
 window.__clLeafTestHarness = {
   ready: true,
   queryTabs,
@@ -156,6 +171,8 @@ window.__clLeafTestHarness = {
   closeNonFixtureTabs,
   resetForTab,
   setSettings,
+  readStore,
+  writeStore,
   sendToTab,
   getExtensionId() {
     return chrome.runtime.id;

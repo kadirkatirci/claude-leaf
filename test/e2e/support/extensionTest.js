@@ -210,6 +210,38 @@ export async function getExtensionState(harnessPage, tabId) {
   }, tabId);
 }
 
+export async function readStoreData(harnessPage, tabId, storeId) {
+  return harnessPage.evaluate(
+    async payload => {
+      return window.__clLeafTestHarness.readStore(payload.tabId, payload.storeId);
+    },
+    { tabId, storeId }
+  );
+}
+
+export async function writeStoreData(harnessPage, tabId, storeId, data) {
+  return harnessPage.evaluate(
+    async payload => {
+      return window.__clLeafTestHarness.writeStore(payload.tabId, payload.storeId, payload.data);
+    },
+    { tabId, storeId, data }
+  );
+}
+
+export function buildFixtureUrl(fixtureOrRoute, searchParams = {}) {
+  const route = typeof fixtureOrRoute === 'string' ? fixtureOrRoute : fixtureOrRoute.route;
+  const url = new URL(`https://claude.ai${route}`);
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    url.searchParams.set(key, String(value));
+  });
+
+  return url.toString();
+}
+
 export function getRenderedMessage(page, index) {
   return page.locator('[data-test-render-count]').nth(index);
 }

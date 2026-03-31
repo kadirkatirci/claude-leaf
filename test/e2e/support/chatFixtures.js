@@ -25,10 +25,14 @@ export const CHAT_TEST_SURFACES = Object.freeze({
     base: REAL_CHAT_FIXTURES.short,
     keyboard: REAL_CHAT_FIXTURES.medium,
     denseList: REAL_CHAT_FIXTURES.long,
+    manager: REAL_CHAT_FIXTURES.short,
+    deepLinkSource: REAL_CHAT_FIXTURES.medium,
+    deepLinkTarget: REAL_CHAT_FIXTURES.short,
   }),
   emoji: Object.freeze({
     base: REAL_CHAT_FIXTURES.medium,
     denseList: REAL_CHAT_FIXTURES.long,
+    advanced: REAL_CHAT_FIXTURES.medium,
   }),
   history: Object.freeze({
     natural: REAL_CHAT_FIXTURES.medium,
