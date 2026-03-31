@@ -276,6 +276,19 @@ export function getCloneMetadataPath(cloneDir = DEFAULT_CLONE_DIR) {
   return path.join(cloneDir, 'profile-meta.json');
 }
 
+async function readJsonIfExists(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 export async function readProfilePreferences({
   cloneDir = DEFAULT_CLONE_DIR,
   profileDirectory,
@@ -284,9 +297,12 @@ export async function readProfilePreferences({
     throw new Error('readProfilePreferences requires profileDirectory');
   }
 
-  const preferencesPath = path.join(cloneDir, profileDirectory, 'Preferences');
-  const raw = await fs.readFile(preferencesPath, 'utf8');
-  return JSON.parse(raw);
+  const profileRoot = path.join(cloneDir, profileDirectory);
+
+  return {
+    preferences: await readJsonIfExists(path.join(profileRoot, 'Preferences')),
+    securePreferences: await readJsonIfExists(path.join(profileRoot, 'Secure Preferences')),
+  };
 }
 
 function normalizeComparablePath(value) {
@@ -294,34 +310,52 @@ function normalizeComparablePath(value) {
 }
 
 export function detectInstalledExtension(
-  preferences,
+  preferencesBundle,
   { extensionPath = repoRoot, extensionName = DEFAULT_EXTENSION_NAME } = {}
 ) {
-  const settings = preferences?.extensions?.settings || {};
   const expectedPath = normalizeComparablePath(extensionPath);
+  const stores = [
+    {
+      source: 'Secure Preferences',
+      settings: preferencesBundle?.securePreferences?.extensions?.settings || {},
+    },
+    {
+      source: 'Preferences',
+      settings: preferencesBundle?.preferences?.extensions?.settings || {},
+    },
+  ];
 
-  for (const [id, meta] of Object.entries(settings)) {
-    const candidatePath = meta?.path ? normalizeComparablePath(meta.path) : null;
-    const manifestName = meta?.manifest?.name || null;
-    const pathMatches = candidatePath === expectedPath;
-    const nameMatches = manifestName === extensionName;
+  for (const store of stores) {
+    for (const [id, meta] of Object.entries(store.settings)) {
+      const candidatePath = meta?.path ? normalizeComparablePath(meta.path) : null;
+      const manifestName = meta?.manifest?.name || null;
+      const pathMatches = candidatePath === expectedPath;
+      const nameMatches = manifestName === extensionName;
 
-    if (!pathMatches && !nameMatches) {
-      continue;
+      if (!pathMatches && !nameMatches) {
+        continue;
+      }
+
+      const state = meta?.state ?? null;
+      const disableReasons = Array.isArray(meta?.disable_reasons) ? meta.disable_reasons : [];
+      const enabled =
+        state === 1 ||
+        state === '1' ||
+        (state === null &&
+          disableReasons.length === 0 &&
+          (Boolean(meta?.service_worker_registration_info) || meta?.location === 4));
+
+      return {
+        installed: true,
+        enabled,
+        id,
+        path: candidatePath,
+        name: manifestName,
+        state,
+        location: meta?.location ?? null,
+        source: store.source,
+      };
     }
-
-    const state = meta?.state ?? null;
-    const enabled = state === 1 || state === '1';
-
-    return {
-      installed: true,
-      enabled,
-      id,
-      path: candidatePath,
-      name: manifestName,
-      state,
-      location: meta?.location ?? null,
-    };
   }
 
   return {
@@ -332,6 +366,7 @@ export function detectInstalledExtension(
     name: null,
     state: null,
     location: null,
+    source: null,
   };
 }
 

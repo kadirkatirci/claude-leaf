@@ -176,14 +176,16 @@ conn.close()
 test('detectInstalledExtension finds the unpacked Claude Leaf install by path and state', () => {
   const detected = detectInstalledExtension(
     {
-      extensions: {
-        settings: {
-          abcdefghijklmnopabcdefghijklmnop: {
-            path: '/repo/claude-leaf',
-            state: 1,
-            location: 8,
-            manifest: {
-              name: 'Claude Leaf',
+      securePreferences: {
+        extensions: {
+          settings: {
+            abcdefghijklmnopabcdefghijklmnop: {
+              path: '/repo/claude-leaf',
+              state: 1,
+              location: 8,
+              manifest: {
+                name: 'Claude Leaf',
+              },
             },
           },
         },
@@ -197,18 +199,21 @@ test('detectInstalledExtension finds the unpacked Claude Leaf install by path an
   assert.equal(detected.installed, true);
   assert.equal(detected.enabled, true);
   assert.equal(detected.id, 'abcdefghijklmnopabcdefghijklmnop');
+  assert.equal(detected.source, 'Secure Preferences');
 });
 
 test('detectInstalledExtension returns not installed when the profile lacks Claude Leaf', () => {
   const detected = detectInstalledExtension(
     {
-      extensions: {
-        settings: {
-          someotherextensionid: {
-            path: '/repo/other',
-            state: 1,
-            manifest: {
-              name: 'Other Extension',
+      securePreferences: {
+        extensions: {
+          settings: {
+            someotherextensionid: {
+              path: '/repo/other',
+              state: 1,
+              manifest: {
+                name: 'Other Extension',
+              },
             },
           },
         },
@@ -221,6 +226,35 @@ test('detectInstalledExtension returns not installed when the profile lacks Clau
 
   assert.equal(detected.installed, false);
   assert.equal(detected.enabled, false);
+});
+
+test('detectInstalledExtension treats secure-preferences unpacked install as enabled', () => {
+  const detected = detectInstalledExtension(
+    {
+      securePreferences: {
+        extensions: {
+          settings: {
+            ibhhhefaiomfemiigiedehknckioechc: {
+              path: '/repo/claude-leaf',
+              location: 4,
+              state: null,
+              disable_reasons: [],
+              service_worker_registration_info: {
+                version: '1.0.2',
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      extensionPath: '/repo/claude-leaf',
+    }
+  );
+
+  assert.equal(detected.installed, true);
+  assert.equal(detected.enabled, true);
+  assert.equal(detected.source, 'Secure Preferences');
 });
 
 test('evaluateLiveRouteResult uses route-specific readiness contracts', () => {
