@@ -1,0 +1,25 @@
+{
+  "id": "chat-real-long",
+  "route": "/chat/fixture-real-long",
+  "pageType": "conversation",
+  "theme": "light",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": [
+    "navigation",
+    "bookmarks",
+    "emojiMarkers",
+    "editHistory",
+    "popup-sync",
+    "visual"
+  ],
+  "seedProfile": "",
+  "visual": true,
+  "notes": "Real long chat capture for dense scrolling, panel lists and high-count counters."
+}

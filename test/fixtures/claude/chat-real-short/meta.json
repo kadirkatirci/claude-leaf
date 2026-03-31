@@ -1,0 +1,24 @@
+{
+  "id": "chat-real-short",
+  "route": "/chat/fixture-real-short",
+  "pageType": "conversation",
+  "theme": "light",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": [
+    "navigation",
+    "bookmarks",
+    "emojiMarkers",
+    "popup-sync",
+    "keyboard"
+  ],
+  "seedProfile": "",
+  "visual": true,
+  "notes": "Real short chat capture with no edit history, used as the baseline conversation fixture."
+}

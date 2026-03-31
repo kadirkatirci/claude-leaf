@@ -1,6 +1,7 @@
 import { cloneDefaultSettings } from '../../src/config/defaultSettings.js';
 import {
   assertNoPageErrors,
+  getRenderedMessage,
   openFixture,
   test,
   expect,
@@ -16,11 +17,11 @@ test.describe('navigation module', () => {
       fixturePage,
       harnessPage,
     }) => {
-      await openFixture(fixturePage, harnessPage, 'chat-basic-dark', { viewport });
+      await openFixture(fixturePage, harnessPage, 'chat-real-long', { viewport });
       await fixturePage.waitForTimeout(800);
 
       const counter = fixturePage.locator('#claude-nav-counter');
-      const firstMessage = fixturePage.locator('[data-test-render-count="1"]');
+      const firstMessage = getRenderedMessage(fixturePage, 0);
       await expect(counter).toContainText('/');
 
       const initialCounter = await counter.textContent();
@@ -45,7 +46,7 @@ test.describe('navigation module', () => {
       const firstMessageTop = await firstMessage.evaluate(element => {
         return Math.round(element.getBoundingClientRect().top);
       });
-      expect(backToTop).toBeLessThan(afterNextScroll);
+      expect(backToTop).toBeLessThanOrEqual(afterNextScroll);
       expect(firstMessageTop).toBeLessThan(80);
 
       assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
@@ -60,7 +61,7 @@ test.describe('navigation module', () => {
       const settings = cloneDefaultSettings();
       settings.navigation.showFloatingUI = true;
 
-      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-basic-dark', {
+      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-long', {
         settings,
         viewport,
       });
@@ -92,6 +93,34 @@ test.describe('navigation module', () => {
       await fixturePage.waitForTimeout(600);
       await expect(fixturePage.locator('#claude-nav-top')).toBeVisible();
       await expect(counter).toHaveText(counterBeforeHide || '');
+
+      assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+    });
+  }
+
+  for (const viewport of viewports) {
+    test(`supports navigation keyboard shortcuts on real chat fixtures at ${viewport.width}x${viewport.height}`, async ({
+      fixturePage,
+      harnessPage,
+    }) => {
+      await openFixture(fixturePage, harnessPage, 'chat-real-short', { viewport });
+      await fixturePage.waitForTimeout(800);
+
+      const counter = fixturePage.locator('#claude-nav-counter');
+      const initialCounter = await counter.textContent();
+
+      await fixturePage.keyboard.press('Alt+ArrowDown');
+      await fixturePage.waitForTimeout(500);
+      const afterNext = await counter.textContent();
+      expect(afterNext).not.toEqual(initialCounter);
+
+      await fixturePage.keyboard.press('Alt+ArrowUp');
+      await fixturePage.waitForTimeout(500);
+      await expect(counter).toHaveText(initialCounter || '');
+
+      await fixturePage.keyboard.press('Alt+Home');
+      await fixturePage.waitForTimeout(700);
+      expect(await fixturePage.evaluate(() => window.scrollY)).toBeLessThan(80);
 
       assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
     });

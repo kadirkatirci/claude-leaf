@@ -210,6 +210,10 @@ export async function getExtensionState(harnessPage, tabId) {
   }, tabId);
 }
 
+export function getRenderedMessage(page, index) {
+  return page.locator('[data-test-render-count]').nth(index);
+}
+
 export function assertNoPageErrors(page, allowlist = []) {
   const errors = (page.__clLeafErrors || []).filter(entry => {
     return !allowlist.some(pattern => {

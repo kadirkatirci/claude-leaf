@@ -1,13 +1,19 @@
-import { assertNoPageErrors, openFixture, test, expect } from './support/extensionTest.js';
+import {
+  assertNoPageErrors,
+  getRenderedMessage,
+  openFixture,
+  test,
+  expect,
+} from './support/extensionTest.js';
 
 test.describe('emoji marker module', () => {
-  test('adds a marker, exposes alternate emoji choices and removes it', async ({
+  test('adds a marker, exposes alternate emoji choices and removes it on the medium real chat fixture', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-basic-dark');
+    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
 
-    const targetMessage = fixturePage.locator('[data-test-render-count="2"]');
+    const targetMessage = getRenderedMessage(fixturePage, 1);
     await targetMessage.hover();
     const markerButton = targetMessage.locator('.emoji-marker-btn');
     await expect(markerButton).toBeVisible();
@@ -24,6 +30,8 @@ test.describe('emoji marker module', () => {
     );
     await expect(badgeOptions).toBeVisible();
     await expect(badgeOptions.getByRole('button', { name: '🔥', exact: true })).toBeVisible();
+    await badge.evaluate(element => element.click());
+    await expect(badgeOptions).toHaveCount(0);
 
     await fixturePage.locator('#claude-marker-fixed-btn').click();
     await expect(fixturePage.locator('#claude-marker-panel')).toBeVisible();
@@ -38,14 +46,14 @@ test.describe('emoji marker module', () => {
     assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
   });
 
-  test('renders a scrollable marker panel on the dense long-response fixture', async ({
+  test('renders a scrollable marker panel on the long real chat fixture', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-long-response');
+    await openFixture(fixturePage, harnessPage, 'chat-real-long');
 
-    for (const renderCount of ['1', '2', '3', '4', '5', '6', '7', '8']) {
-      const message = fixturePage.locator(`[data-test-render-count="${renderCount}"]`);
+    for (const index of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+      const message = getRenderedMessage(fixturePage, index);
       await message.hover();
       const markerButton = message.locator('.emoji-marker-btn');
       await expect(markerButton).toBeVisible();

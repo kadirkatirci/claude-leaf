@@ -141,6 +141,8 @@ npm run dev      # Watch mode with auto-rebuild
 npm run build    # Production build
 npm test         # Node/JSDOM contracts + smoke tests
 npm run test:e2e # Playwright fixture E2E suite
+npm run live:refresh-profile # Clone the real Chrome Test profile for local live smoke/capture
+npm run test:e2e:live # Read-only live Claude smoke against the cloned Test profile
 npm run lint     # Run ESLint
 npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
@@ -167,23 +169,61 @@ Open the Playwright UI when iterating locally:
 npm run test:e2e:ui
 ```
 
+### Live Smoke and Capture
+
+For authenticated local checks, use the real Google Chrome `Test` profile as the source of truth.
+
+- Chrome must be fully closed before any live command.
+- The live pipeline clones the `Test` profile into `.auth/chrome-test-live` instead of automating your daily profile directly.
+- Live smoke is read-only: it opens the configured short, medium, and long `claude.ai/chat/...` targets, validates message/edit counts, writes screenshots, and stores a JSON report under `.auth/live-artifacts/...`.
+- `fixtures:capture` uses the same cloned live profile workflow before visiting a named chat target.
+
+Configure your private live chat targets locally:
+
+```bash
+cp scripts/fixtures/live-chat-targets.example.json .auth/live-chat-targets.json
+```
+
+Then replace the placeholder URLs in `.auth/live-chat-targets.json` with your real short, medium, and long Claude chat URLs. This file is ignored by git and never committed.
+
+Refresh the clone explicitly:
+
+```bash
+npm run live:refresh-profile
+```
+
+Run the authenticated live smoke suite:
+
+```bash
+npm run test:e2e:live
+```
+
 ### Refreshing Fixtures
+
+The committed fixture set is chat-only and is derived from three live sources:
+
+- `short` → `chat-real-short`
+- `medium` → `chat-real-medium`
+- `long` → `chat-real-long`
 
 Use the fixture pipeline when Claude DOM contracts drift:
 
-1. Capture a live authenticated page into the ignored source area:
+1. Log in to `claude.ai` in the Google Chrome `Test` profile and close Chrome completely.
+2. Capture the configured chat targets into the ignored source area:
 
    ```bash
-   npm run fixtures:capture -- --id chat-sidebar-rich --route /chat/example-thread
+   npm run fixtures:capture -- --target short
+   npm run fixtures:capture -- --target medium
+   npm run fixtures:capture -- --target long
    ```
 
-2. Sanitize the capture into a committed fixture:
+3. Sanitize the captures into the committed chat fixtures:
 
    ```bash
-   npm run fixtures:sanitize -- --id chat-sidebar-rich --source chat-sidebar-rich --route /chat/example-thread --pageType conversation
+   npm run fixtures:sanitize
    ```
 
-3. Regenerate all fixture entry pages and validate metadata consistency:
+4. Regenerate all fixture entry pages and validate metadata consistency:
 
    ```bash
    npm run fixtures:refresh
@@ -195,6 +235,7 @@ Rules enforced by `fixtures:refresh`:
 - `seed` fixtures must declare a `seedProfile`
 - `sanitized_html` fixtures must include `sanitized-source.html`
 - `sanitized_html` fixtures are read-only with `helpers.mutable=false`
+- committed chat fixtures are redacted before they are written to the repo, so real conversation text and chat ids stay out of version control
 
 ## Release
 
@@ -229,8 +270,9 @@ To use it locally:
 Recommended canary workflow:
 
 1. Keep the fixture suite (`npm run test:e2e`) as the fast CI gate.
-2. Use `Claude Web Guardian` manually or on your own nightly browser profile against a real logged-in Claude session.
-3. If Guardian reports drift, capture a fresh fixture, sanitize it, and rerun the local Playwright suite before changing production selectors.
+2. Use `npm run test:e2e:live` for read-only local smoke against the cloned Google Chrome `Test` profile.
+3. Use `Claude Web Guardian` manually or on your own nightly browser profile against a real logged-in Claude session.
+4. If Guardian or live smoke reports drift, refresh the short/medium/long chat captures, sanitize them, and rerun the local Playwright suite before changing production selectors.
 
 ### Project Structure
 

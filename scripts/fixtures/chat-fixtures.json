@@ -1,0 +1,49 @@
+{
+  "order": ["short", "medium", "long"],
+  "targets": {
+    "short": {
+      "captureId": "chat-live-short",
+      "fixtureId": "chat-real-short",
+      "route": "/chat/fixture-real-short",
+      "pageType": "conversation",
+      "features": ["navigation", "bookmarks", "emojiMarkers", "popup-sync", "keyboard"],
+      "visual": true,
+      "notes": "Real short chat capture with no edit history, used as the baseline conversation fixture.",
+      "smoke": {
+        "minMessages": 8,
+        "minUserMessages": 4,
+        "requiresEditedMessages": false
+      }
+    },
+    "medium": {
+      "captureId": "chat-live-medium",
+      "fixtureId": "chat-real-medium",
+      "route": "/chat/fixture-real-medium",
+      "pageType": "conversation",
+      "features": ["navigation", "bookmarks", "emojiMarkers", "editHistory", "visual"],
+      "visual": true,
+      "notes": "Real medium chat capture with edit history, badges and modal coverage.",
+      "smoke": {
+        "minMessages": 20,
+        "minUserMessages": 10,
+        "requiresEditedMessages": true,
+        "minEditedMessages": 1
+      }
+    },
+    "long": {
+      "captureId": "chat-live-long",
+      "fixtureId": "chat-real-long",
+      "route": "/chat/fixture-real-long",
+      "pageType": "conversation",
+      "features": ["navigation", "bookmarks", "emojiMarkers", "editHistory", "popup-sync", "visual"],
+      "visual": true,
+      "notes": "Real long chat capture for dense scrolling, panel lists and high-count counters.",
+      "smoke": {
+        "minMessages": 60,
+        "minUserMessages": 20,
+        "requiresEditedMessages": true,
+        "minEditedMessages": 2
+      }
+    }
+  }
+}

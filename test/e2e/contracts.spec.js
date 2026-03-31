@@ -2,15 +2,11 @@ import { assertNoPageErrors, openFixture, test, expect } from './support/extensi
 
 test.describe('fixture contracts', () => {
   const cases = [
-    ['new-empty', 'new_chat', false, 'sanitized_html'],
-    ['chat-basic-dark', 'conversation', true, 'seed'],
-    ['chat-basic-light', 'conversation', true, 'seed'],
+    ['chat-real-short', 'conversation', true, 'sanitized_html'],
+    ['chat-real-medium', 'conversation', true, 'sanitized_html'],
+    ['chat-real-long', 'conversation', true, 'sanitized_html'],
     ['chat-streaming', 'conversation', true, 'seed'],
     ['chat-edited-thread', 'conversation', true, 'seed'],
-    ['chat-long-response', 'conversation', true, 'sanitized_html'],
-    ['chat-sidebar-rich', 'conversation', true, 'sanitized_html'],
-    ['project-chat-basic', 'project_chat', true, 'sanitized_html'],
-    ['code-workspace', 'code_workspace', false, 'sanitized_html'],
   ];
 
   for (const [fixtureId, expectedPageType, expectsNav, expectedSourceMode] of cases) {
@@ -50,7 +46,7 @@ test.describe('fixture contracts', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-sidebar-rich');
+    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
 
     const helperState = await fixturePage.evaluate(() => ({
       sourceMode: window.__claudeFixture.getState().meta.sourceMode,

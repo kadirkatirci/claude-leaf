@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { JSDOM } from 'jsdom';
+import { resolveChatTarget, resolveOrderedChatTargets } from './lib/chatFixtureConfig.js';
+import { sanitizeLiveCaptureHtml } from './lib/sanitizeLiveCapture.js';
 import { refreshFixtures } from './refresh-fixtures.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,148 +28,108 @@ function parseArgs(argv) {
   return args;
 }
 
-const SELECTOR_CONTRACTS = [
-  'main',
-  '[role="main"]',
-  'nav[aria-label="Sidebar"]',
-  '[data-testid="user-message"]',
-  '[data-test-render-count]',
-  '.inline-flex.items-center.gap-1',
-  'button svg path[d*="M10.3857"]',
-  '[data-edit-container-id]',
-  '[data-testid="chat-input"]',
-  '[data-testid="prompt-input"]',
-];
-
-const ALLOWED_ATTRIBUTES = new Set([
-  'class',
-  'id',
-  'role',
-  'href',
-  'type',
-  'placeholder',
-  'value',
-  'rows',
-  'd',
-  'viewBox',
-  'fill',
-  'stroke',
-  'width',
-  'height',
-]);
-
-const ALLOWED_DATA_ATTRIBUTES = new Set([
-  'data-testid',
-  'data-test-render-count',
-  'data-is-streaming',
-  'data-dd-action-name',
-  'data-state',
-  'data-edit-container-id',
-]);
-
-function isContractNode(node) {
-  return SELECTOR_CONTRACTS.some(selector => {
-    try {
-      return node.matches(selector);
-    } catch {
-      return false;
-    }
-  });
+async function loadCapture(sourceId) {
+  const sourceDir = path.join(repoRoot, 'test', 'fixtures-source', 'claude', sourceId);
+  const captureHtml = await fs.readFile(path.join(sourceDir, 'page.html'), 'utf8');
+  const captureMeta = JSON.parse(await fs.readFile(path.join(sourceDir, 'capture.json'), 'utf8'));
+  return { captureHtml, captureMeta };
 }
 
-function sanitizeTree(root) {
-  if (!root) {
-    return;
+async function writeSanitizedFixture(spec) {
+  const sourceId = spec.sourceId || spec.fixtureId;
+  const { captureHtml, captureMeta } = await loadCapture(sourceId);
+  const result = sanitizeLiveCaptureHtml({
+    captureHtml,
+    captureMeta,
+    fixtureId: spec.fixtureId,
+    route: spec.route,
+    pageType: spec.pageType || 'conversation',
+    theme: spec.theme,
+    features: spec.features,
+    notes: spec.notes,
+    visual: spec.visual,
+  });
+
+  const outputDir = path.join(repoRoot, 'test', 'fixtures', 'claude', spec.fixtureId);
+  await fs.mkdir(outputDir, { recursive: true });
+  await fs.writeFile(path.join(outputDir, 'sanitized-source.html'), result.sourceHtml, 'utf8');
+  await fs.writeFile(path.join(outputDir, 'meta.json'), JSON.stringify(result.meta, null, 2), 'utf8');
+
+  return {
+    ...result.summary,
+    fixtureId: spec.fixtureId,
+    sourceId,
+  };
+}
+
+async function resolveSanitizeSpecs(args) {
+  if (args.target) {
+    const target = await resolveChatTarget(args.target);
+    return [
+      {
+        fixtureId: target.fixtureId,
+        sourceId: target.captureId,
+        route: target.route,
+        pageType: target.pageType,
+        theme: target.theme,
+        features: target.features,
+        notes: target.notes,
+        visual: target.visual,
+      },
+    ];
   }
 
-  root.querySelectorAll('script, style, noscript, iframe').forEach(node => node.remove());
+  if (!args.id && !args.route) {
+    const targets = await resolveOrderedChatTargets();
+    return targets.map(target => ({
+      fixtureId: target.fixtureId,
+      sourceId: target.captureId,
+      route: target.route,
+      pageType: target.pageType,
+      theme: target.theme,
+      features: target.features,
+      notes: target.notes,
+      visual: target.visual,
+    }));
+  }
 
-  root.querySelectorAll('*').forEach(node => {
-    const contractNode = isContractNode(node);
-    for (const attribute of [...node.attributes]) {
-      const keepAttribute =
-        ALLOWED_ATTRIBUTES.has(attribute.name) ||
-        attribute.name.startsWith('aria-') ||
-        ALLOWED_DATA_ATTRIBUTES.has(attribute.name) ||
-        (contractNode && attribute.name === 'class');
+  if (!args.id || !args.route) {
+    throw new Error(
+      'Usage: node scripts/fixtures/sanitize-capture.mjs --target <short|medium|long>\n   or: node scripts/fixtures/sanitize-capture.mjs --id <fixture-id> --route </path> [--source <capture-id>] [--pageType conversation]'
+    );
+  }
 
-      if (!keepAttribute) {
-        node.removeAttribute(attribute.name);
-        continue;
-      }
-
-      if (attribute.name !== 'class' && attribute.value.length > 300) {
-        node.removeAttribute(attribute.name);
-      }
-    }
-  });
+  return [
+    {
+      fixtureId: args.id,
+      sourceId: args.source || args.id,
+      route: args.route,
+      pageType: args.pageType || 'conversation',
+      theme: args.theme,
+      features: args.features
+        ? String(args.features)
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : ['navigation', 'bookmarks', 'emojiMarkers', 'editHistory'],
+      notes: args.notes || 'Sanitized from live Claude capture',
+      visual: args.visual === 'true' || args.visual === true,
+    },
+  ];
 }
 
 const args = parseArgs(process.argv);
-const fixtureId = args.id;
-const sourceId = args.source || fixtureId;
-const route = args.route;
-const pageType = args.pageType || 'conversation';
-const theme = args.theme || 'dark';
-const notes = args.notes || 'Sanitized from live Claude capture';
+const specs = await resolveSanitizeSpecs(args);
+const results = [];
 
-if (!fixtureId || !route) {
-  throw new Error(
-    'Usage: node scripts/fixtures/sanitize-capture.mjs --id <fixture-id> --route </path> [--source <capture-id>] [--pageType conversation]'
-  );
+for (const spec of specs) {
+  results.push(await writeSanitizedFixture(spec));
 }
-
-const sourceDir = path.join(repoRoot, 'test', 'fixtures-source', 'claude', sourceId);
-const captureHtml = await fs.readFile(path.join(sourceDir, 'page.html'), 'utf8');
-const captureMeta = JSON.parse(await fs.readFile(path.join(sourceDir, 'capture.json'), 'utf8'));
-
-const dom = new JSDOM(captureHtml);
-const { document } = dom.window;
-const sanitizedMain = document.querySelector('main, [role="main"]')?.cloneNode(true);
-const sanitizedSidebar = document.querySelector('nav[aria-label="Sidebar"]')?.cloneNode(true);
-
-const shell = document.implementation.createHTMLDocument('Claude Fixture Sanitized Snapshot');
-const root = shell.createElement('div');
-root.id = 'claude-fixture-sanitized-root';
-
-if (sanitizedSidebar) {
-  sanitizeTree(sanitizedSidebar);
-  root.appendChild(sanitizedSidebar);
-}
-
-if (sanitizedMain) {
-  sanitizeTree(sanitizedMain);
-  root.appendChild(sanitizedMain);
-}
-
-const outputDir = path.join(repoRoot, 'test', 'fixtures', 'claude', fixtureId);
-await fs.mkdir(outputDir, { recursive: true });
-
-await fs.writeFile(path.join(outputDir, 'sanitized-source.html'), root.innerHTML, 'utf8');
-await fs.writeFile(
-  path.join(outputDir, 'meta.json'),
-  JSON.stringify(
-    {
-      id: fixtureId,
-      route,
-      pageType,
-      theme,
-      viewport: captureMeta.viewport || { width: 1440, height: 900 },
-      sourceMode: 'sanitized_html',
-      helpers: {
-        mutable: false,
-      },
-      features: ['navigation', 'bookmarks', 'emojiMarkers', 'editHistory'],
-      seedProfile: '',
-      visual: false,
-      notes,
-    },
-    null,
-    2
-  ),
-  'utf8'
-);
 
 await refreshFixtures();
 
-console.log(`Sanitized capture ${sourceId} -> test/fixtures/claude/${fixtureId}`);
+results.forEach(result => {
+  console.log(
+    `Sanitized ${result.sourceId} -> ${result.fixtureId} (${result.messageCount} messages, ${result.editedMessageCount} edited)`
+  );
+});

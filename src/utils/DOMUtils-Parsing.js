@@ -102,9 +102,15 @@ const DOMUtilsParsing = {
           // Only if total > 1 means it has been edited
           if (total > 1 && !isNaN(current) && !isNaN(total)) {
             // Find edit button (retry button - circular arrow icon)
-            const retryButton = container
-              .querySelector('button svg path[d*="M10.3857"]')
-              ?.closest('button');
+            const retryButton =
+              container
+                .querySelector(
+                  '[data-testid="action-bar-retry"], button[aria-label="Retry"], button svg path[d*="M10.3857"], button svg path[d*="M10.386"]'
+                )
+                ?.closest('button') ||
+              container.querySelector(
+                '[data-testid="action-bar-retry"], button[aria-label="Retry"]'
+              );
 
             edited.push({
               element: container,

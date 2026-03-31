@@ -18,7 +18,7 @@ test.describe('popup sync', () => {
       const settings = cloneDefaultSettings();
       settings.navigation.showFloatingUI = true;
 
-      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-basic-dark', {
+      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-short', {
         settings,
         viewport,
       });
@@ -66,4 +66,50 @@ test.describe('popup sync', () => {
       assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
     });
   }
+
+  test('popup saves do not wipe navigation state on the long real chat fixture', async ({
+    fixturePage,
+    harnessPage,
+    extensionContext,
+  }) => {
+    const settings = cloneDefaultSettings();
+    settings.navigation.showFloatingUI = true;
+
+    const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-long', {
+      settings,
+    });
+    await fixturePage.locator('#claude-nav-next').click();
+    await fixturePage.waitForTimeout(350);
+    await fixturePage.locator('#claude-nav-next').click();
+    await fixturePage.waitForTimeout(350);
+    const counterBeforePopupSave = await fixturePage.locator('#claude-nav-counter').textContent();
+
+    const popupUrl = await harnessPage.evaluate(
+      targetTabId => window.__clLeafTestHarness.getPopupUrl(targetTabId),
+      tabId
+    );
+
+    const popupPage = await extensionContext.newPage();
+    try {
+      await popupPage.goto(popupUrl, { waitUntil: 'domcontentloaded' });
+      await popupPage.waitForSelector('.feature-item[data-module="navigation"]');
+
+      await popupPage.locator('#navigation-floating-ui').click();
+      await popupPage.locator('#save-btn').click();
+      await fixturePage.waitForTimeout(700);
+      await expect(fixturePage.locator('#claude-nav-top')).toBeHidden();
+
+      await popupPage.locator('#navigation-floating-ui').click();
+      await popupPage.locator('#save-btn').click();
+      await fixturePage.waitForTimeout(700);
+      await expect(fixturePage.locator('#claude-nav-top')).toBeVisible();
+      await expect(fixturePage.locator('#claude-nav-counter')).toHaveText(
+        counterBeforePopupSave || ''
+      );
+    } finally {
+      await popupPage.close();
+    }
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
 });

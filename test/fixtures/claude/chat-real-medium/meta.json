@@ -1,0 +1,24 @@
+{
+  "id": "chat-real-medium",
+  "route": "/chat/fixture-real-medium",
+  "pageType": "conversation",
+  "theme": "light",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": [
+    "navigation",
+    "bookmarks",
+    "emojiMarkers",
+    "editHistory",
+    "visual"
+  ],
+  "seedProfile": "",
+  "visual": true,
+  "notes": "Real medium chat capture with edit history, badges and modal coverage."
+}

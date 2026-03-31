@@ -56,19 +56,26 @@ test('findVersionSpan prefers the version nav container and falls back to generi
   }
 });
 
-test('getEditedPrompts keeps current selector logic for user messages, version detection, and retry button lookup', async () => {
+test('getEditedPrompts supports current retry button selectors on edited user prompts', async () => {
   const cleanup = setupDom(`
     <main>
       <div data-testid="conversation-turn-1">
         <div data-testid="user-message">Prompt A</div>
         <div class="inline-flex items-center gap-1"><span>2 / 2</span></div>
-        <button type="button">
+        <button type="button" data-testid="action-bar-retry" aria-label="Retry">
           <svg><path d="M10.3857 10.3857"/></svg>
         </button>
       </div>
       <div data-testid="conversation-turn-2">
         <div data-testid="user-message">Prompt B</div>
         <div class="inline-flex items-center gap-1"><span>1 / 1</span></div>
+      </div>
+      <div data-testid="conversation-turn-3">
+        <div data-testid="user-message">Prompt C</div>
+        <div class="inline-flex items-center gap-1"><span>3 / 4</span></div>
+        <button type="button" aria-label="Retry">
+          <svg><path d="M10.386 2.51A7.5 7.5 0 1 1 5.499 4H3"/></svg>
+        </button>
       </div>
     </main>
   `);
@@ -83,10 +90,13 @@ test('getEditedPrompts keeps current selector logic for user messages, version d
 
     const editedPrompts = DOMUtilsParsing.getEditedPrompts();
 
-    assert.equal(editedPrompts.length, 1);
+    assert.equal(editedPrompts.length, 2);
     assert.equal(editedPrompts[0].versionInfo, '2 / 2');
     assert.equal(editedPrompts[0].containerId, 'edit-index-0');
     assert.ok(editedPrompts[0].editButton);
+    assert.equal(editedPrompts[1].versionInfo, '3 / 4');
+    assert.equal(editedPrompts[1].containerId, 'edit-index-2');
+    assert.ok(editedPrompts[1].editButton);
   } finally {
     navigationInterceptor.destroy();
     DOMUtilsCore.isOnConversationPage = originalIsOnConversationPage;

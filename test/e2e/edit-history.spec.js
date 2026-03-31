@@ -1,11 +1,14 @@
 import { assertNoPageErrors, openFixture, test, expect } from './support/extensionTest.js';
 
 test.describe('edit history module', () => {
-  test('renders edit badges, modal and branch map', async ({ fixturePage, harnessPage }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-edited-thread');
+  test('renders edit badges, modal and branch map on the medium real chat fixture', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
 
     const badges = fixturePage.locator('.claude-edit-badge');
-    await expect(badges).toHaveCount(3);
+    await expect(badges).toHaveCount(2);
 
     await fixturePage.locator('#claude-edit-fixed-btn').click();
     await expect(fixturePage.locator('#claude-edit-panel')).toBeVisible();
@@ -23,6 +26,25 @@ test.describe('edit history module', () => {
     await branchMapButton.scrollIntoViewIfNeeded();
     await branchMapButton.click({ force: true });
     await expect(fixturePage.locator('#branch-map-content')).toBeVisible();
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
+  test('detects multiple edited prompts on the long real chat fixture', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, 'chat-real-long');
+
+    await expect(fixturePage.locator('.claude-edit-badge')).toHaveCount(3);
+    await fixturePage.locator('#claude-edit-fixed-btn').click();
+    await expect(fixturePage.locator('#claude-edit-panel')).toBeVisible();
+    await expect(fixturePage.locator('#claude-edit-panel')).toContainText('Edit Points');
+
+    const panelItems = fixturePage.locator(
+      '#claude-edit-panel .p-2.overflow-y-auto.flex-1.bg-bg-000 > div'
+    );
+    await expect(panelItems).toHaveCount(3);
 
     assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
   });
