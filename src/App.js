@@ -371,7 +371,7 @@ class ClaudeProductivityApp {
     await this.refreshModulesForStore('editHistory');
   }
 
-  handleSettingsUpdate(settings) {
+  async handleSettingsUpdate(settings) {
     if (!settings || typeof settings !== 'object') {
       throw new Error('Invalid settings payload');
     }
@@ -662,6 +662,13 @@ class ClaudeProductivityApp {
           initializing: this.initializing,
           initStatus: this.initState.status,
           activeModules: Array.from(this.modules.keys()),
+          moduleStates: Array.from(this.modules.entries()).reduce((acc, [name, module]) => {
+            acc[name] = {
+              enabled: module?.enabled === true,
+              initialized: module?.initialized === true,
+            };
+            return acc;
+          }, {}),
           navigation: window.__navigationInterceptor?.getState?.() || null,
         });
         return false;

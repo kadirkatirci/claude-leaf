@@ -193,6 +193,9 @@ class BaseModule {
         // If module was disabled, destroy it
         if (!moduleSettings.enabled && this.enabled) {
           this.destroy();
+          // Keep listening after a popup-driven disable so the module can
+          // reinitialize when the user enables it again on the same page.
+          this.subscribeToSettings();
           return;
         }
 

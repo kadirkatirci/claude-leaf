@@ -42,6 +42,7 @@ export const CHAT_TEST_SURFACES = Object.freeze({
   }),
   popup: Object.freeze({
     base: REAL_CHAT_FIXTURES.short,
+    modules: REAL_CHAT_FIXTURES.medium,
     persistence: REAL_CHAT_FIXTURES.long,
   }),
   visuals: Object.freeze({

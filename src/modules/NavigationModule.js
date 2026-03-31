@@ -776,6 +776,7 @@ class NavigationModule extends BaseModule {
           const newOpacity = generalSettings.opacity.toString();
           if (this.elements.container.style.opacity !== newOpacity) {
             this.cachedOpacity = generalSettings.opacity; // Update cache
+            panelManager.cachedOpacity = generalSettings.opacity;
             this.elements.container.style.opacity = newOpacity;
           }
         } catch (error) {

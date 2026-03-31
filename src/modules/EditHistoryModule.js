@@ -130,6 +130,7 @@ class EditHistoryModule extends BaseModule {
       });
 
       this.syncCollapseButton();
+      this.updateUI();
 
       // Update panel if data exists
       if (this.editedMessages.length > 0) {
@@ -222,6 +223,11 @@ class EditHistoryModule extends BaseModule {
    */
   updateUI() {
     this.log('Updating edit history UI');
+    const editedPrompts = DOMUtils.getEditedPrompts ? DOMUtils.getEditedPrompts() : [];
+    this.handleEditsFound(editedPrompts);
+    if (editedPrompts.length > 0) {
+      historyCaptureService.captureHistory(editedPrompts);
+    }
     // Request scan from MessageHub
     messageHub.refresh();
   }
