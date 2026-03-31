@@ -5,13 +5,14 @@ import {
   test,
   expect,
 } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('emoji marker module', () => {
   test('adds a marker, exposes alternate emoji choices and removes it on the medium real chat fixture', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.emoji.base);
 
     const targetMessage = getRenderedMessage(fixturePage, 1);
     await targetMessage.hover();
@@ -50,7 +51,7 @@ test.describe('emoji marker module', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-long');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.emoji.denseList);
 
     for (const index of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       const message = getRenderedMessage(fixturePage, index);

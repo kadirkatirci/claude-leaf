@@ -1,12 +1,13 @@
 import { assertNoPageErrors, openFixture, test, expect } from './support/extensionTest.js';
+import { REAL_CHAT_FIXTURES, SYNTHETIC_CHAT_FIXTURES } from './support/chatFixtures.js';
 
 test.describe('fixture contracts', () => {
   const cases = [
-    ['chat-real-short', 'conversation', true, 'sanitized_html'],
-    ['chat-real-medium', 'conversation', true, 'sanitized_html'],
-    ['chat-real-long', 'conversation', true, 'sanitized_html'],
-    ['chat-streaming', 'conversation', true, 'seed'],
-    ['chat-edited-thread', 'conversation', true, 'seed'],
+    [REAL_CHAT_FIXTURES.short, 'conversation', true, 'sanitized_html'],
+    [REAL_CHAT_FIXTURES.medium, 'conversation', true, 'sanitized_html'],
+    [REAL_CHAT_FIXTURES.long, 'conversation', true, 'sanitized_html'],
+    [SYNTHETIC_CHAT_FIXTURES.streaming, 'conversation', true, 'seed'],
+    [SYNTHETIC_CHAT_FIXTURES.editedThread, 'conversation', true, 'seed'],
   ];
 
   for (const [fixtureId, expectedPageType, expectsNav, expectedSourceMode] of cases) {
@@ -31,7 +32,7 @@ test.describe('fixture contracts', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-streaming');
+    await openFixture(fixturePage, harnessPage, SYNTHETIC_CHAT_FIXTURES.streaming);
 
     await fixturePage.evaluate(() => window.__claudeFixture.finishStreaming(6));
     await fixturePage.waitForTimeout(400);
@@ -46,7 +47,7 @@ test.describe('fixture contracts', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, REAL_CHAT_FIXTURES.medium);
 
     const helperState = await fixturePage.evaluate(() => ({
       sourceMode: window.__claudeFixture.getState().meta.sourceMode,

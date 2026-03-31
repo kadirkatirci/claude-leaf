@@ -68,6 +68,8 @@ Playwright suite’i gerçek unpacked extension’ı, deterministik `claude.ai` 
 - Browser harness canlı ağı varsayılan olarak kapatır; yalnız commitlenmiş fixture asset’leri `https://claude.ai/...` üzerinden servis edilir.
 - Görsel snapshot’lar için local IBM Plex font dosyaları repoda tutulur.
 
+Tam chat-only operatör ve geliştirici akışı için [docs/CHAT_TEST_WORKFLOW.tr.md](docs/CHAT_TEST_WORKFLOW.tr.md) dosyasına bakın.
+
 Commitlenen ana fixture seti artık yalnız chat odaklıdır:
 
 - `short` → `chat-real-short`

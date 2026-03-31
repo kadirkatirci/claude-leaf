@@ -157,6 +157,8 @@ The Playwright suite runs the real unpacked extension against deterministic `cla
 - The browser test harness blocks live `http/https` traffic by default and only serves committed fixture assets from `https://claude.ai/...`.
 - Visual baselines use bundled local IBM Plex fonts so snapshots stay stable across machines and CI.
 
+For the full chat-only operator and developer workflow, see [docs/CHAT_TEST_WORKFLOW.md](docs/CHAT_TEST_WORKFLOW.md).
+
 Run the full browser suite with:
 
 ```bash

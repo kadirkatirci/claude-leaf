@@ -7,6 +7,7 @@ import {
   DEFAULT_VIEWPORT,
   NARROW_VIEWPORT,
 } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('popup sync', () => {
   for (const viewport of [DEFAULT_VIEWPORT, NARROW_VIEWPORT]) {
@@ -18,7 +19,7 @@ test.describe('popup sync', () => {
       const settings = cloneDefaultSettings();
       settings.navigation.showFloatingUI = true;
 
-      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-short', {
+      const { tabId } = await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.popup.base, {
         settings,
         viewport,
       });
@@ -75,9 +76,14 @@ test.describe('popup sync', () => {
     const settings = cloneDefaultSettings();
     settings.navigation.showFloatingUI = true;
 
-    const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-long', {
-      settings,
-    });
+    const { tabId } = await openFixture(
+      fixturePage,
+      harnessPage,
+      CHAT_TEST_SURFACES.popup.persistence,
+      {
+        settings,
+      }
+    );
     await fixturePage.locator('#claude-nav-next').click();
     await fixturePage.waitForTimeout(350);
     await fixturePage.locator('#claude-nav-next').click();

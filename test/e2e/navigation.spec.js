@@ -8,6 +8,7 @@ import {
   DEFAULT_VIEWPORT,
   NARROW_VIEWPORT,
 } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('navigation module', () => {
   const viewports = [DEFAULT_VIEWPORT, NARROW_VIEWPORT];
@@ -17,7 +18,9 @@ test.describe('navigation module', () => {
       fixturePage,
       harnessPage,
     }) => {
-      await openFixture(fixturePage, harnessPage, 'chat-real-long', { viewport });
+      await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.navigation.thread, {
+        viewport,
+      });
       await fixturePage.waitForTimeout(800);
 
       const counter = fixturePage.locator('#claude-nav-counter');
@@ -61,10 +64,15 @@ test.describe('navigation module', () => {
       const settings = cloneDefaultSettings();
       settings.navigation.showFloatingUI = true;
 
-      const { tabId } = await openFixture(fixturePage, harnessPage, 'chat-real-long', {
-        settings,
-        viewport,
-      });
+      const { tabId } = await openFixture(
+        fixturePage,
+        harnessPage,
+        CHAT_TEST_SURFACES.navigation.thread,
+        {
+          settings,
+          viewport,
+        }
+      );
 
       const counter = fixturePage.locator('#claude-nav-counter');
       await fixturePage.locator('#claude-nav-next').click();
@@ -103,7 +111,9 @@ test.describe('navigation module', () => {
       fixturePage,
       harnessPage,
     }) => {
-      await openFixture(fixturePage, harnessPage, 'chat-real-short', { viewport });
+      await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.navigation.keyboard, {
+        viewport,
+      });
       await fixturePage.waitForTimeout(800);
 
       const counter = fixturePage.locator('#claude-nav-counter');

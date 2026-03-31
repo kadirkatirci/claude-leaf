@@ -5,13 +5,14 @@ import {
   test,
   expect,
 } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('bookmark module', () => {
   test('adds a bookmark, injects sidebar entry, navigates back to it, and removes it', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-short');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.bookmarks.base);
 
     const targetMessage = getRenderedMessage(fixturePage, 2);
     await targetMessage.hover();
@@ -52,7 +53,7 @@ test.describe('bookmark module', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.bookmarks.keyboard);
 
     const firstMessage = getRenderedMessage(fixturePage, 0);
     await firstMessage.hover();
@@ -69,7 +70,7 @@ test.describe('bookmark module', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-long');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.bookmarks.denseList);
 
     for (const index of [0, 2, 4, 6, 8, 10, 12, 14]) {
       const message = getRenderedMessage(fixturePage, index);

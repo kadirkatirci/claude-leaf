@@ -1,18 +1,19 @@
 import { getRenderedMessage, openFixture, test, expect } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('targeted visual baselines', () => {
   test('floating panel baseline on the short real chat fixture', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-short');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.visuals.nav);
     await expect(fixturePage.locator('#claude-nav-container')).toHaveScreenshot(
       'nav-panel-real-short.png'
     );
   });
 
   test('bookmark panel baseline', async ({ fixturePage, harnessPage }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-short');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.visuals.bookmarks);
     const firstMessage = getRenderedMessage(fixturePage, 0);
     await firstMessage.hover();
     await firstMessage.locator('.claude-bookmark-btn').click();
@@ -24,7 +25,7 @@ test.describe('targeted visual baselines', () => {
   });
 
   test('marker panel baseline', async ({ fixturePage, harnessPage }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.visuals.marker);
     const firstMessage = getRenderedMessage(fixturePage, 1);
     await firstMessage.hover();
     const markerButton = firstMessage.locator('.emoji-marker-btn');
@@ -38,7 +39,7 @@ test.describe('targeted visual baselines', () => {
   });
 
   test('edit panel and modal baselines', async ({ fixturePage, harnessPage }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.visuals.edit);
     await fixturePage.locator('#claude-edit-fixed-btn').click();
     await expect(fixturePage.locator('#claude-edit-panel')).toHaveScreenshot(
       'edit-panel-real-medium.png'

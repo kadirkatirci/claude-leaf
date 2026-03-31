@@ -1,11 +1,12 @@
 import { assertNoPageErrors, openFixture, test, expect } from './support/extensionTest.js';
+import { CHAT_TEST_SURFACES } from './support/chatFixtures.js';
 
 test.describe('edit history module', () => {
   test('renders edit badges, modal and branch map on the medium real chat fixture', async ({
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-medium');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.natural);
 
     const badges = fixturePage.locator('.claude-edit-badge');
     await expect(badges).toHaveCount(2);
@@ -34,7 +35,7 @@ test.describe('edit history module', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-real-long');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.dense);
 
     await expect(fixturePage.locator('.claude-edit-badge')).toHaveCount(3);
     await fixturePage.locator('#claude-edit-fixed-btn').click();
@@ -50,7 +51,7 @@ test.describe('edit history module', () => {
   });
 
   test('reacts to synthetic inline edit sessions', async ({ fixturePage, harnessPage }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-edited-thread');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.controlled);
 
     const opened = await fixturePage.evaluate(() =>
       window.__claudeFixture.openEditForm(
@@ -80,7 +81,7 @@ test.describe('edit history module', () => {
     fixturePage,
     harnessPage,
   }) => {
-    await openFixture(fixturePage, harnessPage, 'chat-edited-thread');
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.controlled);
 
     const target = fixturePage.locator('[data-edit-container-id="edit-index-0"]');
     const originalVersion = await target
