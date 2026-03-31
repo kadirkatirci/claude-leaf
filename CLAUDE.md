@@ -25,20 +25,70 @@ A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with 
 ## Development Commands
 
 ```bash
-npm install        # Install dependencies
-npm run build      # Build for production (creates dist/content.bundle.js)
-npm run watch      # Watch mode for development
-npm run dev        # Alias for watch mode
-npm run lint       # Run ESLint
-npm run lint:fix   # Run ESLint with auto-fix
-npm run format     # Format code with Prettier
+npm install                  # Install dependencies
+npm run build                # Build for production (creates dist/content.bundle.js)
+npm run watch                # Watch mode for development
+npm run dev                  # Alias for watch mode
+npm test                     # Node/JSDOM contracts + smoke tests
+npm run test:e2e            # Playwright fixture E2E suite
+npm run test:e2e:ui         # Playwright UI mode for fixture E2E
+npm run live:refresh-profile # Clone the real Chrome Test profile for live smoke/capture
+npm run test:e2e:live       # Read-only live Claude smoke on configured chat targets
+npm run test:e2e:live:modules # Live smoke plus module attach checks if extension is installed in Test
+npm run test:e2e:live:deep  # Single-chat deep smoke on the configured live long chat
+npm run fixtures:capture    # Capture a named live chat target into ignored raw fixture source
+npm run fixtures:sanitize   # Sanitize live capture output into committed fixture form
+npm run fixtures:refresh    # Rebuild committed fixture assets from sanitized sources
+npm run lint                # Run ESLint
+npm run lint:fix            # Run ESLint with auto-fix
+npm run format              # Format code with Prettier
 ```
 
-### Testing the Extension
-1. Run `npm run build` or `npm run watch`
-2. Open `chrome://extensions` with Developer mode enabled
-3. Click "Load unpacked" and select this folder
-4. Navigate to https://claude.ai to test
+### Testing Strategy
+
+The repository is now **chat-first** for testing. Treat `claude.ai/chat/...` as the
+only primary browser test surface.
+
+There are two test layers:
+
+1. **Fixture E2E**
+   - Deterministic Playwright suite using committed sanitized chat fixtures
+   - Main gate for behavior, UX, popup sync, shortcuts, and visual regression
+   - Run with `npm run test:e2e`
+2. **Live smoke and capture**
+   - Uses the real Google Chrome `Test` profile, but only through a cloned local profile
+   - Read-only checks against real short / medium / long Claude chats
+   - Used to detect DOM drift and refresh fixture sources
+
+Default operator flow:
+
+1. Close Google Chrome completely.
+2. Run `npm run live:refresh-profile`
+3. Run `npm run test:e2e:live`
+4. If Claude Leaf is already installed in the Chrome `Test` profile, run `npm run test:e2e:live:deep`
+5. Run `npm test`
+6. Run `npm run test:e2e`
+
+If live smoke reports drift:
+
+1. Run `npm run fixtures:capture -- --target short`
+2. Run `npm run fixtures:capture -- --target medium`
+3. Run `npm run fixtures:capture -- --target long`
+4. Run `npm run fixtures:sanitize`
+5. Run `npm run fixtures:refresh`
+6. Re-run `npm run test:e2e`
+
+Important constraints:
+
+- Live smoke is read-only and should not mutate Claude conversations.
+- Raw live chat URLs belong only in `.auth/live-chat-targets.json`, which stays ignored.
+- Official Google Chrome 137+ no longer honors `--load-extension` in branded automation builds.
+  `npm run test:e2e:live:modules` and `npm run test:e2e:live:deep` therefore require a one-time
+  manual "Load unpacked" install in the Chrome `Test` profile.
+- Headless is appropriate for fixture E2E. Live Claude smoke should stay headed because headless
+  is more likely to trigger Cloudflare challenges.
+
+See [docs/CHAT_TEST_WORKFLOW.md](docs/CHAT_TEST_WORKFLOW.md) for the full operator workflow.
 
 ### Standalone Guardian Tool
 
@@ -64,6 +114,10 @@ The project uses Husky + lint-staged for pre-commit validation:
 
 ### Directory Structure
 ```
+docs/
+└── CHAT_TEST_WORKFLOW.md   # Chat-only operator and developer workflow
+scripts/
+└── fixtures/               # Live profile refresh, capture, sanitize, fixture refresh
 src/
 ├── content.js              # Entry point (loads NavigationInterceptor first!)
 ├── App.js                  # Main application manager
@@ -106,6 +160,12 @@ src/
 ├── components/             # UI components
 │   ├── primitives/         # Basic UI elements
 │   └── theme/              # Theme utilities
+test/
+├── e2e/                    # Deterministic Playwright fixture suite
+├── e2e-live/               # Real Chrome Test profile smoke suite
+├── fixtures/claude/        # Committed sanitized chat fixtures
+├── fixtures-source/claude/ # Ignored raw live captures
+└── ...
 └── tools/
     └── claude-web-guardian/ # Standalone monitoring extension
 ```
@@ -395,9 +455,10 @@ trackPerfScan({
 ## Common Tasks
 
 ### Adding a New Setting
-1. Add default value in `src/core/SettingsCache.js` → `getDefaults()`
-2. Add to popup UI in `popup/popup.html` and `popup/popup.js`
-3. Use in module: `this.getSetting('yourSetting')`
+1. Add the default value in `src/config/defaultSettings.js`
+2. Ensure `SettingsCache` and popup state continue to read from the shared default settings source
+3. Add to popup UI in `popup/popup.html` and `popup/popup.js`
+4. Use in module: `this.getSetting('yourSetting')`
 
 ### Adding a New Store
 
