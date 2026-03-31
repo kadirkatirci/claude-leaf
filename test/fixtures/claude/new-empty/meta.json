@@ -1,0 +1,18 @@
+{
+  "id": "new-empty",
+  "route": "/new",
+  "pageType": "new_chat",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": ["contracts", "popup-sync"],
+  "seedProfile": "new-empty",
+  "visual": false,
+  "notes": "Empty Claude composer route used for no-op and route detection coverage."
+}

@@ -6,6 +6,7 @@
 const WELCOME_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/welcome';
 const CHANGELOG_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/changelog';
 const CHANGELOG_SOURCE_UPDATE = 'extension-update';
+const FIXTURE_HARNESS_PATH = 'test-support/playwright/extension-harness.html';
 
 // GA4 Measurement Protocol (background-only, no content access)
 const GA4_MEASUREMENT_ID = 'G-75M7YXJ9X7';
@@ -129,9 +130,24 @@ const ALLOWED_PARAMS = new Set([
 let analyticsEnabledCache = null;
 let analyticsEnabledCacheTime = 0;
 const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
+let fixtureAutomationModePromise = null;
 
 function openTab(url) {
   chrome.tabs.create({ url });
+}
+
+async function isFixtureAutomationMode() {
+  if (typeof fetch !== 'function' || typeof chrome.runtime?.getURL !== 'function') {
+    return false;
+  }
+
+  if (!fixtureAutomationModePromise) {
+    fixtureAutomationModePromise = fetch(chrome.runtime.getURL(FIXTURE_HARNESS_PATH))
+      .then(response => response.ok)
+      .catch(() => false);
+  }
+
+  return fixtureAutomationModePromise;
 }
 
 function buildChangelogUrl(previousVersion, currentVersion) {
@@ -232,6 +248,10 @@ async function sendAnalyticsEvent(name, params) {
     return;
   }
 
+  if (await isFixtureAutomationMode()) {
+    return;
+  }
+
   if (!(await isAnalyticsEnabled())) {
     return;
   }
@@ -280,16 +300,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // Open welcome page on first installation, changelog on real version updates
 chrome.runtime.onInstalled.addListener(details => {
-  if (details.reason === 'install') {
-    openTab(WELCOME_URL);
-  }
-
-  if (details.reason === 'update') {
-    const currentVersion = chrome.runtime.getManifest().version;
-    if (details.previousVersion && details.previousVersion !== currentVersion) {
-      openTab(buildChangelogUrl(details.previousVersion, currentVersion));
+  void isFixtureAutomationMode().then(isFixtureRun => {
+    if (isFixtureRun) {
+      return;
     }
-  }
+
+    if (details.reason === 'install') {
+      openTab(WELCOME_URL);
+    }
+
+    if (details.reason === 'update') {
+      const currentVersion = chrome.runtime.getManifest().version;
+      if (details.previousVersion && details.previousVersion !== currentVersion) {
+        openTab(buildChangelogUrl(details.previousVersion, currentVersion));
+      }
+    }
+  });
 });
 
 // Chrome already downloads updates automatically. Reload only after

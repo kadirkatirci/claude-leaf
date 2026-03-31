@@ -50,20 +50,22 @@ function loadBackgroundRuntime(manifestVersion = '1.0.0') {
   return { createdTabs, listeners };
 }
 
-test('opens changelog with update analytics query params on real version updates', () => {
+test('opens changelog with update analytics query params on real version updates', async () => {
   const { createdTabs, listeners } = loadBackgroundRuntime('1.0.0');
 
   listeners.onInstalled({ reason: 'update', previousVersion: '0.9.5' });
+  await Promise.resolve();
 
   assert.deepEqual(createdTabs, [
     'https://www.tedaitesnim.com/extensions/claude-extension/changelog?source=extension-update&from=0.9.5&to=1.0.0',
   ]);
 });
 
-test('does not open changelog when previous version matches current version', () => {
+test('does not open changelog when previous version matches current version', async () => {
   const { createdTabs, listeners } = loadBackgroundRuntime('1.0.0');
 
   listeners.onInstalled({ reason: 'update', previousVersion: '1.0.0' });
+  await Promise.resolve();
 
   assert.deepEqual(createdTabs, []);
 });

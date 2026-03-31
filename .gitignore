@@ -16,3 +16,9 @@ popup/devConfig.json
 
 # Development notes (not needed for distribution)
 refactor-notes/
+
+# Playwright / fixture automation
+.auth/
+playwright-report/
+test-results/
+test/fixtures-source/claude/

@@ -1,0 +1,18 @@
+{
+  "id": "chat-long-response",
+  "route": "/chat/fixture-long-response",
+  "pageType": "conversation",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": ["navigation", "contentFolding-prep", "visual"],
+  "seedProfile": "chat-long-response",
+  "visual": false,
+  "notes": "Long-form response with headings, code and quote blocks for dense UX coverage."
+}

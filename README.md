@@ -139,10 +139,62 @@ Present but dev-disabled:
 ```bash
 npm run dev      # Watch mode with auto-rebuild
 npm run build    # Production build
+npm test         # Node/JSDOM contracts + smoke tests
+npm run test:e2e # Playwright fixture E2E suite
 npm run lint     # Run ESLint
 npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
 ```
+
+## Fixture E2E
+
+The Playwright suite runs the real unpacked extension against deterministic `claude.ai` fixtures.
+
+- `seed` fixtures are mutable interaction hosts for navigation, bookmarks, markers, and edit-history flows.
+- `sanitized_html` fixtures are read-only DOM drift fixtures sourced from live Claude captures.
+- The browser test harness blocks live `http/https` traffic by default and only serves committed fixture assets from `https://claude.ai/...`.
+- Visual baselines use bundled local IBM Plex fonts so snapshots stay stable across machines and CI.
+
+Run the full browser suite with:
+
+```bash
+npm run test:e2e
+```
+
+Open the Playwright UI when iterating locally:
+
+```bash
+npm run test:e2e:ui
+```
+
+### Refreshing Fixtures
+
+Use the fixture pipeline when Claude DOM contracts drift:
+
+1. Capture a live authenticated page into the ignored source area:
+
+   ```bash
+   npm run fixtures:capture -- --id chat-sidebar-rich --route /chat/example-thread
+   ```
+
+2. Sanitize the capture into a committed fixture:
+
+   ```bash
+   npm run fixtures:sanitize -- --id chat-sidebar-rich --source chat-sidebar-rich --route /chat/example-thread --pageType conversation
+   ```
+
+3. Regenerate all fixture entry pages and validate metadata consistency:
+
+   ```bash
+   npm run fixtures:refresh
+   ```
+
+Rules enforced by `fixtures:refresh`:
+
+- every fixture must have a unique route
+- `seed` fixtures must declare a `seedProfile`
+- `sanitized_html` fixtures must include `sanitized-source.html`
+- `sanitized_html` fixtures are read-only with `helpers.mutable=false`
 
 ## Release
 
@@ -164,6 +216,8 @@ This repository also contains a separate unpacked extension at `tools/claude-web
 - It watches live `claude.ai` routes and selector contracts.
 - It auto-runs on monitored page changes, keeps a heartbeat fallback, and sends up to three desktop alerts for new failures.
 - It ignores `https://claude.ai/code/...` routes.
+- It is the live canary layer for authenticated/manual checks, not a pull-request gate.
+- Use it when you need to spot selector drift before refreshing sanitized fixtures.
 
 To use it locally:
 
@@ -171,6 +225,12 @@ To use it locally:
 2. Enable `Developer mode`
 3. Click `Load unpacked`
 4. Select `tools/claude-web-guardian`
+
+Recommended canary workflow:
+
+1. Keep the fixture suite (`npm run test:e2e`) as the fast CI gate.
+2. Use `Claude Web Guardian` manually or on your own nightly browser profile against a real logged-in Claude session.
+3. If Guardian reports drift, capture a fresh fixture, sanitize it, and rerun the local Playwright suite before changing production selectors.
 
 ### Project Structure
 

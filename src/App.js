@@ -656,6 +656,17 @@ class ClaudeProductivityApp {
         return true;
       }
 
+      if (message.type === 'CL_TEST_GET_STATE') {
+        sendResponse({
+          ready: this.initialized,
+          initializing: this.initializing,
+          initStatus: this.initState.status,
+          activeModules: Array.from(this.modules.keys()),
+          navigation: window.__navigationInterceptor?.getState?.() || null,
+        });
+        return false;
+      }
+
       return false;
     });
   }

@@ -28,11 +28,16 @@
     "release": "./release.sh",
     "watch": "npm run build:css && rollup -c -w",
     "dev": "npm run build:css && rollup -c -w",
-    "test": "node --test",
+    "test": "node --test test/**/*.test.js",
+    "test:e2e": "npm run build && playwright test -c playwright.config.js",
+    "test:e2e:ui": "npm run build && playwright test -c playwright.config.js --ui",
     "lint": "eslint src/ popup/ scripts/ test/ test-support/",
     "lint:fix": "eslint src/ popup/ --fix",
     "format": "prettier --write \"src/**/*.js\" \"popup/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"popup/**/*.js\"",
+    "fixtures:capture": "node scripts/fixtures/capture-live-page.mjs",
+    "fixtures:sanitize": "node scripts/fixtures/sanitize-capture.mjs",
+    "fixtures:refresh": "node scripts/fixtures/refresh-fixtures.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -42,6 +47,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",

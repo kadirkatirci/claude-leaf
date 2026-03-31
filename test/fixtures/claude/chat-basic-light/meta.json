@@ -1,0 +1,18 @@
+{
+  "id": "chat-basic-light",
+  "route": "/chat/fixture-basic-light",
+  "pageType": "conversation",
+  "theme": "light",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "seed",
+  "helpers": {
+    "mutable": true
+  },
+  "features": ["navigation", "bookmarks", "emojiMarkers", "visual"],
+  "seedProfile": "chat-basic-light",
+  "visual": true,
+  "notes": "Light theme conversation baseline for screenshot and regression checks."
+}

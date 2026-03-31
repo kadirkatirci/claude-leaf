@@ -1,0 +1,69 @@
+<div class="fixture-app">
+  <aside class="fixture-sidebar">
+    <div class="fixture-sidebar-header">
+      <h1>Claude</h1>
+      <p>Code workspace</p>
+    </div>
+    <nav aria-label="Sidebar">
+      <div class="flex flex-col px-2 pt-4 gap-px">
+        <section class="fixture-sidebar-section" data-section-name="Recent" data-collapsed="false">
+          <h3>Recent</h3>
+          <div class="fixture-sidebar-items flex flex-col px-2 gap-px">
+            <div class="relative group">
+              <a class="fixture-sidebar-link inline-flex items-center justify-center relative isolate shrink-0 can-focus select-none border-transparent transition font-base h-8 rounded-md px-3 min-w-[4rem] whitespace-nowrap !text-xs w-full !min-w-0 group py-1.5 rounded-lg px-4 !duration-75 overflow-hidden" href="/code/fixture-workspace" data-dd-action-name="sidebar-nav-item">
+                <div class="-translate-x-2 w-full flex flex-row items-center justify-start gap-3">
+                  <div class="flex items-center justify-center text-text-100"><div class="fixture-sidebar-bullet"></div></div>
+                  <span class="truncate text-sm whitespace-nowrap flex-1"><div class="opacity-100 transition-opacity ease-out duration-150">Workspace</div></span>
+                </div>
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </nav>
+  </aside>
+  <div class="fixture-main-shell">
+    <header class="fixture-topbar">
+      <div>
+        <h2>Claude Code workspace</h2>
+        <p>Sanitized non-conversation route for graceful degradation.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <div class="fixture-pill">Code route</div>
+        <div class="fixture-pill">Read only</div>
+      </div>
+    </header>
+    <main class="fixture-main" role="main" data-page-type="code_workspace">
+      <section class="fixture-code-shell">
+        <div class="fixture-code-card">
+          <h3 style="margin-top:0">Workspace</h3>
+          <pre><code>export async function verifyFixtureHarness(page) {
+  await page.goto('https://claude.ai/code/fixture-workspace');
+  return await page.evaluate(() =&gt; Boolean(window.__claudeFixture));
+}</code></pre>
+        </div>
+        <div class="fixture-code-card">
+          <h3 style="margin-top:0">Files</h3>
+          <ul style="margin:0;padding-left:18px">
+            <li>src/App.js</li>
+            <li>popup/popup.js</li>
+            <li>test/e2e/contracts.spec.js</li>
+            <li>test/fixtures/lib/runtime.js</li>
+          </ul>
+          <h4 style="margin-bottom:8px">Notes</h4>
+          <p style="margin:0 0 10px;color:var(--fixture-muted)">Conversation-only floating controls must stay hidden here.</p>
+          <p style="margin:0;color:var(--fixture-muted)">The page still runs on the real claude.ai origin for host and route checks.</p>
+        </div>
+      </section>
+      <section class="fixture-composer">
+        <textarea data-testid="prompt-input" placeholder="Ask Claude Code"></textarea>
+        <div class="fixture-composer-footer">
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <div class="fixture-pill">Workspace ready</div>
+          </div>
+          <button type="button" class="fixture-send">Send</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

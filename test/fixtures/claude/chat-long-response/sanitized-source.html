@@ -1,0 +1,111 @@
+<div class="fixture-app">
+  <aside class="fixture-sidebar">
+    <div class="fixture-sidebar-header">
+      <h1>Claude</h1>
+      <p>Sanitized long-response shell</p>
+    </div>
+    <nav aria-label="Sidebar">
+      <div class="flex flex-col px-2 pt-4 gap-px">
+        <section class="fixture-sidebar-section" data-section-name="Recent" data-collapsed="false">
+          <h3>Recent</h3>
+          <div class="fixture-sidebar-items flex flex-col px-2 gap-px">
+            <div class="relative group">
+              <a class="fixture-sidebar-link inline-flex items-center justify-center relative isolate shrink-0 can-focus select-none border-transparent transition font-base h-8 rounded-md px-3 min-w-[4rem] whitespace-nowrap !text-xs w-full !min-w-0 group py-1.5 rounded-lg px-4 !duration-75 overflow-hidden" href="/chat/fixture-long-response" data-dd-action-name="sidebar-nav-item">
+                <div class="-translate-x-2 w-full flex flex-row items-center justify-start gap-3">
+                  <div class="flex items-center justify-center text-text-100"><div class="fixture-sidebar-bullet"></div></div>
+                  <span class="truncate text-sm whitespace-nowrap flex-1"><div class="opacity-100 transition-opacity ease-out duration-150">Long response fixture</div></span>
+                </div>
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </nav>
+  </aside>
+  <div class="fixture-main-shell">
+    <header class="fixture-topbar">
+      <div>
+        <h2>Long response fixture</h2>
+        <p>Sanitized dense conversation for scroll and marker coverage.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <div class="fixture-pill">Long form</div>
+        <div class="fixture-pill">Read only</div>
+      </div>
+    </header>
+    <main class="fixture-main" role="main" data-page-type="conversation">
+      <section class="fixture-message-list" data-fixture-mount="messages" data-testid="messages">
+        <article class="fixture-message" data-test-render-count="1" data-testid="conversation-turn-1">
+          <div class="fixture-message-inner" style="--fixture-message-height:170px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">U</span><span>You</span></div></div>
+            <div class="fixture-user-message font-user-message" data-testid="user-message">Lay out the fixture architecture in a way that scales to UX regression testing.</div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="2" data-testid="conversation-turn-2">
+          <div class="fixture-message-inner" style="--fixture-message-height:520px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">C</span><span>Claude</span></div></div>
+            <div class="font-claude-message">
+              <h2>Fixture architecture</h2>
+              <p>The fixture layer should emulate the Claude DOM contracts your extension depends on while staying deterministic and reviewable.</p>
+              <h3>Recommended layers</h3>
+              <ol>
+                <li>Tiny selector contract tests.</li>
+                <li>Fixture-backed Playwright pages on claude.ai routes.</li>
+                <li>A live canary outside PR gating.</li>
+              </ol>
+              <pre><code class="language-json">{"id":"chat-long-response","route":"/chat/fixture-long-response","pageType":"conversation","sourceMode":"sanitized_html"}</code></pre>
+              <blockquote>The goal is not to clone Claude. The goal is to keep your extension honest.</blockquote>
+              <p>This longer answer also creates dense scroll behavior for floating controls, marker panels and screenshot stability.</p>
+            </div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="3" data-testid="conversation-turn-3">
+          <div class="fixture-message-inner" style="--fixture-message-height:160px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">U</span><span>You</span></div></div>
+            <div class="fixture-user-message font-user-message" data-testid="user-message">What should we do about narrow desktop widths?</div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="4" data-testid="conversation-turn-4">
+          <div class="fixture-message-inner" style="--fixture-message-height:260px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">C</span><span>Claude</span></div></div>
+            <div class="font-claude-message"><p>Keep a 1180px smoke check in the matrix so floating UI collisions show up before release.</p></div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="5" data-testid="conversation-turn-5">
+          <div class="fixture-message-inner" style="--fixture-message-height:170px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">U</span><span>You</span></div></div>
+            <div class="fixture-user-message font-user-message" data-testid="user-message">Should the refresh pipeline also validate metadata consistency?</div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="6" data-testid="conversation-turn-6">
+          <div class="fixture-message-inner" style="--fixture-message-height:260px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">C</span><span>Claude</span></div></div>
+            <div class="font-claude-message"><p>Yes. Route uniqueness, source mode, mutability and sanitized source presence should be checked during fixture refresh.</p></div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="7" data-testid="conversation-turn-7">
+          <div class="fixture-message-inner" style="--fixture-message-height:165px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">U</span><span>You</span></div></div>
+            <div class="fixture-user-message font-user-message" data-testid="user-message">And the live canary?</div>
+          </div>
+        </article>
+        <article class="fixture-message" data-test-render-count="8" data-testid="conversation-turn-8">
+          <div class="fixture-message-inner" style="--fixture-message-height:240px">
+            <div class="fixture-message-header"><div class="fixture-message-author"><span class="fixture-avatar">C</span><span>Claude</span></div></div>
+            <div class="font-claude-message"><p>Keep Claude Web Guardian as a manual or nightly signal source. It should not block PRs.</p></div>
+          </div>
+        </article>
+      </section>
+      <section class="fixture-composer">
+        <textarea data-testid="prompt-input" placeholder="Message Claude"></textarea>
+        <div class="fixture-composer-footer">
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <div class="fixture-pill">Artifacts on</div>
+            <div class="fixture-pill">Dense content</div>
+          </div>
+          <button type="button" class="fixture-send">Send</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Leaf Test Harness</title>
+    <style>
+      @font-face {
+        font-family: 'IBM Plex Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('../../test/fixtures/lib/fonts/ibm-plex-sans-400.ttf') format('truetype');
+      }
+
+      @font-face {
+        font-family: 'IBM Plex Sans';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('../../test/fixtures/lib/fonts/ibm-plex-sans-500.ttf') format('truetype');
+      }
+
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('../../test/fixtures/lib/fonts/ibm-plex-mono-400.ttf') format('truetype');
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #16120f;
+        color: #efe6d7;
+        font:
+          14px/1.5 'IBM Plex Sans',
+          'Segoe UI',
+          sans-serif;
+      }
+
+      code {
+        font-family:
+          'IBM Plex Mono',
+          monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Claude Leaf Test Harness</h1>
+    <p>This page exposes <code>window.__clLeafTestHarness</code> for Playwright.</p>
+    <script type="module" src="./extension-harness.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "id": "chat-streaming",
+  "route": "/chat/fixture-streaming",
+  "pageType": "conversation",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "seed",
+  "helpers": {
+    "mutable": true
+  },
+  "features": ["contracts", "navigation", "message-hub"],
+  "seedProfile": "chat-streaming",
+  "visual": false,
+  "notes": "Conversation with a streaming assistant message for mutation-driven refresh coverage."
+}

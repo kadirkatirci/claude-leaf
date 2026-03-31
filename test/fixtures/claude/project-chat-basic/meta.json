@@ -1,0 +1,18 @@
+{
+  "id": "project-chat-basic",
+  "route": "/project/fixture-roadmap/chat/fixture-project-chat",
+  "pageType": "project_chat",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": ["contracts", "navigation"],
+  "seedProfile": "project-chat-basic",
+  "visual": false,
+  "notes": "Project chat route to validate project conversation detection and module visibility."
+}

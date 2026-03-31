@@ -1,0 +1,18 @@
+{
+  "id": "chat-basic-dark",
+  "route": "/chat/fixture-basic-dark",
+  "pageType": "conversation",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "seed",
+  "helpers": {
+    "mutable": true
+  },
+  "features": ["navigation", "bookmarks", "emojiMarkers", "popup-sync"],
+  "seedProfile": "chat-basic-dark",
+  "visual": true,
+  "notes": "Primary dark conversation baseline for navigation, bookmarking and popup synchronization."
+}

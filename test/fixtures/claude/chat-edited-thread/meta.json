@@ -1,0 +1,18 @@
+{
+  "id": "chat-edited-thread",
+  "route": "/chat/fixture-edited-thread",
+  "pageType": "conversation",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "seed",
+  "helpers": {
+    "mutable": true
+  },
+  "features": ["editHistory", "visual", "contracts"],
+  "seedProfile": "chat-edited-thread",
+  "visual": true,
+  "notes": "Conversation with multiple edited prompts, version chips and retry buttons."
+}

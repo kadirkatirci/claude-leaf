@@ -28,6 +28,20 @@ const DataService = {
     });
   },
 
+  getTestOverrideTabId() {
+    try {
+      const value = new URLSearchParams(window.location.search).get('targetTabId');
+      if (!value) {
+        return null;
+      }
+
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  },
+
   /**
    * Initialize by loading store config
    */
@@ -88,6 +102,15 @@ const DataService = {
    * 3. Most recently accessed Claude tab
    */
   async findClaudeTab() {
+    const overrideTabId = this.getTestOverrideTabId();
+    if (overrideTabId !== null) {
+      const allTabs = await this.queryTabs({});
+      const overrideTab = allTabs.find(tab => tab.id === overrideTabId && this.isClaudeTab(tab));
+      if (overrideTab) {
+        return overrideTab;
+      }
+    }
+
     const currentWindowTabs = await this.queryTabs({ active: true, currentWindow: true });
     const activeCurrentWindowClaudeTab = currentWindowTabs.find(tab => this.isClaudeTab(tab));
     if (activeCurrentWindowClaudeTab) {

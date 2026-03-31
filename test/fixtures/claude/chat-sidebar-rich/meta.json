@@ -1,0 +1,18 @@
+{
+  "id": "chat-sidebar-rich",
+  "route": "/chat/fixture-sidebar-rich",
+  "pageType": "conversation",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": ["contracts", "bookmark-sidebar", "sidebarCollapse-prep"],
+  "seedProfile": "chat-sidebar-rich",
+  "visual": false,
+  "notes": "Conversation with a denser sidebar layout to exercise nav and sidebar selector variance."
+}

@@ -1,0 +1,18 @@
+{
+  "id": "code-workspace",
+  "route": "/code/fixture-workspace",
+  "pageType": "code_workspace",
+  "theme": "dark",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "sourceMode": "sanitized_html",
+  "helpers": {
+    "mutable": false
+  },
+  "features": ["contracts", "graceful-degradation"],
+  "seedProfile": "code-workspace",
+  "visual": false,
+  "notes": "Claude Code style workspace route where conversation-only modules must stay inert."
+}
