@@ -24,6 +24,7 @@ export const DEFAULT_CLONE_DIR = path.join(repoRoot, '.auth', 'chrome-test-live'
 export const DEFAULT_ARTIFACT_ROOT = path.join(repoRoot, '.auth', 'live-artifacts');
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 export const REQUIRED_CLAUDE_AUTH_SIGNALS = ['sessionKey', 'lastActiveOrg', 'routingHint'];
+export const DEFAULT_EXTENSION_NAME = 'Claude Leaf';
 
 const PROFILE_EXCLUDED_SEGMENTS = new Set([
   'Cache',
@@ -273,6 +274,75 @@ export async function cloneChromeProfile({
 
 export function getCloneMetadataPath(cloneDir = DEFAULT_CLONE_DIR) {
   return path.join(cloneDir, 'profile-meta.json');
+}
+
+export async function readProfilePreferences({
+  cloneDir = DEFAULT_CLONE_DIR,
+  profileDirectory,
+} = {}) {
+  if (!profileDirectory) {
+    throw new Error('readProfilePreferences requires profileDirectory');
+  }
+
+  const preferencesPath = path.join(cloneDir, profileDirectory, 'Preferences');
+  const raw = await fs.readFile(preferencesPath, 'utf8');
+  return JSON.parse(raw);
+}
+
+function normalizeComparablePath(value) {
+  return path.resolve(String(value || '')).replace(/\\/g, '/');
+}
+
+export function detectInstalledExtension(
+  preferences,
+  { extensionPath = repoRoot, extensionName = DEFAULT_EXTENSION_NAME } = {}
+) {
+  const settings = preferences?.extensions?.settings || {};
+  const expectedPath = normalizeComparablePath(extensionPath);
+
+  for (const [id, meta] of Object.entries(settings)) {
+    const candidatePath = meta?.path ? normalizeComparablePath(meta.path) : null;
+    const manifestName = meta?.manifest?.name || null;
+    const pathMatches = candidatePath === expectedPath;
+    const nameMatches = manifestName === extensionName;
+
+    if (!pathMatches && !nameMatches) {
+      continue;
+    }
+
+    const state = meta?.state ?? null;
+    const enabled = state === 1 || state === '1';
+
+    return {
+      installed: true,
+      enabled,
+      id,
+      path: candidatePath,
+      name: manifestName,
+      state,
+      location: meta?.location ?? null,
+    };
+  }
+
+  return {
+    installed: false,
+    enabled: false,
+    id: null,
+    path: null,
+    name: null,
+    state: null,
+    location: null,
+  };
+}
+
+export async function getInstalledExtension({
+  cloneDir = DEFAULT_CLONE_DIR,
+  profileDirectory,
+  extensionPath = repoRoot,
+  extensionName = DEFAULT_EXTENSION_NAME,
+} = {}) {
+  const preferences = await readProfilePreferences({ cloneDir, profileDirectory });
+  return detectInstalledExtension(preferences, { extensionPath, extensionName });
 }
 
 export function readClaudeCookieNames(cookiesDbPath, execFile = execFileSync) {

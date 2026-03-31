@@ -7,6 +7,7 @@ import path from 'node:path';
 import {
   assertChromeClosed,
   cloneChromeProfile,
+  detectInstalledExtension,
   evaluateAuthSignals,
   evaluateLiveRouteResult,
   parsePgrepOutput,
@@ -170,6 +171,56 @@ conn.close()
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
+});
+
+test('detectInstalledExtension finds the unpacked Claude Leaf install by path and state', () => {
+  const detected = detectInstalledExtension(
+    {
+      extensions: {
+        settings: {
+          abcdefghijklmnopabcdefghijklmnop: {
+            path: '/repo/claude-leaf',
+            state: 1,
+            location: 8,
+            manifest: {
+              name: 'Claude Leaf',
+            },
+          },
+        },
+      },
+    },
+    {
+      extensionPath: '/repo/claude-leaf',
+    }
+  );
+
+  assert.equal(detected.installed, true);
+  assert.equal(detected.enabled, true);
+  assert.equal(detected.id, 'abcdefghijklmnopabcdefghijklmnop');
+});
+
+test('detectInstalledExtension returns not installed when the profile lacks Claude Leaf', () => {
+  const detected = detectInstalledExtension(
+    {
+      extensions: {
+        settings: {
+          someotherextensionid: {
+            path: '/repo/other',
+            state: 1,
+            manifest: {
+              name: 'Other Extension',
+            },
+          },
+        },
+      },
+    },
+    {
+      extensionPath: '/repo/claude-leaf',
+    }
+  );
+
+  assert.equal(detected.installed, false);
+  assert.equal(detected.enabled, false);
 });
 
 test('evaluateLiveRouteResult uses route-specific readiness contracts', () => {

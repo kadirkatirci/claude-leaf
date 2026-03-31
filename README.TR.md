@@ -55,6 +55,7 @@ npm run test:e2e
 npm run test:e2e:ui
 npm run live:refresh-profile
 npm run test:e2e:live
+npm run test:e2e:live:modules
 ```
 
 Mevcut build içinde aktif modüller: Mesaj Navigasyonu, Yer İmleri, Emoji İşaretleyiciler ve Düzenleme Geçmişi.
@@ -113,6 +114,7 @@ Gerçek, login olunmuş Claude oturumu üzerinde lokal kontroller için kaynak p
 - Her canlı komuttan önce Google Chrome tamamen kapalı olmalı.
 - Otomasyon günlük profilinize doğrudan bağlanmaz; önce profil `.auth/chrome-test-live` altına klonlanır.
 - Canlı smoke akışı read-only’dir; `.auth/live-chat-targets.json` içindeki short / medium / long chat hedeflerini açar, message/edit kontratlarını doğrular, screenshot alır ve `.auth/live-artifacts/...` altında JSON raporu yazar.
+- `npm run test:e2e:live` her zaman route sağlığını doğrular. `npm run test:e2e:live:modules` ise ek olarak Claude Leaf UI yüzeylerini doğrular; bunun için eklentinin `Test` profilinde bir kez manuel yüklenmiş olması gerekir.
 - `fixtures:capture` da aynı klonlanmış canlı profil akışını kullanır.
 
 Önce private target dosyasını hazırlayın:
@@ -134,6 +136,22 @@ Canlı smoke suite’ini çalıştırmak için:
 ```bash
 npm run test:e2e:live
 ```
+
+Gerçek Chrome içinde modüllerin attach olduğunu da doğrulamak istiyorsanız, repoyu `Test` profiline bir kez manuel yükleyin:
+
+1. Google Chrome’u `Test` profili ile açın.
+2. `chrome://extensions` adresine gidin.
+3. Geliştirici modunu açın.
+4. `Paketlenmemiş öğe yükle` ile bu repo kökünü seçin.
+5. Chrome’u tamamen kapatın.
+
+Ardından şu komutu çalıştırın:
+
+```bash
+npm run test:e2e:live:modules
+```
+
+Bu ek kurulum gerekir; çünkü Chrome 137+ resmi Google Chrome build’leri otomasyonda `--load-extension` bayrağını artık dikkate almıyor. Route smoke ve capture ise bu kurulum olmadan da çalışır.
 
 Canlı fixture yenileme akışı artık şu sırayı izler:
 

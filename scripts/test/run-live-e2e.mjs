@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 function parseRunnerArgs(argv) {
   const forwarded = [];
   let headlessOverride = null;
+  let requireExtension = false;
 
   for (const arg of argv) {
     if (arg === '--headless') {
@@ -15,13 +16,18 @@ function parseRunnerArgs(argv) {
       continue;
     }
 
+    if (arg === '--require-extension') {
+      requireExtension = true;
+      continue;
+    }
+
     forwarded.push(arg);
   }
 
-  return { forwarded, headlessOverride };
+  return { forwarded, headlessOverride, requireExtension };
 }
 
-const { forwarded, headlessOverride } = parseRunnerArgs(process.argv.slice(2));
+const { forwarded, headlessOverride, requireExtension } = parseRunnerArgs(process.argv.slice(2));
 
 const child = spawn(
   'npx',
@@ -31,6 +37,7 @@ const child = spawn(
     env: {
       ...process.env,
       ...(headlessOverride ? { CLAUDE_LEAF_LIVE_HEADLESS: headlessOverride } : {}),
+      ...(requireExtension ? { CLAUDE_LEAF_LIVE_REQUIRE_EXTENSION: '1' } : {}),
     },
   }
 );

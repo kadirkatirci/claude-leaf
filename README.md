@@ -143,6 +143,7 @@ npm test         # Node/JSDOM contracts + smoke tests
 npm run test:e2e # Playwright fixture E2E suite
 npm run live:refresh-profile # Clone the real Chrome Test profile for local live smoke/capture
 npm run test:e2e:live # Read-only live Claude smoke against the cloned Test profile
+npm run test:e2e:live:modules # Live smoke plus module assertions when Claude Leaf is installed in Test
 npm run lint     # Run ESLint
 npm run lint:fix # Fix ESLint issues
 npm run format   # Format with Prettier
@@ -178,6 +179,7 @@ For authenticated local checks, use the real Google Chrome `Test` profile as the
 - Chrome must be fully closed before any live command.
 - The live pipeline clones the `Test` profile into `.auth/chrome-test-live` instead of automating your daily profile directly.
 - Live smoke is read-only: it opens the configured short, medium, and long `claude.ai/chat/...` targets, validates message/edit counts, writes screenshots, and stores a JSON report under `.auth/live-artifacts/...`.
+- `npm run test:e2e:live` always validates route health. `npm run test:e2e:live:modules` additionally validates Claude Leaf UI surfaces, but that requires one-time manual installation in the Chrome `Test` profile.
 - `fixtures:capture` uses the same cloned live profile workflow before visiting a named chat target.
 
 Configure your private live chat targets locally:
@@ -199,6 +201,22 @@ Run the authenticated live smoke suite:
 ```bash
 npm run test:e2e:live
 ```
+
+To validate real module attachment in live Chrome, install the repo once in the `Test` profile:
+
+1. Open Google Chrome with the `Test` profile.
+2. Visit `chrome://extensions`.
+3. Turn on Developer mode.
+4. Click Load unpacked and select this repo root.
+5. Close Chrome completely.
+
+Then run:
+
+```bash
+npm run test:e2e:live:modules
+```
+
+This extra setup is required because Chrome 137+ official branded builds no longer honor the `--load-extension` flag for local automation. Route smoke and capture still work without it.
 
 ### Refreshing Fixtures
 

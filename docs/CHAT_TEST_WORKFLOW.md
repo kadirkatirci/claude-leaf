@@ -120,6 +120,7 @@ Live smoke should answer:
 - does Claude still open these chats without login/challenge?
 - do basic message/edit counts still match expectations?
 - did the DOM drift enough that fixture refresh is needed?
+- if the Test profile already has Claude Leaf installed, do core live module surfaces still attach?
 
 Fixture E2E should answer:
 
@@ -128,3 +129,20 @@ Fixture E2E should answer:
 - do visuals still align in deterministic snapshots?
 
 Keep live smoke read-only. Keep deep behavior coverage in fixture E2E.
+
+## One-Time Setup for Live Module Smoke
+
+Official Google Chrome 137+ no longer loads unpacked extensions from
+`--load-extension` in branded builds. Because of that:
+
+- `npm run test:e2e:live` only guarantees route health and capture readiness
+- `npm run test:e2e:live:modules` requires Claude Leaf to already be installed
+  in the Chrome `Test` profile
+
+One-time setup:
+
+1. Open Google Chrome with the `Test` profile.
+2. Go to `chrome://extensions`.
+3. Enable Developer mode.
+4. Choose Load unpacked and select this repo root.
+5. Close Chrome completely.

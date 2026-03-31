@@ -120,6 +120,7 @@ Canlı smoke şu sorulara cevap verir:
 - Claude bu chat'leri login/challenge olmadan hâlâ açıyor mu?
 - temel message/edit sayıları beklenen aralıkta mı?
 - fixture yenilemek gerekecek kadar DOM drift oldu mu?
+- `Test` profilinde Claude Leaf kuruluysa temel canlı modül yüzeyleri attach oluyor mu?
 
 Fixture E2E şu sorulara cevap verir:
 
@@ -128,3 +129,20 @@ Fixture E2E şu sorulara cevap verir:
 - görsel hizalama deterministik snapshot'larda bozuldu mu?
 
 Canlı smoke read-only kalsın. Derin davranış kapsamı fixture E2E'de olsun.
+
+## Canlı Modül Smoke İçin Tek Seferlik Kurulum
+
+Resmi Google Chrome 137+ build'lerinde `--load-extension` ile unpacked
+extension yükleme artık çalışmıyor. Bu yüzden:
+
+- `npm run test:e2e:live` yalnız route sağlığı ve capture hazırlığını garanti eder
+- `npm run test:e2e:live:modules` için Claude Leaf'in Chrome `Test`
+  profilinde zaten kurulu olması gerekir
+
+Tek seferlik kurulum:
+
+1. Google Chrome'u `Test` profili ile açın.
+2. `chrome://extensions` adresine gidin.
+3. Geliştirici modunu açın.
+4. `Paketlenmemiş öğe yükle` ile bu repo kökünü seçin.
+5. Chrome'u tamamen kapatın.

@@ -8,9 +8,11 @@ import {
   DEFAULT_BROWSER_PATH,
   DEFAULT_CHROME_USER_DATA_DIR,
   DEFAULT_CLONE_DIR,
+  DEFAULT_EXTENSION_NAME,
   DEFAULT_PROFILE_NAME,
   DEFAULT_VIEWPORT,
   evaluateLiveRouteResult,
+  getInstalledExtension,
   launchLiveChrome,
   openExtensionHarness,
   parseBooleanFlag,
@@ -52,6 +54,10 @@ function resolveLiveHeadlessMode() {
   return parseBooleanFlag(process.env.CLAUDE_LEAF_LIVE_HEADLESS, false);
 }
 
+function resolveRequireExtensionMode() {
+  return parseBooleanFlag(process.env.CLAUDE_LEAF_LIVE_REQUIRE_EXTENSION, false);
+}
+
 export const test = base.extend({
   liveSession: [
     async ({}, use) => {
@@ -63,12 +69,18 @@ export const test = base.extend({
         browserPath: DEFAULT_BROWSER_PATH,
       });
 
+      const installedExtension = await getInstalledExtension({
+        cloneDir: cloneMetadata.cloneDir,
+        profileDirectory: cloneMetadata.profileDirectory,
+        extensionPath,
+        extensionName: DEFAULT_EXTENSION_NAME,
+      });
+
       const liveChrome = await launchLiveChrome({
         cloneDir: cloneMetadata.cloneDir,
         profileDirectory: cloneMetadata.profileDirectory,
         browserPath: cloneMetadata.browserPath,
         artifactDir,
-        loadExtensionPath: extensionPath,
         viewport: DEFAULT_VIEWPORT,
         headless: resolveLiveHeadlessMode(),
       });
@@ -83,6 +95,8 @@ export const test = base.extend({
           settings,
           artifactDir,
           cloneMetadata,
+          installedExtension,
+          requireExtension: resolveRequireExtensionMode(),
         });
       } finally {
         if (liveChrome.harnessPage && !liveChrome.harnessPage.isClosed()) {
