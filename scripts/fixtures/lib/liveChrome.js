@@ -69,6 +69,27 @@ export function parseArgs(argv) {
   return args;
 }
 
+export function parseBooleanFlag(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return defaultValue;
+}
+
 export function parseViewport(rawViewport) {
   if (!rawViewport) {
     return { ...DEFAULT_VIEWPORT };
@@ -466,6 +487,7 @@ export async function launchLiveChrome({
   artifactDir,
   loadExtensionPath = null,
   viewport = DEFAULT_VIEWPORT,
+  headless = false,
 } = {}) {
   if (!profileDirectory) {
     throw new Error('launchLiveChrome requires profileDirectory');
@@ -489,6 +511,10 @@ export async function launchLiveChrome({
     '--no-default-browser-check',
     '--disable-background-networking',
   ];
+
+  if (headless) {
+    args.push('--headless=new');
+  }
 
   if (loadExtensionPath) {
     args.push(`--disable-extensions-except=${loadExtensionPath}`);
@@ -520,6 +546,7 @@ export async function launchLiveChrome({
     remoteDebuggingPort,
     chromeLogPath,
     artifactDir: liveArtifactDir,
+    headless,
     async close() {
       await browser.close();
       await stopChromeProcess(chromeProcess);

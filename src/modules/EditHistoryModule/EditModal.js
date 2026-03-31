@@ -309,6 +309,7 @@ class EditModal {
       historyLabel.textContent = '📜 Saved Versions:';
 
       const historyList = DOMUtils.createElement('div');
+      historyList.id = 'claude-edit-history-list';
       historyList.className = 'flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1';
 
       const currentVersionParsed = this.parseVersionLabel(currentVersion);
@@ -320,6 +321,9 @@ class EditModal {
             ? itemVersionParsed.current === currentVersionParsed.current
             : item.versionLabel === currentVersion;
         const itemEl = DOMUtils.createElement('div');
+        itemEl.classList.add('claude-edit-history-item');
+        itemEl.dataset.versionLabel = item.versionLabel;
+        itemEl.dataset.currentVersion = isCurrent ? 'true' : 'false';
         itemEl.className = this.getHistoryItemClass(isCurrent);
 
         const header = DOMUtils.createElement('div');

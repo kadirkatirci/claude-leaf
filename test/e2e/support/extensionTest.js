@@ -16,6 +16,15 @@ const extensionPath = repoRoot;
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 export const NARROW_VIEWPORT = { width: 1180, height: 900 };
 
+function resolveHeadlessMode() {
+  const raw = process.env.CLAUDE_LEAF_HEADLESS;
+  if (raw === undefined) {
+    return !!process.env.CI;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+}
+
 function createErrorBucket(page) {
   const errors = [];
 
@@ -39,7 +48,7 @@ export const test = base.extend({
       const networkViolations = [];
       const context = await chromium.launchPersistentContext(userDataDir, {
         channel: 'chromium',
-        headless: !!process.env.CI,
+        headless: resolveHeadlessMode(),
         viewport: DEFAULT_VIEWPORT,
         args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
       });

@@ -13,6 +13,7 @@ import {
   evaluateLiveRouteResult,
   launchLiveChrome,
   openExtensionHarness,
+  parseBooleanFlag,
   refreshChromeProfileClone,
   waitForExtensionId,
   writeJson,
@@ -47,6 +48,10 @@ function createLiveSettings() {
   return settings;
 }
 
+function resolveLiveHeadlessMode() {
+  return parseBooleanFlag(process.env.CLAUDE_LEAF_LIVE_HEADLESS, false);
+}
+
 export const test = base.extend({
   liveSession: [
     async ({}, use) => {
@@ -65,6 +70,7 @@ export const test = base.extend({
         artifactDir,
         loadExtensionPath: extensionPath,
         viewport: DEFAULT_VIEWPORT,
+        headless: resolveLiveHeadlessMode(),
       });
 
       const settings = createLiveSettings();

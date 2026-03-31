@@ -160,6 +160,110 @@ test.describe('edit history module', () => {
     assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
   });
 
+  test('supports branch map hover tooltip, pan and zoom interactions', async ({
+    fixturePage,
+    harnessPage,
+  }) => {
+    await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.natural);
+
+    await fixturePage.locator('#claude-edit-fixed-btn').click();
+    const branchMapButton = fixturePage.locator(
+      '#claude-edit-panel button:has-text("Show Chat Branch Map")'
+    );
+    await branchMapButton.scrollIntoViewIfNeeded();
+    await branchMapButton.click({ force: true });
+
+    const svg = fixturePage.locator('#claude-branch-map-svg');
+    const mainGroup = fixturePage.locator('#claude-branch-map-main-group');
+    const tooltip = fixturePage.locator('#claude-branch-map-tooltip');
+    const firstNode = fixturePage.locator('[data-branch-node-id]').first();
+
+    await expect(svg).toBeVisible();
+    await expect(firstNode).toBeVisible();
+
+    await firstNode.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      node.dispatchEvent(
+        new MouseEvent('mouseenter', {
+          bubbles: true,
+          clientX: rect.left + 12,
+          clientY: rect.top + 12,
+        })
+      );
+      node.dispatchEvent(
+        new MouseEvent('mousemove', {
+          bubbles: true,
+          clientX: rect.left + 16,
+          clientY: rect.top + 16,
+        })
+      );
+    });
+    await expect(tooltip).toHaveCSS('opacity', '1');
+    await expect(tooltip).toContainText('Message #');
+
+    const transformBefore =
+      (await mainGroup.getAttribute('transform')) || 'translate(0, 0) scale(1)';
+    await svg.evaluate(svgElement => {
+      const rect = svgElement.getBoundingClientRect();
+      const startX = rect.left + 24;
+      const startY = rect.top + 24;
+      const endX = rect.left + 120;
+      const endY = rect.top + 90;
+
+      svgElement.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          clientX: startX,
+          clientY: startY,
+        })
+      );
+      document.dispatchEvent(
+        new MouseEvent('mousemove', {
+          bubbles: true,
+          clientX: endX,
+          clientY: endY,
+        })
+      );
+      document.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          clientX: endX,
+          clientY: endY,
+        })
+      );
+      svgElement.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          deltaY: -320,
+          clientX: rect.left + 60,
+          clientY: rect.top + 60,
+        })
+      );
+    });
+    await fixturePage.waitForTimeout(300);
+
+    const transformAfter =
+      (await mainGroup.getAttribute('transform')) || 'translate(0, 0) scale(1)';
+    expect(transformAfter).not.toEqual(transformBefore);
+    const scaleMatch = transformAfter.match(/scale\(([^)]+)\)/);
+    if (!scaleMatch) {
+      throw new Error(`Branch map transform did not include scale(): ${transformAfter}`);
+    }
+    expect(Number.parseFloat(scaleMatch[1])).toBeGreaterThan(1);
+
+    await firstNode.evaluate(node => {
+      node.dispatchEvent(
+        new MouseEvent('mouseleave', {
+          bubbles: true,
+        })
+      );
+    });
+    await expect(tooltip).toHaveCSS('opacity', '0');
+
+    assertNoPageErrors(fixturePage, ['ResizeObserver loop limit exceeded']);
+  });
+
   test('reacts to synthetic inline edit sessions', async ({ fixturePage, harnessPage }) => {
     await openFixture(fixturePage, harnessPage, CHAT_TEST_SURFACES.history.controlled);
 

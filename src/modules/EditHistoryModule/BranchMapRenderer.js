@@ -389,6 +389,7 @@ class BranchMapRenderer {
 
   createSVG(width, height) {
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.svg.id = 'claude-branch-map-svg';
     this.svg.setAttribute('width', '100%');
     this.svg.setAttribute('height', '100%');
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -398,6 +399,7 @@ class BranchMapRenderer {
     this.svg.style.minHeight = `${height}px`;
 
     this.mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    this.mainGroup.id = 'claude-branch-map-main-group';
     this.mainGroup.setAttribute('class', 'main-group');
     this.svg.appendChild(this.mainGroup);
     this.container.appendChild(this.svg);
@@ -408,6 +410,7 @@ class BranchMapRenderer {
    */
   createTooltip() {
     this.tooltip = document.createElement('div');
+    this.tooltip.id = 'claude-branch-map-tooltip';
     this.tooltip.className = 'branch-map-tooltip';
     Object.assign(this.tooltip.style, this.getElementStyles('tooltip'));
 
@@ -544,6 +547,9 @@ class BranchMapRenderer {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
     g.setAttribute('class', 'node');
+    g.setAttribute('data-branch-node-id', node.uniqueId);
+    g.setAttribute('data-branch-node-version', node.version);
+    g.setAttribute('data-branch-node-message-index', String(node.messageIndex));
     this.setNodeCursor(g);
 
     const color = this.colorMap.get(node.containerId) || '#6366f1';

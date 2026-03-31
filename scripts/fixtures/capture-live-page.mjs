@@ -10,6 +10,7 @@ import {
   DEFAULT_PROFILE_NAME,
   launchLiveChrome,
   parseArgs,
+  parseBooleanFlag,
   parseViewport,
   refreshChromeProfileClone,
   repoRoot,
@@ -31,6 +32,7 @@ if (!fixtureId || (!route && !targetSpec)) {
 const viewport = parseViewport(args.viewport);
 const outputDir = path.join(repoRoot, 'test', 'fixtures-source', 'claude', fixtureId);
 const targetUrl = targetSpec?.url || new URL(route, 'https://claude.ai').toString();
+const headless = parseBooleanFlag(args.headless ?? process.env.CLAUDE_LEAF_LIVE_HEADLESS, false);
 const artifactDir = await createArtifactRunDir({
   rootDir: args['artifact-root'] || DEFAULT_ARTIFACT_ROOT,
   label: `capture-${fixtureId}`,
@@ -51,6 +53,7 @@ const liveChrome = await launchLiveChrome({
   browserPath: cloneMetadata.browserPath,
   artifactDir,
   viewport,
+  headless,
 });
 
 const page = liveChrome.context.pages()[0] || (await liveChrome.context.newPage());
@@ -91,6 +94,7 @@ try {
         route,
         capturedAt: new Date().toISOString(),
         artifactDir,
+        headless,
         ...capture,
       },
       null,
