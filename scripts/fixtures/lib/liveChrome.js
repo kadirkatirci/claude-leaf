@@ -22,6 +22,7 @@ export const DEFAULT_CHROME_USER_DATA_DIR = path.join(
 export const DEFAULT_BROWSER_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 export const DEFAULT_CLONE_DIR = path.join(repoRoot, '.auth', 'chrome-test-live');
 export const DEFAULT_ARTIFACT_ROOT = path.join(repoRoot, '.auth', 'live-artifacts');
+export const DEFAULT_ARTIFACT_RUNS_TO_KEEP = 20;
 export const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 export const REQUIRED_CLAUDE_AUTH_SIGNALS = ['sessionKey', 'lastActiveOrg', 'routingHint'];
 export const DEFAULT_EXTENSION_NAME = 'Claude Leaf';
@@ -481,11 +482,43 @@ export async function refreshChromeProfileClone({
 export async function createArtifactRunDir({
   rootDir = DEFAULT_ARTIFACT_ROOT,
   label = 'live',
+  keepRuns = DEFAULT_ARTIFACT_RUNS_TO_KEEP,
 } = {}) {
+  await fs.mkdir(rootDir, { recursive: true });
+  await pruneArtifactRunDirs(rootDir, keepRuns - 1);
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const runDir = path.join(rootDir, `${timestamp}-${label}-${process.pid}`);
   await fs.mkdir(runDir, { recursive: true });
   return runDir;
+}
+
+export async function pruneArtifactRunDirs(rootDir, keepRuns = DEFAULT_ARTIFACT_RUNS_TO_KEEP) {
+  if (keepRuns < 0) {
+    return;
+  }
+
+  let entries = [];
+  try {
+    entries = await fs.readdir(rootDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  const runDirs = entries
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+
+  const excess = runDirs.length - keepRuns;
+  if (excess <= 0) {
+    return;
+  }
+
+  await Promise.all(
+    runDirs
+      .slice(0, excess)
+      .map(name => fs.rm(path.join(rootDir, name), { recursive: true, force: true }))
+  );
 }
 
 export function getFreePort() {

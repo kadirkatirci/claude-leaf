@@ -11,6 +11,7 @@ import {
   evaluateAuthSignals,
   evaluateLiveRouteResult,
   parsePgrepOutput,
+  pruneArtifactRunDirs,
   readClaudeCookieNames,
   resolveProfileDirectoryFromLocalState,
   shouldCopyProfileRelativePath,
@@ -306,4 +307,24 @@ test('evaluateLiveRouteResult uses route-specific readiness contracts', () => {
     brokenNew.checks.some(check => check.id === 'composer' && check.pass === false),
     true
   );
+});
+
+test('pruneArtifactRunDirs keeps only the newest run directories', async () => {
+  const rootDir = createTempDir('claude-live-artifacts-');
+
+  try {
+    mkdirSync(path.join(rootDir, '2026-03-31T10-00-00-000Z-smoke-1'));
+    mkdirSync(path.join(rootDir, '2026-03-31T10-01-00-000Z-smoke-2'));
+    mkdirSync(path.join(rootDir, '2026-03-31T10-02-00-000Z-smoke-3'));
+    writeFileSync(path.join(rootDir, 'README.txt'), 'keep file');
+
+    await pruneArtifactRunDirs(rootDir, 2);
+
+    assert.equal(existsSync(path.join(rootDir, '2026-03-31T10-00-00-000Z-smoke-1')), false);
+    assert.equal(existsSync(path.join(rootDir, '2026-03-31T10-01-00-000Z-smoke-2')), true);
+    assert.equal(existsSync(path.join(rootDir, '2026-03-31T10-02-00-000Z-smoke-3')), true);
+    assert.equal(existsSync(path.join(rootDir, 'README.txt')), true);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });
