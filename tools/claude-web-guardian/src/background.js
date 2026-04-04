@@ -360,6 +360,13 @@ async function updateBadge(report) {
   });
 }
 
+async function clearBadge(message = 'No Claude tab available') {
+  await chrome.action.setBadgeText({ text: '' });
+  await chrome.action.setTitle({
+    title: `Claude Web Guardian\nStatus: idle\n${message}`,
+  });
+}
+
 async function sendBridgePayloadIfEnabled(report) {
   const settings = await getSettings();
   if (!settings.bridge?.enabled || !settings.bridge?.webhookUrl) {
@@ -433,22 +440,7 @@ async function runCanaryForTab(tab, reason = 'manual', monitorMeta = null) {
 async function runCanary(reason = 'manual') {
   const tabs = await getClaudeTabs();
   if (tabs.length === 0) {
-    const noTabReport = {
-      timestamp: Date.now(),
-      reason,
-      tabId: null,
-      url: null,
-      checks: [
-        {
-          id: 'tab_available',
-          pass: false,
-          severity: 'high',
-          message: 'No active Claude tab found',
-        },
-      ],
-    };
-    await appendReport(noTabReport);
-    await updateBadge(noTabReport);
+    await clearBadge();
     return { ok: false, reason: 'no_tab' };
   }
 

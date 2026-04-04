@@ -113,7 +113,11 @@ $('runNowBtn').addEventListener('click', async () => {
   const tab = await findClaudeTab();
   const result = await sendMessage('CWG_RUN_NOW', { tabId: tab?.id || null });
   if (!result?.ok) {
-    setStatus(`Run failed: ${result?.reason || result?.error || 'unknown'}`, 'error');
+    if (result?.reason === 'no_tab') {
+      setStatus('Run skipped: no Claude tab available', 'error');
+    } else {
+      setStatus(`Run failed: ${result?.reason || result?.error || 'unknown'}`, 'error');
+    }
   } else {
     setStatus('Run completed', 'ok');
   }
@@ -128,7 +132,7 @@ $('exportBtn').addEventListener('click', async () => {
 $('captureFixtureBtn').addEventListener('click', async () => {
   const tab = await findClaudeTab();
   if (!tab?.id) {
-    setStatus('No Claude tab found for fixture capture', 'error');
+    setStatus('No Claude tab available for fixture capture', 'error');
     return;
   }
 

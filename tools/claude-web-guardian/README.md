@@ -32,9 +32,9 @@ A standalone Chrome extension project for **live-page canary monitoring** on `cl
   - Theme
   - Routes
 - Optional webhook bridge
-- Run canary now
+- Run canary now on the active Claude tab when present, otherwise the first available Claude tab
 - Export reports JSON
-- Capture fixture (sanitized) from active Claude tab
+- Capture fixture (sanitized) from the active Claude tab when present, otherwise the first available Claude tab
 
 ## Output format
 

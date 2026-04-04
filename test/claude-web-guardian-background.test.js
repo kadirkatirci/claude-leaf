@@ -26,8 +26,8 @@ const STORAGE_KEYS = {
 };`
 );
 
-function createChromeStub() {
-  return {
+function createChromeStub(overrides = {}) {
+  const chrome = {
     storage: {
       local: {
         get() {
@@ -87,11 +87,53 @@ function createChromeStub() {
       async update() {},
     },
   };
+
+  return {
+    ...chrome,
+    ...overrides,
+    storage: {
+      ...chrome.storage,
+      ...(overrides.storage || {}),
+      local: {
+        ...chrome.storage.local,
+        ...(overrides.storage?.local || {}),
+      },
+    },
+    alarms: {
+      ...chrome.alarms,
+      ...(overrides.alarms || {}),
+    },
+    tabs: {
+      ...chrome.tabs,
+      ...(overrides.tabs || {}),
+    },
+    action: {
+      ...chrome.action,
+      ...(overrides.action || {}),
+    },
+    runtime: {
+      ...chrome.runtime,
+      ...(overrides.runtime || {}),
+    },
+    webNavigation: {
+      ...chrome.webNavigation,
+      ...(overrides.webNavigation || {}),
+    },
+    notifications: {
+      ...chrome.notifications,
+      ...(overrides.notifications || {}),
+    },
+    windows: {
+      ...chrome.windows,
+      ...(overrides.windows || {}),
+    },
+  };
 }
 
-function loadGuardianBackgroundHelpers() {
+function loadGuardianBackgroundHelpers(chromeOverrides = {}) {
+  const chrome = createChromeStub(chromeOverrides);
   const context = vm.createContext({
-    chrome: createChromeStub(),
+    chrome,
     console,
     Date,
     URL,
@@ -108,12 +150,16 @@ this.__CWG_BG_TEST__ = {
   shouldScheduleFailureNotifications,
   buildFailureAlertPayload,
   buildFailureNotificationTitle,
-  buildFailureNotificationMessage
+  buildFailureNotificationMessage,
+  runCanary
 };`,
     { filename: 'claude-web-guardian-background.js' }
   ).runInContext(context);
 
-  return context.__CWG_BG_TEST__;
+  return {
+    ...context.__CWG_BG_TEST__,
+    chrome,
+  };
 }
 
 function createFailingReport(pathname = '/chat/test-thread') {
@@ -186,4 +232,38 @@ test('failure notification payload and message include path and failing checks',
   assert.match(message, /\/chat\/focus-me/);
   assert.match(message, /main_container/);
   assert.match(message, /message_nodes/);
+});
+
+test('runCanary skips history writes when no Claude tab exists', async () => {
+  const storageSetCalls = [];
+  const badgeTextCalls = [];
+  const titleCalls = [];
+  const { runCanary } = loadGuardianBackgroundHelpers({
+    storage: {
+      local: {
+        async set(value) {
+          storageSetCalls.push(value);
+        },
+      },
+    },
+    action: {
+      async setBadgeText(value) {
+        badgeTextCalls.push(value);
+      },
+      async setTitle(value) {
+        titleCalls.push(value);
+      },
+    },
+  });
+
+  const result = await runCanary('heartbeat');
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'no_tab');
+  assert.equal(storageSetCalls.length, 0);
+  assert.equal(badgeTextCalls.length, 1);
+  assert.equal(badgeTextCalls[0].text, '');
+  assert.equal(titleCalls.length, 1);
+  assert.match(titleCalls[0].title, /Status: idle/);
+  assert.match(titleCalls[0].title, /No Claude tab available/);
 });
