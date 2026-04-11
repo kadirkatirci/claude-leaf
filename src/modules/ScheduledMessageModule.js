@@ -15,6 +15,7 @@ import {
 import {
   buildFailureMessage,
   isActiveSchedule,
+  isNewChatPathname,
   normalizeConversationUrl,
   normalizeSnapshotText,
 } from './ScheduledMessageModule/ScheduleState.js';
@@ -177,7 +178,7 @@ export default class ScheduledMessageModule extends BaseModule {
   }
 
   getConversationUrl() {
-    if (DOMUtils.isOnConversationPage() || window.location.pathname.startsWith('/new')) {
+    if (DOMUtils.isOnConversationPage() || isNewChatPathname(window.location.pathname)) {
       return normalizeConversationUrl(window.location.href);
     }
 
@@ -247,10 +248,11 @@ export default class ScheduledMessageModule extends BaseModule {
       return;
     }
 
-    const needsAttachmentConfirmation = hasAttachmentContent;
+    const hasAttachmentExpectation = hasAttachmentContent;
+    const needsAttachmentConfirmation = attachmentState === 'unknown';
     if (needsAttachmentConfirmation) {
       const confirmed = window.confirm(
-        'Attachments are scheduled in best-effort mode and may fail after reload. Continue?'
+        'Attachment state could not be verified and scheduling may fail. Continue?'
       );
       if (!confirmed) {
         return;
@@ -262,7 +264,7 @@ export default class ScheduledMessageModule extends BaseModule {
         conversationUrl: this.getConversationUrl(),
         snapshotText,
         scheduledForMs,
-        hasAttachmentExpectation: needsAttachmentConfirmation,
+        hasAttachmentExpectation,
       });
 
       await this.applyPendingSchedule(schedule, { fromHydration: false });

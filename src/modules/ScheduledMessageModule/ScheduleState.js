@@ -1,5 +1,22 @@
 import { ACTIVE_SCHEDULE_STATUSES, SCHEDULE_PRESETS, SCHEDULE_STATUS } from './constants.js';
 
+export function isNewChatPathname(pathname = '') {
+  return pathname === '/new' || pathname.endsWith('/new');
+}
+
+export function isNewConversationUrl(rawUrl) {
+  if (!rawUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(rawUrl, window.location.origin);
+    return isNewChatPathname(url.pathname);
+  } catch {
+    return String(rawUrl).endsWith('/new');
+  }
+}
+
 export function normalizeConversationUrl(rawUrl) {
   if (!rawUrl) {
     return '';

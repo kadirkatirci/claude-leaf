@@ -191,6 +191,27 @@ test('schedule creation replaces same conversation entry and keeps earliest alar
   assert.equal(latestAlarm?.payload.when, store.items[1].scheduledForMs);
 });
 
+test('same-tab /new schedules are re-associated after the conversation gets a real URL', async () => {
+  const { createOrUpdateSchedule, getScheduleForConversation, readScheduleStore } =
+    loadScheduledMessageHelpers();
+
+  await createOrUpdateSchedule(
+    {
+      conversationUrl: 'https://claude.ai/new',
+      snapshotText: 'draft from new chat',
+      scheduledForMs: Date.now() + 120000,
+      hasAttachmentExpectation: false,
+    },
+    { tab: { id: 42 } }
+  );
+
+  const migrated = await getScheduleForConversation('https://claude.ai/chat/generated-thread', 42);
+  const store = await readScheduleStore();
+
+  assert.equal(migrated?.conversationUrl, 'https://claude.ai/chat/generated-thread');
+  assert.equal(store.items[0]?.conversationUrl, 'https://claude.ai/chat/generated-thread');
+});
+
 test('due schedules retry at most 3 times and then fail with retry_exhausted', async () => {
   const { createOrUpdateSchedule, processDueSchedules, readScheduleStore, storageState } =
     loadScheduledMessageHelpers();

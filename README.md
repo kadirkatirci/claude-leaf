@@ -78,6 +78,10 @@ See how prompts changed over time, inspect versions, and understand branching pa
 
 Schedule a drafted message to send later from the composer. This module is available in the build, but it starts disabled by default and must be enabled from the popup settings.
 
+<p>
+  <img src="docs/screenshots/scheduled-message-popover.png" alt="Scheduled message popover in Claude Leaf" width="100%">
+</p>
+
 ## Visual Tour
 
 <p>

@@ -338,6 +338,23 @@ function normalizeConversationUrl(rawUrl) {
   }
 }
 
+function isNewChatPathname(pathname = '') {
+  return pathname === '/new' || pathname.endsWith('/new');
+}
+
+function isNewConversationUrl(rawUrl) {
+  if (!rawUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(rawUrl, 'https://claude.ai');
+    return isNewChatPathname(url.pathname);
+  } catch {
+    return String(rawUrl).endsWith('/new');
+  }
+}
+
 function normalizeSnapshotText(value) {
   return String(value || '')
     .replace(/\r\n/g, '\n')
@@ -493,10 +510,56 @@ function buildScheduleResponse(record) {
   return record ? { schedule: record } : { schedule: null };
 }
 
-async function getScheduleForConversation(conversationUrl) {
+async function adoptScheduleConversationUrl(store, index, conversationUrl) {
+  const current = store.items[index];
+  const normalizedConversationUrl = normalizeConversationUrl(conversationUrl);
+
+  if (
+    !normalizedConversationUrl ||
+    normalizedConversationUrl === normalizeConversationUrl(current?.conversationUrl) ||
+    isNewConversationUrl(normalizedConversationUrl)
+  ) {
+    return current || null;
+  }
+
+  const conflictingIndex = getScheduleIndex(store, normalizedConversationUrl);
+  if (conflictingIndex >= 0 && conflictingIndex !== index) {
+    return current || null;
+  }
+
+  const updated = {
+    ...current,
+    conversationUrl: normalizedConversationUrl,
+    updatedAt: Date.now(),
+  };
+
+  store.items[index] = updated;
+  await writeScheduleStore(store);
+  return updated;
+}
+
+async function getScheduleForConversation(conversationUrl, senderTabId = null) {
   const store = await readScheduleStore();
   const index = getScheduleIndex(store, conversationUrl);
-  return index >= 0 ? store.items[index] : null;
+  if (index >= 0) {
+    return store.items[index];
+  }
+
+  if (!senderTabId) {
+    return null;
+  }
+
+  const fallbackIndex = store.items.findIndex(
+    item =>
+      isActiveSchedule(item) &&
+      item.sourceTabId === senderTabId &&
+      isNewConversationUrl(item.conversationUrl)
+  );
+  if (fallbackIndex < 0) {
+    return null;
+  }
+
+  return adoptScheduleConversationUrl(store, fallbackIndex, conversationUrl);
 }
 
 async function createOrUpdateSchedule(message, sender) {
@@ -539,12 +602,20 @@ async function createOrUpdateSchedule(message, sender) {
   return buildScheduleResponse(record);
 }
 
-async function cancelSchedule(message) {
-  const store = await readScheduleStore();
+async function cancelSchedule(message, sender) {
+  let store = await readScheduleStore();
   const conversationUrl = normalizeConversationUrl(message.conversationUrl);
-  const index = message.id
+  let index = message.id
     ? store.items.findIndex(item => item.id === message.id)
     : getScheduleIndex(store, conversationUrl);
+
+  if (index < 0 && !message.id) {
+    const schedule = await getScheduleForConversation(conversationUrl, sender?.tab?.id);
+    if (schedule?.id) {
+      store = await readScheduleStore();
+      index = store.items.findIndex(item => item.id === schedule.id);
+    }
+  }
 
   if (index < 0) {
     return { cancelled: false };
@@ -769,7 +840,7 @@ async function executeSchedule(schedule, options = {}) {
 }
 
 async function sendNow(message, sender) {
-  const schedule = await getScheduleForConversation(message.conversationUrl);
+  const schedule = await getScheduleForConversation(message.conversationUrl, sender?.tab?.id);
   if (!schedule || !isActiveSchedule(schedule)) {
     return { status: SCHEDULE_STATUS.CANCELLED };
   }
@@ -883,11 +954,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then(async () => {
       switch (message.type) {
         case SCHEDULE_MESSAGE_TYPES.GET_FOR_CONVERSATION:
-          return buildScheduleResponse(await getScheduleForConversation(message.conversationUrl));
+          return buildScheduleResponse(
+            await getScheduleForConversation(message.conversationUrl, sender?.tab?.id)
+          );
         case SCHEDULE_MESSAGE_TYPES.CREATE_OR_UPDATE:
           return createOrUpdateSchedule(message, sender);
         case SCHEDULE_MESSAGE_TYPES.CANCEL:
-          return cancelSchedule(message);
+          return cancelSchedule(message, sender);
         case SCHEDULE_MESSAGE_TYPES.SEND_NOW:
           return sendNow(message, sender);
         case SCHEDULE_MESSAGE_TYPES.EXECUTE_RESULT:

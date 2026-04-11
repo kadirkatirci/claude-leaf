@@ -1,5 +1,9 @@
 import { SCHEDULE_CLASSNAMES, SCHEDULE_ICON_PATH, SCHEDULE_SELECTORS } from './constants.js';
-import { normalizeConversationUrl, normalizeSnapshotText } from './ScheduleState.js';
+import {
+  isNewChatPathname,
+  normalizeConversationUrl,
+  normalizeSnapshotText,
+} from './ScheduleState.js';
 
 function setDisabledState(control, disabled) {
   if (!control) {
@@ -39,7 +43,7 @@ export default class ComposerAdapter {
   }
 
   isConversationSurface() {
-    return window.location.pathname.startsWith('/new');
+    return isNewChatPathname(window.location.pathname);
   }
 
   getConversationUrl() {
@@ -47,7 +51,65 @@ export default class ComposerAdapter {
   }
 
   findChatContainer(root = document) {
-    return root.querySelector(SCHEDULE_SELECTORS.container);
+    const explicitContainer = root.querySelector(SCHEDULE_SELECTORS.container);
+    if (explicitContainer) {
+      return explicitContainer;
+    }
+
+    const editors = Array.from(root.querySelectorAll(SCHEDULE_SELECTORS.editor));
+    for (const editor of editors) {
+      const container = this.findContainerForEditor(editor);
+      if (container) {
+        return container;
+      }
+    }
+
+    return null;
+  }
+
+  findContainerForEditor(editor) {
+    if (!editor) {
+      return null;
+    }
+
+    const explicitContainer = editor.closest(SCHEDULE_SELECTORS.container);
+    if (explicitContainer) {
+      return explicitContainer;
+    }
+
+    let current = editor.parentElement;
+    while (current && current !== document.documentElement) {
+      if (this.isComposerContainer(current, editor)) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+
+    return null;
+  }
+
+  isComposerContainer(candidate, editor = null) {
+    if (!(candidate instanceof HTMLElement)) {
+      return false;
+    }
+
+    const scopedEditor =
+      editor && candidate.contains(editor)
+        ? editor
+        : candidate.querySelector(SCHEDULE_SELECTORS.editor);
+    if (!scopedEditor) {
+      return false;
+    }
+
+    if (!candidate.querySelector(SCHEDULE_SELECTORS.addFilesButton)) {
+      return false;
+    }
+
+    return !!(
+      candidate.querySelector(SCHEDULE_SELECTORS.modelSelector) ||
+      candidate.querySelector(SCHEDULE_SELECTORS.voiceButton) ||
+      SCHEDULE_SELECTORS.sendButtonCandidates.some(selector => candidate.querySelector(selector))
+    );
   }
 
   getEditor(container) {

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { setupDom } from '../test-support/dom.js';
 import { cloneDefaultSettings } from '../src/config/defaultSettings.js';
 
+const TEST_TAB_ID = 101;
+
 function createComposerHtml({
   draftText = 'Ship this later',
   sendDisabled = false,
@@ -32,7 +34,40 @@ function createComposerHtml({
               </div>
             </div>
           `
-          : '';
+          : attachmentState === 'imageThumbnail'
+            ? `
+              <div class="overflow-hidden">
+                <div class="p-3.5 pb-2.5">
+                  <div class="flex flex-col gap-2">
+                    <div class="flex flex-row gap-3 overflow-x-auto">
+                      <div class="relative group/thumbnail">
+                        <div
+                          data-testid="fig_09_network_2000s.png"
+                          class="rounded-lg overflow-hidden"
+                          style="width: 120px; height: 120px; min-width: 120px; min-height: 120px;"
+                        >
+                          <button type="button" class="relative bg-bg-000" style="width: 120px; height: 120px;">
+                            <img
+                              class="w-full h-full object-cover transition duration-400 opacity-1"
+                              alt="fig_09_network_2000s.png"
+                              src="/api/files/preview"
+                            >
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Remove fig_09_network_2000s.png"
+                          class="absolute -top-2 -left-2"
+                        >
+                          x
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `
+            : '';
 
   return `
     <div data-chat-input-container="true">
@@ -54,9 +89,89 @@ function createComposerHtml({
   `;
 }
 
+function createNewComposerHtml({ draftText = '', showSendButton = false } = {}) {
+  const sendButton = showSendButton
+    ? `<button type="button" aria-label="Send message">Send</button>`
+    : '';
+
+  return `
+    <div class="!box-content flex flex-col bg-bg-000">
+      <div class="flex flex-col m-3.5 gap-3">
+        <div class="relative">
+          <div class="w-full overflow-y-auto font-large break-words transition-opacity duration-200 max-h-96 min-h-[3rem] pl-[6px] pt-[6px]">
+            <div data-testid="chat-input" contenteditable="true">${draftText}</div>
+          </div>
+          <div class="absolute inset-0 pointer-events-none overflow-hidden pl-1.5 pt-[5px]">
+            <span class="block text-text-500">How can I help you today?</span>
+          </div>
+        </div>
+        <div class="relative flex gap-2 w-full items-center">
+          <div class="relative flex-1 flex items-center shrink min-w-0 gap-1">
+            <div>
+              <button type="button" aria-label="Add files, connectors, and more">+</button>
+            </div>
+            <div class="flex flex-row items-center min-w-0 gap-1"></div>
+            <div class="text-text-400 text-xs ml-2"></div>
+          </div>
+          <div class="transition-all duration-200 ease-out">
+            <div class="overflow-hidden shrink-0 p-1 -m-1">
+              <button type="button" data-testid="model-selector-dropdown">Model</button>
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center w-8 z-10 justify-end">
+            <div class="flex items-center gap-1 shrink-0">
+              <div class="flex items-center rounded-lg transition-colors duration-200"></div>
+              <button type="button" aria-label="Use voice mode">Voice</button>
+              ${sendButton}
+            </div>
+          </div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+  `;
+}
+
+function isNewConversationUrl(rawUrl) {
+  if (!rawUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(rawUrl, window.location.origin);
+    return url.pathname === '/new' || url.pathname.endsWith('/new');
+  } catch {
+    return String(rawUrl).endsWith('/new');
+  }
+}
+
 function createChromeStub(backgroundState) {
   const runtimeListeners = new Set();
   const sentMessages = [];
+
+  function getCurrentScheduleForUrl(conversationUrl) {
+    if (!backgroundState.current) {
+      return null;
+    }
+
+    if (backgroundState.current.conversationUrl === conversationUrl) {
+      return backgroundState.current;
+    }
+
+    if (
+      backgroundState.current.sourceTabId === TEST_TAB_ID &&
+      isNewConversationUrl(backgroundState.current.conversationUrl) &&
+      !isNewConversationUrl(conversationUrl)
+    ) {
+      backgroundState.current = {
+        ...backgroundState.current,
+        conversationUrl,
+      };
+      return backgroundState.current;
+    }
+
+    return null;
+  }
 
   return {
     sentMessages,
@@ -71,7 +186,7 @@ function createChromeStub(backgroundState) {
           };
 
           if (message.type === 'SCHEDULE_GET_FOR_CONVERSATION') {
-            respond({ schedule: backgroundState.current });
+            respond({ schedule: getCurrentScheduleForUrl(message.conversationUrl) });
             return;
           }
 
@@ -85,18 +200,37 @@ function createChromeStub(backgroundState) {
               status: 'pending',
               retryCount: 0,
               lastErrorCode: null,
+              sourceTabId: TEST_TAB_ID,
             };
             respond({ schedule: backgroundState.current });
             return;
           }
 
           if (message.type === 'SCHEDULE_CANCEL') {
+            const schedule = message.id
+              ? backgroundState.current?.id === message.id
+                ? backgroundState.current
+                : null
+              : getCurrentScheduleForUrl(message.conversationUrl);
+            if (!schedule) {
+              respond({ cancelled: false });
+              return;
+            }
             backgroundState.current = null;
             respond({ cancelled: true });
             return;
           }
 
           if (message.type === 'SCHEDULE_SEND_NOW') {
+            const schedule = message.id
+              ? backgroundState.current?.id === message.id
+                ? backgroundState.current
+                : null
+              : getCurrentScheduleForUrl(message.conversationUrl);
+            if (!schedule) {
+              respond({ status: 'cancelled' });
+              return;
+            }
             backgroundState.current = null;
             respond({ status: 'sent' });
             return;
@@ -131,11 +265,17 @@ function createChromeStub(backgroundState) {
   };
 }
 
-async function setupModuleTestEnvironment(html, backgroundState = { current: null }) {
+async function setupModuleTestEnvironment(
+  html,
+  backgroundState = { current: null },
+  { urlPath = '/chat/test-thread' } = {}
+) {
   const cleanupDom = setupDom(html);
   const originalChrome = globalThis.chrome;
   const originalConfirm = window.confirm;
   const originalAlert = window.alert;
+
+  window.history.replaceState({}, '', urlPath);
 
   const chromeStub = createChromeStub(backgroundState);
   globalThis.chrome = chromeStub.chrome;
@@ -224,6 +364,55 @@ test('module injects a schedule button once and locks the composer after schedul
   }
 });
 
+test('new chat composer injects the schedule button without relying on data-chat-input-container', async () => {
+  const env = await setupModuleTestEnvironment(
+    createNewComposerHtml(),
+    { current: null },
+    { urlPath: '/new' }
+  );
+
+  try {
+    await env.module.init();
+    env.module.syncComposerUI();
+
+    assert.equal(document.querySelectorAll('.cl-schedule-button').length, 1);
+  } finally {
+    env.cleanup();
+  }
+});
+
+test('scheduled message stays active when a /new draft becomes a real conversation on the same tab', async () => {
+  const env = await setupModuleTestEnvironment(
+    createNewComposerHtml({ draftText: 'Ship this later', showSendButton: true }),
+    { current: null },
+    { urlPath: '/new' }
+  );
+
+  try {
+    await env.module.init();
+    env.module.syncComposerUI();
+
+    assert.equal(document.querySelectorAll('.cl-schedule-button').length, 1);
+
+    await env.module.createOrUpdateSchedule(Date.now() + 300000);
+    assert.equal(env.backgroundState.current?.conversationUrl, 'https://example.com/new');
+
+    window.history.replaceState({}, '', '/chat/generated-thread');
+    await env.module.reinitializeUI();
+
+    assert.equal(
+      env.module.currentSchedule?.conversationUrl,
+      'https://example.com/chat/generated-thread'
+    );
+    assert.match(
+      document.querySelector('.cl-schedule-status')?.textContent || '',
+      /Scheduled send active/
+    );
+  } finally {
+    env.cleanup();
+  }
+});
+
 test('scheduled message defaults to disabled for new settings', () => {
   const defaults = cloneDefaultSettings();
 
@@ -285,12 +474,6 @@ test('attachments-only composer can be scheduled without a text draft', async ()
   );
 
   try {
-    let confirmations = 0;
-    window.confirm = () => {
-      confirmations += 1;
-      return true;
-    };
-
     await env.module.init();
     await env.module.createOrUpdateSchedule(Date.now() + 300000);
 
@@ -298,7 +481,30 @@ test('attachments-only composer can be scheduled without a text draft', async ()
       message => message.type === 'SCHEDULE_CREATE_OR_UPDATE'
     );
 
-    assert.equal(confirmations, 1);
+    assert.equal(createMessage?.snapshotText, '');
+    assert.equal(createMessage?.hasAttachmentExpectation, true);
+    assert.match(
+      document.querySelector('.cl-schedule-status')?.textContent || '',
+      /Scheduled send active/
+    );
+  } finally {
+    env.cleanup();
+  }
+});
+
+test('image attachments-only composer can be scheduled without a text draft', async () => {
+  const env = await setupModuleTestEnvironment(
+    createComposerHtml({ draftText: '', attachmentState: 'imageThumbnail' })
+  );
+
+  try {
+    await env.module.init();
+    await env.module.createOrUpdateSchedule(Date.now() + 300000);
+
+    const createMessage = env.sentMessages.find(
+      message => message.type === 'SCHEDULE_CREATE_OR_UPDATE'
+    );
+
     assert.equal(createMessage?.snapshotText, '');
     assert.equal(createMessage?.hasAttachmentExpectation, true);
     assert.match(
