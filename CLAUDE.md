@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with productivity features such as message navigation, edit history tracking, bookmarks, emoji markers, and scheduled sends. Scheduled Message is available as an opt-in module and defaults to disabled. Compact view, sidebar collapse, and content folding remain in development and are currently dev-disabled.
+A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with productivity features such as message navigation, edit history tracking, bookmarks, emoji markers, scheduled sends, and passive usage indicators. Scheduled Message is available as an opt-in module and defaults to disabled. Usage Tracker is enabled by default. Compact view, sidebar collapse, and content folding remain in development and are currently dev-disabled.
 
 ### Target Users
 - Power users who have long conversations with Claude
@@ -19,6 +19,7 @@ A Chrome extension (Manifest V3) that enhances the Claude.ai web interface with 
 | **Bookmarks** | Save and categorize important messages |
 | **Emoji Markers** | Mark messages with emojis for quick reference |
 | **Scheduled Message** | Schedule a drafted message to be sent later from the composer |
+| **Usage Tracker** | Show subtle session and weekly usage indicators on the composer edge |
 | **Compact View** | In development, currently dev-disabled |
 | **Sidebar Collapse** | In development, currently dev-disabled |
 | **Content Folding** | In development, currently dev-disabled |
@@ -230,6 +231,7 @@ Modules with fixed sidebar buttons use **[FixedButtonMixin](src/core/FixedButton
 | **BookmarkModule** | Save important messages | Yes |
 | **EmojiMarkerModule** | Mark messages with emojis | Yes |
 | **ScheduledMessageModule** | Schedule a drafted composer message to send later | No (composer action row) |
+| **UsageTrackerModule** | Show passive usage state inside the composer shell | No (composer edge indicator) |
 | **SidebarCollapseModule** | In development, currently dev-disabled | No (injects into sidebar) |
 | **ContentFoldingModule** | In development, currently dev-disabled | No (per-element UI) |
 

@@ -26,7 +26,9 @@ export default class UsageTrackerModule extends BaseModule {
     this.adapter = new ComposerAdapter();
     this.bridge = new UsageBridge();
     this.client = new UsageClient(this.bridge);
-    this.view = new UsageIndicatorView();
+    this.view = new UsageIndicatorView({
+      onTooltipOpen: this.handleTooltipOpen.bind(this),
+    });
     this.observerId = 'usage-tracker-observer';
     this.currentContainer = null;
     this.currentMount = null;
@@ -35,6 +37,7 @@ export default class UsageTrackerModule extends BaseModule {
     this.pollIntervalId = null;
     this.revalidateTimerId = null;
     this.pendingSendRefreshIds = new Set();
+    this.openedTooltipKinds = new Set();
     this.awaitingUsageAfterSend = false;
     this.composerBusy = false;
     this.visibilityListener = this.handleVisibilityChange.bind(this);
@@ -89,6 +92,7 @@ export default class UsageTrackerModule extends BaseModule {
     this.currentMount = null;
     this.usageState = null;
     this.refreshInFlight = null;
+    this.openedTooltipKinds.clear();
     this.awaitingUsageAfterSend = false;
     this.composerBusy = false;
     super.destroy();
@@ -291,5 +295,18 @@ export default class UsageTrackerModule extends BaseModule {
 
     this.usageState = mergeUsageState(this.usageState, nextState);
     this.syncComposerUI();
+  }
+
+  handleTooltipOpen(kind) {
+    if (!kind || this.openedTooltipKinds.has(kind)) {
+      return;
+    }
+
+    this.openedTooltipKinds.add(kind);
+    trackEvent('usage_tracker_tooltip_open', {
+      module: 'usageTracker',
+      method: 'hover',
+      result: kind,
+    });
   }
 }

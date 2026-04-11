@@ -167,6 +167,9 @@ test('usage tracker renders session and weekly lines inside the composer', async
     const weeklyLine = document.querySelector('[data-usage-kind="weekly"]');
     const tooltip = document.querySelector('[data-usage-tooltip]');
     const usageShell = document.querySelector('[data-testid="usage-shell"]');
+    const initialAnalyticsCount = env.sentMessages.filter(message => {
+      return message?.type === 'ANALYTICS_EVENT';
+    }).length;
 
     assert.ok(root);
     assert.equal(root.parentElement, usageShell);
@@ -190,6 +193,19 @@ test('usage tracker renders session and weekly lines inside the composer', async
     assert.match(tooltip.textContent, /Session 63%/);
     sessionLine.dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
     assert.equal(tooltip.style.opacity, '0');
+
+    const analyticsMessages = env.sentMessages.filter(
+      message => message?.type === 'ANALYTICS_EVENT'
+    );
+    assert.equal(analyticsMessages.length, initialAnalyticsCount + 1);
+    assert.equal(analyticsMessages.at(-1)?.name, 'usage_tracker_tooltip_open');
+    assert.equal(analyticsMessages.at(-1)?.params?.result, 'session');
+
+    sessionLine.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
+    assert.equal(
+      env.sentMessages.filter(message => message?.name === 'usage_tracker_tooltip_open').length,
+      1
+    );
   } finally {
     env.cleanup();
   }

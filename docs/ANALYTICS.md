@@ -5,7 +5,7 @@
 This extension implements **GA4 Measurement Protocol** for comprehensive analytics tracking across all features. The system captures user interactions, performance metrics, and feature usage while respecting privacy and user consent.
 
 **Key Facts:**
-- **59 whitelisted events** with pre-defined parameters
+- **60 whitelisted events** with pre-defined parameters
 - **52 allowed parameters** to prevent PII leakage
 - **User-controlled**: Analytics can be disabled in settings
 - **Privacy-first**: Full sanitization + whitelist validation
@@ -192,6 +192,7 @@ trackEvent('perf_init', {
 - SidebarCollapseModule
 - ContentFoldingModule
 - ScheduledMessageModule
+- UsageTrackerModule
 
 #### `perf_scan`
 Emitted regularly (throttled) during UI updates.
@@ -237,7 +238,27 @@ Track scheduled-send lifecycle from schedule creation through send, retry, and t
 
 ---
 
-### 7. Popup Events (12 events)
+### 7. Usage Tracker Events (1 event)
+
+Track the only meaningful direct interaction for this passive composer feature: opening the usage tooltip.
+
+| Event | When Triggered |
+|-------|----------------|
+| `usage_tracker_tooltip_open` | User hovers the session or weekly usage edge indicator and opens its tooltip |
+
+**Location:** `src/modules/UsageTrackerModule.js`
+
+**Notes:**
+- Emitted from content only
+- Deduplicated to once per tooltip kind (`session`, `weekly`) per page lifecycle
+- Uses existing common params:
+  - `module: 'usageTracker'`
+  - `method: 'hover'`
+  - `result: 'session' | 'weekly'`
+
+---
+
+### 8. Popup Events (12 events)
 
 Track user interactions in the extension popup.
 
@@ -260,7 +281,7 @@ Track user interactions in the extension popup.
 
 ---
 
-### 8. Error Tracking Events (1 event)
+### 9. Error Tracking Events (1 event)
 
 Critical for production debugging and monitoring extension health.
 
@@ -301,7 +322,7 @@ errorTracker.captureError({
 
 ---
 
-### 9. Session Lifecycle Events (2 events)
+### 10. Session Lifecycle Events (2 events)
 
 Track user sessions from initialization to cleanup.
 
@@ -341,7 +362,7 @@ Track user sessions from initialization to cleanup.
 
 ---
 
-### 10. Funnel Tracking Events (1 event)
+### 11. Funnel Tracking Events (1 event)
 
 Track multi-step user flows to identify drop-off points.
 
@@ -380,7 +401,7 @@ trackFunnelStep('bookmark_creation', 4, 'save_bookmark', 'completed', { sender: 
 
 ---
 
-### 11. User Engagement Events (1 event)
+### 12. User Engagement Events (1 event)
 
 Measure feature adoption breadth and power user behavior.
 
@@ -398,7 +419,7 @@ Measure feature adoption breadth and power user behavior.
 
 ---
 
-### 12. Frustration Detection Events (1 event)
+### 13. Frustration Detection Events (1 event)
 
 Detect user frustration through rapid repeated actions.
 

@@ -32,6 +32,7 @@ Claude Leaf gives you lightweight controls directly inside the conversation so y
 - tag messages with emoji markers for quick visual scanning
 - inspect edited prompts and version branches when a conversation evolves
 - schedule a drafted message to send later when timing matters
+- keep a subtle read on your Claude session and weekly usage from the composer edge
 
 ## What You Can Use Today
 
@@ -80,6 +81,14 @@ Schedule a drafted message to send later from the composer. This module is avail
 
 <p>
   <img src="docs/screenshots/scheduled-message-popover.png" alt="Scheduled message popover in Claude Leaf" width="100%">
+</p>
+
+### Usage Tracker
+
+See lightweight session and weekly usage indicators directly on the composer border. This module is enabled by default and stays intentionally low-noise.
+
+<p>
+  <img src="docs/screenshots/usage-tracker-tooltip.png" alt="Usage Tracker tooltip on the Claude composer" width="100%">
 </p>
 
 ## Visual Tour
@@ -136,6 +145,7 @@ Available in the current build:
 - Bookmarks
 - Emoji Markers
 - Edit History
+- Usage Tracker
 
 Available as an opt-in module:
 
@@ -146,6 +156,20 @@ Present but dev-disabled:
 - Compact View
 - Content Folding
 - Sidebar Collapse
+
+### All Modules
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| Navigation | Enabled by default | Floating navigation controls and message counter |
+| Bookmarks | Enabled by default | Save and organize important messages |
+| Emoji Markers | Enabled by default | Lightweight visual message tagging |
+| Edit History | Enabled by default | Prompt edit tracking and branch inspection |
+| Usage Tracker | Enabled by default | Passive session and weekly usage edges in the composer |
+| Scheduled Message | Optional | Built in, but disabled by default until enabled in popup |
+| Compact View | Dev-disabled | Present in codebase, not active in current build |
+| Content Folding | Dev-disabled | Present in codebase, not active in current build |
+| Sidebar Collapse | Dev-disabled | Present in codebase, not active in current build |
 
 ## Development
 

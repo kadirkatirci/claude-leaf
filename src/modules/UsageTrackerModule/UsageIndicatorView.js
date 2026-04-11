@@ -47,8 +47,9 @@ function ensurePositionContext(element) {
 }
 
 export default class UsageIndicatorView {
-  constructor() {
+  constructor({ onTooltipOpen = null } = {}) {
     this.positionSnapshots = new WeakMap();
+    this.onTooltipOpen = onTooltipOpen;
   }
 
   render(container, state) {
@@ -169,6 +170,10 @@ export default class UsageIndicatorView {
     const tooltip = root.querySelector('[data-usage-tooltip]');
     if (!tooltip || !text) {
       return;
+    }
+
+    if (typeof this.onTooltipOpen === 'function') {
+      this.onTooltipOpen(kind, text);
     }
 
     tooltip.textContent = text;

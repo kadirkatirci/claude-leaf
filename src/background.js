@@ -109,6 +109,7 @@ const ALLOWED_EVENTS = new Set([
   'scheduled_message_sent',
   'scheduled_message_retry',
   'scheduled_message_fail',
+  'usage_tracker_tooltip_open',
 ]);
 
 const ALLOWED_PARAMS = new Set([
