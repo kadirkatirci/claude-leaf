@@ -40,6 +40,7 @@ import EmojiMarkerModule from './modules/EmojiMarkerModule.js';
 import SidebarCollapseModule from './modules/SidebarCollapseModule.js';
 import ContentFoldingModule from './modules/ContentFoldingModule.js';
 import ScheduledMessageModule from './modules/ScheduledMessageModule.js';
+import UsageTrackerModule from './modules/UsageTrackerModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -372,7 +373,7 @@ class ClaudeProductivityApp {
     await this.refreshModulesForStore('editHistory');
   }
 
-  async handleSettingsUpdate(settings) {
+  handleSettingsUpdate(settings) {
     if (!settings || typeof settings !== 'object') {
       throw new Error('Invalid settings payload');
     }
@@ -445,6 +446,9 @@ class ClaudeProductivityApp {
     }
     if (!isDevDisabled('scheduledMessage')) {
       this.registerModule('scheduledMessage', new ScheduledMessageModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('usageTracker')) {
+      this.registerModule('usageTracker', new UsageTrackerModule(), { dependencies: [] });
     }
   }
 

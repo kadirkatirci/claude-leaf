@@ -57,6 +57,9 @@ export const DEFAULT_SETTINGS = {
   scheduledMessage: {
     enabled: false,
   },
+  usageTracker: {
+    enabled: true,
+  },
   general: {
     opacity: 0.7,
     colorTheme: 'purple',

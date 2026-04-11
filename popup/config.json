@@ -68,6 +68,12 @@
       "tooltip": "Schedule a drafted message to be sent later",
       "icon": "M12 8v4l2.5 1.5M20 12a8 8 0 1 1-16 0a8 8 0 0 1 16 0Zm-3-9V1m0 2h2m-2 0h-2",
       "supportsFloatingVisibility": false
+    },
+    "usageTracker": {
+      "name": "Usage Tracker",
+      "tooltip": "Shows live session and weekly usage inside the composer",
+      "icon": "M4 18h16M6 14h3M11 10h3M16 6h3",
+      "supportsFloatingVisibility": false
     }
   },
   "defaultSettings": {
@@ -98,6 +104,9 @@
     },
     "scheduledMessage": {
       "enabled": false
+    },
+    "usageTracker": {
+      "enabled": true
     }
   },
   "shortcuts": [

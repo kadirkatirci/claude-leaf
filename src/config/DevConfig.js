@@ -48,6 +48,11 @@ export const DEV_CONFIG = {
       DEV_DISABLED: true,
       reason: 'Still under development',
     },
+
+    usageTracker: {
+      DEV_DISABLED: false,
+      // reason: 'Stable - production ready'
+    },
   },
 };
 
