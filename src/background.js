@@ -1,6 +1,7 @@
 /**
  * Background Service Worker
- * Handles extension-level events like installation, updates, and analytics
+ * Handles extension-level events like installation, updates, analytics,
+ * and scheduled message orchestration.
  */
 
 const WELCOME_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/welcome';
@@ -8,7 +9,6 @@ const CHANGELOG_URL = 'https://www.tedaitesnim.com/extensions/claude-extension/c
 const CHANGELOG_SOURCE_UPDATE = 'extension-update';
 const FIXTURE_HARNESS_PATH = 'test-support/playwright/extension-harness.html';
 
-// GA4 Measurement Protocol (background-only, no content access)
 const GA4_MEASUREMENT_ID = 'G-75M7YXJ9X7';
 const GA4_API_SECRET = 'F7JQkyp9QY2_lc9LbrE2dA';
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
@@ -16,6 +16,38 @@ const GA4_SESSION_EXPIRATION_MINUTES = 30;
 const GA4_ENGAGEMENT_TIME_MS = 100;
 const ANALYTICS_MESSAGE_TYPE = 'ANALYTICS_EVENT';
 const ANALYTICS_ENABLED_DEFAULT = true;
+
+const SCHEDULE_MESSAGE_TYPES = {
+  GET_FOR_CONVERSATION: 'SCHEDULE_GET_FOR_CONVERSATION',
+  CREATE_OR_UPDATE: 'SCHEDULE_CREATE_OR_UPDATE',
+  CANCEL: 'SCHEDULE_CANCEL',
+  SEND_NOW: 'SCHEDULE_SEND_NOW',
+  EXECUTE: 'SCHEDULE_EXECUTE',
+  EXECUTE_RESULT: 'SCHEDULE_EXECUTE_RESULT',
+};
+
+const SCHEDULE_STORAGE_KEY = 'scheduled_message_queue_v2';
+const SCHEDULE_ALARM_NAME = 'claude_leaf_scheduled_message_v2';
+const SCHEDULE_STATUS = {
+  PENDING: 'pending',
+  RETRYING: 'retrying',
+  SENT: 'sent',
+  CANCELLED: 'cancelled',
+  FAILED: 'failed',
+  EXPIRED_SESSION: 'expired_session',
+};
+const ACTIVE_SCHEDULE_STATUSES = new Set([SCHEDULE_STATUS.PENDING, SCHEDULE_STATUS.RETRYING]);
+const RETRY_BACKOFF_MS = [15000, 30000, 60000];
+const EXECUTION_TIMEOUT_MS = 6000;
+const RETRYABLE_ERROR_CODES = new Set([
+  'matching_tab_missing',
+  'content_unavailable',
+  'execute_timeout',
+  'composer_not_ready',
+  'composer_busy',
+  'send_control_unavailable',
+  'conversation_mismatch',
+]);
 
 const ALLOWED_EVENTS = new Set([
   'nav_prev',
@@ -70,6 +102,13 @@ const ALLOWED_EVENTS = new Set([
   'user_engagement_summary',
   'rapid_action_detected',
   'analytics_health',
+  'scheduled_message_create',
+  'scheduled_message_cancel',
+  'scheduled_message_reschedule',
+  'scheduled_message_send_now',
+  'scheduled_message_sent',
+  'scheduled_message_retry',
+  'scheduled_message_fail',
 ]);
 
 const ALLOWED_PARAMS = new Set([
@@ -131,14 +170,17 @@ let analyticsEnabledCache = null;
 let analyticsEnabledCacheTime = 0;
 const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 let fixtureAutomationModePromise = null;
+const pendingExecutionWaiters = new Map();
+const cachedExecutionOutcomes = new Map();
+const EXECUTION_OUTCOME_CACHE_MS = 15000;
 
 function openTab(url) {
   chrome.tabs.create({ url });
 }
 
-async function isFixtureAutomationMode() {
+function isFixtureAutomationMode() {
   if (typeof fetch !== 'function' || typeof chrome.runtime?.getURL !== 'function') {
-    return false;
+    return Promise.resolve(false);
   }
 
   if (!fixtureAutomationModePromise) {
@@ -219,27 +261,27 @@ function sanitizeParams(params) {
 
   const sanitized = {};
   for (const [key, value] of Object.entries(params)) {
-    if (!ALLOWED_PARAMS.has(key)) {
+    if (!ALLOWED_PARAMS.has(key) || value === undefined || value === null) {
       continue;
     }
-    if (value === undefined || value === null) {
-      continue;
-    }
+
     if (typeof value === 'number') {
-      if (!Number.isFinite(value)) {
-        continue;
+      if (Number.isFinite(value)) {
+        sanitized[key] = value;
       }
-      sanitized[key] = value;
       continue;
     }
+
     if (typeof value === 'boolean') {
       sanitized[key] = value;
       continue;
     }
+
     if (typeof value === 'string') {
       sanitized[key] = value.slice(0, 100);
     }
   }
+
   return sanitized;
 }
 
@@ -283,22 +325,586 @@ async function sendAnalyticsEvent(name, params) {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message || message.type !== ANALYTICS_MESSAGE_TYPE) {
+function normalizeConversationUrl(rawUrl) {
+  if (!rawUrl) {
+    return '';
+  }
+
+  try {
+    const url = new URL(rawUrl);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return String(rawUrl);
+  }
+}
+
+function normalizeSnapshotText(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function isActiveSchedule(record) {
+  return !!record && ACTIVE_SCHEDULE_STATUSES.has(record.status);
+}
+
+function isRetryableCode(code) {
+  return RETRYABLE_ERROR_CODES.has(code);
+}
+
+function createEmptyScheduleStore() {
+  return { items: [] };
+}
+
+async function readScheduleStore() {
+  const stored = await chrome.storage.local.get([SCHEDULE_STORAGE_KEY]);
+  const rawStore = stored[SCHEDULE_STORAGE_KEY];
+  if (!rawStore || !Array.isArray(rawStore.items)) {
+    return createEmptyScheduleStore();
+  }
+  return { items: rawStore.items };
+}
+
+async function writeScheduleStore(store) {
+  await chrome.storage.local.set({
+    [SCHEDULE_STORAGE_KEY]: {
+      items: store.items,
+    },
+  });
+}
+
+function getScheduleIndex(store, conversationUrl) {
+  return store.items.findIndex(
+    item =>
+      normalizeConversationUrl(item.conversationUrl) === normalizeConversationUrl(conversationUrl)
+  );
+}
+
+function buildScheduleRecord(existingRecord, payload, sender) {
+  const now = Date.now();
+  return {
+    id:
+      existingRecord?.id ||
+      (self.crypto?.randomUUID?.() ?? `sched_${now}_${Math.random().toString(16).slice(2)}`),
+    conversationUrl: normalizeConversationUrl(payload.conversationUrl),
+    snapshotText: normalizeSnapshotText(payload.snapshotText),
+    scheduledForMs: Number(payload.scheduledForMs),
+    hasAttachmentExpectation: payload.hasAttachmentExpectation === true,
+    status: SCHEDULE_STATUS.PENDING,
+    retryCount: 0,
+    createdAt: existingRecord?.createdAt || now,
+    updatedAt: now,
+    lastErrorCode: null,
+    sourceTabId: sender?.tab?.id ?? existingRecord?.sourceTabId ?? null,
+  };
+}
+
+function getNextBackoffMs(retryCount) {
+  return RETRY_BACKOFF_MS[retryCount - 1] || null;
+}
+
+function clearPendingExecutionWaiter(scheduleId) {
+  const waiter = pendingExecutionWaiters.get(scheduleId);
+  if (!waiter) {
+    return;
+  }
+  clearTimeout(waiter.timeoutId);
+  pendingExecutionWaiters.delete(scheduleId);
+}
+
+function clearCachedExecutionOutcome(scheduleId) {
+  const cached = cachedExecutionOutcomes.get(scheduleId);
+  if (!cached) {
+    return;
+  }
+
+  clearTimeout(cached.timeoutId);
+  cachedExecutionOutcomes.delete(scheduleId);
+}
+
+function cacheExecutionOutcome(scheduleId, outcome) {
+  clearCachedExecutionOutcome(scheduleId);
+
+  const timeoutId = setTimeout(() => {
+    cachedExecutionOutcomes.delete(scheduleId);
+  }, EXECUTION_OUTCOME_CACHE_MS);
+
+  cachedExecutionOutcomes.set(scheduleId, {
+    outcome,
+    timeoutId,
+  });
+}
+
+function takeCachedExecutionOutcome(scheduleId) {
+  const cached = cachedExecutionOutcomes.get(scheduleId);
+  if (!cached) {
+    return null;
+  }
+
+  clearTimeout(cached.timeoutId);
+  cachedExecutionOutcomes.delete(scheduleId);
+  return cached.outcome;
+}
+
+function waitForExecutionResult(scheduleId) {
+  clearPendingExecutionWaiter(scheduleId);
+  const cachedOutcome = takeCachedExecutionOutcome(scheduleId);
+  if (cachedOutcome) {
+    return Promise.resolve(cachedOutcome);
+  }
+
+  return new Promise(resolve => {
+    const timeoutId = setTimeout(() => {
+      pendingExecutionWaiters.delete(scheduleId);
+      resolve({
+        status: SCHEDULE_STATUS.RETRYING,
+        code: 'execute_timeout',
+      });
+    }, EXECUTION_TIMEOUT_MS);
+
+    pendingExecutionWaiters.set(scheduleId, {
+      resolve,
+      timeoutId,
+    });
+  });
+}
+
+async function syncScheduleAlarm(storeOverride = null) {
+  const store = storeOverride || (await readScheduleStore());
+  const activeItems = store.items
+    .filter(isActiveSchedule)
+    .sort((left, right) => left.scheduledForMs - right.scheduledForMs);
+
+  if (activeItems.length === 0) {
+    await chrome.alarms?.clear?.(SCHEDULE_ALARM_NAME);
+    return;
+  }
+
+  const nextSchedule = activeItems[0];
+  await chrome.alarms?.clear?.(SCHEDULE_ALARM_NAME);
+  chrome.alarms?.create?.(SCHEDULE_ALARM_NAME, {
+    when: Math.max(Date.now() + 25, nextSchedule.scheduledForMs),
+  });
+}
+
+function buildScheduleResponse(record) {
+  return record ? { schedule: record } : { schedule: null };
+}
+
+async function getScheduleForConversation(conversationUrl) {
+  const store = await readScheduleStore();
+  const index = getScheduleIndex(store, conversationUrl);
+  return index >= 0 ? store.items[index] : null;
+}
+
+async function createOrUpdateSchedule(message, sender) {
+  const conversationUrl = normalizeConversationUrl(message.conversationUrl);
+  if (!conversationUrl) {
+    throw new Error('Conversation URL is required');
+  }
+
+  const scheduledForMs = Number(message.scheduledForMs);
+  if (!Number.isFinite(scheduledForMs) || scheduledForMs <= Date.now()) {
+    throw new Error('scheduledForMs must be a future timestamp');
+  }
+
+  const snapshotText = normalizeSnapshotText(message.snapshotText);
+  if (!snapshotText && message.hasAttachmentExpectation !== true) {
+    throw new Error('snapshotText or attachment is required');
+  }
+
+  const store = await readScheduleStore();
+  const index = getScheduleIndex(store, conversationUrl);
+  const existingRecord = index >= 0 ? store.items[index] : null;
+  const wasActive = isActiveSchedule(existingRecord);
+  const record = buildScheduleRecord(existingRecord, message, sender);
+
+  if (index >= 0) {
+    store.items[index] = record;
+  } else {
+    store.items.push(record);
+  }
+
+  await writeScheduleStore(store);
+  await syncScheduleAlarm(store);
+
+  void sendAnalyticsEvent(wasActive ? 'scheduled_message_reschedule' : 'scheduled_message_create', {
+    module: 'scheduledMessage',
+    method: 'background',
+    state: record.status,
+  });
+
+  return buildScheduleResponse(record);
+}
+
+async function cancelSchedule(message) {
+  const store = await readScheduleStore();
+  const conversationUrl = normalizeConversationUrl(message.conversationUrl);
+  const index = message.id
+    ? store.items.findIndex(item => item.id === message.id)
+    : getScheduleIndex(store, conversationUrl);
+
+  if (index < 0) {
+    return { cancelled: false };
+  }
+
+  const [removed] = store.items.splice(index, 1);
+  await writeScheduleStore(store);
+  await syncScheduleAlarm(store);
+
+  if (removed && isActiveSchedule(removed)) {
+    void sendAnalyticsEvent('scheduled_message_cancel', {
+      module: 'scheduledMessage',
+      method: 'background',
+      state: removed.status,
+    });
+  }
+
+  return { cancelled: true };
+}
+
+async function findMatchingClaudeTab(conversationUrl, preferredTabId = null) {
+  const normalizedTarget = normalizeConversationUrl(conversationUrl);
+
+  if (preferredTabId && chrome.tabs?.get) {
+    try {
+      const preferredTab = await chrome.tabs.get(preferredTabId);
+      if (normalizeConversationUrl(preferredTab?.url) === normalizedTarget) {
+        return preferredTab;
+      }
+    } catch {
+      // Fall back to query.
+    }
+  }
+
+  const tabs = await chrome.tabs.query({ url: ['https://claude.ai/*'] });
+  const matchingTabs = tabs.filter(tab => normalizeConversationUrl(tab.url) === normalizedTarget);
+  matchingTabs.sort((left, right) => Number(Boolean(right.active)) - Number(Boolean(left.active)));
+  return matchingTabs[0] || null;
+}
+
+async function dispatchExecutionRequest(schedule, tabId, reason) {
+  const outcomePromise = waitForExecutionResult(schedule.id);
+
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: SCHEDULE_MESSAGE_TYPES.EXECUTE,
+      schedule,
+      reason,
+    });
+  } catch {
+    clearPendingExecutionWaiter(schedule.id);
+    return {
+      status: SCHEDULE_STATUS.RETRYING,
+      code: 'content_unavailable',
+    };
+  }
+
+  return outcomePromise;
+}
+
+async function markScheduleFailure(scheduleId, conversationUrl, errorCode) {
+  const store = await readScheduleStore();
+  const index = scheduleId
+    ? store.items.findIndex(item => item.id === scheduleId)
+    : getScheduleIndex(store, conversationUrl);
+
+  if (index < 0) {
+    return { schedule: null };
+  }
+
+  const current = store.items[index];
+  const updated = {
+    ...current,
+    status:
+      errorCode === 'expired_session' ? SCHEDULE_STATUS.EXPIRED_SESSION : SCHEDULE_STATUS.FAILED,
+    updatedAt: Date.now(),
+    lastErrorCode: errorCode,
+  };
+
+  store.items[index] = updated;
+  await writeScheduleStore(store);
+  await syncScheduleAlarm(store);
+
+  void sendAnalyticsEvent('scheduled_message_fail', {
+    module: 'scheduledMessage',
+    method: 'background',
+    result: errorCode,
+    count: updated.retryCount,
+  });
+
+  return { schedule: updated };
+}
+
+async function applyExecutionOutcome(schedule, outcome, { manual = false, eventName = null } = {}) {
+  const store = await readScheduleStore();
+  const index = store.items.findIndex(item => item.id === schedule.id);
+  if (index < 0) {
+    return { status: SCHEDULE_STATUS.CANCELLED };
+  }
+
+  const current = store.items[index];
+  const code = outcome?.code || null;
+  const status = outcome?.status || SCHEDULE_STATUS.FAILED;
+
+  if (status === SCHEDULE_STATUS.SENT) {
+    store.items.splice(index, 1);
+    await writeScheduleStore(store);
+    await syncScheduleAlarm(store);
+
+    void sendAnalyticsEvent(eventName || 'scheduled_message_sent', {
+      module: 'scheduledMessage',
+      method: manual ? 'send_now' : 'background',
+      result: code || 'sent',
+    });
+
+    return { status: SCHEDULE_STATUS.SENT };
+  }
+
+  if (manual) {
+    const updated = {
+      ...current,
+      updatedAt: Date.now(),
+      lastErrorCode: code || current.lastErrorCode,
+    };
+    store.items[index] = updated;
+    await writeScheduleStore(store);
+    await syncScheduleAlarm(store);
+    return {
+      status: updated.status,
+      schedule: updated,
+      errorCode: code,
+    };
+  }
+
+  if (status === SCHEDULE_STATUS.RETRYING && isRetryableCode(code)) {
+    if (current.retryCount >= RETRY_BACKOFF_MS.length) {
+      const failed = {
+        ...current,
+        status: SCHEDULE_STATUS.FAILED,
+        updatedAt: Date.now(),
+        lastErrorCode: 'retry_exhausted',
+      };
+      store.items[index] = failed;
+      await writeScheduleStore(store);
+      await syncScheduleAlarm(store);
+
+      void sendAnalyticsEvent('scheduled_message_fail', {
+        module: 'scheduledMessage',
+        method: 'background',
+        result: 'retry_exhausted',
+        count: failed.retryCount,
+      });
+
+      return { status: SCHEDULE_STATUS.FAILED, schedule: failed };
+    }
+
+    const nextRetryCount = current.retryCount + 1;
+    const updated = {
+      ...current,
+      status: SCHEDULE_STATUS.RETRYING,
+      retryCount: nextRetryCount,
+      scheduledForMs: Date.now() + getNextBackoffMs(nextRetryCount),
+      updatedAt: Date.now(),
+      lastErrorCode: code,
+    };
+
+    store.items[index] = updated;
+    await writeScheduleStore(store);
+    await syncScheduleAlarm(store);
+
+    void sendAnalyticsEvent('scheduled_message_retry', {
+      module: 'scheduledMessage',
+      method: 'background',
+      result: code,
+      count: updated.retryCount,
+    });
+
+    return { status: SCHEDULE_STATUS.RETRYING, schedule: updated };
+  }
+
+  const failed = {
+    ...current,
+    status: code === 'expired_session' ? SCHEDULE_STATUS.EXPIRED_SESSION : SCHEDULE_STATUS.FAILED,
+    updatedAt: Date.now(),
+    lastErrorCode: code || 'send_failed',
+  };
+
+  store.items[index] = failed;
+  await writeScheduleStore(store);
+  await syncScheduleAlarm(store);
+
+  void sendAnalyticsEvent('scheduled_message_fail', {
+    module: 'scheduledMessage',
+    method: 'background',
+    result: failed.lastErrorCode,
+    count: failed.retryCount,
+  });
+
+  return { status: failed.status, schedule: failed };
+}
+
+async function executeSchedule(schedule, options = {}) {
+  const targetTab = await findMatchingClaudeTab(schedule.conversationUrl, options.preferredTabId);
+  if (!targetTab) {
+    return applyExecutionOutcome(
+      schedule,
+      {
+        status: SCHEDULE_STATUS.RETRYING,
+        code: 'matching_tab_missing',
+      },
+      options
+    );
+  }
+
+  const outcome = await dispatchExecutionRequest(
+    schedule,
+    targetTab.id,
+    options.manual ? 'send_now' : 'scheduled'
+  );
+
+  return applyExecutionOutcome(schedule, outcome, options);
+}
+
+async function sendNow(message, sender) {
+  const schedule = await getScheduleForConversation(message.conversationUrl);
+  if (!schedule || !isActiveSchedule(schedule)) {
+    return { status: SCHEDULE_STATUS.CANCELLED };
+  }
+
+  if (message.native === true) {
+    const store = await readScheduleStore();
+    const index = store.items.findIndex(item => item.id === schedule.id);
+    if (index >= 0) {
+      store.items.splice(index, 1);
+      await writeScheduleStore(store);
+      await syncScheduleAlarm(store);
+    }
+
+    void sendAnalyticsEvent('scheduled_message_send_now', {
+      module: 'scheduledMessage',
+      method: 'native_send',
+      result: 'sent',
+    });
+
+    return { status: SCHEDULE_STATUS.SENT };
+  }
+
+  return executeSchedule(schedule, {
+    manual: true,
+    preferredTabId: sender?.tab?.id ?? schedule.sourceTabId,
+    eventName: 'scheduled_message_send_now',
+  });
+}
+
+async function processDueSchedules() {
+  const store = await readScheduleStore();
+  const dueSchedules = store.items
+    .filter(schedule => isActiveSchedule(schedule) && schedule.scheduledForMs <= Date.now())
+    .sort((left, right) => left.scheduledForMs - right.scheduledForMs);
+
+  for (const schedule of dueSchedules) {
+    await executeSchedule(schedule, {
+      manual: false,
+      preferredTabId: schedule.sourceTabId,
+    });
+  }
+}
+
+async function expirePendingSchedulesOnStartup() {
+  const store = await readScheduleStore();
+  let changed = false;
+
+  store.items = store.items.map(item => {
+    if (!isActiveSchedule(item)) {
+      return item;
+    }
+
+    changed = true;
+    return {
+      ...item,
+      status: SCHEDULE_STATUS.EXPIRED_SESSION,
+      updatedAt: Date.now(),
+      lastErrorCode: 'expired_session',
+    };
+  });
+
+  if (changed) {
+    await writeScheduleStore(store);
+  }
+
+  await syncScheduleAlarm(store);
+}
+
+function handleScheduleExecuteResult(message) {
+  const outcome = message.outcome || {};
+  const waiter = pendingExecutionWaiters.get(message.id);
+  if (waiter) {
+    clearTimeout(waiter.timeoutId);
+    pendingExecutionWaiters.delete(message.id);
+    waiter.resolve(outcome);
+    return { acknowledged: true };
+  }
+
+  cacheExecutionOutcome(message.id, outcome);
+
+  if (
+    outcome.status === SCHEDULE_STATUS.FAILED ||
+    outcome.status === SCHEDULE_STATUS.EXPIRED_SESSION
+  ) {
+    return markScheduleFailure(message.id, message.conversationUrl, outcome.code || 'send_failed');
+  }
+
+  return { acknowledged: true };
+}
+
+function isScheduleMessage(message) {
+  return Object.values(SCHEDULE_MESSAGE_TYPES).includes(message?.type);
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === ANALYTICS_MESSAGE_TYPE) {
+    sendAnalyticsEvent(message.name, message.params)
+      .then(() => sendResponse({ ok: true }))
+      .catch(error => {
+        console.warn('Analytics send failed:', error);
+        sendResponse({ ok: false });
+      });
+    return true;
+  }
+
+  if (!isScheduleMessage(message)) {
     return false;
   }
 
-  sendAnalyticsEvent(message.name, message.params)
-    .then(() => sendResponse({ ok: true }))
+  Promise.resolve()
+    .then(async () => {
+      switch (message.type) {
+        case SCHEDULE_MESSAGE_TYPES.GET_FOR_CONVERSATION:
+          return buildScheduleResponse(await getScheduleForConversation(message.conversationUrl));
+        case SCHEDULE_MESSAGE_TYPES.CREATE_OR_UPDATE:
+          return createOrUpdateSchedule(message, sender);
+        case SCHEDULE_MESSAGE_TYPES.CANCEL:
+          return cancelSchedule(message);
+        case SCHEDULE_MESSAGE_TYPES.SEND_NOW:
+          return sendNow(message, sender);
+        case SCHEDULE_MESSAGE_TYPES.EXECUTE_RESULT:
+          return handleScheduleExecuteResult(message);
+        default:
+          return { error: `Unhandled message type: ${message.type}` };
+      }
+    })
+    .then(response => sendResponse(response))
     .catch(error => {
-      console.warn('Analytics send failed:', error);
-      sendResponse({ ok: false });
+      console.warn('Scheduled message action failed:', error);
+      sendResponse({ error: error.message });
     });
 
   return true;
 });
 
-// Open welcome page on first installation, changelog on real version updates
 chrome.runtime.onInstalled.addListener(details => {
   void isFixtureAutomationMode().then(isFixtureRun => {
     if (isFixtureRun) {
@@ -318,9 +924,18 @@ chrome.runtime.onInstalled.addListener(details => {
   });
 });
 
-// Chrome already downloads updates automatically. Reload only after
-// an update is available so the new version is applied without waiting
-// for the extension to become idle on its own.
+chrome.runtime.onStartup?.addListener?.(() => {
+  void expirePendingSchedulesOnStartup();
+});
+
+chrome.alarms?.onAlarm?.addListener?.(alarm => {
+  if (alarm?.name !== SCHEDULE_ALARM_NAME) {
+    return;
+  }
+
+  void processDueSchedules();
+});
+
 chrome.runtime.onUpdateAvailable.addListener(() => {
   chrome.runtime.reload();
 });

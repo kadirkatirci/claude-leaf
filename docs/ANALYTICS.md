@@ -5,8 +5,8 @@
 This extension implements **GA4 Measurement Protocol** for comprehensive analytics tracking across all features. The system captures user interactions, performance metrics, and feature usage while respecting privacy and user consent.
 
 **Key Facts:**
-- **73 whitelisted events** with pre-defined parameters
-- **51 allowed parameters** to prevent PII leakage
+- **59 whitelisted events** with pre-defined parameters
+- **52 allowed parameters** to prevent PII leakage
 - **User-controlled**: Analytics can be disabled in settings
 - **Privacy-first**: Full sanitization + whitelist validation
 - **Performance-monitored**: Init time and UI scan metrics tracked
@@ -191,6 +191,7 @@ trackEvent('perf_init', {
 - CompactViewModule
 - SidebarCollapseModule
 - ContentFoldingModule
+- ScheduledMessageModule
 
 #### `perf_scan`
 Emitted regularly (throttled) during UI updates.
@@ -209,7 +210,34 @@ trackEvent('perf_scan', {
 
 ---
 
-### 6. Popup Events (12 events)
+### 6. Scheduled Message Events (7 events)
+
+Track scheduled-send lifecycle from schedule creation through send, retry, and terminal failure.
+
+| Event | When Triggered |
+|-------|----------------|
+| `scheduled_message_create` | A new scheduled send is created for a conversation |
+| `scheduled_message_cancel` | An active scheduled send is cancelled |
+| `scheduled_message_reschedule` | An existing active scheduled send is replaced with a new target time |
+| `scheduled_message_send_now` | User manually triggers immediate send for a scheduled item |
+| `scheduled_message_sent` | Scheduled send completes successfully at due time |
+| `scheduled_message_retry` | Background retries a scheduled send after a retryable execution failure |
+| `scheduled_message_fail` | Scheduled send ends in a terminal failure or session expiry |
+
+**Location:** `src/background.js`
+
+**Source of truth:** These lifecycle events are emitted only by the background service worker. The content module does not emit duplicate create/cancel/send/fail events, which keeps GA4 counts aligned with the actual queue state.
+
+**Common Parameters:**
+- `module: 'scheduledMessage'`
+- `method: 'background'`, `send_now`, or `native_send`
+- `state`: pending/retrying status for create/cancel/reschedule events
+- `result`: final outcome code such as `sent`, `composer_busy`, `retry_exhausted`, `expired_session`
+- `count`: retry attempt count for retry/fail events
+
+---
+
+### 7. Popup Events (12 events)
 
 Track user interactions in the extension popup.
 
@@ -232,7 +260,7 @@ Track user interactions in the extension popup.
 
 ---
 
-### 7. Error Tracking Events (1 event)
+### 8. Error Tracking Events (1 event)
 
 Critical for production debugging and monitoring extension health.
 
@@ -273,7 +301,7 @@ errorTracker.captureError({
 
 ---
 
-### 8. Session Lifecycle Events (2 events)
+### 9. Session Lifecycle Events (2 events)
 
 Track user sessions from initialization to cleanup.
 
@@ -313,7 +341,7 @@ Track user sessions from initialization to cleanup.
 
 ---
 
-### 9. Funnel Tracking Events (1 event)
+### 10. Funnel Tracking Events (1 event)
 
 Track multi-step user flows to identify drop-off points.
 
@@ -352,7 +380,7 @@ trackFunnelStep('bookmark_creation', 4, 'save_bookmark', 'completed', { sender: 
 
 ---
 
-### 10. User Engagement Events (1 event)
+### 11. User Engagement Events (1 event)
 
 Measure feature adoption breadth and power user behavior.
 
@@ -370,7 +398,7 @@ Measure feature adoption breadth and power user behavior.
 
 ---
 
-### 11. Frustration Detection Events (1 event)
+### 12. Frustration Detection Events (1 event)
 
 Detect user frustration through rapid repeated actions.
 
@@ -399,7 +427,7 @@ frustrationDetector.recordAction('button_click');
 
 ## 🎯 Parameter Reference
 
-### Allowed Parameters (51 total - Updated with Phase 1-4 additions)
+### Allowed Parameters (52 total)
 
 All events go through sanitization to prevent sensitive data leakage.
 
@@ -553,7 +581,7 @@ trackEvent('popup_open', { tab_id: 'features' });
 ```javascript
 const ALLOWED_EVENTS = new Set([
   'nav_prev', 'nav_next', 'nav_top',
-  'bookmark_add', 'bookmark_remove', /* ... 64 more ... */
+  'bookmark_add', 'bookmark_remove', /* ... */
 ]);
 ```
 
@@ -562,7 +590,7 @@ Only events in this set are transmitted. Any other event name is rejected.
 **Parameter Whitelist:**
 ```javascript
 const ALLOWED_PARAMS = new Set([
-  'module', 'method', 'state', /* ... 25 more ... */
+  'module', 'method', 'state', /* ... */
 ]);
 ```
 

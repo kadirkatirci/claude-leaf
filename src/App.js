@@ -39,6 +39,7 @@ import BookmarkModule from './modules/BookmarkModule.js';
 import EmojiMarkerModule from './modules/EmojiMarkerModule.js';
 import SidebarCollapseModule from './modules/SidebarCollapseModule.js';
 import ContentFoldingModule from './modules/ContentFoldingModule.js';
+import ScheduledMessageModule from './modules/ScheduledMessageModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -441,6 +442,9 @@ class ClaudeProductivityApp {
     }
     if (!isDevDisabled('contentFolding')) {
       this.registerModule('contentFolding', new ContentFoldingModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('scheduledMessage')) {
+      this.registerModule('scheduledMessage', new ScheduledMessageModule(), { dependencies: [] });
     }
   }
 

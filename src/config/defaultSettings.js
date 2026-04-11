@@ -54,6 +54,9 @@ export const DEFAULT_SETTINGS = {
     autoCollapseCode: true,
     codeBlockThreshold: 15,
   },
+  scheduledMessage: {
+    enabled: false,
+  },
   general: {
     opacity: 0.7,
     colorTheme: 'purple',

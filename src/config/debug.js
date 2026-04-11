@@ -18,6 +18,7 @@ export const DEBUG_FLAGS = {
   editHistory: false,
   compactView: false,
   contentFolding: false,
+  scheduledMessage: false,
   storage: false,
   cache: false,
   performance: false,

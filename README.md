@@ -31,6 +31,7 @@ Claude Leaf gives you lightweight controls directly inside the conversation so y
 - bookmark important parts of a thread
 - tag messages with emoji markers for quick visual scanning
 - inspect edited prompts and version branches when a conversation evolves
+- schedule a drafted message to send later when timing matters
 
 ## What You Can Use Today
 
@@ -72,6 +73,10 @@ See how prompts changed over time, inspect versions, and understand branching pa
   <img src="docs/screenshots/edit-history-modal-view.png" alt="Edit history modal view" width="48%">
   <img src="docs/screenshots/branch-map-view.png" alt="Branch map view" width="48%">
 </p>
+
+### Scheduled Message
+
+Schedule a drafted message to send later from the composer. This module is available in the build, but it starts disabled by default and must be enabled from the popup settings.
 
 ## Visual Tour
 
@@ -127,6 +132,10 @@ Available in the current build:
 - Bookmarks
 - Emoji Markers
 - Edit History
+
+Available as an opt-in module:
+
+- Scheduled Message (disabled by default)
 
 Present but dev-disabled:
 
