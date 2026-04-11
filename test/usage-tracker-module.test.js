@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setupDom } from '../test-support/dom.js';
+import { readFileSync } from 'node:fs';
 import { cloneDefaultSettings } from '../src/config/defaultSettings.js';
 import { USAGE_EVENT_NAMES } from '../src/modules/UsageTrackerModule/constants.js';
 
@@ -68,6 +69,9 @@ async function setupUsageTrackerEnvironment(html, { urlPath = '/chat/test-thread
   globalThis.chrome = {
     runtime: {
       lastError: null,
+      getURL(path) {
+        return `chrome-extension://test-extension/${path}`;
+      },
       sendMessage(message, callback) {
         sentMessages.push(message);
         callback?.({});
@@ -161,6 +165,7 @@ test('usage tracker renders session and weekly lines inside the composer', async
     const weeklyFill = document.querySelector('[data-usage-fill="weekly"]');
     const sessionLine = document.querySelector('[data-usage-kind="session"]');
     const weeklyLine = document.querySelector('[data-usage-kind="weekly"]');
+    const tooltip = document.querySelector('[data-usage-tooltip]');
     const usageShell = document.querySelector('[data-testid="usage-shell"]');
 
     assert.ok(root);
@@ -172,12 +177,19 @@ test('usage tracker renders session and weekly lines inside the composer', async
     assert.equal(sessionLine.style.right, '0px');
     assert.equal(weeklyLine.style.left, '0px');
     assert.equal(weeklyLine.style.right, '0px');
-    assert.equal(sessionLine.style.height, '1px');
-    assert.equal(weeklyLine.style.height, '1px');
-    assert.match(sessionLine.title, /Session 63%/);
-    assert.match(weeklyLine.title, /Weekly 13%/);
+    assert.equal(sessionLine.style.height, '10px');
+    assert.equal(weeklyLine.style.height, '10px');
+    assert.equal(sessionLine.title, '');
+    assert.equal(weeklyLine.title, '');
+    assert.match(sessionLine.getAttribute('aria-label'), /Session 63%/);
+    assert.match(weeklyLine.getAttribute('aria-label'), /Weekly 13%/);
     assert.match(sessionFill.style.background, /8,\s*145,\s*178/);
     assert.match(weeklyFill.style.background, /37,\s*99,\s*235/);
+    sessionLine.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
+    assert.equal(tooltip.style.opacity, '1');
+    assert.match(tooltip.textContent, /Session 63%/);
+    sessionLine.dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
+    assert.equal(tooltip.style.opacity, '0');
   } finally {
     env.cleanup();
   }
@@ -239,4 +251,15 @@ test('usage tracker defaults to enabled for new settings', () => {
 
   assert.equal(defaults.usageTracker.enabled, true);
   assert.equal('showFloatingUI' in defaults.usageTracker, false);
+});
+
+test('usage tracker bridge is exposed as a web accessible resource instead of inline script', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+
+  assert.ok(Array.isArray(manifest.web_accessible_resources));
+  assert.ok(
+    manifest.web_accessible_resources.some(entry =>
+      entry.resources?.includes('src/page-bridges/usageTrackerBridge.js')
+    )
+  );
 });

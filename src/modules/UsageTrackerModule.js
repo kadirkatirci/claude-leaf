@@ -52,7 +52,7 @@ export default class UsageTrackerModule extends BaseModule {
     debugLog('usageTracker', 'Initializing Usage Tracker');
 
     try {
-      this.bridge.ensureInjected();
+      await this.bridge.ensureInjected();
     } catch (error) {
       debugLog(
         'usageTracker',

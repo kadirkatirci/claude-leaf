@@ -1,190 +1,125 @@
-import { USAGE_EVENT_NAMES } from './constants.js';
+import { USAGE_BRIDGE_SCRIPT_PATH, USAGE_EVENT_NAMES } from './constants.js';
 
 const BRIDGE_TIMEOUT_MS = 8000;
-
-function installUsageTrackerBridge(requestEventName, responseEventName, limitEventName) {
-  if (window.__clLeafUsageTrackerBridgeInstalled) {
-    return;
-  }
-
-  window.__clLeafUsageTrackerBridgeInstalled = true;
-
-  const originalFetch = window.fetch.bind(window);
-
-  function dispatch(name, detail) {
-    window.dispatchEvent(new CustomEvent(name, { detail }));
-  }
-
-  function parseMessageLimitPayload(streamText) {
-    if (typeof streamText !== 'string' || !streamText.includes('event: message_limit')) {
-      return null;
-    }
-
-    const lines = streamText.split(/\r?\n/);
-    for (let index = 0; index < lines.length; index += 1) {
-      if (!/^event:\s*message_limit\s*$/.test(lines[index])) {
-        continue;
-      }
-
-      const dataLine = lines[index + 1] || '';
-      if (!/^data:\s*/.test(dataLine)) {
-        continue;
-      }
-
-      try {
-        return JSON.parse(dataLine.replace(/^data:\s*/, ''));
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
-  }
-
-  async function handleUsageRequest(detail) {
-    const requestId = detail?.requestId;
-    const orgUuid = detail?.orgUuid;
-
-    if (!requestId || !orgUuid) {
-      dispatch(responseEventName, {
-        requestId,
-        ok: false,
-        error: 'missing_usage_request_data',
-      });
-      return;
-    }
-
-    try {
-      const response = await originalFetch(
-        `/api/organizations/${encodeURIComponent(orgUuid)}/usage`,
-        {
-          credentials: 'include',
-          headers: {
-            accept: 'application/json',
-          },
-        }
-      );
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`usage_fetch_failed_${response.status}`);
-      }
-
-      dispatch(responseEventName, {
-        requestId,
-        ok: true,
-        payload,
-      });
-    } catch (error) {
-      dispatch(responseEventName, {
-        requestId,
-        ok: false,
-        error: error?.message || 'usage_fetch_failed',
-      });
-    }
-  }
-
-  window.addEventListener(requestEventName, event => {
-    if (event?.detail?.type === 'fetchUsage') {
-      void handleUsageRequest(event.detail);
-    }
-  });
-
-  window.fetch = async (...args) => {
-    const response = await originalFetch(...args);
-
-    try {
-      const request = args[0] instanceof Request ? args[0] : null;
-      const requestUrl = request ? request.url : String(args[0] || '');
-      const requestMethod = request ? request.method : String(args[1]?.method || 'GET');
-
-      if (
-        requestMethod.toUpperCase() === 'POST' &&
-        /\/api\/organizations\/[^/]+\/chat_conversations\/[^/]+\/completion(?:\?|$)/.test(
-          requestUrl
-        )
-      ) {
-        void response
-          .clone()
-          .text()
-          .then(streamText => {
-            const payload = parseMessageLimitPayload(streamText);
-            if (payload) {
-              dispatch(limitEventName, { payload });
-            }
-          })
-          .catch(() => {});
-      }
-    } catch {
-      // Ignore bridge parsing failures to avoid affecting Claude.
-    }
-
-    return response;
-  };
-}
 
 export default class UsageBridge {
   constructor() {
     this.injected = false;
+    this.injectPromise = null;
     this.requestCounter = 0;
+    this.scriptId = 'cl-leaf-usage-tracker-bridge';
   }
 
   ensureInjected() {
     if (this.injected) {
-      return;
+      return Promise.resolve();
     }
 
-    const script = document.createElement('script');
-    script.textContent = `(${installUsageTrackerBridge.toString()})(${JSON.stringify(USAGE_EVENT_NAMES.REQUEST)}, ${JSON.stringify(USAGE_EVENT_NAMES.RESPONSE)}, ${JSON.stringify(USAGE_EVENT_NAMES.LIMIT_UPDATE)});`;
-    (document.head || document.documentElement || document.body).appendChild(script);
-    script.remove();
-    this.injected = true;
+    if (window.__clLeafUsageTrackerBridgeInstalled) {
+      this.injected = true;
+      return Promise.resolve();
+    }
+
+    if (this.injectPromise) {
+      return this.injectPromise;
+    }
+
+    const runtimeGetUrl = globalThis.chrome?.runtime?.getURL;
+    if (typeof runtimeGetUrl !== 'function') {
+      return Promise.reject(new Error('usage_bridge_runtime_url_unavailable'));
+    }
+
+    const existingScript = document.getElementById(this.scriptId);
+    if (existingScript) {
+      this.injectPromise = new Promise((resolve, reject) => {
+        existingScript.addEventListener(
+          'load',
+          () => {
+            this.injected = true;
+            this.injectPromise = null;
+            resolve();
+          },
+          { once: true }
+        );
+        existingScript.addEventListener(
+          'error',
+          () => {
+            this.injectPromise = null;
+            reject(new Error('usage_bridge_load_failed'));
+          },
+          { once: true }
+        );
+      });
+      return this.injectPromise;
+    }
+
+    this.injectPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.id = this.scriptId;
+      script.src = runtimeGetUrl(USAGE_BRIDGE_SCRIPT_PATH);
+      script.async = false;
+      script.onload = () => {
+        this.injected = true;
+        this.injectPromise = null;
+        script.remove();
+        resolve();
+      };
+      script.onerror = () => {
+        this.injectPromise = null;
+        script.remove();
+        reject(new Error('usage_bridge_load_failed'));
+      };
+      (document.head || document.documentElement || document.body).appendChild(script);
+    });
+
+    return this.injectPromise;
   }
 
   requestUsage(orgUuid) {
-    this.ensureInjected();
+    return this.ensureInjected().then(
+      () =>
+        new Promise((resolve, reject) => {
+          const requestId = `usage-${Date.now()}-${this.requestCounter++}`;
+          let timeoutId = null;
 
-    return new Promise((resolve, reject) => {
-      const requestId = `usage-${Date.now()}-${this.requestCounter++}`;
-      let timeoutId = null;
+          const handleResponse = event => {
+            if (event?.detail?.requestId !== requestId) {
+              return;
+            }
 
-      const handleResponse = event => {
-        if (event?.detail?.requestId !== requestId) {
-          return;
-        }
+            cleanup();
 
-        cleanup();
+            if (event.detail.ok) {
+              resolve(event.detail.payload);
+              return;
+            }
 
-        if (event.detail.ok) {
-          resolve(event.detail.payload);
-          return;
-        }
+            reject(new Error(event.detail.error || 'usage_bridge_failed'));
+          };
 
-        reject(new Error(event.detail.error || 'usage_bridge_failed'));
-      };
+          function cleanup() {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+            window.removeEventListener(USAGE_EVENT_NAMES.RESPONSE, handleResponse);
+          }
 
-      function cleanup() {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        window.removeEventListener(USAGE_EVENT_NAMES.RESPONSE, handleResponse);
-      }
+          timeoutId = window.setTimeout(() => {
+            cleanup();
+            reject(new Error('usage_bridge_timeout'));
+          }, BRIDGE_TIMEOUT_MS);
 
-      timeoutId = window.setTimeout(() => {
-        cleanup();
-        reject(new Error('usage_bridge_timeout'));
-      }, BRIDGE_TIMEOUT_MS);
-
-      window.addEventListener(USAGE_EVENT_NAMES.RESPONSE, handleResponse);
-      window.dispatchEvent(
-        new CustomEvent(USAGE_EVENT_NAMES.REQUEST, {
-          detail: {
-            type: 'fetchUsage',
-            requestId,
-            orgUuid,
-          },
+          window.addEventListener(USAGE_EVENT_NAMES.RESPONSE, handleResponse);
+          window.dispatchEvent(
+            new CustomEvent(USAGE_EVENT_NAMES.REQUEST, {
+              detail: {
+                type: 'fetchUsage',
+                requestId,
+                orgUuid,
+              },
+            })
+          );
         })
-      );
-    });
+    );
   }
 }

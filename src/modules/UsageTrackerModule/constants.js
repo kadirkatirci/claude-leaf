@@ -10,6 +10,8 @@ export const USAGE_EVENT_NAMES = {
   RESPONSE: 'cl-leaf-usage-tracker:response',
 };
 
+export const USAGE_BRIDGE_SCRIPT_PATH = 'src/page-bridges/usageTrackerBridge.js';
+
 export const USAGE_POLL_MS = 5 * 60 * 1000;
 export const USAGE_STALE_MS = 2 * 60 * 1000;
 export const USAGE_REVALIDATE_MS = 1500;
