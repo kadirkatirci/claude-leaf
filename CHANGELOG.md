@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-04-11
+type: minor
+title: Scheduled messages for Claude drafts
+
+### Added
+- Scheduled Message module for sending drafted Claude messages later from the composer, including support on the new chat page
+
+### Fixed
+- Background monitoring no longer reports false failures when no Claude tab is open
+
+### Security
+- Hardened live fixture metadata redaction to reduce the chance of exposing sensitive Claude session details in local capture workflows
+
 ## [1.0.2] - 2026-03-30
 type: patch
 title: Popup visibility and settings sync fixes
