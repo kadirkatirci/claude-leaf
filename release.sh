@@ -28,6 +28,7 @@ cd "$SCRIPT_DIR"
 
 DRY_RUN=false
 AUTO_CONFIRM=false
+REFRESH_CWS_TOKEN_ONLY=false
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -45,12 +46,13 @@ info() { echo -e "  ${CYAN}ℹ $1${NC}"; }
 
 usage() {
   cat <<'EOF'
-Usage: ./release.sh [--dry-run] [--yes]
+Usage: ./release.sh [--dry-run] [--yes] [--refresh-cws-token]
 
 Options:
-  --dry-run  Validate inputs and show planned actions without external calls
-  --yes      Skip the interactive confirmation prompt
-  -h, --help Show this help text
+  --dry-run            Validate inputs and show planned actions without external calls
+  --yes                Skip the interactive confirmation prompt
+  --refresh-cws-token  Refresh CWS OAuth token only, update .env, and exit
+  -h, --help           Show this help text
 EOF
 }
 
@@ -61,6 +63,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --yes)
       AUTO_CONFIRM=true
+      ;;
+    --refresh-cws-token)
+      REFRESH_CWS_TOKEN_ONLY=true
       ;;
     -h|--help)
       usage
@@ -73,6 +78,208 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+open_url() {
+  local url="$1"
+
+  if command_exists open; then
+    open "$url" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  if command_exists xdg-open; then
+    xdg-open "$url" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  return 1
+}
+
+update_env_var_in_file() {
+  local env_file="$1"
+  local env_key="$2"
+  local env_value="$3"
+
+  ENV_FILE="$env_file" ENV_KEY="$env_key" ENV_VALUE="$env_value" python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+env_file = Path(os.environ['ENV_FILE'])
+env_key = os.environ['ENV_KEY']
+env_value = os.environ['ENV_VALUE']
+
+text = env_file.read_text(encoding='utf-8') if env_file.exists() else ''
+pattern = rf'^{re.escape(env_key)}=.*$'
+replacement = f'{env_key}={env_value}'
+
+if re.search(pattern, text, flags=re.MULTILINE):
+    text = re.sub(pattern, replacement, text, count=1, flags=re.MULTILINE)
+else:
+    if text and not text.endswith('\n'):
+        text += '\n'
+    text += replacement + '\n'
+
+env_file.write_text(text, encoding='utf-8')
+PY
+}
+
+pretty_print_json_or_raw() {
+  local payload="$1"
+
+  if ! printf '%s' "$payload" | python3 -m json.tool 2>/dev/null; then
+    printf '%s\n' "$payload"
+  fi
+}
+
+extract_json_field() {
+  local payload="$1"
+  local field="$2"
+
+  PAYLOAD="$payload" FIELD="$field" python3 - <<'PY'
+import json
+import os
+
+payload = os.environ['PAYLOAD']
+field = os.environ['FIELD']
+
+try:
+    data = json.loads(payload)
+except json.JSONDecodeError:
+    raise SystemExit()
+
+value = data
+for part in field.split('.'):
+    if isinstance(value, dict) and part in value:
+        value = value[part]
+    else:
+        raise SystemExit()
+
+if value is None:
+    raise SystemExit()
+
+print(value)
+PY
+}
+
+wait_for_clipboard_refresh_token() {
+  local max_attempts=180
+  local attempt clipboard_value
+
+  if ! command_exists pbpaste; then
+    return 1
+  fi
+
+  info "Watching clipboard for a new refresh token (copy it once it appears)" >&2
+
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    clipboard_value=$(pbpaste 2>/dev/null | tr -d '\r')
+    if [[ "$clipboard_value" =~ ^1//[A-Za-z0-9._-]+$ ]]; then
+      printf '%s\n' "$clipboard_value"
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+bootstrap_cws_refresh_token() {
+  local oauth_scope playground_url new_refresh_token
+
+  [[ -n "${CWS_CLIENT_ID:-}" ]] || fail "Missing required env var: CWS_CLIENT_ID"
+  [[ -n "${CWS_CLIENT_SECRET:-}" ]] || fail "Missing required env var: CWS_CLIENT_SECRET"
+
+  oauth_scope="https://www.googleapis.com/auth/chromewebstore"
+  playground_url="https://developers.google.com/oauthplayground"
+
+  step "Refreshing Chrome Web Store OAuth token"
+  warn "Stored Chrome Web Store refresh token is missing, expired, or revoked."
+  info "Google requires a one-time OAuth consent step to mint a new refresh token."
+  info "Following the official Chrome Web Store API guide, complete this in OAuth Playground:"
+  info "1. Settings → Use your own OAuth credentials"
+  info "2. Paste the CWS client ID and client secret from .env"
+  info "3. Scope → ${oauth_scope}"
+  info "4. Authorize APIs with the Google developer account that owns the extension"
+  info "5. Exchange authorization code for tokens"
+
+  if open_url "$playground_url"; then
+    info "Opened OAuth Playground in the default browser"
+  else
+    warn "Could not open OAuth Playground automatically"
+    info "Open this URL manually: ${playground_url}"
+  fi
+
+  if new_refresh_token=$(wait_for_clipboard_refresh_token); then
+    ok "Detected refresh token in clipboard"
+  elif [[ -t 0 ]]; then
+    echo ""
+    read -r -p "Paste the new CWS refresh token: " new_refresh_token
+  else
+    fail "Could not obtain a new refresh token automatically. Complete the OAuth Playground flow and update .env manually."
+  fi
+
+  if [[ ! "$new_refresh_token" =~ ^1//[A-Za-z0-9._-]+$ ]]; then
+    fail "The provided token does not look like a Google refresh token."
+  fi
+
+  update_env_var_in_file ".env" "CWS_REFRESH_TOKEN" "$new_refresh_token"
+  CWS_REFRESH_TOKEN="$new_refresh_token"
+  export CWS_REFRESH_TOKEN
+  ok "Updated CWS_REFRESH_TOKEN in .env"
+}
+
+request_cws_access_token_once() {
+  curl -sS -X POST "https://oauth2.googleapis.com/token" \
+    -d "client_id=${CWS_CLIENT_ID}" \
+    -d "client_secret=${CWS_CLIENT_SECRET}" \
+    -d "refresh_token=${CWS_REFRESH_TOKEN}" \
+    -d "grant_type=refresh_token"
+}
+
+obtain_cws_access_token() {
+  local response access_token error_code error_description
+
+  response=$(request_cws_access_token_once)
+  access_token=$(extract_json_field "$response" "access_token" || true)
+
+  if [[ -n "$access_token" ]]; then
+    ACCESS_TOKEN="$access_token"
+    export ACCESS_TOKEN
+    ok "Access token obtained"
+    return 0
+  fi
+
+  error_code=$(extract_json_field "$response" "error" || true)
+  error_description=$(extract_json_field "$response" "error_description" || true)
+
+  if [[ "$error_code" == "invalid_grant" && "$error_description" == "Token has been expired or revoked." ]]; then
+    bootstrap_cws_refresh_token
+    response=$(request_cws_access_token_once)
+    access_token=$(extract_json_field "$response" "access_token" || true)
+
+    if [[ -n "$access_token" ]]; then
+      ACCESS_TOKEN="$access_token"
+      export ACCESS_TOKEN
+      ok "Access token obtained with refreshed credentials"
+      return 0
+    fi
+
+    error_code=$(extract_json_field "$response" "error" || true)
+    error_description=$(extract_json_field "$response" "error_description" || true)
+  fi
+
+  if [[ "$error_code" == "unauthorized_client" ]]; then
+    fail "Refresh token was issued for a different OAuth client. Regenerate it in OAuth Playground with 'Use your own OAuth credentials' enabled for the CWS client in .env."
+  fi
+
+  pretty_print_json_or_raw "$response"
+  fail "Failed to get access token"
+}
 
 wait_for_upload_completion() {
   local max_attempts=12
@@ -380,17 +587,43 @@ if [[ "$DRY_RUN" == false ]]; then
   ok ".env loaded"
 
   # ── Validate required env vars ────────────────────────────────────────────
-  REQUIRED_VARS=(
-    CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN
-    CWS_EXTENSION_ID CWS_PUBLISHER_ID
-    TEDAI_API_BASE_URL TEDAI_API_KEY TEDAI_EXTENSION_ID
-  )
+  if [[ "$REFRESH_CWS_TOKEN_ONLY" == true ]]; then
+    REQUIRED_VARS=(
+      CWS_CLIENT_ID CWS_CLIENT_SECRET
+    )
+  else
+    REQUIRED_VARS=(
+      CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN
+      CWS_EXTENSION_ID CWS_PUBLISHER_ID
+      TEDAI_API_BASE_URL TEDAI_API_KEY TEDAI_EXTENSION_ID
+    )
+  fi
+
   for var in "${REQUIRED_VARS[@]}"; do
     [[ -z "${!var:-}" ]] && fail "Missing required env var: $var"
   done
   ok "All credentials present"
 else
   info "Dry run: skipping .env load and credential validation"
+fi
+
+if [[ "$REFRESH_CWS_TOKEN_ONLY" == true ]]; then
+  if [[ "$DRY_RUN" == true ]]; then
+    fail "--refresh-cws-token cannot be combined with --dry-run"
+  fi
+
+  bootstrap_cws_refresh_token
+  exit 0
+fi
+
+# ── Chrome Web Store: Credential preflight ──────────────────────────────────
+step "Preflighting Chrome Web Store credentials"
+
+if [[ "$DRY_RUN" == false ]]; then
+  obtain_cws_access_token
+  ok "Chrome Web Store credentials validated before release checks"
+else
+  info "[dry-run] Would validate Chrome Web Store credentials before continuing"
 fi
 
 # ── Git working tree check ──────────────────────────────────────────────────
@@ -818,26 +1051,11 @@ fi
 step "Getting Chrome Web Store access token"
 
 if [[ "$DRY_RUN" == false ]]; then
-  ACCESS_TOKEN_RESPONSE=$(curl -s -X POST "https://oauth2.googleapis.com/token" \
-    -d "client_id=${CWS_CLIENT_ID}" \
-    -d "client_secret=${CWS_CLIENT_SECRET}" \
-    -d "refresh_token=${CWS_REFRESH_TOKEN}" \
-    -d "grant_type=refresh_token")
-
-  ACCESS_TOKEN=$(echo "$ACCESS_TOKEN_RESPONSE" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    print(data['access_token'])
-except (KeyError, json.JSONDecodeError):
-    print('')
-")
-
-  if [[ -z "$ACCESS_TOKEN" ]]; then
-    echo "$ACCESS_TOKEN_RESPONSE"
-    fail "Failed to get access token"
+  if [[ -n "${ACCESS_TOKEN:-}" ]]; then
+    ok "Access token already obtained during preflight"
+  else
+    obtain_cws_access_token
   fi
-  ok "Access token obtained"
 else
   info "[dry-run] Would request Chrome Web Store access token"
 fi
