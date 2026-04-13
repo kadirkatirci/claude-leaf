@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-04-13
+type: minor
+title: Composer usage tracking
+
+### Added
+- Usage Tracker module for showing subtle session and weekly Claude usage indicators directly on the composer, with live updates and hover details in both new and existing chats
+
 ## [1.1.0] - 2026-04-11
 type: minor
 title: Scheduled messages for Claude drafts
