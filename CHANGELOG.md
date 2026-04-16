@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-04-17
+type: patch
+title: Usage tracker percentage accuracy
+
+### Fixed
+- Corrected usage tracker percentage normalization so session and weekly indicators no longer render as full when Claude returns exact percentage values from the usage API
+
 ## [1.2.0] - 2026-04-13
 type: minor
 title: Composer usage tracking
