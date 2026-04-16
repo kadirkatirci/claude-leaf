@@ -31,6 +31,22 @@ test('normalizeUsagePayload converts settings usage response to renderable windo
   assert.equal(hasRenderableUsage(state), true);
 });
 
+test('normalizeUsagePayload treats exact 1 from the usage API as 1 percent, not 100 percent', () => {
+  const state = normalizeUsagePayload({
+    five_hour: {
+      utilization: 12,
+      resets_at: '2026-04-17T01:00:00.000Z',
+    },
+    seven_day: {
+      utilization: 1,
+      resets_at: '2026-04-23T20:00:00.000Z',
+    },
+  });
+
+  assert.equal(Math.round(state.session.percent), 12);
+  assert.equal(Math.round(state.weekly.percent), 1);
+});
+
 test('normalizeMessageLimitPayload converts completion SSE window ratios', () => {
   const state = normalizeMessageLimitPayload({
     windows: {
@@ -48,6 +64,24 @@ test('normalizeMessageLimitPayload converts completion SSE window ratios', () =>
   assert.equal(Math.round(state.session.percent), 62);
   assert.equal(Math.round(state.weekly.percent), 12);
   assert.equal(state.source, 'message_limit');
+});
+
+test('normalizeMessageLimitPayload still treats exact 1 from SSE as 100 percent', () => {
+  const state = normalizeMessageLimitPayload({
+    windows: {
+      '5h': {
+        utilization: 1,
+        resets_at: 1775930400,
+      },
+      '7d': {
+        utilization: 0.01,
+        resets_at: 1776510000,
+      },
+    },
+  });
+
+  assert.equal(Math.round(state.session.percent), 100);
+  assert.equal(Math.round(state.weekly.percent), 1);
 });
 
 test('mergeUsageState preserves previous windows when a partial update arrives', () => {

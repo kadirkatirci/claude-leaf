@@ -1,13 +1,26 @@
 import { USAGE_STALE_MS } from './constants.js';
 
-function clampPercent(value) {
+function clamp(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, numeric));
+}
+
+function normalizeUsageApiPercent(value) {
+  return clamp(value);
+}
+
+function normalizeMessageLimitPercent(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
     return null;
   }
 
   const percent = numeric <= 1 ? numeric * 100 : numeric;
-  return Math.min(100, Math.max(0, percent));
+  return clamp(percent);
 }
 
 function normalizeResetAt(value) {
@@ -61,8 +74,8 @@ function getTone(percent) {
   return 'normal';
 }
 
-function buildUsageWindow(label, utilization, resetsAt, nowMs) {
-  const percent = clampPercent(utilization);
+function buildUsageWindow(label, utilization, resetsAt, nowMs, normalizePercent) {
+  const percent = normalizePercent(utilization);
   if (!Number.isFinite(percent)) {
     return null;
   }
@@ -91,13 +104,15 @@ export function normalizeUsagePayload(payload, nowMs = Date.now()) {
     'Session',
     payload.five_hour?.utilization,
     payload.five_hour?.resets_at,
-    nowMs
+    nowMs,
+    normalizeUsageApiPercent
   );
   const weekly = buildUsageWindow(
     'Weekly',
     payload.seven_day?.utilization,
     payload.seven_day?.resets_at,
-    nowMs
+    nowMs,
+    normalizeUsageApiPercent
   );
 
   if (!session && !weekly) {
@@ -123,13 +138,15 @@ export function normalizeMessageLimitPayload(payload, nowMs = Date.now()) {
     'Session',
     windows['5h']?.utilization,
     windows['5h']?.resets_at,
-    nowMs
+    nowMs,
+    normalizeMessageLimitPercent
   );
   const weekly = buildUsageWindow(
     'Weekly',
     windows['7d']?.utilization,
     windows['7d']?.resets_at,
-    nowMs
+    nowMs,
+    normalizeMessageLimitPercent
   );
 
   if (!session && !weekly) {
