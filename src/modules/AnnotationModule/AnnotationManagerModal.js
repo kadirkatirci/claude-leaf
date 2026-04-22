@@ -63,13 +63,13 @@ export class AnnotationManagerModal {
 
     const content = DOMUtils.createElement('div', {
       className:
-        'flex h-[78vh] w-full max-w-[980px] translate-y-5 flex-col overflow-hidden rounded-xl bg-bg-000 opacity-0 shadow-2xl transition-all duration-300',
+        'flex h-[78vh] w-full max-w-[1100px] translate-y-5 flex-col overflow-hidden rounded-xl bg-bg-000 opacity-0 shadow-2xl transition-all duration-300',
     });
 
     const header = this.createHeader();
     const toolbar = this.createToolbar();
     const list = DOMUtils.createElement('div', {
-      className: 'cl-annotation-manager-list flex-1 overflow-y-auto p-5',
+      className: 'cl-annotation-manager-list flex-1 overflow-y-auto p-6 bg-bg-100/20',
     });
 
     content.appendChild(header);
@@ -112,18 +112,19 @@ export class AnnotationManagerModal {
 
     const titleWrap = DOMUtils.createElement('div', { className: 'min-w-0' });
     const title = DOMUtils.createElement('h2', {
-      className: 'm-0 text-lg font-semibold text-text-000',
+      className: 'm-0 text-lg font-bold text-text-000',
       textContent: 'Annotations',
     });
     const subtitle = DOMUtils.createElement('p', {
-      className: 'mt-1 text-xs text-text-400',
-      textContent: 'Current conversation highlights and notes',
+      className: 'mt-0.5 text-xs text-text-400',
+      textContent: 'Manage and navigate your local conversation highlights',
     });
     titleWrap.appendChild(title);
     titleWrap.appendChild(subtitle);
 
     const close = DOMUtils.createElement('button', {
-      className: 'rounded-lg px-3 py-2 text-text-400 hover:bg-bg-100 hover:text-text-000',
+      className:
+        'rounded-lg px-3 py-1.5 text-sm font-medium text-text-400 hover:bg-bg-100 hover:text-text-000 transition-colors',
       textContent: 'Close',
       type: 'button',
     });
@@ -136,14 +137,13 @@ export class AnnotationManagerModal {
 
   createToolbar() {
     const toolbar = DOMUtils.createElement('div', {
-      className:
-        'grid grid-cols-1 gap-3 border-b border-border-100 bg-bg-50 px-6 py-4 md:grid-cols-[1fr_160px_180px]',
+      className: 'flex items-center gap-3 border-b border-border-100 bg-bg-50 px-6 py-3',
     });
 
     const search = DOMUtils.createElement('input', {
       className:
-        'rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100',
-      placeholder: 'Search selected text, note, or message preview',
+        'flex-1 min-w-0 rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:ring-1 focus:ring-accent-main-100/20',
+      placeholder: 'Search keywords in selected text or notes...',
       type: 'search',
     });
     search.addEventListener('input', event => {
@@ -163,6 +163,8 @@ export class AnnotationManagerModal {
       ['all', 'All colors'],
       ...ANNOTATION_COLOR_KEYS.map(key => [key, ANNOTATION_COLORS[key].label]),
     ]);
+    color.className =
+      'w-[140px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     color.addEventListener('change', event => {
       this.state.colorFilter = event.target.value;
       trackEvent('annotation_manager_filter', {
@@ -178,6 +180,8 @@ export class AnnotationManagerModal {
       ['resolved', 'Resolved'],
       ['unresolved', 'Unresolved'],
     ]);
+    status.className =
+      'w-[140px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     status.addEventListener('change', event => {
       this.state.statusFilter = event.target.value;
       trackEvent('annotation_manager_filter', {
@@ -257,14 +261,24 @@ export class AnnotationManagerModal {
 
     if (states.length === 0) {
       const empty = DOMUtils.createElement('div', {
-        className: 'py-12 text-center text-sm text-text-400',
-        textContent: 'No annotations match this view.',
+        className: 'py-20 text-center',
       });
+      empty.innerHTML = `
+        <div class="mb-3 text-text-500 opacity-20">
+          <svg class="mx-auto h-12 w-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </div>
+        <p class="text-sm text-text-400 font-medium">No annotations found</p>
+        <p class="mt-1 text-xs text-text-500">Try adjusting your filters or search query.</p>
+      `;
       list.appendChild(empty);
       return;
     }
 
-    const container = DOMUtils.createElement('div', { className: 'flex flex-col gap-3' });
+    const container = DOMUtils.createElement('div', {
+      className: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',
+    });
     states.forEach(state => container.appendChild(this.createAnnotationCard(state)));
     list.appendChild(container);
   }
@@ -274,28 +288,35 @@ export class AnnotationManagerModal {
     const color =
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
     const card = DOMUtils.createElement('div', {
-      className: 'rounded-xl border border-border-200 bg-bg-000 p-4 shadow-sm',
+      className:
+        'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-shadow hover:shadow-md',
     });
 
-    const header = DOMUtils.createElement('div', {
-      className: 'mb-3 flex items-center justify-between gap-3',
+    // Top meta section
+    const topBar = DOMUtils.createElement('div', {
+      className:
+        'flex items-center justify-between border-b border-border-100 px-4 py-2.5 bg-bg-50/50 rounded-t-xl',
     });
+
     const meta = DOMUtils.createElement('div', {
-      className: 'flex min-w-0 items-center gap-2 text-xs text-text-400',
+      className: 'flex min-w-0 items-center gap-2',
     });
-    const dot = DOMUtils.createElement('span', { className: 'size-2.5 shrink-0 rounded-full' });
+    const dot = DOMUtils.createElement('span', { className: 'size-2 shrink-0 rounded-full' });
     dot.style.background = color.swatch;
+
     const sender = DOMUtils.createElement('span', {
-      className: 'capitalize',
+      className: 'truncate text-[10px] font-bold uppercase tracking-wider text-text-400',
       textContent: annotation.messageSender || 'message',
     });
+
     const status = DOMUtils.createElement('span', {
       className:
         state.status === 'resolved'
-          ? 'rounded-full bg-green-100 px-2 py-0.5 text-[10px] uppercase text-green-700'
-          : 'rounded-full bg-bg-200 px-2 py-0.5 text-[10px] uppercase text-text-400',
+          ? 'rounded-full bg-green-100/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-tight text-green-600 border border-green-200/20'
+          : 'rounded-full bg-bg-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-tight text-text-400 border border-border-200',
       textContent: state.status,
     });
+
     meta.appendChild(dot);
     meta.appendChild(sender);
     meta.appendChild(status);
@@ -303,31 +324,49 @@ export class AnnotationManagerModal {
     const navigate = DOMUtils.createElement('button', {
       className:
         state.status === 'resolved'
-          ? 'rounded-lg px-2 py-1 text-xs text-accent-main-100 hover:bg-bg-100'
-          : 'rounded-lg px-2 py-1 text-xs text-text-400 opacity-60',
+          ? 'rounded-lg px-2 py-1 text-[11px] font-medium text-accent-main-100 hover:bg-accent-main-100/10 transition-colors'
+          : 'rounded-lg px-2 py-1 text-[11px] font-medium text-text-400 opacity-60 cursor-not-allowed',
       textContent: 'Navigate',
       type: 'button',
     });
     navigate.disabled = state.status !== 'resolved';
     navigate.addEventListener('click', () => this.navigate(annotation.id));
 
-    header.appendChild(meta);
-    header.appendChild(navigate);
+    topBar.appendChild(meta);
+    topBar.appendChild(navigate);
+
+    // Content section
+    const body = DOMUtils.createElement('div', {
+      className: 'flex flex-1 flex-col p-4',
+    });
 
     const text = DOMUtils.createElement('div', {
-      className: 'mb-3 rounded-lg bg-bg-100 px-3 py-2 text-sm text-text-000',
+      className:
+        'relative mb-4 max-h-[80px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 scrollbar-thin',
       textContent: annotation.selectedText || '',
+    });
+    text.style.borderLeftColor = color.swatch;
+
+    const noteLabel = DOMUtils.createElement('label', {
+      className: 'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-text-500',
+      textContent: 'Note',
     });
 
     const note = DOMUtils.createElement('textarea', {
       className:
-        'min-h-[78px] w-full resize-none rounded-lg border border-border-300 bg-bg-100 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100',
-      placeholder: 'Add a note...',
+        'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20',
+      placeholder: 'Add a local note for this highlight...',
     });
     note.value = annotation.note || '';
 
+    body.appendChild(text);
+    body.appendChild(noteLabel);
+    body.appendChild(note);
+
+    // Footer section
     const footer = DOMUtils.createElement('div', {
-      className: 'mt-3 flex flex-wrap items-center justify-between gap-2',
+      className:
+        'mt-auto flex items-center justify-between gap-3 border-t border-border-100 bg-bg-50/30 px-4 py-3 rounded-b-xl',
     });
 
     const colorSelect = this.createSelect(
@@ -335,35 +374,44 @@ export class AnnotationManagerModal {
       ANNOTATION_COLOR_KEYS.map(key => [key, ANNOTATION_COLORS[key].label])
     );
     colorSelect.value = annotation.color || DEFAULT_ANNOTATION_COLOR;
+    colorSelect.className =
+      'h-8 rounded-lg border border-border-300 bg-bg-000 px-2 py-0 text-xs text-text-200 outline-none hover:border-border-400';
     colorSelect.addEventListener('change', event => {
       this.updateColor(annotation.id, event.target.value);
     });
 
     const actions = DOMUtils.createElement('div', {
-      className: 'ml-auto flex items-center gap-2',
+      className: 'flex items-center gap-1.5',
     });
+
     const deleteButton = DOMUtils.createElement('button', {
-      className: 'rounded-lg px-3 py-1.5 text-xs text-red-600 hover:bg-red-50',
-      textContent: 'Delete',
-      type: 'button',
+      className:
+        'flex h-8 w-8 items-center justify-center rounded-lg text-text-400 hover:bg-red-50 hover:text-red-600 transition-colors',
+      title: 'Delete annotation',
+      innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
     });
-    deleteButton.addEventListener('click', () => this.delete(annotation.id));
+    deleteButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to delete this annotation?')) {
+        this.delete(annotation.id);
+      }
+    });
 
     const save = DOMUtils.createElement('button', {
-      className: 'rounded-lg clp-button-primary px-3 py-1.5 text-xs font-medium',
-      textContent: 'Save note',
+      className:
+        'rounded-lg clp-button-primary px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide',
+      textContent: 'Save',
       type: 'button',
     });
     save.addEventListener('click', () => this.updateNote(annotation.id, note.value));
 
     actions.appendChild(deleteButton);
     actions.appendChild(save);
+
     footer.appendChild(colorSelect);
     footer.appendChild(actions);
 
-    card.appendChild(header);
-    card.appendChild(text);
-    card.appendChild(note);
+    card.appendChild(topBar);
+    card.appendChild(body);
     card.appendChild(footer);
     return card;
   }
