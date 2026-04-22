@@ -6,9 +6,11 @@ import {
 } from './AnnotationRange.js';
 
 export default class AnnotationEditorPopover {
-  constructor({ onSave, onDelete }) {
+  constructor({ onSave, onDelete, readOnly = false, className = '' } = {}) {
     this.onSave = onSave;
     this.onDelete = onDelete;
+    this.readOnly = readOnly;
+    this.className = className;
     this.element = null;
     this.annotation = null;
     this.selectedColor = DEFAULT_ANNOTATION_COLOR;
@@ -19,94 +21,116 @@ export default class AnnotationEditorPopover {
 
   show({ annotation, anchorRect }) {
     this.hide();
+
+    // Don't show empty hover preview
+    if (this.readOnly && !annotation.note) {
+      return;
+    }
+
     this.annotation = annotation;
     this.selectedColor = annotation.color || DEFAULT_ANNOTATION_COLOR;
 
     const popover = document.createElement('div');
-    popover.className =
-      'cl-annotation-editor fixed z-[2147483647] w-[280px] rounded-xl border border-border-300 bg-bg-000 p-3 shadow-2xl';
+    popover.className = `cl-annotation-editor fixed z-[2147483647] w-[280px] rounded-xl border border-border-300 bg-bg-000 p-3 shadow-2xl ${this.className}`;
 
     const preview = document.createElement('div');
     preview.className = 'mb-2 line-clamp-2 text-xs text-text-400';
     preview.textContent = annotation.selectedText || '';
 
-    const textarea = document.createElement('textarea');
-    textarea.className =
-      'min-h-[84px] w-full resize-none rounded-lg border border-border-300 bg-bg-100 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
-    textarea.placeholder = 'Add a note...';
-    textarea.value = annotation.note || '';
+    popover.appendChild(preview);
 
-    const colorRow = document.createElement('div');
-    colorRow.className = 'mt-2 flex items-center gap-1';
-    ANNOTATION_COLOR_KEYS.forEach(colorKey => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className =
-        'size-6 rounded-full border transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1';
-      button.style.background = ANNOTATION_COLORS[colorKey].swatch;
-      button.style.borderColor =
-        colorKey === this.selectedColor ? 'var(--clp-accent-bg)' : 'hsl(var(--border-300))';
-      button.setAttribute('aria-label', `Change to ${ANNOTATION_COLORS[colorKey].label}`);
-      button.addEventListener('click', event => {
+    if (this.readOnly) {
+      const noteDisplay = document.createElement('div');
+      noteDisplay.className =
+        'text-sm text-text-000 whitespace-pre-wrap max-h-[200px] overflow-y-auto';
+      noteDisplay.textContent = annotation.note || '';
+      popover.appendChild(noteDisplay);
+
+      const footer = document.createElement('div');
+      footer.className = 'mt-2 text-[10px] text-text-500 border-t border-border-100 pt-1.5';
+      footer.textContent = 'Click to edit or change color';
+      popover.appendChild(footer);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.className =
+        'min-h-[84px] w-full resize-none rounded-lg border border-border-300 bg-bg-100 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
+      textarea.placeholder = 'Add a note...';
+      textarea.value = annotation.note || '';
+
+      const colorRow = document.createElement('div');
+      colorRow.className = 'mt-2 flex items-center gap-1';
+      ANNOTATION_COLOR_KEYS.forEach(colorKey => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className =
+          'size-6 rounded-full border transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1';
+        button.style.background = ANNOTATION_COLORS[colorKey].swatch;
+        button.style.borderColor =
+          colorKey === this.selectedColor ? 'var(--clp-accent-bg)' : 'hsl(var(--border-300))';
+        button.setAttribute('aria-label', `Change to ${ANNOTATION_COLORS[colorKey].label}`);
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.selectedColor = colorKey;
+          this.onSave?.(annotation.id, { color: colorKey, note: textarea.value }, 'color');
+          this.show({
+            annotation: { ...annotation, color: colorKey, note: textarea.value },
+            anchorRect,
+          });
+        });
+        colorRow.appendChild(button);
+      });
+
+      const actions = document.createElement('div');
+      actions.className = 'mt-3 flex items-center justify-between gap-2';
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className =
+        'rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20';
+      deleteButton.textContent = 'Delete';
+      deleteButton.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        this.selectedColor = colorKey;
-        this.onSave?.(annotation.id, { color: colorKey, note: textarea.value }, 'color');
-        this.show({
-          annotation: { ...annotation, color: colorKey, note: textarea.value },
-          anchorRect,
-        });
+        this.onDelete?.(annotation.id, 'popover');
+        this.hide();
       });
-      colorRow.appendChild(button);
-    });
 
-    const actions = document.createElement('div');
-    actions.className = 'mt-3 flex items-center justify-between gap-2';
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.className = 'rounded-lg clp-button-primary px-3 py-1.5 text-xs font-medium';
+      saveButton.textContent = 'Save note';
+      saveButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onSave?.(annotation.id, { note: textarea.value, color: this.selectedColor }, 'note');
+        this.hide();
+      });
 
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className =
-      'rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20';
-    deleteButton.textContent = 'Delete';
-    deleteButton.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onDelete?.(annotation.id, 'popover');
-      this.hide();
-    });
+      actions.appendChild(deleteButton);
+      actions.appendChild(saveButton);
+      popover.appendChild(textarea);
+      popover.appendChild(colorRow);
+      popover.appendChild(actions);
 
-    const saveButton = document.createElement('button');
-    saveButton.type = 'button';
-    saveButton.className = 'rounded-lg clp-button-primary px-3 py-1.5 text-xs font-medium';
-    saveButton.textContent = 'Save note';
-    saveButton.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onSave?.(annotation.id, { note: textarea.value, color: this.selectedColor }, 'note');
-      this.hide();
-    });
+      this.focusTimer = setTimeout(() => {
+        if (textarea.isConnected) {
+          textarea.focus();
+        }
+      }, 0);
+    }
 
-    actions.appendChild(deleteButton);
-    actions.appendChild(saveButton);
-    popover.appendChild(preview);
-    popover.appendChild(textarea);
-    popover.appendChild(colorRow);
-    popover.appendChild(actions);
-
-    const position = clampRectToViewport(anchorRect, 280, 190);
+    const position = clampRectToViewport(anchorRect, 280, this.readOnly ? 100 : 190);
     popover.style.left = `${position.left}px`;
     popover.style.top = `${position.top}px`;
 
     document.body.appendChild(popover);
-    document.addEventListener('click', this.outsideClickHandler, true);
-    document.addEventListener('keydown', this.escapeHandler);
-    this.element = popover;
 
-    this.focusTimer = setTimeout(() => {
-      if (textarea.isConnected) {
-        textarea.focus();
-      }
-    }, 0);
+    if (!this.readOnly) {
+      document.addEventListener('click', this.outsideClickHandler, true);
+      document.addEventListener('keydown', this.escapeHandler);
+    }
+    this.element = popover;
   }
 
   handleOutsideClick(event) {

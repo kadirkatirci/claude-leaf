@@ -39,6 +39,7 @@ export default class AnnotationQuickPanel extends BasePanel {
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
     const item = document.createElement('div');
     item.className = cardClass(false, state.status === 'resolved' ? '' : 'opacity-80');
+    item.setAttribute('data-annotation-id', annotation.id);
 
     const header = document.createElement('div');
     header.className = 'mb-2 flex items-center justify-between gap-2';
@@ -47,26 +48,25 @@ export default class AnnotationQuickPanel extends BasePanel {
     meta.className = 'flex min-w-0 items-center gap-2 text-xs text-text-400';
 
     const dot = document.createElement('span');
-    dot.className = 'size-2.5 shrink-0 rounded-full';
+    dot.className =
+      'size-2.5 shrink-0 rounded-full cursor-pointer hover:scale-125 transition-transform';
     dot.style.background = color.swatch;
+    dot.title = 'Change color';
+    dot.addEventListener('click', e => {
+      e.stopPropagation();
+      this.cycleColor(annotation);
+    });
 
     const sender = document.createElement('span');
-    sender.className = 'truncate capitalize';
+    sender.className = 'truncate capitalize cursor-default';
     sender.textContent = annotation.messageSender || 'message';
 
     meta.appendChild(dot);
     meta.appendChild(sender);
 
-    if (state.status !== 'resolved') {
-      const badge = document.createElement('span');
-      badge.className = 'rounded-full bg-bg-200 px-2 py-0.5 text-[10px] uppercase text-text-400';
-      badge.textContent = 'Unresolved';
-      meta.appendChild(badge);
-    }
-
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
-    deleteButton.className = 'text-sm leading-none text-text-400 hover:text-red-500';
+    deleteButton.className = 'text-sm leading-none text-text-400 hover:text-red-500 p-1';
     deleteButton.textContent = '×';
     deleteButton.setAttribute('aria-label', 'Delete annotation');
     deleteButton.addEventListener('click', event => {
@@ -78,25 +78,51 @@ export default class AnnotationQuickPanel extends BasePanel {
     header.appendChild(meta);
     header.appendChild(deleteButton);
 
-    const text = document.createElement('div');
-    text.className = 'line-clamp-2 text-sm text-text-000';
-    text.textContent = annotation.selectedText || '';
+    const textPreview = document.createElement('div');
+    textPreview.className =
+      'text-sm text-text-000 border-l-2 pl-2 mb-2 italic cursor-pointer hover:text-accent-main-100 transition-colors';
+    textPreview.style.borderLeftColor = color.swatch;
+    textPreview.textContent = annotation.selectedText || '';
+    textPreview.addEventListener('click', () => {
+      this.onNavigate?.(annotation.id, { source: 'quick_panel' });
+    });
 
-    const note = document.createElement('div');
-    note.className = 'mt-1 line-clamp-2 text-xs text-text-400';
-    note.textContent = annotation.note || annotation.messagePreview || '';
+    const noteInput = document.createElement('textarea');
+    noteInput.className =
+      'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-100 outline-none focus:border-accent-main-100 resize-none transition-all';
+    noteInput.placeholder = 'Add your note here...';
+    noteInput.value = annotation.note || '';
+
+    // Save note on input with debounce
+    let saveTimeout;
+    noteInput.addEventListener('input', () => {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('cl-annotation-quick-update', {
+            detail: { id: annotation.id, updates: { note: noteInput.value } },
+          })
+        );
+      }, 400);
+    });
 
     item.appendChild(header);
-    item.appendChild(text);
-    item.appendChild(note);
-
-    if (state.status === 'resolved') {
-      item.addEventListener('click', () => {
-        this.onNavigate?.(annotation.id, { openEditor: true, source: 'quick_panel' });
-      });
-    }
+    item.appendChild(textPreview);
+    item.appendChild(noteInput);
 
     return item;
+  }
+
+  cycleColor(annotation) {
+    const colors = Object.keys(ANNOTATION_COLORS);
+    const currentIndex = colors.indexOf(annotation.color || DEFAULT_ANNOTATION_COLOR);
+    const nextColor = colors[(currentIndex + 1) % colors.length];
+
+    window.dispatchEvent(
+      new CustomEvent('cl-annotation-quick-update', {
+        detail: { id: annotation.id, updates: { color: nextColor } },
+      })
+    );
   }
 
   getEmptyStateMessage() {
