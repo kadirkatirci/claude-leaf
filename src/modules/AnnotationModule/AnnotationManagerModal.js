@@ -38,7 +38,7 @@ export class AnnotationManagerModal {
       states: [],
       searchQuery: '',
       colorFilter: 'all',
-      statusFilter: 'all',
+      senderFilter: 'all',
     };
   }
 
@@ -137,7 +137,7 @@ export class AnnotationManagerModal {
 
   createToolbar() {
     const toolbar = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-3 border-b border-border-100 bg-bg-50 px-6 py-3',
+      className: 'flex items-center gap-4 border-b border-border-100 bg-bg-50 px-6 py-4',
     });
 
     const search = DOMUtils.createElement('input', {
@@ -175,26 +175,26 @@ export class AnnotationManagerModal {
       this.renderList();
     });
 
-    const status = this.createSelect('State', [
-      ['all', 'All states'],
-      ['resolved', 'Resolved'],
-      ['unresolved', 'Unresolved'],
+    const sender = this.createSelect('Sender', [
+      ['all', 'All senders'],
+      ['user', 'User'],
+      ['claude', 'Claude'],
     ]);
-    status.className =
+    sender.className =
       'w-[140px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
-    status.addEventListener('change', event => {
-      this.state.statusFilter = event.target.value;
+    sender.addEventListener('change', event => {
+      this.state.senderFilter = event.target.value;
       trackEvent('annotation_manager_filter', {
         module: 'annotations',
-        method: 'status',
-        filter: this.state.statusFilter,
+        method: 'sender',
+        filter: this.state.senderFilter,
       });
       this.renderList();
     });
 
     toolbar.appendChild(search);
     toolbar.appendChild(color);
-    toolbar.appendChild(status);
+    toolbar.appendChild(sender);
     return toolbar;
   }
 
@@ -242,7 +242,10 @@ export class AnnotationManagerModal {
         if (this.state.colorFilter !== 'all' && annotation.color !== this.state.colorFilter) {
           return false;
         }
-        if (this.state.statusFilter !== 'all' && state.status !== this.state.statusFilter) {
+        if (
+          this.state.senderFilter !== 'all' &&
+          annotation.messageSender !== this.state.senderFilter
+        ) {
           return false;
         }
         if (!query) {
@@ -325,17 +328,9 @@ export class AnnotationManagerModal {
     contextInfo.appendChild(sender);
     contextInfo.appendChild(chatPreview);
 
-    const status = DOMUtils.createElement('span', {
-      className:
-        state.status === 'resolved'
-          ? 'rounded-full bg-green-100/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-tight text-green-600 border border-green-200/20'
-          : 'rounded-full bg-bg-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-tight text-text-400 border border-border-200',
-      textContent: state.status,
-    });
-
     meta.appendChild(dot);
     meta.appendChild(contextInfo);
-    meta.appendChild(status);
+
     const navigate = DOMUtils.createElement('button', {
       className:
         'rounded-lg px-2 py-1 text-[11px] font-medium text-accent-main-100 hover:bg-accent-main-100/10 transition-colors',
