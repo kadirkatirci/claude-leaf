@@ -375,7 +375,7 @@ export class AnnotationManagerModal {
     } else {
       const noteDisplay = DOMUtils.createElement('div', {
         className:
-          'text-sm text-text-200 bg-bg-50/50 rounded-lg p-3 cursor-pointer hover:bg-bg-100 transition-colors border border-transparent hover:border-border-200 mb-3 min-h-[40px]',
+          'text-sm text-text-200 bg-bg-50/50 rounded-lg p-3 cursor-pointer hover:bg-bg-100 transition-colors border border-transparent hover:border-border-200 mb-3 min-h-[40px] flex items-center',
         textContent: annotation.note || 'No note added. Click to edit...',
       });
       if (!annotation.note) {
@@ -391,7 +391,7 @@ export class AnnotationManagerModal {
     }
 
     const tagsContainer = DOMUtils.createElement('div', {
-      className: 'flex flex-wrap gap-1 items-center',
+      className: 'flex flex-wrap gap-1 items-center mt-auto',
     });
     (annotation.tags || []).forEach(tag => {
       const tagEl = DOMUtils.createElement('span', {
@@ -411,22 +411,21 @@ export class AnnotationManagerModal {
       tagsContainer.appendChild(tagEl);
     });
 
-    if (isEditing) {
-      const addInput = DOMUtils.createElement('input', {
-        className: 'bg-transparent border-none outline-none text-[10px] text-text-400 w-20 ml-1',
-        placeholder: '+ tag',
-      });
-      addInput.onkeydown = e => {
-        if (e.key === 'Enter') {
-          const val = addInput.value.trim().toLowerCase();
-          if (val && !annotation.tags?.includes(val)) {
-            this.updateAnnotation(annotation.id, { tags: [...(annotation.tags || []), val] });
-          }
-          addInput.value = '';
+    const addInput = DOMUtils.createElement('input', {
+      className:
+        'bg-transparent border-none outline-none text-[10px] text-text-400 w-20 ml-1 placeholder:text-text-500',
+      placeholder: '+ add tag',
+    });
+    addInput.onkeydown = e => {
+      if (e.key === 'Enter') {
+        const val = addInput.value.trim().toLowerCase();
+        if (val && !annotation.tags?.includes(val)) {
+          this.updateAnnotation(annotation.id, { tags: [...(annotation.tags || []), val] });
         }
-      };
-      tagsContainer.appendChild(addInput);
-    }
+        addInput.value = '';
+      }
+    };
+    tagsContainer.appendChild(addInput);
     body.appendChild(tagsContainer);
 
     const footer = DOMUtils.createElement('div', {

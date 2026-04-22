@@ -16,7 +16,7 @@ export default class AnnotationQuickPanel extends BasePanel {
     this.onNavigate = onNavigate;
     this.onDelete = onDelete;
     this.states = [];
-    this.editingId = null; // Single source of truth for what's being edited
+    this.editingId = null;
   }
 
   updateAnnotations(states = []) {
@@ -35,7 +35,6 @@ export default class AnnotationQuickPanel extends BasePanel {
   }
 
   renderList() {
-    // Force reset signature to ensure super.updateContent doesn't skip the render
     this.lastContentSignature = null;
     super.updateContent(this.states, state => this.createItem(state));
   }
@@ -44,20 +43,18 @@ export default class AnnotationQuickPanel extends BasePanel {
     const annotation = state.annotation;
     const color =
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
-    const isEditing = this.editingId === annotation.id || !annotation.note;
+    const isEditing = this.editingId === annotation.id;
 
     const item = document.createElement('div');
     item.className = cardClass(false, state.status === 'resolved' ? '' : 'opacity-80');
     item.setAttribute('data-annotation-id', annotation.id);
     item.onclick = e => e.stopPropagation();
 
-    // Header
+    // 1. Header
     const header = document.createElement('div');
     header.className = 'mb-2 flex items-center justify-between gap-2';
-
     const meta = document.createElement('div');
     meta.className = 'flex min-w-0 items-center gap-2 text-xs text-text-400';
-
     const dot = document.createElement('span');
     dot.className =
       'size-2.5 shrink-0 rounded-full cursor-pointer hover:scale-125 transition-transform';
@@ -66,24 +63,20 @@ export default class AnnotationQuickPanel extends BasePanel {
       e.stopPropagation();
       this.cycleColor(annotation);
     };
-
     const sender = document.createElement('span');
     sender.className = 'truncate capitalize text-[10px] font-bold opacity-60';
     sender.textContent = annotation.messageSender || 'message';
-
     meta.appendChild(dot);
     meta.appendChild(sender);
-
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'text-xs text-text-500 hover:text-red-500 opacity-40 hover:opacity-100';
     deleteBtn.innerHTML = '×';
     deleteBtn.onclick = () =>
       confirm('Delete annotation?') && this.onDelete?.(annotation.id, 'quick_panel');
-
     header.appendChild(meta);
     header.appendChild(deleteBtn);
 
-    // Text Preview
+    // 2. Text Preview
     const textPreview = document.createElement('div');
     textPreview.className =
       'text-sm text-text-100 border-l-2 pl-2 mb-3 italic cursor-pointer hover:text-accent-main-100 line-clamp-2';
@@ -91,16 +84,14 @@ export default class AnnotationQuickPanel extends BasePanel {
     textPreview.textContent = annotation.selectedText || '';
     textPreview.onclick = () => this.onNavigate?.(annotation.id, { source: 'quick_panel' });
 
-    // Note Section
+    // 3. Note Area
     const noteContainer = document.createElement('div');
-
     if (isEditing) {
       const textarea = document.createElement('textarea');
       textarea.className =
         'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-000 outline-none focus:border-accent-main-100 resize-none mb-2';
       textarea.placeholder = 'Add a note...';
       textarea.value = annotation.note || '';
-
       const saveBtn = document.createElement('button');
       saveBtn.className =
         'clp-button-primary rounded px-2 py-1 text-[10px] font-bold uppercase w-full mb-2';
@@ -114,20 +105,17 @@ export default class AnnotationQuickPanel extends BasePanel {
           })
         );
       };
-
       noteContainer.appendChild(textarea);
       noteContainer.appendChild(saveBtn);
-
       setTimeout(() => textarea.focus(), 50);
     } else {
       const noteDisplay = document.createElement('div');
       noteDisplay.className =
-        'text-xs text-text-300 bg-bg-50/50 rounded-lg p-2 cursor-pointer hover:bg-bg-100 border border-transparent hover:border-border-200 mb-2 min-h-[30px]';
-      noteDisplay.textContent = annotation.note || 'No note. Click to edit...';
+        'text-xs text-text-300 bg-bg-50/50 rounded-lg p-2 cursor-pointer hover:bg-bg-100 border border-transparent hover:border-border-200 mb-2 min-h-[30px] flex items-center';
+      noteDisplay.textContent = annotation.note || 'No note added. Click to edit...';
       if (!annotation.note) {
         noteDisplay.classList.add('italic', 'opacity-50');
       }
-
       noteDisplay.onclick = e => {
         e.stopPropagation();
         this.editingId = annotation.id;
@@ -136,9 +124,9 @@ export default class AnnotationQuickPanel extends BasePanel {
       noteContainer.appendChild(noteDisplay);
     }
 
-    // Tags
+    // 4. Tags Area
     const tagsContainer = document.createElement('div');
-    tagsContainer.className = 'flex flex-wrap gap-1';
+    tagsContainer.className = 'flex flex-wrap gap-1 items-center';
     (annotation.tags || []).forEach(tag => {
       const tagEl = document.createElement('span');
       tagEl.className =
@@ -158,24 +146,23 @@ export default class AnnotationQuickPanel extends BasePanel {
       tagsContainer.appendChild(tagEl);
     });
 
-    if (isEditing) {
-      const addInput = document.createElement('input');
-      addInput.className =
-        'bg-transparent border-none outline-none text-[10px] text-text-500 w-16 ml-1';
-      addInput.placeholder = '+ tag';
-      addInput.onkeydown = e => {
-        if (e.key === 'Enter') {
-          e.stopPropagation();
-          const val = addInput.value.trim().toLowerCase();
-          if (val && !annotation.tags?.includes(val)) {
-            this.updateTags(annotation.id, [...(annotation.tags || []), val]);
-          }
-          addInput.value = '';
+    const addInput = document.createElement('input');
+    addInput.className =
+      'bg-transparent border-none outline-none text-[10px] text-text-500 w-16 ml-1';
+    addInput.placeholder = '+ tag';
+    addInput.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.stopPropagation();
+        const val = addInput.value.trim().toLowerCase();
+        if (val && !annotation.tags?.includes(val)) {
+          this.updateTags(annotation.id, [...(annotation.tags || []), val]);
         }
-      };
-      tagsContainer.appendChild(addInput);
-    }
+        addInput.value = '';
+      }
+    };
+    tagsContainer.appendChild(addInput);
 
+    // Final Assembly
     item.appendChild(header);
     item.appendChild(textPreview);
     item.appendChild(noteContainer);
@@ -207,7 +194,6 @@ export default class AnnotationQuickPanel extends BasePanel {
     if (!items || items.length === 0) {
       return 'empty';
     }
-    // Include editing state in global signature
     const base = items
       .map(s => {
         const a = s.annotation;
