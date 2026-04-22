@@ -10,12 +10,13 @@ export default class AnnotationQuickPanel extends BasePanel {
       width: '320px',
       height: '500px',
       position: { right: '80px', top: '60px' },
-      outsideClickIgnoreSelectors: ['#claude-annotations-fixed-btn'],
+      outsideClickIgnoreSelectors: ['#claude-annotations-fixed-btn', '.cl-annotation-editor'],
     });
 
     this.onNavigate = onNavigate;
     this.onDelete = onDelete;
     this.states = [];
+    this.editingId = null; // Single source of truth for what's being edited
   }
 
   updateAnnotations(states = []) {
@@ -30,6 +31,12 @@ export default class AnnotationQuickPanel extends BasePanel {
       }
     }
 
+    this.renderList();
+  }
+
+  renderList() {
+    // Force reset signature to ensure super.updateContent doesn't skip the render
+    this.lastContentSignature = null;
     super.updateContent(this.states, state => this.createItem(state));
   }
 
@@ -37,10 +44,14 @@ export default class AnnotationQuickPanel extends BasePanel {
     const annotation = state.annotation;
     const color =
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
+    const isEditing = this.editingId === annotation.id || !annotation.note;
+
     const item = document.createElement('div');
     item.className = cardClass(false, state.status === 'resolved' ? '' : 'opacity-80');
     item.setAttribute('data-annotation-id', annotation.id);
+    item.onclick = e => e.stopPropagation();
 
+    // Header
     const header = document.createElement('div');
     header.className = 'mb-2 flex items-center justify-between gap-2';
 
@@ -51,111 +62,123 @@ export default class AnnotationQuickPanel extends BasePanel {
     dot.className =
       'size-2.5 shrink-0 rounded-full cursor-pointer hover:scale-125 transition-transform';
     dot.style.background = color.swatch;
-    dot.title = 'Change color';
-    dot.addEventListener('click', e => {
+    dot.onclick = e => {
       e.stopPropagation();
       this.cycleColor(annotation);
-    });
+    };
 
     const sender = document.createElement('span');
-    sender.className = 'truncate capitalize cursor-default';
+    sender.className = 'truncate capitalize text-[10px] font-bold opacity-60';
     sender.textContent = annotation.messageSender || 'message';
 
     meta.appendChild(dot);
     meta.appendChild(sender);
 
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'text-sm leading-none text-text-400 hover:text-red-500 p-1';
-    deleteButton.textContent = '×';
-    deleteButton.setAttribute('aria-label', 'Delete annotation');
-    deleteButton.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onDelete?.(annotation.id, 'quick_panel');
-    });
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'text-xs text-text-500 hover:text-red-500 opacity-40 hover:opacity-100';
+    deleteBtn.innerHTML = '×';
+    deleteBtn.onclick = () =>
+      confirm('Delete annotation?') && this.onDelete?.(annotation.id, 'quick_panel');
 
     header.appendChild(meta);
-    header.appendChild(deleteButton);
+    header.appendChild(deleteBtn);
 
+    // Text Preview
     const textPreview = document.createElement('div');
     textPreview.className =
-      'text-sm text-text-000 border-l-2 pl-2 mb-2 italic cursor-pointer hover:text-accent-main-100 transition-colors';
+      'text-sm text-text-100 border-l-2 pl-2 mb-3 italic cursor-pointer hover:text-accent-main-100 line-clamp-2';
     textPreview.style.borderLeftColor = color.swatch;
     textPreview.textContent = annotation.selectedText || '';
-    textPreview.addEventListener('click', () => {
-      this.onNavigate?.(annotation.id, { source: 'quick_panel' });
-    });
+    textPreview.onclick = () => this.onNavigate?.(annotation.id, { source: 'quick_panel' });
 
-    const noteInput = document.createElement('textarea');
-    noteInput.className =
-      'w-full min-h-[60px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-100 outline-none focus:border-accent-main-100 resize-none transition-all mb-2';
-    noteInput.placeholder = 'Add your note here...';
-    noteInput.value = annotation.note || '';
+    // Note Section
+    const noteContainer = document.createElement('div');
 
-    // Save note on input with debounce
-    let saveTimeout;
-    noteInput.addEventListener('input', () => {
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
+    if (isEditing) {
+      const textarea = document.createElement('textarea');
+      textarea.className =
+        'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-000 outline-none focus:border-accent-main-100 resize-none mb-2';
+      textarea.placeholder = 'Add a note...';
+      textarea.value = annotation.note || '';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className =
+        'clp-button-primary rounded px-2 py-1 text-[10px] font-bold uppercase w-full mb-2';
+      saveBtn.textContent = 'Save Note';
+      saveBtn.onclick = e => {
+        e.stopPropagation();
+        this.editingId = null;
         window.dispatchEvent(
           new CustomEvent('cl-annotation-quick-update', {
-            detail: { id: annotation.id, updates: { note: noteInput.value } },
+            detail: { id: annotation.id, updates: { note: textarea.value } },
           })
         );
-      }, 400);
+      };
+
+      noteContainer.appendChild(textarea);
+      noteContainer.appendChild(saveBtn);
+
+      setTimeout(() => textarea.focus(), 50);
+    } else {
+      const noteDisplay = document.createElement('div');
+      noteDisplay.className =
+        'text-xs text-text-300 bg-bg-50/50 rounded-lg p-2 cursor-pointer hover:bg-bg-100 border border-transparent hover:border-border-200 mb-2 min-h-[30px]';
+      noteDisplay.textContent = annotation.note || 'No note. Click to edit...';
+      if (!annotation.note) {
+        noteDisplay.classList.add('italic', 'opacity-50');
+      }
+
+      noteDisplay.onclick = e => {
+        e.stopPropagation();
+        this.editingId = annotation.id;
+        this.renderList();
+      };
+      noteContainer.appendChild(noteDisplay);
+    }
+
+    // Tags
+    const tagsContainer = document.createElement('div');
+    tagsContainer.className = 'flex flex-wrap gap-1';
+    (annotation.tags || []).forEach(tag => {
+      const tagEl = document.createElement('span');
+      tagEl.className =
+        'bg-bg-200 text-text-400 px-1.5 py-0.5 rounded text-[9px] flex items-center gap-1 border border-border-100';
+      tagEl.textContent = tag;
+      const remove = document.createElement('span');
+      remove.className = 'cursor-pointer hover:text-red-500 opacity-50';
+      remove.textContent = '×';
+      remove.onclick = e => {
+        e.stopPropagation();
+        this.updateTags(
+          annotation.id,
+          annotation.tags.filter(t => t !== tag)
+        );
+      };
+      tagEl.appendChild(remove);
+      tagsContainer.appendChild(tagEl);
     });
 
-    // Tags Section
-    const tagsContainer = document.createElement('div');
-    tagsContainer.className = 'flex flex-wrap gap-1 mb-2';
-
-    const renderTags = () => {
-      tagsContainer.innerHTML = '';
-      const currentTags = annotation.tags || [];
-
-      currentTags.forEach(tag => {
-        const tagEl = document.createElement('span');
-        tagEl.className =
-          'bg-bg-200 text-text-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 group/tag';
-        tagEl.textContent = tag;
-
-        const removeBtn = document.createElement('span');
-        removeBtn.className =
-          'cursor-pointer hover:text-red-500 opacity-50 group-hover/tag:opacity-100';
-        removeBtn.textContent = '×';
-        removeBtn.onclick = e => {
-          e.stopPropagation();
-          const newTags = currentTags.filter(t => t !== tag);
-          this.updateTags(annotation.id, newTags);
-        };
-
-        tagEl.appendChild(removeBtn);
-        tagsContainer.appendChild(tagEl);
-      });
-
-      const addTagBtn = document.createElement('input');
-      addTagBtn.className =
-        'bg-transparent border-none outline-none text-[10px] text-text-400 w-16 placeholder:text-text-500';
-      addTagBtn.placeholder = '+ add tag';
-      addTagBtn.addEventListener('keydown', e => {
+    if (isEditing) {
+      const addInput = document.createElement('input');
+      addInput.className =
+        'bg-transparent border-none outline-none text-[10px] text-text-500 w-16 ml-1';
+      addInput.placeholder = '+ tag';
+      addInput.onkeydown = e => {
         if (e.key === 'Enter') {
-          const val = addTagBtn.value.trim().toLowerCase();
-          if (val && !(annotation.tags || []).includes(val)) {
-            const newTags = [...(annotation.tags || []), val];
-            this.updateTags(annotation.id, newTags);
+          e.stopPropagation();
+          const val = addInput.value.trim().toLowerCase();
+          if (val && !annotation.tags?.includes(val)) {
+            this.updateTags(annotation.id, [...(annotation.tags || []), val]);
           }
-          addTagBtn.value = '';
+          addInput.value = '';
         }
-      });
-      tagsContainer.appendChild(addTagBtn);
-    };
-
-    renderTags();
+      };
+      tagsContainer.appendChild(addInput);
+    }
 
     item.appendChild(header);
     item.appendChild(textPreview);
-    item.appendChild(noteInput);
+    item.appendChild(noteContainer);
     item.appendChild(tagsContainer);
 
     return item;
@@ -171,37 +194,27 @@ export default class AnnotationQuickPanel extends BasePanel {
 
   cycleColor(annotation) {
     const colors = Object.keys(ANNOTATION_COLORS);
-    const currentIndex = colors.indexOf(annotation.color || DEFAULT_ANNOTATION_COLOR);
-    const nextColor = colors[(currentIndex + 1) % colors.length];
-
+    const next =
+      colors[(colors.indexOf(annotation.color || DEFAULT_ANNOTATION_COLOR) + 1) % colors.length];
     window.dispatchEvent(
       new CustomEvent('cl-annotation-quick-update', {
-        detail: { id: annotation.id, updates: { color: nextColor } },
+        detail: { id: annotation.id, updates: { color: next } },
       })
     );
-  }
-
-  getEmptyStateMessage() {
-    return 'No annotations in this conversation yet';
   }
 
   generateSignature(items) {
     if (!items || items.length === 0) {
       return 'empty';
     }
-    return items
-      .map(state => {
-        const annotation = state.annotation;
-        return [
-          annotation.id,
-          annotation.updatedAt,
-          annotation.color,
-          annotation.note,
-          (annotation.tags || []).join(','),
-          state.status,
-        ].join(':');
+    // Include editing state in global signature
+    const base = items
+      .map(s => {
+        const a = s.annotation;
+        return `${a.id}:${a.updatedAt}:${a.color}:${a.note}:${(a.tags || []).join(',')}:${s.status}`;
       })
       .join('|');
+    return `${base}#editing:${this.editingId}`;
   }
 
   toggle() {

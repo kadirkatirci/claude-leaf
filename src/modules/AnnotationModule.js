@@ -391,18 +391,26 @@ export default class AnnotationModule extends BaseModule {
         const item = panelElement.querySelector(`[data-annotation-id="${annotationId}"]`);
         if (item) {
           item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const textarea = item.querySelector('textarea');
-          if (textarea) {
-            textarea.focus();
-            // Optional: highlight the item temporarily
-            item.classList.add('ring-2', 'ring-accent-main-100');
-            setTimeout(() => item.classList.remove('ring-2', 'ring-accent-main-100'), 1500);
+
+          // Force expand the note if it's not already
+          if (this.panel.expandedNotes) {
+            this.panel.expandedNotes.add(annotationId);
+            this.panel.updateAnnotations(this.annotationStates);
           }
+
+          setTimeout(() => {
+            const textarea = item.querySelector('textarea');
+            if (textarea) {
+              textarea.focus();
+              // Highlight the item temporarily
+              item.classList.add('ring-2', 'ring-accent-main-100');
+              setTimeout(() => item.classList.remove('ring-2', 'ring-accent-main-100'), 1500);
+            }
+          }, 100);
         }
       }
     }, 200);
   }
-
   async handleQuickUpdate(event) {
     const { id, updates } = event.detail || {};
     if (id && updates) {

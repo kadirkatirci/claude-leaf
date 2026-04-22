@@ -43,6 +43,7 @@ export class AnnotationManagerModal {
       tagFilter: 'all',
       allTags: [],
     };
+    this.editingNotes = new Set(); // Track notes being edited in modal
   }
 
   async show({ source = 'unknown' } = {}) {
@@ -170,11 +171,6 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     color.addEventListener('change', event => {
       this.state.colorFilter = event.target.value;
-      trackEvent('annotation_manager_filter', {
-        module: 'annotations',
-        method: 'color',
-        filter: this.state.colorFilter,
-      });
       this.renderList();
     });
 
@@ -187,11 +183,6 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     sender.addEventListener('change', event => {
       this.state.senderFilter = event.target.value;
-      trackEvent('annotation_manager_filter', {
-        module: 'annotations',
-        method: 'sender',
-        filter: this.state.senderFilter,
-      });
       this.renderList();
     });
 
@@ -203,11 +194,6 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     tagFilter.addEventListener('change', event => {
       this.state.tagFilter = event.target.value;
-      trackEvent('annotation_manager_filter', {
-        module: 'annotations',
-        method: 'tag',
-        filter: this.state.tagFilter,
-      });
       this.renderList();
     });
 
@@ -224,14 +210,12 @@ export class AnnotationManagerModal {
         'rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100',
       'aria-label': label,
     });
-
     options.forEach(([value, text]) => {
       const option = document.createElement('option');
       option.value = value;
       option.textContent = text;
       select.appendChild(option);
     });
-
     return select;
   }
 
@@ -239,16 +223,10 @@ export class AnnotationManagerModal {
     const annotations = await annotationStore.getAll();
     const currentPath = window.location.pathname;
     const messages = DOMUtils.findMessages();
-
-    // Extract all unique tags
     const tagsSet = new Set();
-    annotations.forEach(a => {
-      (a.tags || []).forEach(t => tagsSet.add(t));
-    });
+    annotations.forEach(a => (a.tags || []).forEach(t => tagsSet.add(t)));
     this.state.allTags = Array.from(tagsSet).sort();
-
     this.state.states = annotations.map(annotation => {
-      // Only attempt to restore if it's the current conversation
       if (annotation.conversationUrl === currentPath) {
         return restoreAnnotation(annotation, messages);
       }
@@ -259,27 +237,6 @@ export class AnnotationManagerModal {
   async refreshData() {
     await this.loadData();
     this.renderList();
-
-    // Update tag filter if toolbar exists
-    if (this.activeModal?.content) {
-      const toolbar =
-        this.activeModal.content.querySelector('.cl-annotation-manager-toolbar') ||
-        this.activeModal.content.children[1];
-      if (toolbar && toolbar.children.length >= 4) {
-        const tagSelect = toolbar.children[3];
-        const currentValue = tagSelect.value;
-        tagSelect.innerHTML = '';
-
-        const options = [['all', 'All tags'], ...this.state.allTags.map(tag => [tag, `#${tag}`])];
-        options.forEach(([value, text]) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = text;
-          tagSelect.appendChild(option);
-        });
-        tagSelect.value = this.state.allTags.includes(currentValue) ? currentValue : 'all';
-      }
-    }
   }
 
   getFilteredStates() {
@@ -315,33 +272,23 @@ export class AnnotationManagerModal {
           .toLowerCase()
           .includes(query);
       })
-      .sort((a, b) => {
-        return Date.parse(b.annotation.createdAt || '') - Date.parse(a.annotation.createdAt || '');
-      });
+      .sort(
+        (a, b) =>
+          Date.parse(b.annotation.createdAt || '') - Date.parse(a.annotation.createdAt || '')
+      );
   }
 
   renderList() {
     if (!this.activeModal?.list) {
       return;
     }
-
     const list = this.activeModal.list;
     list.textContent = '';
     const states = this.getFilteredStates();
 
     if (states.length === 0) {
-      const empty = DOMUtils.createElement('div', {
-        className: 'py-20 text-center',
-      });
-      empty.innerHTML = `
-        <div class="mb-3 text-text-500 opacity-20">
-          <svg class="mx-auto h-12 w-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </div>
-        <p class="text-sm text-text-400 font-medium">No annotations found</p>
-        <p class="mt-1 text-xs text-text-500">Try adjusting your filters or search query.</p>
-      `;
+      const empty = DOMUtils.createElement('div', { className: 'py-20 text-center' });
+      empty.innerHTML = `<p class="text-sm text-text-400 font-medium">No annotations found</p>`;
       list.appendChild(empty);
       return;
     }
@@ -357,12 +304,13 @@ export class AnnotationManagerModal {
     const annotation = state.annotation;
     const color =
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
+    const isEditing = this.editingNotes.has(annotation.id);
+
     const card = DOMUtils.createElement('div', {
       className:
-        'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-shadow hover:shadow-md',
+        'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-all hover:shadow-md h-fit',
     });
 
-    // Top meta section
     const topBar = DOMUtils.createElement('div', {
       className:
         'flex items-center justify-between border-b border-border-100 px-4 py-2.5 bg-bg-50/50 rounded-t-xl',
@@ -373,20 +321,9 @@ export class AnnotationManagerModal {
     });
     const dot = DOMUtils.createElement('span', { className: 'size-2 shrink-0 rounded-full' });
     dot.style.background = color.swatch;
-
     const contextInfo = DOMUtils.createElement('div', { className: 'flex min-w-0 flex-col' });
-    const sender = DOMUtils.createElement('span', {
-      className: 'truncate text-[9px] font-bold uppercase tracking-wider text-text-400',
-      textContent: annotation.messageSender || 'message',
-    });
-
-    const chatPreview = DOMUtils.createElement('span', {
-      className: 'truncate text-[10px] text-text-500 font-medium',
-      textContent: annotation.messagePreview || 'Untitled Chat',
-    });
-    contextInfo.appendChild(sender);
-    contextInfo.appendChild(chatPreview);
-
+    contextInfo.innerHTML = `<span class="truncate text-[9px] font-bold uppercase tracking-wider text-text-400">${annotation.messageSender || 'message'}</span>
+                             <span class="truncate text-[10px] text-text-500 font-medium">${annotation.messagePreview || 'Untitled Chat'}</span>`;
     meta.appendChild(dot);
     meta.appendChild(contextInfo);
 
@@ -395,21 +332,16 @@ export class AnnotationManagerModal {
         'flex h-8 w-8 items-center justify-center rounded-lg text-accent-main-100 hover:bg-accent-main-100/10 transition-colors',
       title: 'Go to Message',
       innerHTML: IconLibrary.openInNew('currentColor', 16),
-      type: 'button',
     });
-    navigate.addEventListener('click', () => this.navigate(annotation.id));
+    navigate.onclick = () => this.navigate(annotation.id);
 
     topBar.appendChild(meta);
     topBar.appendChild(navigate);
 
-    // Content section
-    const body = DOMUtils.createElement('div', {
-      className: 'flex flex-1 flex-col p-4',
-    });
-
+    const body = DOMUtils.createElement('div', { className: 'flex flex-col p-4' });
     const text = DOMUtils.createElement('div', {
       className:
-        'relative mb-4 max-h-[100px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 scrollbar-thin line-clamp-4 hover:line-clamp-none transition-all',
+        'relative mb-3 max-h-[100px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 line-clamp-3 hover:line-clamp-none transition-all',
       textContent: annotation.selectedText || '',
     });
     text.style.borderLeftColor = color.swatch;
@@ -419,143 +351,115 @@ export class AnnotationManagerModal {
       textContent: 'Note',
     });
 
-    const note = DOMUtils.createElement('textarea', {
-      className:
-        'min-h-[80px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
-      placeholder: 'Add a local note...',
-    });
-    note.value = annotation.note || '';
+    if (isEditing) {
+      const noteInput = DOMUtils.createElement('textarea', {
+        className:
+          'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
+        placeholder: 'Add a note...',
+      });
+      noteInput.value = annotation.note || '';
 
-    // Tags in Manager
-    const tagsLabel = DOMUtils.createElement('label', {
-      className: 'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-text-500',
-      textContent: 'Tags',
-    });
+      const saveBtn = DOMUtils.createElement('button', {
+        className: 'clp-button-primary rounded-lg px-3 py-1.5 text-xs font-bold uppercase mb-3',
+        textContent: 'Save Note',
+      });
+      saveBtn.onclick = () => {
+        this.editingNotes.delete(annotation.id);
+        this.updateNote(annotation.id, noteInput.value);
+      };
+
+      body.appendChild(text);
+      body.appendChild(noteLabel);
+      body.appendChild(noteInput);
+      body.appendChild(saveBtn);
+    } else {
+      const noteDisplay = DOMUtils.createElement('div', {
+        className:
+          'text-sm text-text-200 bg-bg-50/50 rounded-lg p-3 cursor-pointer hover:bg-bg-100 transition-colors border border-transparent hover:border-border-200 mb-3 min-h-[40px]',
+        textContent: annotation.note || 'No note added. Click to edit...',
+      });
+      if (!annotation.note) {
+        noteDisplay.classList.add('italic', 'opacity-50');
+      }
+      noteDisplay.onclick = () => {
+        this.editingNotes.add(annotation.id);
+        this.renderList();
+      };
+      body.appendChild(text);
+      body.appendChild(noteLabel);
+      body.appendChild(noteDisplay);
+    }
 
     const tagsContainer = DOMUtils.createElement('div', {
-      className: 'flex flex-wrap gap-1 items-center min-h-[24px]',
+      className: 'flex flex-wrap gap-1 items-center',
+    });
+    (annotation.tags || []).forEach(tag => {
+      const tagEl = DOMUtils.createElement('span', {
+        className:
+          'bg-bg-100 text-text-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1 group/tag border border-border-200',
+        textContent: tag,
+      });
+      const remove = DOMUtils.createElement('span', {
+        className: 'cursor-pointer hover:text-red-500 opacity-50 group-hover/tag:opacity-100',
+        textContent: '×',
+      });
+      remove.onclick = () =>
+        this.updateAnnotation(annotation.id, {
+          tags: (annotation.tags || []).filter(t => t !== tag),
+        });
+      tagEl.appendChild(remove);
+      tagsContainer.appendChild(tagEl);
     });
 
-    const renderTags = () => {
-      tagsContainer.innerHTML = '';
-      (annotation.tags || []).forEach(tag => {
-        const tagEl = DOMUtils.createElement('span', {
-          className:
-            'bg-bg-100 text-text-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1 group/tag border border-border-200',
-          textContent: tag,
-        });
-        const remove = DOMUtils.createElement('span', {
-          className: 'cursor-pointer hover:text-red-500 opacity-50 group-hover/tag:opacity-100',
-          textContent: '×',
-        });
-        remove.onclick = () => {
-          const newTags = (annotation.tags || []).filter(t => t !== tag);
-          this.updateAnnotation(annotation.id, { tags: newTags });
-        };
-        tagEl.appendChild(remove);
-        tagsContainer.appendChild(tagEl);
-      });
-
+    if (isEditing) {
       const addInput = DOMUtils.createElement('input', {
-        className:
-          'bg-transparent border-none outline-none text-[10px] text-text-400 w-20 placeholder:text-text-500',
-        placeholder: '+ add tag',
+        className: 'bg-transparent border-none outline-none text-[10px] text-text-400 w-20 ml-1',
+        placeholder: '+ tag',
       });
       addInput.onkeydown = e => {
         if (e.key === 'Enter') {
           const val = addInput.value.trim().toLowerCase();
-          if (val && !(annotation.tags || []).includes(val)) {
-            const newTags = [...(annotation.tags || []), val];
-            this.updateAnnotation(annotation.id, { tags: newTags });
+          if (val && !annotation.tags?.includes(val)) {
+            this.updateAnnotation(annotation.id, { tags: [...(annotation.tags || []), val] });
           }
           addInput.value = '';
         }
       };
       tagsContainer.appendChild(addInput);
-    };
-    renderTags();
-
-    body.appendChild(text);
-    body.appendChild(noteLabel);
-    body.appendChild(note);
-    body.appendChild(tagsLabel);
+    }
     body.appendChild(tagsContainer);
 
-    // Footer section
     const footer = DOMUtils.createElement('div', {
       className:
         'mt-auto flex items-center justify-between gap-3 border-t border-border-100 bg-bg-50/30 px-4 py-3 rounded-b-xl',
     });
-
     const colorSelect = this.createSelect(
-      'Annotation color',
+      'Color',
       ANNOTATION_COLOR_KEYS.map(key => [key, ANNOTATION_COLORS[key].label])
     );
     colorSelect.value = annotation.color || DEFAULT_ANNOTATION_COLOR;
     colorSelect.className =
-      'h-8 rounded-lg border border-border-300 bg-bg-000 px-2 py-0 text-xs text-text-200 outline-none hover:border-border-400';
-    colorSelect.addEventListener('change', event => {
-      this.updateColor(annotation.id, event.target.value);
-    });
+      'h-8 rounded-lg border border-border-300 bg-bg-000 px-2 text-xs text-text-200 outline-none';
+    colorSelect.onchange = e => this.updateColor(annotation.id, e.target.value);
 
-    const actions = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-1.5',
-    });
-
-    const deleteButton = DOMUtils.createElement('button', {
+    const deleteBtn = DOMUtils.createElement('button', {
       className:
         'flex h-8 w-8 items-center justify-center rounded-lg text-text-400 hover:bg-red-50 hover:text-red-600 transition-colors',
-      title: 'Delete annotation',
-      innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+      innerHTML: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>`,
     });
-    deleteButton.addEventListener('click', () => {
-      if (confirm('Are you sure you want to delete this annotation?')) {
-        this.delete(annotation.id);
-      }
-    });
-
-    const save = DOMUtils.createElement('button', {
-      className:
-        'rounded-lg clp-button-primary px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide',
-      textContent: 'Save',
-      type: 'button',
-    });
-    save.addEventListener('click', () => this.updateNote(annotation.id, note.value, save));
-
-    actions.appendChild(deleteButton);
-    actions.appendChild(save);
+    deleteBtn.onclick = () => confirm('Delete annotation?') && this.delete(annotation.id);
 
     footer.appendChild(colorSelect);
-    footer.appendChild(actions);
-
+    footer.appendChild(deleteBtn);
     card.appendChild(topBar);
     card.appendChild(body);
     card.appendChild(footer);
     return card;
   }
 
-  async updateNote(annotationId, note, button) {
+  async updateNote(annotationId, note) {
     await annotationStore.update(annotationId, { note });
-    trackEvent('annotation_note_update', {
-      module: 'annotations',
-      method: 'manager',
-    });
-
-    // UI Feedback
-    if (button) {
-      const originalText = button.textContent;
-      button.textContent = 'Saved!';
-      button.classList.replace('clp-button-primary', 'bg-green-600');
-      button.classList.add('text-white');
-
-      setTimeout(() => {
-        button.textContent = originalText;
-        button.classList.replace('bg-green-600', 'clp-button-primary');
-        button.classList.remove('text-white');
-      }, 2000);
-    }
-
-    this.showToast('Note saved successfully');
+    this.showToast('Note saved');
     await this.refreshData();
   }
 
@@ -569,14 +473,9 @@ export class AnnotationManagerModal {
       className: `fixed bottom-6 left-1/2 z-[2147483647] -translate-x-1/2 rounded-full px-4 py-2 text-xs font-bold text-white shadow-2xl transition-all duration-300 translate-y-10 opacity-0`,
       textContent: message,
     });
-
     toast.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
     document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-      toast.classList.remove('translate-y-10', 'opacity-0');
-    });
-
+    requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
     setTimeout(() => {
       toast.classList.add('translate-y-10', 'opacity-0');
       setTimeout(() => toast.remove(), 300);
@@ -585,22 +484,13 @@ export class AnnotationManagerModal {
 
   async updateColor(annotationId, color) {
     await annotationStore.update(annotationId, { color });
-    trackEvent('annotation_color_change', {
-      module: 'annotations',
-      method: 'manager',
-      color,
-    });
     this.showToast('Color updated');
     await this.refreshData();
   }
 
   async delete(annotationId) {
     await annotationStore.remove(annotationId);
-    trackEvent('annotation_delete', {
-      module: 'annotations',
-      method: 'manager',
-    });
-    this.showToast('Annotation deleted', 'error');
+    this.showToast('Deleted', 'error');
     await this.refreshData();
   }
 
@@ -609,20 +499,14 @@ export class AnnotationManagerModal {
     if (!state) {
       return;
     }
-
     const annotation = state.annotation;
-    const currentPath = window.location.pathname;
-
-    // If it's a different conversation, we need to redirect
-    if (annotation.conversationUrl && annotation.conversationUrl !== currentPath) {
+    if (annotation.conversationUrl && annotation.conversationUrl !== window.location.pathname) {
       const url = new URL(annotation.conversationUrl, window.location.origin);
       url.searchParams.set('cl_annotation', annotation.id);
       window.location.href = url.toString();
       this.close('navigate_external');
       return;
     }
-
-    // Otherwise use the standard event-based navigation for current page
     window.dispatchEvent(
       new CustomEvent('cl-annotations-navigate', {
         detail: { annotationId, source: 'manager', openEditor: true },
@@ -634,14 +518,9 @@ export class AnnotationManagerModal {
     if (!this.activeModal) {
       return;
     }
-
     const { element, content, escHandler } = this.activeModal;
-    clearTimeout(this.searchDebounceTimer);
     element.classList.remove('opacity-100');
-    element.classList.add('opacity-0');
-    content.classList.remove('opacity-100', 'translate-y-0');
     content.classList.add('opacity-0', 'translate-y-5');
-
     setTimeout(() => {
       element.remove();
       document.removeEventListener('keydown', escHandler);
@@ -650,7 +529,6 @@ export class AnnotationManagerModal {
         activeAnnotationManagerModal = null;
       }
     }, 200);
-    void reason;
   }
 }
 
