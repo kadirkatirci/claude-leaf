@@ -117,7 +117,7 @@ export class AnnotationManagerModal {
     });
     const subtitle = DOMUtils.createElement('p', {
       className: 'mt-0.5 text-xs text-text-400',
-      textContent: 'Manage and navigate your local conversation highlights',
+      textContent: 'Manage and navigate all your conversation highlights',
     });
     titleWrap.appendChild(title);
     titleWrap.appendChild(subtitle);
@@ -216,9 +216,17 @@ export class AnnotationManagerModal {
   }
 
   async loadData() {
-    const annotations = await annotationStore.getByConversation(window.location.pathname);
+    const annotations = await annotationStore.getAll();
+    const currentPath = window.location.pathname;
     const messages = DOMUtils.findMessages();
-    this.state.states = annotations.map(annotation => restoreAnnotation(annotation, messages));
+
+    this.state.states = annotations.map(annotation => {
+      // Only attempt to restore if it's the current conversation
+      if (annotation.conversationUrl === currentPath) {
+        return restoreAnnotation(annotation, messages);
+      }
+      return { status: 'unresolved', annotation };
+    });
   }
 
   async refreshData() {
@@ -299,15 +307,23 @@ export class AnnotationManagerModal {
     });
 
     const meta = DOMUtils.createElement('div', {
-      className: 'flex min-w-0 items-center gap-2',
+      className: 'flex min-w-0 flex-1 items-center gap-2',
     });
     const dot = DOMUtils.createElement('span', { className: 'size-2 shrink-0 rounded-full' });
     dot.style.background = color.swatch;
 
+    const contextInfo = DOMUtils.createElement('div', { className: 'flex min-w-0 flex-col' });
     const sender = DOMUtils.createElement('span', {
-      className: 'truncate text-[10px] font-bold uppercase tracking-wider text-text-400',
+      className: 'truncate text-[9px] font-bold uppercase tracking-wider text-text-400',
       textContent: annotation.messageSender || 'message',
     });
+
+    const chatPreview = DOMUtils.createElement('span', {
+      className: 'truncate text-[10px] text-text-500 font-medium',
+      textContent: annotation.messagePreview || 'Untitled Chat',
+    });
+    contextInfo.appendChild(sender);
+    contextInfo.appendChild(chatPreview);
 
     const status = DOMUtils.createElement('span', {
       className:
@@ -318,18 +334,14 @@ export class AnnotationManagerModal {
     });
 
     meta.appendChild(dot);
-    meta.appendChild(sender);
+    meta.appendChild(contextInfo);
     meta.appendChild(status);
-
     const navigate = DOMUtils.createElement('button', {
       className:
-        state.status === 'resolved'
-          ? 'rounded-lg px-2 py-1 text-[11px] font-medium text-accent-main-100 hover:bg-accent-main-100/10 transition-colors'
-          : 'rounded-lg px-2 py-1 text-[11px] font-medium text-text-400 opacity-60 cursor-not-allowed',
+        'rounded-lg px-2 py-1 text-[11px] font-medium text-accent-main-100 hover:bg-accent-main-100/10 transition-colors',
       textContent: 'Navigate',
       type: 'button',
     });
-    navigate.disabled = state.status !== 'resolved';
     navigate.addEventListener('click', () => this.navigate(annotation.id));
 
     topBar.appendChild(meta);
@@ -445,6 +457,22 @@ export class AnnotationManagerModal {
   }
 
   navigate(annotationId) {
+    const state = this.state.states.find(s => s.annotation.id === annotationId);
+    if (!state) {
+      return;
+    }
+
+    const annotation = state.annotation;
+    const currentPath = window.location.pathname;
+
+    // If it's a different conversation, we need to redirect
+    if (annotation.conversationUrl && annotation.conversationUrl !== currentPath) {
+      window.location.href = annotation.conversationUrl;
+      this.close('navigate_external');
+      return;
+    }
+
+    // Otherwise use the standard event-based navigation for current page
     window.dispatchEvent(
       new CustomEvent('cl-annotations-navigate', {
         detail: { annotationId, source: 'manager', openEditor: true },
