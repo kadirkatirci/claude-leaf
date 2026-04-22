@@ -414,7 +414,7 @@ export class AnnotationManagerModal {
       textContent: 'Save',
       type: 'button',
     });
-    save.addEventListener('click', () => this.updateNote(annotation.id, note.value));
+    save.addEventListener('click', () => this.updateNote(annotation.id, note.value, save));
 
     actions.appendChild(deleteButton);
     actions.appendChild(save);
@@ -428,13 +428,48 @@ export class AnnotationManagerModal {
     return card;
   }
 
-  async updateNote(annotationId, note) {
+  async updateNote(annotationId, note, button) {
     await annotationStore.update(annotationId, { note });
     trackEvent('annotation_note_update', {
       module: 'annotations',
       method: 'manager',
     });
+
+    // UI Feedback
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'Saved!';
+      button.classList.replace('clp-button-primary', 'bg-green-600');
+      button.classList.add('text-white');
+
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.replace('bg-green-600', 'clp-button-primary');
+        button.classList.remove('text-white');
+      }, 2000);
+    }
+
+    this.showToast('Note saved successfully');
     await this.refreshData();
+  }
+
+  showToast(message, type = 'success') {
+    const toast = DOMUtils.createElement('div', {
+      className: `fixed bottom-6 left-1/2 z-[2147483647] -translate-x-1/2 rounded-full px-4 py-2 text-xs font-bold text-white shadow-2xl transition-all duration-300 translate-y-10 opacity-0`,
+      textContent: message,
+    });
+
+    toast.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.remove('translate-y-10', 'opacity-0');
+    });
+
+    setTimeout(() => {
+      toast.classList.add('translate-y-10', 'opacity-0');
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
   }
 
   async updateColor(annotationId, color) {
@@ -444,6 +479,7 @@ export class AnnotationManagerModal {
       method: 'manager',
       color,
     });
+    this.showToast('Color updated');
     await this.refreshData();
   }
 
@@ -453,6 +489,7 @@ export class AnnotationManagerModal {
       module: 'annotations',
       method: 'manager',
     });
+    this.showToast('Annotation deleted', 'error');
     await this.refreshData();
   }
 
