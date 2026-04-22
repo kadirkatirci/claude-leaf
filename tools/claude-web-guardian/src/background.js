@@ -20,6 +20,9 @@ function detectPageType(pathname = '') {
   if (pathname === '/new' || pathname.endsWith('/new')) {
     return 'new_chat';
   }
+  if (pathname === '/design' || pathname.startsWith('/design/')) {
+    return 'design';
+  }
   if (pathname === '/code' || pathname.startsWith('/code/')) {
     return 'code';
   }
@@ -39,7 +42,7 @@ function detectPageType(pathname = '') {
 }
 
 function isMonitoredPageType(pageType) {
-  return pageType !== 'code';
+  return pageType === 'new_chat' || pageType === 'conversation' || pageType === 'project_chat';
 }
 
 function buildSignalFromUrl(url, trigger) {

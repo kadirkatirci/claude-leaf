@@ -21,9 +21,13 @@ function loadGuardianChecks() {
     },
   });
 
-  new vm.Script(`${contentScriptSource}\nthis.__CWG_TEST__ = { runChecks, runChecksWhenStable };`, {
-    filename: 'claude-web-guardian-content.js',
-  }).runInContext(context);
+  new vm.Script(
+    `${contentScriptSource}
+this.__CWG_TEST__ = { detectPageType, isMonitoredPageType, runChecks, runChecksWhenStable };`,
+    {
+      filename: 'claude-web-guardian-content.js',
+    }
+  ).runInContext(context);
 
   return context.__CWG_TEST__;
 }
@@ -44,6 +48,24 @@ test('main_container passes when conversation content is found via body fallback
     assert.equal(mainCheck?.pass, true);
     assert.equal(mainCheck?.details?.strategy, 'body_fallback');
     assert.match(mainCheck?.message || '', /body fallback/i);
+  } finally {
+    cleanup();
+  }
+});
+
+test('design routes are recognized but not monitored by guardian checks', () => {
+  const cleanup = setupDom('<main><div>Claude Design</div></main>');
+
+  try {
+    window.history.replaceState({}, '', '/design/project-alpha');
+    const { isMonitoredPageType, runChecks } = loadGuardianChecks();
+    const result = runChecks({ routes: true });
+    const routeCheck = result.checks.find(check => check.id === 'route_detection');
+
+    assert.equal(result.pageMeta?.pageType, 'design');
+    assert.equal(isMonitoredPageType('design'), false);
+    assert.equal(routeCheck?.pass, true);
+    assert.match(routeCheck?.message || '', /design/i);
   } finally {
     cleanup();
   }

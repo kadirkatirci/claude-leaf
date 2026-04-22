@@ -2,6 +2,9 @@ function detectPageType(pathname) {
   if (pathname === '/new' || pathname.endsWith('/new')) {
     return 'new_chat';
   }
+  if (pathname === '/design' || pathname.startsWith('/design/')) {
+    return 'design';
+  }
   if (pathname === '/code' || pathname.startsWith('/code/')) {
     return 'code';
   }
@@ -25,7 +28,7 @@ function check(id, pass, severity, message, details = null) {
 }
 
 function isMonitoredPageType(pageType) {
-  return pageType !== 'code';
+  return pageType === 'new_chat' || pageType === 'conversation' || pageType === 'project_chat';
 }
 
 const MESSAGE_SELECTOR =
@@ -209,6 +212,10 @@ function isPageReadyForSignal(pageType) {
 }
 
 function scheduleAutoSignal(trigger = 'page_change', attempt = 0) {
+  if (!isMonitoredPageType(detectPageType(window.location.pathname))) {
+    return;
+  }
+
   autoSignalToken += 1;
   const token = autoSignalToken;
 
@@ -266,6 +273,16 @@ function handlePossibleRouteChange(trigger = 'route_change', force = false) {
   }
 
   lastObservedRouteKey = routeKey;
+
+  if (!isMonitoredPageType(detectPageType(window.location.pathname))) {
+    autoSignalToken += 1;
+    if (autoSignalTimer) {
+      clearTimeout(autoSignalTimer);
+      autoSignalTimer = null;
+    }
+    return;
+  }
+
   scheduleAutoSignal(trigger);
 }
 
@@ -319,6 +336,7 @@ function runChecks(options = {}) {
           'settings',
           'other',
           'code',
+          'design',
         ].includes(pageType),
         'high',
         `Route detection resolved as ${pageType}`,

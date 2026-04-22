@@ -146,6 +146,7 @@ function loadGuardianBackgroundHelpers(chromeOverrides = {}) {
   new vm.Script(
     `${inlinedBackgroundSource}
 this.__CWG_BG_TEST__ = {
+  buildSignalFromUrl,
   buildFailureSignature,
   shouldScheduleFailureNotifications,
   buildFailureAlertPayload,
@@ -234,6 +235,20 @@ test('failure notification payload and message include path and failing checks',
   assert.match(message, /message_nodes/);
 });
 
+test('history navigation ignores unsupported design routes', () => {
+  const { buildSignalFromUrl } = loadGuardianBackgroundHelpers();
+  const chatSignal = buildSignalFromUrl('https://claude.ai/chat/test-thread', 'history');
+
+  assert.equal(buildSignalFromUrl('https://claude.ai/design/artifact', 'history'), null);
+  assert.equal(buildSignalFromUrl('https://claude.ai/settings/usage', 'history'), null);
+  assert.equal(chatSignal.trigger, 'history');
+  assert.equal(chatSignal.href, 'https://claude.ai/chat/test-thread');
+  assert.equal(chatSignal.pathname, '/chat/test-thread');
+  assert.equal(chatSignal.pageType, 'conversation');
+  assert.equal(chatSignal.source, 'web_navigation');
+  assert.equal(typeof chatSignal.signalledAt, 'number');
+});
+
 test('runCanary skips history writes when no Claude tab exists', async () => {
   const storageSetCalls = [];
   const badgeTextCalls = [];
@@ -241,16 +256,16 @@ test('runCanary skips history writes when no Claude tab exists', async () => {
   const { runCanary } = loadGuardianBackgroundHelpers({
     storage: {
       local: {
-        async set(value) {
+        set(value) {
           storageSetCalls.push(value);
         },
       },
     },
     action: {
-      async setBadgeText(value) {
+      setBadgeText(value) {
         badgeTextCalls.push(value);
       },
-      async setTitle(value) {
+      setTitle(value) {
         titleCalls.push(value);
       },
     },
