@@ -1,4 +1,5 @@
 import DOMUtils from '../../utils/DOMUtils.js';
+import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { annotationStore } from '../../stores/index.js';
 import { trackEvent } from '../../analytics/Analytics.js';
 import {
@@ -391,8 +392,9 @@ export class AnnotationManagerModal {
 
     const navigate = DOMUtils.createElement('button', {
       className:
-        'rounded-lg px-2 py-1 text-[11px] font-medium text-accent-main-100 hover:bg-accent-main-100/10 transition-colors',
-      textContent: 'Navigate',
+        'flex h-8 w-8 items-center justify-center rounded-lg text-accent-main-100 hover:bg-accent-main-100/10 transition-colors',
+      title: 'Go to Message',
+      innerHTML: IconLibrary.openInNew('currentColor', 16),
       type: 'button',
     });
     navigate.addEventListener('click', () => this.navigate(annotation.id));
@@ -407,7 +409,7 @@ export class AnnotationManagerModal {
 
     const text = DOMUtils.createElement('div', {
       className:
-        'relative mb-4 max-h-[80px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 scrollbar-thin',
+        'relative mb-4 max-h-[100px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 scrollbar-thin line-clamp-4 hover:line-clamp-none transition-all',
       textContent: annotation.selectedText || '',
     });
     text.style.borderLeftColor = color.swatch;

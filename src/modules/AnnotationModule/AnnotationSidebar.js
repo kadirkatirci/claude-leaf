@@ -231,7 +231,7 @@ export class AnnotationSidebar {
       contentWrapper.appendChild(textContainer);
     }
 
-    iconInner.innerHTML = IconLibrary.highlight('currentColor', 16);
+    iconInner.innerHTML = IconLibrary.highlight('currentColor', 18);
 
     textContainer.innerHTML = '';
     const textInner = this.dom.createElement('div', {
