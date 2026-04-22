@@ -72,6 +72,21 @@ export default class IconLibrary {
   }
 
   /**
+   * Get text highlight icon
+   * @param {string} color - Color for the icon (default: currentColor)
+   * @param {number} size - Icon size (default: 20)
+   * @returns {string} SVG markup
+   */
+  static highlight(color = 'currentColor', size = 20) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle;">
+      <path d="M4 20H20" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M7.5 16.5L5.5 14.5C5.10948 14.1095 5.10948 13.4763 5.5 13.0858L14.0858 4.5C14.8668 3.71895 16.1332 3.71895 16.9142 4.5L19.5 7.08579C20.281 7.86684 20.281 9.13317 19.5 9.91421L10.9142 18.5C10.5237 18.8905 9.89052 18.8905 9.5 18.5L7.5 16.5Z" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M12.5 6.5L17.5 11.5" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M7.5 16.5L11 13" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  /**
    * Get pin/marker icon
    * @param {string} color - Color for the icon (default: currentColor)
    * @param {number} size - Icon size (default: 20)

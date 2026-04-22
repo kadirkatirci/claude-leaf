@@ -16,7 +16,7 @@ export class IndexedDBAdapter extends BaseAdapter {
   constructor() {
     super();
     this.dbName = 'claude-leaf';
-    this.dbVersion = 2; // Incremented for schema changes
+    this.dbVersion = 3; // Incremented for schema changes
     this.db = null;
   }
 

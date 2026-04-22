@@ -39,6 +39,24 @@ export const STORE_CONFIG = {
     exportable: true,
     label: 'Emoji Markers',
   },
+  annotations: {
+    storageType: 'indexeddb',
+    version: 1,
+    defaultData: {
+      annotations: [],
+    },
+    schema: {
+      keyPath: 'id',
+      indexes: [
+        { name: 'conversationUrl', keyPath: 'conversationUrl', options: { unique: false } },
+        { name: 'contentSignature', keyPath: 'contentSignature', options: { unique: false } },
+        { name: 'color', keyPath: 'color', options: { unique: false } },
+        { name: 'createdAt', keyPath: 'createdAt', options: { unique: false } },
+      ],
+    },
+    exportable: true,
+    label: 'Annotations',
+  },
   editHistory: {
     storageType: 'indexeddb',
     version: 3,

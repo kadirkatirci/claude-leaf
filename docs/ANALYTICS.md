@@ -5,8 +5,8 @@
 This extension implements **GA4 Measurement Protocol** for comprehensive analytics tracking across all features. The system captures user interactions, performance metrics, and feature usage while respecting privacy and user consent.
 
 **Key Facts:**
-- **60 whitelisted events** with pre-defined parameters
-- **52 allowed parameters** to prevent PII leakage
+- **69 whitelisted events** with pre-defined parameters
+- **55 allowed parameters** to prevent PII leakage
 - **User-controlled**: Analytics can be disabled in settings
 - **Privacy-first**: Full sanitization + whitelist validation
 - **Performance-monitored**: Init time and UI scan metrics tracked
@@ -193,6 +193,7 @@ trackEvent('perf_init', {
 - ContentFoldingModule
 - ScheduledMessageModule
 - UsageTrackerModule
+- AnnotationModule
 
 #### `perf_scan`
 Emitted regularly (throttled) during UI updates.
@@ -258,7 +259,33 @@ Track the only meaningful direct interaction for this passive composer feature: 
 
 ---
 
-### 8. Popup Events (12 events)
+### 8. Annotation Events (9 events)
+
+Track local text highlight and note interactions for selected Claude/user message text.
+
+| Event | When Triggered |
+|-------|----------------|
+| `annotation_create` | User creates a highlight from the inline selection bubble |
+| `annotation_note_update` | User saves or changes a note |
+| `annotation_color_change` | User changes highlight color |
+| `annotation_delete` | User deletes a highlight |
+| `annotation_quick_panel_toggle` | Fixed quick panel opened/closed |
+| `annotation_manager_open` | Sidebar annotation manager opened |
+| `annotation_manager_search` | Search query entered in manager |
+| `annotation_manager_filter` | Color or resolved-state filter changed in manager |
+| `annotation_navigate` | User navigates from a panel/manager item to the source message |
+
+**Location:** `src/modules/AnnotationModule.js`, `src/modules/AnnotationModule/*`
+
+**Notes:**
+- Annotation content is stored only in local IndexedDB.
+- Selected text and note body are never sent to analytics.
+- Search analytics send only `query_length`.
+- Color analytics send only the color key (`yellow`, `blue`, `green`, `red`).
+
+---
+
+### 9. Popup Events (12 events)
 
 Track user interactions in the extension popup.
 
@@ -281,7 +308,7 @@ Track user interactions in the extension popup.
 
 ---
 
-### 9. Error Tracking Events (1 event)
+### 10. Error Tracking Events (1 event)
 
 Critical for production debugging and monitoring extension health.
 
@@ -322,7 +349,7 @@ errorTracker.captureError({
 
 ---
 
-### 10. Session Lifecycle Events (2 events)
+### 11. Session Lifecycle Events (2 events)
 
 Track user sessions from initialization to cleanup.
 
@@ -362,7 +389,7 @@ Track user sessions from initialization to cleanup.
 
 ---
 
-### 11. Funnel Tracking Events (1 event)
+### 12. Funnel Tracking Events (1 event)
 
 Track multi-step user flows to identify drop-off points.
 
@@ -401,7 +428,7 @@ trackFunnelStep('bookmark_creation', 4, 'save_bookmark', 'completed', { sender: 
 
 ---
 
-### 12. User Engagement Events (1 event)
+### 13. User Engagement Events (1 event)
 
 Measure feature adoption breadth and power user behavior.
 
@@ -419,7 +446,7 @@ Measure feature adoption breadth and power user behavior.
 
 ---
 
-### 13. Frustration Detection Events (1 event)
+### 14. Frustration Detection Events (1 event)
 
 Detect user frustration through rapid repeated actions.
 
@@ -448,7 +475,7 @@ frustrationDetector.recordAction('button_click');
 
 ## 🎯 Parameter Reference
 
-### Allowed Parameters (52 total)
+### Allowed Parameters (55 total)
 
 All events go through sanitization to prevent sensitive data leakage.
 
@@ -479,9 +506,13 @@ All events go through sanitization to prevent sensitive data leakage.
 | `init_ms` | number | - | 145 | Initialization time |
 | `scan_ms` | number | - | 45 | Scan/update time |
 | `item_count` | number | - | 12 | Total items |
+| `message_count` | number | - | 20 | Message count |
 | `bookmark_count` | number | - | 8 | Bookmark count |
 | `marker_count` | number | - | 5 | Marker count |
+| `annotation_count` | number | - | 4 | Annotation count |
 | `edit_count` | number | - | 3 | Edit count |
+| `color` | string | 100 | "yellow" | Annotation color key |
+| `filter` | string | 100 | "unresolved" | Manager filter value |
 | **Error Tracking** | | | | |
 | `error_type` | string | 100 | "uncaught_error" | Error category |
 | `error_message` | string | 200 | "Cannot read property" | Sanitized error message |

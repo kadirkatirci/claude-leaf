@@ -12,7 +12,13 @@ import navigationInterceptor from './core/NavigationInterceptor.js';
 import VisibilityManager from './utils/VisibilityManager.js';
 
 // Rest of imports
-import { settingsStore, bookmarkStore, markerStore, editHistoryStore } from './stores/index.js';
+import {
+  settingsStore,
+  bookmarkStore,
+  markerStore,
+  editHistoryStore,
+  annotationStore,
+} from './stores/index.js';
 import { isDevDisabled } from './config/DevConfig.js';
 import { debugLog } from './config/debug.js';
 import errorTracker from './utils/ErrorTracker.js';
@@ -41,6 +47,7 @@ import SidebarCollapseModule from './modules/SidebarCollapseModule.js';
 import ContentFoldingModule from './modules/ContentFoldingModule.js';
 import ScheduledMessageModule from './modules/ScheduledMessageModule.js';
 import UsageTrackerModule from './modules/UsageTrackerModule.js';
+import AnnotationModule from './modules/AnnotationModule.js';
 
 class ClaudeProductivityApp {
   constructor() {
@@ -362,6 +369,9 @@ class ClaudeProductivityApp {
       case 'editHistory':
         await this.refreshModule('editHistory');
         break;
+      case 'annotations':
+        await this.refreshModule('annotations');
+        break;
       default:
         break;
     }
@@ -371,6 +381,7 @@ class ClaudeProductivityApp {
     await this.refreshModulesForStore('bookmarks');
     await this.refreshModulesForStore('markers');
     await this.refreshModulesForStore('editHistory');
+    await this.refreshModulesForStore('annotations');
   }
 
   handleSettingsUpdate(settings) {
@@ -449,6 +460,9 @@ class ClaudeProductivityApp {
     }
     if (!isDevDisabled('usageTracker')) {
       this.registerModule('usageTracker', new UsageTrackerModule(), { dependencies: [] });
+    }
+    if (!isDevDisabled('annotations')) {
+      this.registerModule('annotations', new AnnotationModule(), { dependencies: [] });
     }
   }
 
@@ -544,6 +558,7 @@ class ClaudeProductivityApp {
       bookmarks: bookmarkStore,
       markers: markerStore,
       editHistory: editHistoryStore,
+      annotations: annotationStore,
     };
 
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

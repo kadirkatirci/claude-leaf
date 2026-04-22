@@ -110,6 +110,15 @@ const ALLOWED_EVENTS = new Set([
   'scheduled_message_retry',
   'scheduled_message_fail',
   'usage_tracker_tooltip_open',
+  'annotation_create',
+  'annotation_note_update',
+  'annotation_color_change',
+  'annotation_delete',
+  'annotation_quick_panel_toggle',
+  'annotation_manager_open',
+  'annotation_manager_search',
+  'annotation_manager_filter',
+  'annotation_navigate',
 ]);
 
 const ALLOWED_PARAMS = new Set([
@@ -141,6 +150,7 @@ const ALLOWED_PARAMS = new Set([
   'message_count',
   'bookmark_count',
   'marker_count',
+  'annotation_count',
   'edit_count',
   'error_type',
   'error_message',
@@ -165,6 +175,8 @@ const ALLOWED_PARAMS = new Set([
   'action_type',
   'action_count',
   'time_window_ms',
+  'color',
+  'filter',
 ]);
 
 let analyticsEnabledCache = null;

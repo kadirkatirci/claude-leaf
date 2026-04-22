@@ -19,6 +19,7 @@ export function getStoreIdFromConfig(configKey) {
     editHistory: 'editHistory',
     bookmarks: 'bookmarks',
     emojiMarkers: 'markers',
+    annotations: 'annotations',
     settings: 'settings',
   };
   return keyMap[configKey] || null;
@@ -240,6 +241,7 @@ export async function handleClear({ config, trackEvent, showToast }) {
     editHistory: 'editHistory',
     bookmarks: 'bookmarks',
     markers: 'markers',
+    annotations: 'annotations',
   };
 
   for (const opt of config.dataOptions.clear) {

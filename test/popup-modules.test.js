@@ -414,6 +414,17 @@ test('popup floating visibility button helper updates aria and icon state', () =
   }
 });
 
+test('popup config exposes annotations as disabled data-backed module', () => {
+  const config = JSON.parse(readFileSync(new URL('../popup/config.json', import.meta.url), 'utf8'));
+
+  assert.equal(config.modules.annotations.name, 'Annotations');
+  assert.equal(config.modules.annotations.supportsFloatingVisibility, true);
+  assert.equal(config.defaultSettings.annotations.enabled, false);
+  assert.equal(config.defaultSettings.annotations.showFloatingUI, true);
+  assert.ok(config.dataOptions.export.find(option => option.storageKey === 'annotations'));
+  assert.ok(config.dataOptions.clear.find(option => option.storageKey === 'annotations'));
+});
+
 test('popup help links include tracking params and stable analytics ids', () => {
   const cleanup = setupDom(`<div id="help-section"></div>`);
   const originalChrome = globalThis.chrome;

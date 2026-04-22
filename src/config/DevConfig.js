@@ -53,6 +53,11 @@ export const DEV_CONFIG = {
       DEV_DISABLED: false,
       // reason: 'Stable - production ready'
     },
+
+    annotations: {
+      DEV_DISABLED: false,
+      // reason: 'Stable - production ready'
+    },
   },
 };
 

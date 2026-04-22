@@ -20,6 +20,7 @@ export const DEBUG_FLAGS = {
   contentFolding: false,
   scheduledMessage: false,
   usageTracker: false,
+  annotations: false,
   storage: false,
   cache: false,
   performance: false,

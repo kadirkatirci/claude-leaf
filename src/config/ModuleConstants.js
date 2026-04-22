@@ -38,6 +38,12 @@ export const MODULE_CONSTANTS = {
     highlightEdited: true,
   },
 
+  annotations: {
+    colors: ['yellow', 'blue', 'green', 'red'],
+    defaultColor: 'yellow',
+    contextLength: 32,
+  },
+
   sidebarCollapse: {
     defaultState: 'expanded',
     rememberState: true,

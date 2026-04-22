@@ -60,6 +60,10 @@ export const DEFAULT_SETTINGS = {
   usageTracker: {
     enabled: true,
   },
+  annotations: {
+    enabled: false,
+    showFloatingUI: true,
+  },
   general: {
     opacity: 0.7,
     colorTheme: 'purple',

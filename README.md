@@ -30,6 +30,7 @@ Claude Leaf gives you lightweight controls directly inside the conversation so y
 - move between messages without hunting through the page
 - bookmark important parts of a thread
 - tag messages with emoji markers for quick visual scanning
+- highlight selected message text and attach local notes
 - inspect edited prompts and version branches when a conversation evolves
 - schedule a drafted message to send later when timing matters
 - keep a subtle read on your Claude session and weekly usage from the composer edge
@@ -65,6 +66,10 @@ Mark messages with lightweight visual tags so key answers stand out during long 
 <p>
   <img src="docs/screenshots/marked-messages-badges-darkmode.png" alt="Marked messages in dark mode" width="48%">
 </p>
+
+### Annotations
+
+Highlight selected text in Claude or user messages and attach local notes. This module is available in the build, but it starts disabled by default and must be enabled from the popup settings.
 
 ### Edit History
 
@@ -150,6 +155,7 @@ Available in the current build:
 Available as an opt-in module:
 
 - Scheduled Message (disabled by default)
+- Annotations (disabled by default)
 
 Present but dev-disabled:
 
@@ -167,6 +173,7 @@ Present but dev-disabled:
 | Edit History | Enabled by default | Prompt edit tracking and branch inspection |
 | Usage Tracker | Enabled by default | Passive session and weekly usage edges in the composer |
 | Scheduled Message | Optional | Built in, but disabled by default until enabled in popup |
+| Annotations | Optional | Highlight selected message text and save local notes |
 | Compact View | Dev-disabled | Present in codebase, not active in current build |
 | Content Folding | Dev-disabled | Present in codebase, not active in current build |
 | Sidebar Collapse | Dev-disabled | Present in codebase, not active in current build |

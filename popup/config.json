@@ -74,6 +74,12 @@
       "tooltip": "Shows live session and weekly usage inside the composer",
       "icon": "M4 18h16M6 14h3M11 10h3M16 6h3",
       "supportsFloatingVisibility": false
+    },
+    "annotations": {
+      "name": "Annotations",
+      "tooltip": "Highlight selected Claude or user message text and attach local notes",
+      "icon": "M4 20h16M7.5 16.5l-2-2a1 1 0 0 1 0-1.41L14.09 4.5a2 2 0 0 1 2.82 0l2.59 2.59a2 2 0 0 1 0 2.82L10.91 18.5a1 1 0 0 1-1.41 0l-2-2ZM12.5 6.5l5 5M7.5 16.5L11 13",
+      "supportsFloatingVisibility": true
     }
   },
   "defaultSettings": {
@@ -107,6 +113,10 @@
     },
     "usageTracker": {
       "enabled": true
+    },
+    "annotations": {
+      "enabled": false,
+      "showFloatingUI": true
     }
   },
   "shortcuts": [
@@ -184,6 +194,13 @@
         "label": "Emoji Markers"
       },
       {
+        "id": "export-annotations",
+        "key": "annotations",
+        "storageKey": "annotations",
+        "dataPath": "annotations",
+        "label": "Annotations"
+      },
+      {
         "id": "export-settings",
         "key": "settings",
         "label": "Settings"
@@ -204,6 +221,11 @@
         "id": "clear-emojiMarkers",
         "storageKey": "markers",
         "label": "Emoji Markers"
+      },
+      {
+        "id": "clear-annotations",
+        "storageKey": "annotations",
+        "label": "Annotations"
       }
     ]
   },

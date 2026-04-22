@@ -354,6 +354,7 @@ const DataService = {
       bookmarks: 'bookmarks',
       markers: 'markers',
       emojiMarkers: 'markers', // Old format compatibility
+      annotations: 'annotations',
       editHistory: 'editHistory',
       history: 'editHistory', // Old format compatibility
     };
@@ -410,6 +411,9 @@ const DataService = {
         case 'editHistory':
           normalized.history = data;
           break;
+        case 'annotations':
+          normalized.annotations = data;
+          break;
         default:
           return data;
       }
@@ -429,6 +433,8 @@ const DataService = {
         return this.mergeMarkers(current, imported);
       case 'editHistory':
         return this.mergeEditHistory(current, imported);
+      case 'annotations':
+        return this.mergeAnnotations(current, imported);
       default:
         return { ...current, ...imported };
     }
@@ -471,6 +477,17 @@ const DataService = {
     };
   },
 
+  mergeAnnotations(current, imported) {
+    const existingIds = new Set((current.annotations || []).map(annotation => annotation.id));
+    const newAnnotations = (imported.annotations || []).filter(
+      annotation => !existingIds.has(annotation.id)
+    );
+
+    return {
+      annotations: [...(current.annotations || []), ...newAnnotations],
+    };
+  },
+
   /**
    * Count items in store data for reporting
    */
@@ -482,6 +499,8 @@ const DataService = {
         return (data.markers || []).length;
       case 'editHistory':
         return (data.history || []).length + (data.snapshots || []).length;
+      case 'annotations':
+        return (data.annotations || []).length;
       default:
         return 0;
     }
