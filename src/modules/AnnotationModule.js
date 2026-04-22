@@ -20,6 +20,14 @@ import {
 const NAVIGATE_EVENT = 'cl-annotations-navigate';
 const QUICK_UPDATE_EVENT = 'cl-annotation-quick-update';
 const DATA_CHANGED_EVENT = 'cl-annotations-data-changed';
+const TEXT_NODE = 3;
+
+function getElementFromNode(node) {
+  if (!node) {
+    return null;
+  }
+  return node.nodeType === TEXT_NODE ? node.parentElement : node;
+}
 
 function getRangeRect(range, fallbackPoint = null) {
   const rect = range?.getBoundingClientRect?.();
@@ -38,6 +46,60 @@ function getRangeRect(range, fallbackPoint = null) {
     width: 1,
     height: 1,
   };
+}
+
+function getRangeScrollRect(range) {
+  const rect = range?.getBoundingClientRect?.();
+  if (rect && (rect.width || rect.height)) {
+    return rect;
+  }
+
+  const firstRect = Array.from(range?.getClientRects?.() || []).find(
+    candidate => candidate?.width || candidate?.height
+  );
+  return firstRect || null;
+}
+
+function isScrollableElement(element) {
+  if (!element || element === document.body || element === document.documentElement) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  const overflowY = style.overflowY || style.overflow;
+  return /(auto|scroll|overlay)/.test(overflowY) && element.scrollHeight > element.clientHeight;
+}
+
+function findScrollContainer(element) {
+  let current = element?.parentElement || null;
+  while (current && current !== document.body && current !== document.documentElement) {
+    if (isScrollableElement(current)) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+
+  return document.scrollingElement || document.documentElement;
+}
+
+function scrollElementTo(element, top) {
+  const targetTop = Math.max(0, top);
+  if (typeof element.scrollTo === 'function') {
+    element.scrollTo({ top: targetTop, behavior: 'smooth' });
+    return;
+  }
+  element.scrollTop = targetTop;
+}
+
+function scrollWindowTo(top) {
+  const targetTop = Math.max(0, top);
+  if (typeof window.scrollTo === 'function') {
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    return;
+  }
+
+  const scrollingElement = document.scrollingElement || document.documentElement;
+  scrollingElement.scrollTop = targetTop;
 }
 
 function isInjectedAnnotationSurface(target) {
@@ -489,13 +551,46 @@ export default class AnnotationModule extends BaseModule {
     return true;
   }
 
+  scrollAnnotationRangeIntoView(state) {
+    const rect = getRangeScrollRect(state?.range);
+    const anchorElement = getElementFromNode(state?.range?.startContainer);
+    if (!rect || !anchorElement) {
+      return false;
+    }
+
+    const scrollContainer = findScrollContainer(anchorElement);
+    if (
+      scrollContainer === document.scrollingElement ||
+      scrollContainer === document.documentElement ||
+      scrollContainer === document.body
+    ) {
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+      const currentTop =
+        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const targetTop = currentTop + rect.top - (viewportHeight - rect.height) / 2;
+      scrollWindowTo(targetTop);
+      return true;
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const targetTop =
+      scrollContainer.scrollTop +
+      rect.top -
+      containerRect.top -
+      (scrollContainer.clientHeight - rect.height) / 2;
+    scrollElementTo(scrollContainer, targetTop);
+    return true;
+  }
+
   navigateToAnnotation(annotationId, { openEditor = false, source = 'panel' } = {}) {
     const state = this.annotationStates.find(item => item.annotation.id === annotationId);
     if (!state || state.status !== 'resolved') {
       return false;
     }
 
-    this.dom.scrollToElement(state.messageElement, 'center');
+    if (!this.scrollAnnotationRangeIntoView(state)) {
+      this.dom.scrollToElement(state.messageElement, 'center');
+    }
     trackEvent('annotation_navigate', {
       module: 'annotations',
       method: source,

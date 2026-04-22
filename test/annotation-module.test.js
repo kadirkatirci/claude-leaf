@@ -68,8 +68,10 @@ async function setupAnnotationEnvironment() {
   const originalCss = globalThis.CSS;
   const originalHighlight = globalThis.Highlight;
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+  const originalScrollTo = window.scrollTo;
 
   const analyticsMessages = [];
+  const windowScrolls = [];
   globalThis.chrome = {
     runtime: {
       lastError: null,
@@ -80,6 +82,9 @@ async function setupAnnotationEnvironment() {
     },
   };
   globalThis.requestAnimationFrame = callback => window.setTimeout(callback, 0);
+  window.scrollTo = options => {
+    windowScrolls.push(options);
+  };
 
   class FakeHighlight {
     constructor(...ranges) {
@@ -192,6 +197,7 @@ async function setupAnnotationEnvironment() {
     highlights,
     analyticsMessages,
     scrolled,
+    windowScrolls,
     get removedId() {
       return removedId;
     },
@@ -238,6 +244,7 @@ async function setupAnnotationEnvironment() {
       } else {
         globalThis.requestAnimationFrame = originalRequestAnimationFrame;
       }
+      window.scrollTo = originalScrollTo;
       cleanupDom();
     },
   };
@@ -375,6 +382,50 @@ test('annotation module updates, deletes, navigates, and opens distinct sidebar 
     await env.module.deleteAnnotation(annotationId, 'test');
     assert.equal(env.removedId, annotationId);
     assert.equal(env.storedAnnotations.length, 0);
+  } finally {
+    env.cleanup();
+  }
+});
+
+test('annotation navigate scrolls to the restored text range when available', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+    selectText(env.messages[1], 'response');
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+    document
+      .querySelector('[data-annotation-color="yellow"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 0);
+    });
+
+    const annotationId = env.storedAnnotations[0].id;
+    const state = env.module.annotationStates.find(item => item.annotation.id === annotationId);
+    const rect = {
+      left: 20,
+      right: 160,
+      top: 1200,
+      bottom: 1220,
+      width: 140,
+      height: 20,
+    };
+    state.range.getBoundingClientRect = () => rect;
+
+    assert.equal(
+      env.module.navigateToAnnotation(annotationId, { source: 'test', openEditor: false }),
+      true
+    );
+
+    const expectedTop = rect.top - ((window.innerHeight || 800) - rect.height) / 2;
+    assert.equal(env.scrolled.length, 0);
+    assert.equal(env.windowScrolls.length, 1);
+    assert.equal(env.windowScrolls[0].behavior, 'smooth');
+    assert.equal(Math.round(env.windowScrolls[0].top), Math.round(expectedTop));
   } finally {
     env.cleanup();
   }
