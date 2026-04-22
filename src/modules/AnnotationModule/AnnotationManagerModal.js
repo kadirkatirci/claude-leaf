@@ -43,7 +43,7 @@ export class AnnotationManagerModal {
       tagFilter: 'all',
       allTags: [],
     };
-    this.editingId = null; // Mirrored from Quick Panel for consistency
+    this.editingId = null;
   }
 
   async show({ source = 'unknown' } = {}) {
@@ -85,7 +85,6 @@ export class AnnotationManagerModal {
       if (event.target === modal) {
         this.close('backdrop');
       } else if (this.editingId) {
-        // Handle outside click for grid cards
         const activeCard = list.querySelector(`[data-annotation-id="${this.editingId}"]`);
         if (activeCard && !activeCard.contains(event.target)) {
           const textarea = activeCard.querySelector('textarea');
@@ -120,7 +119,7 @@ export class AnnotationManagerModal {
 
   createHeader() {
     const header = DOMUtils.createElement('div', {
-      className: 'flex items-center justify-between border-b border-border-200 px-6 py-4',
+      className: 'flex items-center justify-between border-b border-border-200 px-6 py-4 shrink-0',
     });
 
     const titleWrap = DOMUtils.createElement('div', { className: 'min-w-0' });
@@ -150,7 +149,7 @@ export class AnnotationManagerModal {
 
   createToolbar() {
     const toolbar = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-3 border-b border-border-100 bg-bg-50 px-6 py-3',
+      className: 'flex items-center gap-3 border-b border-border-100 bg-bg-50 px-6 py-3 shrink-0',
     });
 
     const search = DOMUtils.createElement('input', {
@@ -325,13 +324,13 @@ export class AnnotationManagerModal {
 
     const card = DOMUtils.createElement('div', {
       className:
-        'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-all hover:shadow-md h-fit',
+        'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-all hover:shadow-md h-[400px]',
     });
     card.setAttribute('data-annotation-id', annotation.id);
 
     const topBar = DOMUtils.createElement('div', {
       className:
-        'flex items-center justify-between border-b border-border-100 px-4 py-2.5 bg-bg-50/50 rounded-t-xl',
+        'flex items-center justify-between border-b border-border-100 px-4 py-2.5 bg-bg-50/50 rounded-t-xl shrink-0',
     });
 
     const meta = DOMUtils.createElement('div', {
@@ -356,31 +355,37 @@ export class AnnotationManagerModal {
     topBar.appendChild(meta);
     topBar.appendChild(navigate);
 
-    const body = DOMUtils.createElement('div', { className: 'flex flex-col p-4' });
+    const body = DOMUtils.createElement('div', { className: 'flex flex-col p-4 flex-1 min-h-0' });
+
+    // 1. Text Preview
     const text = DOMUtils.createElement('div', {
       className:
-        'relative mb-3 max-h-[100px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-sm italic text-text-100 line-clamp-3 hover:line-clamp-none transition-all',
+        'relative mb-3 h-[72px] overflow-y-auto rounded-lg border-l-2 bg-bg-100/50 px-3 py-2 text-xs italic text-text-100 line-clamp-3 shrink-0',
       textContent: annotation.selectedText || '',
     });
     text.style.borderLeftColor = color.swatch;
 
     const noteLabel = DOMUtils.createElement('label', {
-      className: 'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-text-500',
+      className:
+        'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-text-500 shrink-0',
       textContent: 'Note',
     });
 
-    const noteContainer = DOMUtils.createElement('div', { className: 'relative' });
+    // 2. Note Container
+    const noteContainer = DOMUtils.createElement('div', {
+      className: 'relative flex-1 min-h-0 mb-3',
+    });
     if (isEditing) {
       const textarea = DOMUtils.createElement('textarea', {
         className:
-          'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 pr-8 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
+          'h-full w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 pr-8 text-sm text-text-000 outline-none focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20',
         placeholder: 'Add a note...',
       });
       textarea.value = annotation.note || '';
 
       const saveBtn = DOMUtils.createElement('button', {
         className:
-          'absolute bottom-6 right-2 p-1.5 rounded-md text-accent-main-100 hover:bg-bg-200 transition-colors z-10',
+          'absolute bottom-2 right-2 p-1.5 rounded-md text-accent-main-100 hover:bg-bg-200 transition-colors z-10',
         title: 'Save Note',
         innerHTML: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
       });
@@ -403,7 +408,7 @@ export class AnnotationManagerModal {
     } else {
       const noteDisplay = DOMUtils.createElement('div', {
         className:
-          'text-sm text-text-200 bg-bg-50/50 rounded-lg p-3 cursor-pointer hover:bg-bg-100 transition-colors border border-transparent hover:border-border-200 mb-3 min-h-[40px] flex items-center',
+          'h-full w-full text-sm text-text-200 bg-bg-50/50 rounded-lg p-3 cursor-pointer hover:bg-bg-100 transition-colors border border-transparent hover:border-border-200 overflow-y-auto',
         textContent: annotation.note || 'No note added. Click to edit...',
       });
       if (!annotation.note) {
@@ -417,8 +422,12 @@ export class AnnotationManagerModal {
       noteContainer.appendChild(noteDisplay);
     }
 
+    // 3. Tags
+    const tagsWrapper = DOMUtils.createElement('div', {
+      className: 'mt-auto pt-3 border-t border-border-100 shrink-0',
+    });
     const tagsContainer = DOMUtils.createElement('div', {
-      className: 'flex flex-wrap gap-1 items-center mt-auto',
+      className: 'flex flex-wrap gap-1 items-center max-h-[60px] overflow-y-auto',
     });
     (annotation.tags || []).forEach(tag => {
       const tagEl = DOMUtils.createElement('span', {
@@ -453,15 +462,15 @@ export class AnnotationManagerModal {
       }
     };
     tagsContainer.appendChild(addInput);
+    tagsWrapper.appendChild(tagsContainer);
 
     body.appendChild(text);
     body.appendChild(noteLabel);
     body.appendChild(noteContainer);
-    body.appendChild(tagsContainer);
 
     const footer = DOMUtils.createElement('div', {
       className:
-        'mt-auto flex items-center justify-between gap-3 border-t border-border-100 bg-bg-50/30 px-4 py-3 rounded-b-xl',
+        'mt-auto flex items-center justify-between gap-3 border-t border-border-100 bg-bg-50/30 px-4 py-3 rounded-b-xl shrink-0',
     });
     const colorSelect = this.createSelect(
       'Color',
@@ -481,8 +490,10 @@ export class AnnotationManagerModal {
 
     footer.appendChild(colorSelect);
     footer.appendChild(deleteBtn);
+
     card.appendChild(topBar);
     card.appendChild(body);
+    card.appendChild(tagsWrapper);
     card.appendChild(footer);
     return card;
   }
