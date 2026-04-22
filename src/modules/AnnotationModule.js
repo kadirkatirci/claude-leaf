@@ -162,9 +162,13 @@ export default class AnnotationModule extends BaseModule {
   }
 
   setupSelectionListeners() {
-    document.addEventListener('mouseup', this.handleSelectionEvent);
-    document.addEventListener('keyup', this.handleSelectionEvent);
-    document.addEventListener('selectionchange', this.handleSelectionEvent);
+    document.addEventListener('mousedown', event => {
+      if (!isInjectedAnnotationSurface(event.target)) {
+        this.bubble.hide();
+      }
+    });
+    document.addEventListener('mouseup', event => this.handleSelectionEvent(event));
+    document.addEventListener('keyup', event => this.handleSelectionEvent(event));
     document.addEventListener('click', this.handleDocumentClick, true);
     document.addEventListener('mousemove', this.handleMouseMove);
     window.addEventListener('scroll', this.handleViewportChange, true);
@@ -228,7 +232,10 @@ export default class AnnotationModule extends BaseModule {
     await this.updateUI();
   }
 
-  handleSelectionEvent() {
+  handleSelectionEvent(event) {
+    if (isInjectedAnnotationSurface(event?.target)) {
+      return;
+    }
     clearTimeout(this.selectionCheckTimer);
     this.selectionCheckTimer = setTimeout(() => this.evaluateSelection(), 80);
   }

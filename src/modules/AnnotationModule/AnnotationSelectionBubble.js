@@ -47,9 +47,32 @@ export default class AnnotationSelectionBubble {
     const bubble = this.create();
     this.activeSelection = selectionData;
 
-    const position = clampRectToViewport(rect, 136, 36);
-    bubble.style.left = `${position.left}px`;
-    bubble.style.top = `${position.top}px`;
+    // Positioning: Right-aligned relative to selection
+    const bubbleWidth = 136;
+    const bubbleHeight = 36;
+    const margin = 8;
+
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+    let left = rect.right - bubbleWidth;
+    let top = rect.bottom + 8; // Default to below
+
+    // Boundary checks
+    if (left < margin) {
+      left = margin;
+    }
+    if (left + bubbleWidth > viewportWidth - margin) {
+      left = viewportWidth - bubbleWidth - margin;
+    }
+
+    // Flip to top if no space below
+    if (top + bubbleHeight > viewportHeight - margin) {
+      top = rect.top - bubbleHeight - 8;
+    }
+
+    bubble.style.left = `${left}px`;
+    bubble.style.top = `${top}px`;
     bubble.style.display = 'flex';
   }
 
