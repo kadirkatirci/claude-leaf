@@ -83,6 +83,60 @@ test('bookmark sidebar item clones native sidebar item classes and keeps native 
   }
 });
 
+test('bookmark sidebar item restores label when injected from collapsed icon-only sidebar', async () => {
+  const cleanup = setupDom(`
+    <nav aria-label="Sidebar">
+      <div class="flex flex-col px-2 pt-4 gap-px">
+        <div class="relative group" data-state="closed">
+          <a
+            href="/recents"
+            class="inline-flex items-center justify-center h-8 w-full"
+            aria-label="Chats"
+            data-dd-action-name="sidebar-nav-item"
+          >
+            <div class="w-full flex flex-row items-center justify-start gap-3">
+              <div class="flex items-center justify-center text-text-100">
+                <svg width="20" height="20"></svg>
+              </div>
+              <span class="truncate text-sm whitespace-nowrap flex-1">
+                <div class="opacity-0 transition-opacity ease-out duration-150">
+                  <span>Chats</span>
+                </div>
+              </span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </nav>
+  `);
+
+  try {
+    const { BookmarkSidebar } = await import('../src/modules/BookmarkModule/BookmarkSidebar.js');
+    const sidebar = new BookmarkSidebar(createDomUtils(), () => ({}));
+
+    assert.equal(sidebar.inject(), true);
+
+    const injectedTrigger = document.querySelector(
+      '[data-clp-sidebar-bookmarks-item="true"] [data-dd-action-name="sidebar-nav-item"]'
+    );
+    const contentWrapper = injectedTrigger.firstElementChild;
+    const iconWrapper = contentWrapper.firstElementChild?.firstElementChild;
+    const label = injectedTrigger.querySelector('span span');
+    const labelInner = label?.parentElement;
+
+    assert.ok(injectedTrigger);
+    assert.ok(contentWrapper);
+    assert.equal(iconWrapper?.tagName, 'DIV');
+    assert.equal(injectedTrigger.textContent.replace(/\s+/g, ' ').trim(), 'Bookmarks');
+    assert.equal(label?.textContent, 'Bookmarks');
+    assert.match(labelInner?.className || '', /opacity-100/);
+    assert.doesNotMatch(labelInner?.className || '', /opacity-0/);
+    assert.match(label?.parentElement?.parentElement?.className || '', /truncate/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('bookmark manager modal showSingleton keeps a single modal instance mounted', async () => {
   const cleanup = setupDom();
   const originalBroadcastChannel = globalThis.BroadcastChannel;

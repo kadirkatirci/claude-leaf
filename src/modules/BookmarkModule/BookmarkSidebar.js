@@ -13,6 +13,23 @@ const FALLBACK_TEXT_CONTAINER_CLASS = 'truncate text-sm whitespace-nowrap flex-1
 const FALLBACK_TEXT_INNER_CLASS = 'opacity-100 transition-opacity ease-out duration-150';
 const BOOKMARKS_SIDEBAR_ITEM_SELECTOR = '[data-clp-sidebar-bookmarks-item="true"]';
 
+function isSvgElement(element) {
+  return element?.tagName?.toLowerCase() === 'svg';
+}
+
+function normalizeTextInnerClass(className) {
+  const normalizedClassName = className || FALLBACK_TEXT_INNER_CLASS;
+  if (/\bopacity-0\b/.test(normalizedClassName)) {
+    return normalizedClassName.replace(/\bopacity-0\b/g, 'opacity-100');
+  }
+
+  if (!/\bopacity-100\b/.test(normalizedClassName)) {
+    return `${normalizedClassName} opacity-100`.trim();
+  }
+
+  return normalizedClassName;
+}
+
 export class BookmarkSidebar {
   constructor(domUtils, getTheme) {
     this.dom = domUtils;
@@ -184,11 +201,59 @@ export class BookmarkSidebar {
     trigger.removeAttribute('target');
     trigger.removeAttribute('aria-current');
 
-    const contentWrapper = trigger.firstElementChild;
-    const iconOuter = contentWrapper?.children?.[0];
-    const iconInner = iconOuter?.firstElementChild;
-    const textContainer = contentWrapper?.children?.[1];
-    const textInner = textContainer?.firstElementChild;
+    let contentWrapper = trigger.firstElementChild;
+    if (!contentWrapper) {
+      contentWrapper = this.dom.createElement('div', {
+        className: FALLBACK_CONTENT_WRAPPER_CLASS,
+      });
+      trigger.appendChild(contentWrapper);
+    }
+
+    let iconOuter = contentWrapper.children?.[0];
+    if (!iconOuter || isSvgElement(iconOuter)) {
+      const previousIcon = isSvgElement(iconOuter) ? iconOuter : null;
+      iconOuter = this.dom.createElement('div', {
+        className: FALLBACK_ICON_OUTER_CLASS,
+      });
+      if (previousIcon) {
+        contentWrapper.replaceChild(iconOuter, previousIcon);
+      } else {
+        contentWrapper.appendChild(iconOuter);
+      }
+    }
+
+    let iconInner = iconOuter.firstElementChild;
+    if (!iconInner || isSvgElement(iconInner)) {
+      const previousIcon = isSvgElement(iconInner) ? iconInner : null;
+      iconInner = this.dom.createElement('div', {
+        className: FALLBACK_ICON_INNER_CLASS,
+        style: {
+          width: '16px',
+          height: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      });
+      if (previousIcon) {
+        iconOuter.replaceChild(iconInner, previousIcon);
+      } else {
+        iconOuter.appendChild(iconInner);
+      }
+    }
+
+    let textContainer =
+      Array.from(contentWrapper.children || []).find(child => {
+        return child !== iconOuter && /\btruncate\b|\bflex-1\b/.test(child.className || '');
+      }) || contentWrapper.children?.[1];
+    const previousTextInner = textContainer?.firstElementChild;
+
+    if (!textContainer || textContainer === iconOuter) {
+      textContainer = this.dom.createElement('span', {
+        className: FALLBACK_TEXT_CONTAINER_CLASS,
+      });
+      contentWrapper.appendChild(textContainer);
+    }
 
     if (iconInner) {
       iconInner.innerHTML = IconLibrary.bookmark(false, 'currentColor', 20);
@@ -197,7 +262,7 @@ export class BookmarkSidebar {
     if (textContainer) {
       textContainer.innerHTML = '';
       const newTextInner = this.dom.createElement('div', {
-        className: textInner?.className || FALLBACK_TEXT_INNER_CLASS,
+        className: normalizeTextInnerClass(previousTextInner?.className),
       });
       const textLabel = this.dom.createElement('span', {
         textContent: 'Bookmarks',
