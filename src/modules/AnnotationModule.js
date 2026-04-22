@@ -107,10 +107,48 @@ export default class AnnotationModule extends BaseModule {
     window.addEventListener(NAVIGATE_EVENT, this.handleManagerNavigate);
 
     await this.updateUI();
+    this.checkUrlParam();
+
     trackEvent('perf_init', {
       module: 'annotations',
       init_ms: Math.round(performance.now() - initStart),
     });
+  }
+
+  checkUrlParam() {
+    const params = new URLSearchParams(window.location.search);
+    const annotationId = params.get('cl_annotation');
+    if (annotationId) {
+      debugLog('annotations', `Found cl_annotation param: ${annotationId}`);
+      // Clear param without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete('cl_annotation');
+      window.history.replaceState({}, '', url.toString());
+
+      // Wait for content to stabilize then navigate
+      this.waitForMessagesAndNavigate(annotationId);
+    }
+  }
+
+  waitForMessagesAndNavigate(annotationId, retryCount = 0) {
+    const messages = this.dom.findMessages();
+    if (messages.length > 0) {
+      // Small delay to ensure highlights are rendered
+      setTimeout(() => {
+        const success = this.navigateToAnnotation(annotationId, {
+          source: 'url',
+          openEditor: true,
+        });
+        if (!success && retryCount < 5) {
+          setTimeout(() => this.waitForMessagesAndNavigate(annotationId, retryCount + 1), 500);
+        }
+      }, 500);
+      return;
+    }
+
+    if (retryCount < 10) {
+      setTimeout(() => this.waitForMessagesAndNavigate(annotationId, retryCount + 1), 500);
+    }
   }
 
   setupSelectionListeners() {

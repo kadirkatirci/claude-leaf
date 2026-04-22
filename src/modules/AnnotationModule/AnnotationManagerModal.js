@@ -504,7 +504,9 @@ export class AnnotationManagerModal {
 
     // If it's a different conversation, we need to redirect
     if (annotation.conversationUrl && annotation.conversationUrl !== currentPath) {
-      window.location.href = annotation.conversationUrl;
+      const url = new URL(annotation.conversationUrl, window.location.origin);
+      url.searchParams.set('cl_annotation', annotation.id);
+      window.location.href = url.toString();
       this.close('navigate_external');
       return;
     }
