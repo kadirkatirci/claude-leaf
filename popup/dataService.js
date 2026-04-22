@@ -479,9 +479,9 @@ const DataService = {
 
   mergeAnnotations(current, imported) {
     const existingIds = new Set((current.annotations || []).map(annotation => annotation.id));
-    const newAnnotations = (imported.annotations || []).filter(
-      annotation => !existingIds.has(annotation.id)
-    );
+    const newAnnotations = (imported.annotations || [])
+      .filter(annotation => !existingIds.has(annotation.id))
+      .map(a => ({ ...a, tags: a.tags || [] }));
 
     return {
       annotations: [...(current.annotations || []), ...newAnnotations],

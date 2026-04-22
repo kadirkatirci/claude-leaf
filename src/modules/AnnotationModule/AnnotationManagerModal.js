@@ -39,6 +39,8 @@ export class AnnotationManagerModal {
       searchQuery: '',
       colorFilter: 'all',
       senderFilter: 'all',
+      tagFilter: 'all',
+      allTags: [],
     };
   }
 
@@ -137,7 +139,7 @@ export class AnnotationManagerModal {
 
   createToolbar() {
     const toolbar = DOMUtils.createElement('div', {
-      className: 'flex items-center gap-4 border-b border-border-100 bg-bg-50 px-6 py-4',
+      className: 'flex items-center gap-3 border-b border-border-100 bg-bg-50 px-6 py-3',
     });
 
     const search = DOMUtils.createElement('input', {
@@ -164,7 +166,7 @@ export class AnnotationManagerModal {
       ...ANNOTATION_COLOR_KEYS.map(key => [key, ANNOTATION_COLORS[key].label]),
     ]);
     color.className =
-      'w-[140px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
+      'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     color.addEventListener('change', event => {
       this.state.colorFilter = event.target.value;
       trackEvent('annotation_manager_filter', {
@@ -181,7 +183,7 @@ export class AnnotationManagerModal {
       ['claude', 'Claude'],
     ]);
     sender.className =
-      'w-[140px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
+      'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     sender.addEventListener('change', event => {
       this.state.senderFilter = event.target.value;
       trackEvent('annotation_manager_filter', {
@@ -192,9 +194,26 @@ export class AnnotationManagerModal {
       this.renderList();
     });
 
+    const tagFilter = this.createSelect('Tag', [
+      ['all', 'All tags'],
+      ...this.state.allTags.map(tag => [tag, `#${tag}`]),
+    ]);
+    tagFilter.className =
+      'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
+    tagFilter.addEventListener('change', event => {
+      this.state.tagFilter = event.target.value;
+      trackEvent('annotation_manager_filter', {
+        module: 'annotations',
+        method: 'tag',
+        filter: this.state.tagFilter,
+      });
+      this.renderList();
+    });
+
     toolbar.appendChild(search);
     toolbar.appendChild(color);
     toolbar.appendChild(sender);
+    toolbar.appendChild(tagFilter);
     return toolbar;
   }
 
@@ -220,6 +239,13 @@ export class AnnotationManagerModal {
     const currentPath = window.location.pathname;
     const messages = DOMUtils.findMessages();
 
+    // Extract all unique tags
+    const tagsSet = new Set();
+    annotations.forEach(a => {
+      (a.tags || []).forEach(t => tagsSet.add(t));
+    });
+    this.state.allTags = Array.from(tagsSet).sort();
+
     this.state.states = annotations.map(annotation => {
       // Only attempt to restore if it's the current conversation
       if (annotation.conversationUrl === currentPath) {
@@ -232,6 +258,27 @@ export class AnnotationManagerModal {
   async refreshData() {
     await this.loadData();
     this.renderList();
+
+    // Update tag filter if toolbar exists
+    if (this.activeModal?.content) {
+      const toolbar =
+        this.activeModal.content.querySelector('.cl-annotation-manager-toolbar') ||
+        this.activeModal.content.children[1];
+      if (toolbar && toolbar.children.length >= 4) {
+        const tagSelect = toolbar.children[3];
+        const currentValue = tagSelect.value;
+        tagSelect.innerHTML = '';
+
+        const options = [['all', 'All tags'], ...this.state.allTags.map(tag => [tag, `#${tag}`])];
+        options.forEach(([value, text]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = text;
+          tagSelect.appendChild(option);
+        });
+        tagSelect.value = this.state.allTags.includes(currentValue) ? currentValue : 'all';
+      }
+    }
   }
 
   getFilteredStates() {
@@ -248,10 +295,21 @@ export class AnnotationManagerModal {
         ) {
           return false;
         }
+        if (
+          this.state.tagFilter !== 'all' &&
+          !(annotation.tags || []).includes(this.state.tagFilter)
+        ) {
+          return false;
+        }
         if (!query) {
           return true;
         }
-        return [annotation.selectedText, annotation.note, annotation.messagePreview]
+        return [
+          annotation.selectedText,
+          annotation.note,
+          annotation.messagePreview,
+          ...(annotation.tags || []),
+        ]
           .join(' ')
           .toLowerCase()
           .includes(query);
@@ -361,14 +419,65 @@ export class AnnotationManagerModal {
 
     const note = DOMUtils.createElement('textarea', {
       className:
-        'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20',
-      placeholder: 'Add a local note for this highlight...',
+        'min-h-[80px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
+      placeholder: 'Add a local note...',
     });
     note.value = annotation.note || '';
+
+    // Tags in Manager
+    const tagsLabel = DOMUtils.createElement('label', {
+      className: 'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-text-500',
+      textContent: 'Tags',
+    });
+
+    const tagsContainer = DOMUtils.createElement('div', {
+      className: 'flex flex-wrap gap-1 items-center min-h-[24px]',
+    });
+
+    const renderTags = () => {
+      tagsContainer.innerHTML = '';
+      (annotation.tags || []).forEach(tag => {
+        const tagEl = DOMUtils.createElement('span', {
+          className:
+            'bg-bg-100 text-text-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1 group/tag border border-border-200',
+          textContent: tag,
+        });
+        const remove = DOMUtils.createElement('span', {
+          className: 'cursor-pointer hover:text-red-500 opacity-50 group-hover/tag:opacity-100',
+          textContent: '×',
+        });
+        remove.onclick = () => {
+          const newTags = (annotation.tags || []).filter(t => t !== tag);
+          this.updateAnnotation(annotation.id, { tags: newTags });
+        };
+        tagEl.appendChild(remove);
+        tagsContainer.appendChild(tagEl);
+      });
+
+      const addInput = DOMUtils.createElement('input', {
+        className:
+          'bg-transparent border-none outline-none text-[10px] text-text-400 w-20 placeholder:text-text-500',
+        placeholder: '+ add tag',
+      });
+      addInput.onkeydown = e => {
+        if (e.key === 'Enter') {
+          const val = addInput.value.trim().toLowerCase();
+          if (val && !(annotation.tags || []).includes(val)) {
+            const newTags = [...(annotation.tags || []), val];
+            this.updateAnnotation(annotation.id, { tags: newTags });
+          }
+          addInput.value = '';
+        }
+      };
+      tagsContainer.appendChild(addInput);
+    };
+    renderTags();
 
     body.appendChild(text);
     body.appendChild(noteLabel);
     body.appendChild(note);
+    body.appendChild(tagsLabel);
+    body.appendChild(tagsContainer);
 
     // Footer section
     const footer = DOMUtils.createElement('div', {
@@ -445,6 +554,11 @@ export class AnnotationManagerModal {
     }
 
     this.showToast('Note saved successfully');
+    await this.refreshData();
+  }
+
+  async updateAnnotation(annotationId, updates) {
+    await annotationStore.update(annotationId, updates);
     await this.refreshData();
   }
 

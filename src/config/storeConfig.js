@@ -51,6 +51,7 @@ export const STORE_CONFIG = {
         { name: 'conversationUrl', keyPath: 'conversationUrl', options: { unique: false } },
         { name: 'contentSignature', keyPath: 'contentSignature', options: { unique: false } },
         { name: 'color', keyPath: 'color', options: { unique: false } },
+        { name: 'tags', keyPath: 'tags', options: { unique: false, multiEntry: true } },
         { name: 'createdAt', keyPath: 'createdAt', options: { unique: false } },
       ],
     },

@@ -89,7 +89,7 @@ export default class AnnotationQuickPanel extends BasePanel {
 
     const noteInput = document.createElement('textarea');
     noteInput.className =
-      'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-100 outline-none focus:border-accent-main-100 resize-none transition-all';
+      'w-full min-h-[60px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-100 outline-none focus:border-accent-main-100 resize-none transition-all mb-2';
     noteInput.placeholder = 'Add your note here...';
     noteInput.value = annotation.note || '';
 
@@ -106,11 +106,67 @@ export default class AnnotationQuickPanel extends BasePanel {
       }, 400);
     });
 
+    // Tags Section
+    const tagsContainer = document.createElement('div');
+    tagsContainer.className = 'flex flex-wrap gap-1 mb-2';
+
+    const renderTags = () => {
+      tagsContainer.innerHTML = '';
+      const currentTags = annotation.tags || [];
+
+      currentTags.forEach(tag => {
+        const tagEl = document.createElement('span');
+        tagEl.className =
+          'bg-bg-200 text-text-300 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 group/tag';
+        tagEl.textContent = tag;
+
+        const removeBtn = document.createElement('span');
+        removeBtn.className =
+          'cursor-pointer hover:text-red-500 opacity-50 group-hover/tag:opacity-100';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = e => {
+          e.stopPropagation();
+          const newTags = currentTags.filter(t => t !== tag);
+          this.updateTags(annotation.id, newTags);
+        };
+
+        tagEl.appendChild(removeBtn);
+        tagsContainer.appendChild(tagEl);
+      });
+
+      const addTagBtn = document.createElement('input');
+      addTagBtn.className =
+        'bg-transparent border-none outline-none text-[10px] text-text-400 w-16 placeholder:text-text-500';
+      addTagBtn.placeholder = '+ add tag';
+      addTagBtn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const val = addTagBtn.value.trim().toLowerCase();
+          if (val && !(annotation.tags || []).includes(val)) {
+            const newTags = [...(annotation.tags || []), val];
+            this.updateTags(annotation.id, newTags);
+          }
+          addTagBtn.value = '';
+        }
+      });
+      tagsContainer.appendChild(addTagBtn);
+    };
+
+    renderTags();
+
     item.appendChild(header);
     item.appendChild(textPreview);
     item.appendChild(noteInput);
+    item.appendChild(tagsContainer);
 
     return item;
+  }
+
+  updateTags(id, tags) {
+    window.dispatchEvent(
+      new CustomEvent('cl-annotation-quick-update', {
+        detail: { id, updates: { tags } },
+      })
+    );
   }
 
   cycleColor(annotation) {
@@ -141,6 +197,7 @@ export default class AnnotationQuickPanel extends BasePanel {
           annotation.updatedAt,
           annotation.color,
           annotation.note,
+          (annotation.tags || []).join(','),
           state.status,
         ].join(':');
       })

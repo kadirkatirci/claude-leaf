@@ -36,6 +36,7 @@ export class AnnotationStore {
     const normalized = {
       note: '',
       color: 'yellow',
+      tags: [],
       ...annotation,
       conversationUrl: this.normalizeUrl(annotation.conversationUrl),
       id: annotation.id || crypto.randomUUID(),
