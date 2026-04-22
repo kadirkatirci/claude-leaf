@@ -9,6 +9,8 @@ import {
   restoreAnnotation,
 } from './AnnotationRange.js';
 
+const DATA_CHANGED_EVENT = 'cl-annotations-data-changed';
+
 let activeAnnotationManagerModal = null;
 
 export class AnnotationManagerModal {
@@ -35,6 +37,9 @@ export class AnnotationManagerModal {
   constructor() {
     this.activeModal = null;
     this.searchDebounceTimer = null;
+    this.closeTimer = null;
+    this.managedTimers = new Set();
+    this.toastElements = new Set();
     this.state = {
       states: [],
       searchQuery: '',
@@ -44,6 +49,50 @@ export class AnnotationManagerModal {
       allTags: [],
     };
     this.editingId = null;
+  }
+
+  setManagedTimeout(callback, delay) {
+    const timer = setTimeout(() => {
+      this.managedTimers.delete(timer);
+      callback();
+    }, delay);
+    this.managedTimers.add(timer);
+    return timer;
+  }
+
+  clearManagedTimers() {
+    this.managedTimers.forEach(timer => clearTimeout(timer));
+    this.managedTimers.clear();
+    this.searchDebounceTimer = null;
+  }
+
+  clearManagedTimer(timer) {
+    if (!timer) {
+      return;
+    }
+    clearTimeout(timer);
+    this.managedTimers.delete(timer);
+  }
+
+  clearToasts() {
+    this.toastElements.forEach(toast => toast.remove());
+    this.toastElements.clear();
+  }
+
+  trackFilter(kind, value) {
+    trackEvent('annotation_manager_filter', {
+      module: 'annotations',
+      method: 'manager',
+      filter: `${kind}:${value}`,
+    });
+  }
+
+  notifyDataChanged() {
+    window.dispatchEvent(
+      new CustomEvent(DATA_CHANGED_EVENT, {
+        detail: { source: 'manager' },
+      })
+    );
   }
 
   async show({ source = 'unknown' } = {}) {
@@ -160,8 +209,9 @@ export class AnnotationManagerModal {
     });
     search.addEventListener('input', event => {
       this.state.searchQuery = event.target.value;
-      clearTimeout(this.searchDebounceTimer);
-      this.searchDebounceTimer = setTimeout(() => {
+      this.clearManagedTimer(this.searchDebounceTimer);
+      this.searchDebounceTimer = this.setManagedTimeout(() => {
+        this.searchDebounceTimer = null;
         trackEvent('annotation_manager_search', {
           module: 'annotations',
           method: 'manager',
@@ -179,6 +229,7 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     color.addEventListener('change', event => {
       this.state.colorFilter = event.target.value;
+      this.trackFilter('color', event.target.value);
       this.renderList();
     });
 
@@ -191,6 +242,7 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     sender.addEventListener('change', event => {
       this.state.senderFilter = event.target.value;
+      this.trackFilter('sender', event.target.value);
       this.renderList();
     });
 
@@ -202,6 +254,7 @@ export class AnnotationManagerModal {
       'w-[130px] rounded-lg border border-border-300 bg-bg-000 px-3 py-2 text-sm text-text-000 outline-none focus:border-accent-main-100';
     tagFilter.addEventListener('change', event => {
       this.state.tagFilter = event.target.value;
+      this.trackFilter('tag', event.target.value);
       this.renderList();
     });
 
@@ -499,14 +552,46 @@ export class AnnotationManagerModal {
   }
 
   async updateNote(annotationId, note) {
-    await annotationStore.update(annotationId, { note: note || '' });
+    const existing = await annotationStore.getById(annotationId);
+    if (!existing) {
+      return;
+    }
+
+    const nextNote = note || '';
+    await annotationStore.update(annotationId, { note: nextNote });
+    if ((existing.note || '') !== nextNote) {
+      trackEvent('annotation_note_update', {
+        module: 'annotations',
+        method: 'manager',
+      });
+    }
     this.showToast('Note saved');
     await this.refreshData();
+    this.notifyDataChanged();
   }
 
-  async updateAnnotation(annotationId, updates) {
+  async updateAnnotation(annotationId, updates, source = 'manager') {
+    const existing = await annotationStore.getById(annotationId);
+    if (!existing) {
+      return;
+    }
+
     await annotationStore.update(annotationId, updates);
+    if (updates.note !== undefined && (existing.note || '') !== (updates.note || '')) {
+      trackEvent('annotation_note_update', {
+        module: 'annotations',
+        method: source,
+      });
+    }
+    if (updates.color && updates.color !== existing.color) {
+      trackEvent('annotation_color_change', {
+        module: 'annotations',
+        method: source,
+        color: updates.color,
+      });
+    }
     await this.refreshData();
+    this.notifyDataChanged();
   }
 
   showToast(message, type = 'success') {
@@ -516,23 +601,36 @@ export class AnnotationManagerModal {
     });
     toast.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
     document.body.appendChild(toast);
+    this.toastElements.add(toast);
     requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       toast.classList.add('translate-y-10', 'opacity-0');
-      setTimeout(() => toast.remove(), 300);
+      this.setManagedTimeout(() => {
+        toast.remove();
+        this.toastElements.delete(toast);
+      }, 300);
     }, 2500);
   }
 
   async updateColor(annotationId, color) {
-    await annotationStore.update(annotationId, { color });
+    await this.updateAnnotation(annotationId, { color }, 'manager');
     this.showToast('Color updated');
-    await this.refreshData();
   }
 
   async delete(annotationId) {
+    const existing = await annotationStore.getById(annotationId);
+    if (!existing) {
+      return;
+    }
+
     await annotationStore.remove(annotationId);
+    trackEvent('annotation_delete', {
+      module: 'annotations',
+      method: 'manager',
+    });
     this.showToast('Deleted', 'error');
     await this.refreshData();
+    this.notifyDataChanged();
   }
 
   navigate(annotationId) {
@@ -542,6 +640,10 @@ export class AnnotationManagerModal {
     }
     const annotation = state.annotation;
     if (annotation.conversationUrl && annotation.conversationUrl !== window.location.pathname) {
+      trackEvent('annotation_navigate', {
+        module: 'annotations',
+        method: 'manager_external',
+      });
       const url = new URL(annotation.conversationUrl, window.location.origin);
       url.searchParams.set('cl_annotation', annotation.id);
       window.location.href = url.toString();
@@ -555,17 +657,21 @@ export class AnnotationManagerModal {
     );
   }
 
-  close(reason = 'unknown') {
+  close(_reason = 'unknown') {
     if (!this.activeModal) {
       return;
     }
+    this.clearManagedTimers();
+    this.clearToasts();
     const { element, content, escHandler } = this.activeModal;
     element.classList.remove('opacity-100');
     content.classList.add('opacity-0', 'translate-y-5');
-    setTimeout(() => {
+    clearTimeout(this.closeTimer);
+    this.closeTimer = setTimeout(() => {
       element.remove();
       document.removeEventListener('keydown', escHandler);
       this.activeModal = null;
+      this.closeTimer = null;
       if (activeAnnotationManagerModal === this) {
         activeAnnotationManagerModal = null;
       }

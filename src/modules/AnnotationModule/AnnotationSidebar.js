@@ -29,11 +29,13 @@ export class AnnotationSidebar {
   constructor(domUtils) {
     this.dom = domUtils;
     this.elements = {};
+    this.injectRetryTimer = null;
   }
 
   inject(retryCount = 0) {
     const maxRetries = 10;
     if (this.elements.section && document.body.contains(this.elements.section)) {
+      this.clearInjectRetry();
       return true;
     }
 
@@ -43,13 +45,14 @@ export class AnnotationSidebar {
         section: existingItem,
         trigger: existingItem.querySelector('[data-dd-action-name="sidebar-nav-item"]'),
       };
+      this.clearInjectRetry();
       return true;
     }
 
     const sidebarNav = document.querySelector('nav[aria-label="Sidebar"]');
     if (!sidebarNav) {
       if (retryCount < maxRetries) {
-        setTimeout(() => this.inject(retryCount + 1), 1000);
+        this.scheduleInjectRetry(retryCount);
       }
       return false;
     }
@@ -70,7 +73,7 @@ export class AnnotationSidebar {
 
     if (!container) {
       if (retryCount < maxRetries) {
-        setTimeout(() => this.inject(retryCount + 1), 1000);
+        this.scheduleInjectRetry(retryCount);
       }
       return false;
     }
@@ -90,7 +93,21 @@ export class AnnotationSidebar {
 
     container.appendChild(item);
     this.elements = { section: item, trigger };
+    this.clearInjectRetry();
     return true;
+  }
+
+  scheduleInjectRetry(retryCount) {
+    this.clearInjectRetry();
+    this.injectRetryTimer = setTimeout(() => {
+      this.injectRetryTimer = null;
+      this.inject(retryCount + 1);
+    }, 1000);
+  }
+
+  clearInjectRetry() {
+    clearTimeout(this.injectRetryTimer);
+    this.injectRetryTimer = null;
   }
 
   getTemplateTrigger(sidebarNav) {
@@ -243,6 +260,7 @@ export class AnnotationSidebar {
   }
 
   destroy() {
+    this.clearInjectRetry();
     this.elements.section?.remove();
     this.elements = {};
   }

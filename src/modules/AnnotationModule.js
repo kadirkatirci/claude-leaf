@@ -19,6 +19,7 @@ import {
 
 const NAVIGATE_EVENT = 'cl-annotations-navigate';
 const QUICK_UPDATE_EVENT = 'cl-annotation-quick-update';
+const DATA_CHANGED_EVENT = 'cl-annotations-data-changed';
 
 function getRangeRect(range, fallbackPoint = null) {
   const rect = range?.getBoundingClientRect?.();
@@ -69,16 +70,46 @@ export default class AnnotationModule extends BaseModule {
     this.sidebar = new AnnotationSidebar(this.dom);
     this.annotationStates = [];
     this.selectionCheckTimer = null;
+    this.managedTimers = new Set();
     this.supportsHighlightRendering = false;
 
     this.handleDocumentClick = this.handleDocumentClick.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleSelectionEvent = this.handleSelectionEvent.bind(this);
     this.handleViewportChange = this.handleViewportChange.bind(this);
     this.handleManagerNavigate = this.handleManagerNavigate.bind(this);
+    this.handleDataChanged = this.handleDataChanged.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleQuickUpdate = this.handleQuickUpdate.bind(this);
     this.hoverTimer = null;
     this.activeHoverId = null;
+  }
+
+  setManagedTimeout(callback, delay) {
+    const timer = setTimeout(() => {
+      this.managedTimers.delete(timer);
+      if (!this.enabled) {
+        return;
+      }
+      callback();
+    }, delay);
+    this.managedTimers.add(timer);
+    return timer;
+  }
+
+  clearManagedTimers() {
+    this.managedTimers.forEach(timer => clearTimeout(timer));
+    this.managedTimers.clear();
+    this.selectionCheckTimer = null;
+    this.hoverTimer = null;
+  }
+
+  clearManagedTimer(timer) {
+    if (!timer) {
+      return;
+    }
+    clearTimeout(timer);
+    this.managedTimers.delete(timer);
   }
 
   async init() {
@@ -115,6 +146,7 @@ export default class AnnotationModule extends BaseModule {
     });
     window.addEventListener(NAVIGATE_EVENT, this.handleManagerNavigate);
     window.addEventListener(QUICK_UPDATE_EVENT, this.handleQuickUpdate);
+    window.addEventListener(DATA_CHANGED_EVENT, this.handleDataChanged);
 
     await this.updateUI();
     this.checkUrlParam();
@@ -144,35 +176,41 @@ export default class AnnotationModule extends BaseModule {
     const messages = this.dom.findMessages();
     if (messages.length > 0) {
       // Small delay to ensure highlights are rendered
-      setTimeout(() => {
+      this.setManagedTimeout(() => {
         const success = this.navigateToAnnotation(annotationId, {
           source: 'url',
           openEditor: false,
         });
         if (!success && retryCount < 5) {
-          setTimeout(() => this.waitForMessagesAndNavigate(annotationId, retryCount + 1), 500);
+          this.waitForMessagesAndNavigate(annotationId, retryCount + 1);
         }
       }, 500);
       return;
     }
 
     if (retryCount < 10) {
-      setTimeout(() => this.waitForMessagesAndNavigate(annotationId, retryCount + 1), 500);
+      this.setManagedTimeout(
+        () => this.waitForMessagesAndNavigate(annotationId, retryCount + 1),
+        500
+      );
     }
   }
 
   setupSelectionListeners() {
-    document.addEventListener('mousedown', event => {
-      if (!isInjectedAnnotationSurface(event.target)) {
-        this.bubble.hide();
-      }
-    });
-    document.addEventListener('mouseup', event => this.handleSelectionEvent(event));
-    document.addEventListener('keyup', event => this.handleSelectionEvent(event));
+    document.addEventListener('mousedown', this.handleMouseDown);
+    document.addEventListener('mouseup', this.handleSelectionEvent);
+    document.addEventListener('keyup', this.handleSelectionEvent);
+    document.addEventListener('selectionchange', this.handleSelectionEvent);
     document.addEventListener('click', this.handleDocumentClick, true);
     document.addEventListener('mousemove', this.handleMouseMove);
     window.addEventListener('scroll', this.handleViewportChange, true);
     window.addEventListener('resize', this.handleViewportChange);
+  }
+
+  handleMouseDown(event) {
+    if (!isInjectedAnnotationSurface(event.target)) {
+      this.bubble.hide();
+    }
   }
 
   clearUIElements() {
@@ -233,11 +271,17 @@ export default class AnnotationModule extends BaseModule {
   }
 
   handleSelectionEvent(event) {
+    if (!this.enabled) {
+      return;
+    }
     if (isInjectedAnnotationSurface(event?.target)) {
       return;
     }
-    clearTimeout(this.selectionCheckTimer);
-    this.selectionCheckTimer = setTimeout(() => this.evaluateSelection(), 80);
+    this.clearManagedTimer(this.selectionCheckTimer);
+    this.selectionCheckTimer = this.setManagedTimeout(() => {
+      this.selectionCheckTimer = null;
+      this.evaluateSelection();
+    }, 80);
   }
 
   evaluateSelection() {
@@ -295,7 +339,7 @@ export default class AnnotationModule extends BaseModule {
     await this.updateUI();
 
     // Open Quick Panel instead of Popover for new annotations
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.focusAnnotationInPanel(id);
     }, 100);
   }
@@ -340,8 +384,9 @@ export default class AnnotationModule extends BaseModule {
       return;
     }
 
-    clearTimeout(this.hoverTimer);
-    this.hoverTimer = setTimeout(() => {
+    this.clearManagedTimer(this.hoverTimer);
+    this.hoverTimer = this.setManagedTimeout(() => {
+      this.hoverTimer = null;
       const annotation = findAnnotationAtPoint(event.clientX, event.clientY, this.annotationStates);
 
       if (annotation) {
@@ -385,12 +430,12 @@ export default class AnnotationModule extends BaseModule {
     }
 
     // Give some time for panel to render if it was just opened
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       const panelElement = document.getElementById('claude-annotations-panel');
       if (panelElement) {
         const item = panelElement.querySelector(`[data-annotation-id="${annotationId}"]`);
         if (item) {
-          item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          item.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
 
           // Force expand the note if it's not already
           if (this.panel.expandedNotes) {
@@ -398,13 +443,17 @@ export default class AnnotationModule extends BaseModule {
             this.panel.updateAnnotations(this.annotationStates);
           }
 
-          setTimeout(() => {
+          this.setManagedTimeout(() => {
             const textarea = item.querySelector('textarea');
             if (textarea) {
               textarea.focus();
               // Highlight the item temporarily
               item.classList.add('ring-2', 'ring-accent-main-100');
-              setTimeout(() => item.classList.remove('ring-2', 'ring-accent-main-100'), 1500);
+              this.setManagedTimeout(() => {
+                if (item.isConnected) {
+                  item.classList.remove('ring-2', 'ring-accent-main-100');
+                }
+              }, 1500);
             }
           }, 100);
         }
@@ -415,6 +464,12 @@ export default class AnnotationModule extends BaseModule {
     const { id, updates } = event.detail || {};
     if (id && updates) {
       await this.updateAnnotation(id, updates, 'quick_panel');
+    }
+  }
+
+  async handleDataChanged() {
+    if (this.enabled) {
+      await this.updateUI();
     }
   }
 
@@ -449,7 +504,7 @@ export default class AnnotationModule extends BaseModule {
     // If source is panel, we don't want to re-focus the panel necessarily,
     // but if requested (like from Sidebar/Manager), we can
     if (openEditor) {
-      setTimeout(() => this.focusAnnotationInPanel(annotationId), 220);
+      this.setManagedTimeout(() => this.focusAnnotationInPanel(annotationId), 220);
     }
     return true;
   }
@@ -483,8 +538,10 @@ export default class AnnotationModule extends BaseModule {
   }
 
   destroy() {
-    clearTimeout(this.selectionCheckTimer);
-    clearTimeout(this.hoverTimer);
+    this.clearManagedTimer(this.selectionCheckTimer);
+    this.clearManagedTimer(this.hoverTimer);
+    this.clearManagedTimers();
+    document.removeEventListener('mousedown', this.handleMouseDown);
     document.removeEventListener('mouseup', this.handleSelectionEvent);
     document.removeEventListener('keyup', this.handleSelectionEvent);
     document.removeEventListener('selectionchange', this.handleSelectionEvent);
@@ -494,6 +551,7 @@ export default class AnnotationModule extends BaseModule {
     window.removeEventListener('resize', this.handleViewportChange);
     window.removeEventListener(NAVIGATE_EVENT, this.handleManagerNavigate);
     window.removeEventListener(QUICK_UPDATE_EVENT, this.handleQuickUpdate);
+    window.removeEventListener(DATA_CHANGED_EVENT, this.handleDataChanged);
 
     this.registry.destroy();
     this.bubble.destroy();

@@ -272,7 +272,7 @@ Track local text highlight and note interactions for selected Claude/user messag
 | `annotation_quick_panel_toggle` | Fixed quick panel opened/closed |
 | `annotation_manager_open` | Sidebar annotation manager opened |
 | `annotation_manager_search` | Search query entered in manager |
-| `annotation_manager_filter` | Color or resolved-state filter changed in manager |
+| `annotation_manager_filter` | Color, sender, or tag filter changed in manager |
 | `annotation_navigate` | User navigates from a panel/manager item to the source message |
 
 **Location:** `src/modules/AnnotationModule.js`, `src/modules/AnnotationModule/*`
@@ -512,7 +512,7 @@ All events go through sanitization to prevent sensitive data leakage.
 | `annotation_count` | number | - | 4 | Annotation count |
 | `edit_count` | number | - | 3 | Edit count |
 | `color` | string | 100 | "yellow" | Annotation color key |
-| `filter` | string | 100 | "unresolved" | Manager filter value |
+| `filter` | string | 100 | "color:yellow" | Manager filter value |
 | **Error Tracking** | | | | |
 | `error_type` | string | 100 | "uncaught_error" | Error category |
 | `error_message` | string | 200 | "Cannot read property" | Sanitized error message |

@@ -1,8 +1,4 @@
-import {
-  ANNOTATION_COLOR_KEYS,
-  ANNOTATION_COLORS,
-  clampRectToViewport,
-} from './AnnotationRange.js';
+import { ANNOTATION_COLOR_KEYS, ANNOTATION_COLORS } from './AnnotationRange.js';
 
 export default class AnnotationSelectionBubble {
   constructor({ onColorSelect }) {

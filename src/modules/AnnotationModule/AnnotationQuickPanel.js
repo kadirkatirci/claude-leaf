@@ -17,6 +17,21 @@ export default class AnnotationQuickPanel extends BasePanel {
     this.onDelete = onDelete;
     this.states = [];
     this.editingId = null;
+    this.timers = new Set();
+  }
+
+  setManagedTimeout(callback, delay) {
+    const timer = setTimeout(() => {
+      this.timers.delete(timer);
+      callback();
+    }, delay);
+    this.timers.add(timer);
+    return timer;
+  }
+
+  clearManagedTimers() {
+    this.timers.forEach(timer => clearTimeout(timer));
+    this.timers.clear();
   }
 
   setupEventListeners() {
@@ -25,6 +40,11 @@ export default class AnnotationQuickPanel extends BasePanel {
     // Custom outside click handler: if we are editing, finish it.
     const originalOutsideClick = this.eventListeners.outsideClick.handler;
     const customOutsideClick = e => {
+      if (this.shouldIgnoreOutsideClick(e.target)) {
+        originalOutsideClick(e);
+        return;
+      }
+
       if (this.editingId && this.panel) {
         // If the click is NOT inside the card we are editing
         const activeCard = this.panel.querySelector(`[data-annotation-id="${this.editingId}"]`);
@@ -151,9 +171,9 @@ export default class AnnotationQuickPanel extends BasePanel {
       };
 
       // Auto-save/close on blur too
-      textarea.onblur = e => {
+      textarea.onblur = () => {
         // Delay to allow saveBtn click to register first if that was the target
-        setTimeout(() => {
+        this.setManagedTimeout(() => {
           if (this.editingId === annotation.id) {
             this.finishEditing(annotation.id, textarea.value);
           }
@@ -162,7 +182,11 @@ export default class AnnotationQuickPanel extends BasePanel {
 
       noteContainer.appendChild(textarea);
       noteContainer.appendChild(saveBtn);
-      setTimeout(() => textarea.focus(), 50);
+      this.setManagedTimeout(() => {
+        if (textarea.isConnected) {
+          textarea.focus();
+        }
+      }, 50);
     } else {
       const noteDisplay = document.createElement('div');
       noteDisplay.className =
@@ -261,5 +285,10 @@ export default class AnnotationQuickPanel extends BasePanel {
   toggle() {
     super.toggle();
     return this.isVisible;
+  }
+
+  destroy() {
+    this.clearManagedTimers();
+    super.destroy();
   }
 }

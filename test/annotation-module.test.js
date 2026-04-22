@@ -125,6 +125,7 @@ async function setupAnnotationEnvironment() {
     visibilityOnVisibilityChange: VisibilityManager.onVisibilityChange,
     navigationOnNavigate: navigationInterceptor.onNavigate,
     storeGetByConversation: annotationStore.getByConversation,
+    storeGetAll: annotationStore.getAll,
     storeGetById: annotationStore.getById,
     storeAdd: annotationStore.add,
     storeUpdate: annotationStore.update,
@@ -149,9 +150,11 @@ async function setupAnnotationEnvironment() {
   navigationInterceptor.onNavigate = () => () => {};
 
   annotationStore.getByConversation = () => Promise.resolve([...storedAnnotations]);
+  annotationStore.getAll = () => Promise.resolve([...storedAnnotations]);
   annotationStore.getById = id => Promise.resolve(storedAnnotations.find(item => item.id === id));
   annotationStore.add = annotation => {
     const stored = {
+      tags: [],
       ...annotation,
       id: annotation.id || `annotation-${storedAnnotations.length + 1}`,
       createdAt: annotation.createdAt || new Date(storedAnnotations.length + 1).toISOString(),
@@ -203,6 +206,7 @@ async function setupAnnotationEnvironment() {
       VisibilityManager.onVisibilityChange = originals.visibilityOnVisibilityChange;
       navigationInterceptor.onNavigate = originals.navigationOnNavigate;
       annotationStore.getByConversation = originals.storeGetByConversation;
+      annotationStore.getAll = originals.storeGetAll;
       annotationStore.getById = originals.storeGetById;
       annotationStore.add = originals.storeAdd;
       annotationStore.update = originals.storeUpdate;
@@ -259,13 +263,17 @@ test('annotation module creates highlights from valid selections and renders qui
       .querySelector('[data-annotation-color="blue"]')
       .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     await new Promise(resolve => {
-      setTimeout(resolve, 0);
+      setTimeout(resolve, 350);
     });
 
     assert.equal(env.storedAnnotations.length, 1);
     assert.equal(env.storedAnnotations[0].selectedText, 'annotated');
     assert.equal(env.storedAnnotations[0].color, 'blue');
     assert.equal(env.highlights.size, 1);
+    assert.equal(document.getElementById('claude-annotations-panel').style.display, 'flex');
+    assert.match(document.getElementById('claude-annotations-panel').textContent, /annotated/);
+
+    env.module.panel.hide();
 
     document.caretRangeFromPoint = () => {
       const range = document.createRange();
@@ -276,15 +284,13 @@ test('annotation module creates highlights from valid selections and renders qui
     env.messages[0].dispatchEvent(
       new window.MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 })
     );
-
-    assert.ok(document.querySelector('.cl-annotation-editor'));
-
-    document
-      .getElementById('claude-annotations-fixed-btn')
-      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 350);
+    });
 
     assert.equal(document.getElementById('claude-annotations-panel').style.display, 'flex');
     assert.match(document.getElementById('claude-annotations-panel').textContent, /annotated/);
+    assert.equal(document.querySelector('.cl-annotation-editor'), null);
   } finally {
     env.cleanup();
   }
@@ -336,11 +342,66 @@ test('annotation module updates, deletes, navigates, and opens distinct sidebar 
     const quickPanel = document.getElementById('claude-annotations-panel');
     assert.ok(manager);
     assert.notEqual(manager, quickPanel);
-    assert.equal(manager.querySelector('textarea')?.value, 'Important note');
+    assert.match(manager.textContent, /Important note/);
+
+    const filterColor = manager.querySelector('select[aria-label="Color"]');
+    filterColor.value = 'green';
+    filterColor.dispatchEvent(new window.Event('change', { bubbles: true }));
+    assert.ok(
+      env.analyticsMessages.some(
+        message =>
+          message.name === 'annotation_manager_filter' &&
+          message.params?.method === 'manager' &&
+          message.params?.filter === 'color:green'
+      )
+    );
+
+    const colorSelects = manager.querySelectorAll('select[aria-label="Color"]');
+    const cardColor = colorSelects[colorSelects.length - 1];
+    cardColor.value = 'blue';
+    cardColor.dispatchEvent(new window.Event('change', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+    assert.equal(env.storedAnnotations[0].color, 'blue');
+    assert.equal(env.module.annotationStates[0].annotation.color, 'blue');
+    assert.ok(
+      env.analyticsMessages.some(
+        message =>
+          message.name === 'annotation_color_change' && message.params?.method === 'manager'
+      )
+    );
 
     await env.module.deleteAnnotation(annotationId, 'test');
     assert.equal(env.removedId, annotationId);
     assert.equal(env.storedAnnotations.length, 0);
+  } finally {
+    env.cleanup();
+  }
+});
+
+test('annotation module destroy removes selection listeners and pending timers', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+    selectText(env.messages[0], 'annotated');
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+    assert.ok(document.querySelector('.cl-annotation-bubble'));
+
+    env.module.destroy();
+    selectText(env.messages[0], 'annotated');
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    document.dispatchEvent(new window.Event('selectionchange', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    assert.equal(document.querySelector('.cl-annotation-bubble'), null);
+    assert.equal(env.module.managedTimers.size, 0);
   } finally {
     env.cleanup();
   }

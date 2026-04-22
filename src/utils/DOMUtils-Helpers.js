@@ -95,7 +95,7 @@ const DOMUtilsHelpers = {
         element.className = value;
       } else if (key === 'style' && typeof value === 'object') {
         Object.assign(element.style, value);
-      } else if (key.startsWith('data-')) {
+      } else if (key.startsWith('data-') || key.startsWith('aria-')) {
         element.setAttribute(key, value);
       } else if (key === 'innerHTML') {
         element.innerHTML = value;
