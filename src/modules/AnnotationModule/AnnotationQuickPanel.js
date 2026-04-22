@@ -19,6 +19,30 @@ export default class AnnotationQuickPanel extends BasePanel {
     this.editingId = null;
   }
 
+  setupEventListeners() {
+    super.setupEventListeners();
+
+    // Custom outside click handler: if we are editing, finish it.
+    const originalOutsideClick = this.eventListeners.outsideClick.handler;
+    const customOutsideClick = e => {
+      if (this.editingId && this.panel) {
+        // If the click is NOT inside the card we are editing
+        const activeCard = this.panel.querySelector(`[data-annotation-id="${this.editingId}"]`);
+        if (activeCard && !activeCard.contains(e.target)) {
+          const textarea = activeCard.querySelector('textarea');
+          if (textarea) {
+            this.finishEditing(this.editingId, textarea.value);
+          }
+        }
+      }
+      originalOutsideClick(e);
+    };
+
+    document.removeEventListener('click', originalOutsideClick);
+    document.addEventListener('click', customOutsideClick);
+    this.eventListeners.outsideClick.handler = customOutsideClick;
+  }
+
   updateAnnotations(states = []) {
     this.states = [...states].sort((a, b) => {
       return Date.parse(b.annotation.createdAt || '') - Date.parse(a.annotation.createdAt || '');
@@ -37,6 +61,27 @@ export default class AnnotationQuickPanel extends BasePanel {
   renderList() {
     this.lastContentSignature = null;
     super.updateContent(this.states, state => this.createItem(state));
+  }
+
+  finishEditing(id, note) {
+    if (this.editingId !== id) {
+      return;
+    }
+
+    const trimmedNote = (note || '').trim();
+    this.editingId = null;
+
+    // Only dispatch update if it's not empty OR if it was already NOT empty (changing to empty)
+    const existing = this.states.find(s => s.annotation.id === id)?.annotation;
+    if (trimmedNote || (existing && existing.note)) {
+      window.dispatchEvent(
+        new CustomEvent('cl-annotation-quick-update', {
+          detail: { id, updates: { note: trimmedNote } },
+        })
+      );
+    }
+
+    this.renderList();
   }
 
   createItem(state) {
@@ -86,25 +131,35 @@ export default class AnnotationQuickPanel extends BasePanel {
 
     // 3. Note Area
     const noteContainer = document.createElement('div');
+    noteContainer.className = 'relative';
+
     if (isEditing) {
       const textarea = document.createElement('textarea');
       textarea.className =
-        'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 text-xs text-text-000 outline-none focus:border-accent-main-100 resize-none mb-2';
+        'w-full min-h-[80px] bg-bg-100 border border-border-300 rounded-lg p-2 pr-8 text-xs text-text-000 outline-none focus:border-accent-main-100 resize-none mb-2';
       textarea.placeholder = 'Add a note...';
       textarea.value = annotation.note || '';
+
       const saveBtn = document.createElement('button');
       saveBtn.className =
-        'clp-button-primary rounded px-2 py-1 text-[10px] font-bold uppercase w-full mb-2';
-      saveBtn.textContent = 'Save Note';
+        'absolute bottom-4 right-2 p-1.5 rounded-md text-accent-main-100 hover:bg-bg-200 transition-colors z-10';
+      saveBtn.title = 'Save Note';
+      saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
       saveBtn.onclick = e => {
         e.stopPropagation();
-        this.editingId = null;
-        window.dispatchEvent(
-          new CustomEvent('cl-annotation-quick-update', {
-            detail: { id: annotation.id, updates: { note: textarea.value } },
-          })
-        );
+        this.finishEditing(annotation.id, textarea.value);
       };
+
+      // Auto-save/close on blur too
+      textarea.onblur = e => {
+        // Delay to allow saveBtn click to register first if that was the target
+        setTimeout(() => {
+          if (this.editingId === annotation.id) {
+            this.finishEditing(annotation.id, textarea.value);
+          }
+        }, 200);
+      };
+
       noteContainer.appendChild(textarea);
       noteContainer.appendChild(saveBtn);
       setTimeout(() => textarea.focus(), 50);
@@ -116,6 +171,7 @@ export default class AnnotationQuickPanel extends BasePanel {
       if (!annotation.note) {
         noteDisplay.classList.add('italic', 'opacity-50');
       }
+
       noteDisplay.onclick = e => {
         e.stopPropagation();
         this.editingId = annotation.id;
@@ -162,7 +218,6 @@ export default class AnnotationQuickPanel extends BasePanel {
     };
     tagsContainer.appendChild(addInput);
 
-    // Final Assembly
     item.appendChild(header);
     item.appendChild(textPreview);
     item.appendChild(noteContainer);

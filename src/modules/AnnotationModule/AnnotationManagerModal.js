@@ -43,7 +43,7 @@ export class AnnotationManagerModal {
       tagFilter: 'all',
       allTags: [],
     };
-    this.editingNotes = new Set(); // Track notes being edited in modal
+    this.editingId = null; // Mirrored from Quick Panel for consistency
   }
 
   async show({ source = 'unknown' } = {}) {
@@ -84,6 +84,15 @@ export class AnnotationManagerModal {
     modal.addEventListener('click', event => {
       if (event.target === modal) {
         this.close('backdrop');
+      } else if (this.editingId) {
+        // Handle outside click for grid cards
+        const activeCard = list.querySelector(`[data-annotation-id="${this.editingId}"]`);
+        if (activeCard && !activeCard.contains(event.target)) {
+          const textarea = activeCard.querySelector('textarea');
+          if (textarea) {
+            this.finishEditing(this.editingId, textarea.value);
+          }
+        }
       }
     });
 
@@ -300,16 +309,25 @@ export class AnnotationManagerModal {
     list.appendChild(container);
   }
 
+  finishEditing(id, note) {
+    if (this.editingId !== id) {
+      return;
+    }
+    this.editingId = null;
+    this.updateNote(id, note);
+  }
+
   createAnnotationCard(state) {
     const annotation = state.annotation;
     const color =
       ANNOTATION_COLORS[annotation.color] || ANNOTATION_COLORS[DEFAULT_ANNOTATION_COLOR];
-    const isEditing = this.editingNotes.has(annotation.id);
+    const isEditing = this.editingId === annotation.id;
 
     const card = DOMUtils.createElement('div', {
       className:
         'flex flex-col rounded-xl border border-border-200 bg-bg-000 shadow-sm transition-all hover:shadow-md h-fit',
     });
+    card.setAttribute('data-annotation-id', annotation.id);
 
     const topBar = DOMUtils.createElement('div', {
       className:
@@ -351,27 +369,37 @@ export class AnnotationManagerModal {
       textContent: 'Note',
     });
 
+    const noteContainer = DOMUtils.createElement('div', { className: 'relative' });
     if (isEditing) {
-      const noteInput = DOMUtils.createElement('textarea', {
+      const textarea = DOMUtils.createElement('textarea', {
         className:
-          'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
+          'min-h-[100px] w-full resize-none rounded-lg border border-border-300 bg-bg-100/30 px-3 py-2 pr-8 text-sm text-text-000 outline-none transition-all focus:border-accent-main-100 focus:bg-bg-000 focus:ring-1 focus:ring-accent-main-100/20 mb-3',
         placeholder: 'Add a note...',
       });
-      noteInput.value = annotation.note || '';
+      textarea.value = annotation.note || '';
 
       const saveBtn = DOMUtils.createElement('button', {
-        className: 'clp-button-primary rounded-lg px-3 py-1.5 text-xs font-bold uppercase mb-3',
-        textContent: 'Save Note',
+        className:
+          'absolute bottom-6 right-2 p-1.5 rounded-md text-accent-main-100 hover:bg-bg-200 transition-colors z-10',
+        title: 'Save Note',
+        innerHTML: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
       });
-      saveBtn.onclick = () => {
-        this.editingNotes.delete(annotation.id);
-        this.updateNote(annotation.id, noteInput.value);
+      saveBtn.onclick = e => {
+        e.stopPropagation();
+        this.finishEditing(annotation.id, textarea.value);
       };
 
-      body.appendChild(text);
-      body.appendChild(noteLabel);
-      body.appendChild(noteInput);
-      body.appendChild(saveBtn);
+      textarea.onblur = () => {
+        setTimeout(() => {
+          if (this.editingId === annotation.id) {
+            this.finishEditing(annotation.id, textarea.value);
+          }
+        }, 200);
+      };
+
+      noteContainer.appendChild(textarea);
+      noteContainer.appendChild(saveBtn);
+      setTimeout(() => textarea.focus(), 50);
     } else {
       const noteDisplay = DOMUtils.createElement('div', {
         className:
@@ -381,13 +409,12 @@ export class AnnotationManagerModal {
       if (!annotation.note) {
         noteDisplay.classList.add('italic', 'opacity-50');
       }
-      noteDisplay.onclick = () => {
-        this.editingNotes.add(annotation.id);
+      noteDisplay.onclick = e => {
+        e.stopPropagation();
+        this.editingId = annotation.id;
         this.renderList();
       };
-      body.appendChild(text);
-      body.appendChild(noteLabel);
-      body.appendChild(noteDisplay);
+      noteContainer.appendChild(noteDisplay);
     }
 
     const tagsContainer = DOMUtils.createElement('div', {
@@ -426,6 +453,10 @@ export class AnnotationManagerModal {
       }
     };
     tagsContainer.appendChild(addInput);
+
+    body.appendChild(text);
+    body.appendChild(noteLabel);
+    body.appendChild(noteContainer);
     body.appendChild(tagsContainer);
 
     const footer = DOMUtils.createElement('div', {
@@ -457,7 +488,7 @@ export class AnnotationManagerModal {
   }
 
   async updateNote(annotationId, note) {
-    await annotationStore.update(annotationId, { note });
+    await annotationStore.update(annotationId, { note: note || '' });
     this.showToast('Note saved');
     await this.refreshData();
   }
