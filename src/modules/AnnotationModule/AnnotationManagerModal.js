@@ -60,18 +60,18 @@ export class AnnotationManagerModal {
 
     const modal = DOMUtils.createElement('div', {
       className:
-        'cl-annotation-manager-modal fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/60 backdrop-blur-md opacity-0 transition-opacity duration-200',
+        'cl-annotation-manager-modal fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/60 backdrop-blur-md opacity-0 transition-opacity duration-200 p-4 sm:p-6',
     });
 
     const content = DOMUtils.createElement('div', {
       className:
-        'flex h-[78vh] w-full max-w-[1100px] translate-y-5 flex-col overflow-hidden rounded-xl bg-bg-000 opacity-0 shadow-2xl transition-all duration-300',
+        'flex max-h-full w-full max-w-[1200px] translate-y-5 flex-col overflow-hidden rounded-2xl bg-bg-000 opacity-0 shadow-2xl transition-all duration-300',
     });
 
     const header = this.createHeader();
     const toolbar = this.createToolbar();
     const list = DOMUtils.createElement('div', {
-      className: 'cl-annotation-manager-list flex-1 overflow-y-auto p-6 bg-bg-100/20',
+      className: 'cl-annotation-manager-list flex-1 min-h-0 overflow-y-auto p-6 bg-bg-100/20',
     });
 
     content.appendChild(header);
@@ -346,7 +346,7 @@ export class AnnotationManagerModal {
     }
 
     const container = DOMUtils.createElement('div', {
-      className: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',
+      className: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 min-h-0',
     });
     states.forEach(state => container.appendChild(this.createAnnotationCard(state)));
     list.appendChild(container);
