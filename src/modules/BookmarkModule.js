@@ -63,6 +63,25 @@ class BookmarkModule extends BaseModule {
     return this._categorySelector;
   }
 
+  createChromeMessageListener() {
+    return message => {
+      if (message.type !== 'BOOKMARKS_UPDATED') {
+        return false;
+      }
+
+      Promise.resolve()
+        .then(async () => {
+          await this.addBookmarkButtons();
+          await this.updateUI();
+        })
+        .catch(error => {
+          console.error('[BookmarkModule] Failed to handle BOOKMARKS_UPDATED:', error);
+        });
+
+      return false;
+    };
+  }
+
   async init() {
     const initStart = performance.now();
     await super.init();
@@ -91,12 +110,7 @@ class BookmarkModule extends BaseModule {
       this.setupKeyboardShortcuts();
     }
 
-    this.chromeMessageListener = async message => {
-      if (message.type === 'BOOKMARKS_UPDATED') {
-        await this.addBookmarkButtons();
-        await this.updateUI();
-      }
-    };
+    this.chromeMessageListener = this.createChromeMessageListener();
     chrome.runtime.onMessage.addListener(this.chromeMessageListener);
 
     await this.createFixedButton({

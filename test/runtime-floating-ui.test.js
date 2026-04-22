@@ -48,6 +48,43 @@ test('bookmark destroy cleans up its fixed launcher', async () => {
   }
 });
 
+test('bookmark runtime listener does not claim unrelated messages', async () => {
+  const cleanup = setupDom();
+  const { default: navigationInterceptor } = await import('../src/core/NavigationInterceptor.js');
+  const { storeSyncChannel } = await import('../src/utils/StoreSyncChannel.js');
+
+  try {
+    const { default: BookmarkModule } = await import('../src/modules/BookmarkModule.js');
+    const module = new BookmarkModule();
+    let refreshCount = 0;
+
+    module.addBookmarkButtons = () => {
+      refreshCount += 1;
+      return Promise.resolve();
+    };
+    module.updateUI = () => {
+      refreshCount += 1;
+      return Promise.resolve();
+    };
+
+    const listener = module.createChromeMessageListener();
+
+    assert.equal(listener({ type: 'STORE_READ', storeId: 'editHistory' }), false);
+    await Promise.resolve();
+    assert.equal(refreshCount, 0);
+
+    assert.equal(listener({ type: 'BOOKMARKS_UPDATED' }), false);
+    await new Promise(resolve => {
+      setTimeout(resolve, 0);
+    });
+    assert.equal(refreshCount, 2);
+  } finally {
+    storeSyncChannel.destroy();
+    navigationInterceptor.destroy();
+    cleanup();
+  }
+});
+
 test('navigation destroy removes shared panel buttons', async () => {
   const cleanup = setupDom();
   const { default: navigationInterceptor } = await import('../src/core/NavigationInterceptor.js');

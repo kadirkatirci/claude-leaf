@@ -16,8 +16,19 @@ import {
   syncFloatingVisibilityButton,
   showToast,
 } from '../popup/popupRenderers.js';
-import { handleImport, saveSettings } from '../popup/popupActions.js';
+import { handleExport, handleImport, saveSettings } from '../popup/popupActions.js';
 import { setupDom } from '../test-support/dom.js';
+
+async function loadFreshDataService(config) {
+  globalThis.fetch = () =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(config),
+    });
+
+  await import(`../popup/dataService.js?test=${Date.now()}-${Math.random()}`);
+  return window.DataService;
+}
 
 test('popup css includes floating visibility button theme styles', () => {
   const css = readFileSync(new URL('../popup/popup.css', import.meta.url), 'utf8');
@@ -384,6 +395,486 @@ test('settings import backfills showFloatingUI for legacy backups', async () => 
       globalThis.window.DataService = originalDataService;
     }
 
+    cleanup();
+  }
+});
+
+test('data service exports annotations through the active Claude tab', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+
+  try {
+    const sentMessages = [];
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+      },
+      tabs: {
+        query(_queryInfo, callback) {
+          callback([{ id: 101, url: 'https://claude.ai/chat/export-test', active: true }]);
+        },
+        sendMessage(tabId, message, callback) {
+          sentMessages.push({ tabId, message });
+          callback({
+            data: {
+              annotations: [
+                {
+                  id: 'annotation-1',
+                  selectedText: 'important text',
+                  note: 'keep this',
+                  color: 'yellow',
+                  tags: ['todo'],
+                },
+              ],
+            },
+          });
+        },
+      },
+    };
+
+    const dataService = await loadFreshDataService({
+      stores: {
+        annotations: {
+          storageType: 'indexeddb',
+          version: 1,
+          defaultData: { annotations: [] },
+          exportable: true,
+          label: 'Annotations',
+        },
+        settings: {
+          storageType: 'sync',
+          version: 1,
+          defaultData: null,
+          exportable: true,
+          label: 'Settings',
+        },
+      },
+    });
+
+    const exported = await dataService.exportData(['annotations', 'settings'], {
+      annotations: { enabled: true },
+    });
+
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].tabId, 101);
+    assert.deepEqual(sentMessages[0].message, {
+      type: 'STORE_READ',
+      storeId: 'annotations',
+    });
+    assert.equal(exported.annotations.version, 1);
+    assert.equal(exported.annotations.annotations[0].selectedText, 'important text');
+    assert.equal(exported.annotations.annotations[0].tags[0], 'todo');
+    assert.equal(exported.settings.annotations.enabled, true);
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+    cleanup();
+  }
+});
+
+test('data service imports annotation backups with merge-safe payloads', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+
+  try {
+    const sentMessages = [];
+    let writePayload = null;
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+      },
+      tabs: {
+        query(_queryInfo, callback) {
+          callback([{ id: 202, url: 'https://claude.ai/chat/import-test', active: true }]);
+        },
+        sendMessage(tabId, message, callback) {
+          sentMessages.push({ tabId, message });
+          if (message.type === 'STORE_READ') {
+            callback({
+              data: {
+                annotations: [
+                  {
+                    id: 'annotation-existing',
+                    selectedText: 'existing',
+                    note: 'old note',
+                    color: 'blue',
+                    tags: ['current'],
+                  },
+                ],
+              },
+            });
+            return;
+          }
+
+          if (message.type === 'STORE_WRITE') {
+            writePayload = message;
+            callback({ success: true });
+            return;
+          }
+
+          callback({ success: true });
+        },
+      },
+    };
+
+    const dataService = await loadFreshDataService({
+      stores: {
+        annotations: {
+          storageType: 'indexeddb',
+          version: 1,
+          defaultData: { annotations: [] },
+          exportable: true,
+          label: 'Annotations',
+        },
+      },
+    });
+
+    const result = await dataService.importData(
+      {
+        __export: {
+          version: 2,
+          source: 'claude-leaf',
+        },
+        annotations: {
+          version: 1,
+          annotations: [
+            {
+              id: 'annotation-existing',
+              selectedText: 'existing updated should not overwrite',
+              note: 'new note',
+              color: 'red',
+            },
+            {
+              id: 'annotation-new',
+              selectedText: 'new highlight',
+              note: '',
+              color: 'green',
+            },
+          ],
+        },
+      },
+      true
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(result.imported.annotations, 2);
+    assert.equal(writePayload.storeId, 'annotations');
+    assert.equal(writePayload.type, 'STORE_WRITE');
+    assert.ok(writePayload.data.__meta.updatedAt);
+    assert.deepEqual(
+      writePayload.data.annotations.map(annotation => annotation.id),
+      ['annotation-existing', 'annotation-new']
+    );
+    assert.equal(writePayload.data.annotations[0].note, 'old note');
+    assert.deepEqual(writePayload.data.annotations[1].tags, []);
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+    cleanup();
+  }
+});
+
+test('data service fails export instead of silently omitting unread stores', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+
+  try {
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+      },
+      tabs: {
+        query(_queryInfo, callback) {
+          callback([{ id: 303, url: 'https://claude.ai/chat/unread-test', active: true }]);
+        },
+        sendMessage(_tabId, _message, callback) {
+          globalThis.chrome.runtime.lastError = {
+            message: 'Could not establish connection. Receiving end does not exist.',
+          };
+          callback();
+          globalThis.chrome.runtime.lastError = null;
+        },
+      },
+    };
+
+    const dataService = await loadFreshDataService({
+      stores: {
+        annotations: {
+          storageType: 'indexeddb',
+          version: 1,
+          defaultData: { annotations: [] },
+          exportable: true,
+          label: 'Annotations',
+        },
+        settings: {
+          storageType: 'sync',
+          version: 1,
+          defaultData: null,
+          exportable: true,
+          label: 'Settings',
+        },
+      },
+    });
+
+    await assert.rejects(
+      () => dataService.exportData(['annotations', 'settings'], { annotations: { enabled: true } }),
+      /Failed to read Annotations/
+    );
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+    cleanup();
+  }
+});
+
+test('data service exports default payloads for empty indexeddb stores', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+
+  try {
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+      },
+      tabs: {
+        query(_queryInfo, callback) {
+          callback([{ id: 404, url: 'https://claude.ai/chat/empty-store-test', active: true }]);
+        },
+        sendMessage(_tabId, _message, callback) {
+          callback({ data: null });
+        },
+      },
+    };
+
+    const dataService = await loadFreshDataService({
+      stores: {
+        editHistory: {
+          storageType: 'indexeddb',
+          version: 3,
+          defaultData: { history: [], snapshots: [] },
+          exportable: true,
+          label: 'Edit History',
+        },
+      },
+    });
+
+    const exported = await dataService.exportData(['editHistory'], {});
+
+    assert.deepEqual(exported.editHistory, {
+      version: 3,
+      history: [],
+      snapshots: [],
+    });
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+    cleanup();
+  }
+});
+
+test('data service rejects malformed indexeddb read responses', async () => {
+  const cleanup = setupDom();
+  const originalFetch = globalThis.fetch;
+  const originalChrome = globalThis.chrome;
+
+  try {
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+      },
+      tabs: {
+        query(_queryInfo, callback) {
+          callback([{ id: 405, url: 'https://claude.ai/chat/malformed-store-test', active: true }]);
+        },
+        sendMessage(_tabId, _message, callback) {
+          callback({ success: true });
+        },
+      },
+    };
+
+    const dataService = await loadFreshDataService({
+      stores: {
+        editHistory: {
+          storageType: 'indexeddb',
+          version: 3,
+          defaultData: { history: [], snapshots: [] },
+          exportable: true,
+          label: 'Edit History',
+        },
+      },
+    });
+
+    await assert.rejects(
+      () => dataService.exportData(['editHistory'], {}),
+      /Invalid STORE_READ response/
+    );
+  } finally {
+    if (originalFetch === undefined) {
+      delete globalThis.fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalChrome === undefined) {
+      delete globalThis.chrome;
+    } else {
+      globalThis.chrome = originalChrome;
+    }
+    cleanup();
+  }
+});
+
+test('popup export reports unread IndexedDB stores instead of partial JSON', async () => {
+  const cleanup = setupDom(`
+    <input id="export-annotations" type="checkbox" checked>
+    <input id="export-settings" type="checkbox" checked>
+  `);
+  const originalDataService = globalThis.window?.DataService;
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+
+  try {
+    const toasts = [];
+    const trackedEvents = [];
+    let objectUrlCreated = false;
+
+    globalThis.window.DataService = {
+      exportData() {
+        return Promise.reject(new Error('Failed to read Annotations. Reload Claude tab.'));
+      },
+    };
+    URL.createObjectURL = () => {
+      objectUrlCreated = true;
+      return 'blob:should-not-happen';
+    };
+    URL.revokeObjectURL = () => {};
+
+    await handleExport({
+      config: {
+        dataOptions: {
+          export: [
+            { id: 'export-annotations', key: 'annotations' },
+            { id: 'export-settings', key: 'settings' },
+          ],
+        },
+      },
+      currentSettings: { annotations: { enabled: true } },
+      trackEvent: (name, params) => trackedEvents.push({ name, params }),
+      showToast: (message, type) => toasts.push({ message, type }),
+    });
+
+    assert.equal(objectUrlCreated, false);
+    assert.deepEqual(toasts, [
+      {
+        message: 'Failed to read Annotations. Reload Claude tab.',
+        type: 'error',
+      },
+    ]);
+    assert.equal(trackedEvents[0].name, 'popup_data_export');
+    assert.equal(trackedEvents[0].params.result, 'error');
+  } finally {
+    if (originalDataService === undefined) {
+      delete globalThis.window.DataService;
+    } else {
+      globalThis.window.DataService = originalDataService;
+    }
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    cleanup();
+  }
+});
+
+test('popup export maps selected data options to backing store ids', async () => {
+  const cleanup = setupDom(`
+    <input id="export-editHistory" type="checkbox" checked>
+    <input id="export-bookmarks" type="checkbox" checked>
+    <input id="export-emojiMarkers" type="checkbox" checked>
+    <input id="export-annotations" type="checkbox" checked>
+    <input id="export-settings" type="checkbox" checked>
+  `);
+  const originalDataService = globalThis.window?.DataService;
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+
+  try {
+    let requestedStores = null;
+
+    globalThis.window.DataService = {
+      exportData(storeIds) {
+        requestedStores = storeIds;
+        return Promise.resolve({ __export: { version: 2 } });
+      },
+    };
+    URL.createObjectURL = () => 'blob:export-test';
+    URL.revokeObjectURL = () => {};
+
+    await handleExport({
+      config: {
+        dataOptions: {
+          export: [
+            { id: 'export-editHistory', key: 'editHistory', storageKey: 'editHistory' },
+            { id: 'export-bookmarks', key: 'bookmarks', storageKey: 'bookmarks' },
+            { id: 'export-emojiMarkers', key: 'emojiMarkers', storageKey: 'markers' },
+            { id: 'export-annotations', key: 'annotations', storageKey: 'annotations' },
+            { id: 'export-settings', key: 'settings' },
+          ],
+        },
+      },
+      currentSettings: {},
+      trackEvent: () => {},
+      showToast: () => {},
+    });
+
+    assert.deepEqual(requestedStores, [
+      'editHistory',
+      'bookmarks',
+      'markers',
+      'annotations',
+      'settings',
+    ]);
+  } finally {
+    if (originalDataService === undefined) {
+      delete globalThis.window.DataService;
+    } else {
+      globalThis.window.DataService = originalDataService;
+    }
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
     cleanup();
   }
 });

@@ -120,7 +120,7 @@ export async function handleExport({ config, currentSettings, trackEvent, showTo
       continue;
     }
 
-    const storeId = getStoreIdFromConfig(opt.key);
+    const storeId = opt.storageKey || getStoreIdFromConfig(opt.key);
     if (storeId) {
       selectedStores.push(storeId);
     }
@@ -156,7 +156,7 @@ export async function handleExport({ config, currentSettings, trackEvent, showTo
     });
   } catch (error) {
     console.error('[Popup] Export error:', error);
-    showToast('Export failed', 'error');
+    showToast(error.message || 'Export failed', 'error');
     trackEvent('popup_data_export', {
       module: 'popup',
       result: 'error',

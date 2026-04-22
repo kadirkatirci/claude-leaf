@@ -94,6 +94,14 @@ const DataService = {
     return type === 'sync' ? chrome.storage.sync : chrome.storage.local;
   },
 
+  cloneDefaultData(config) {
+    if (config.defaultData === null || config.defaultData === undefined) {
+      return {};
+    }
+
+    return JSON.parse(JSON.stringify(config.defaultData));
+  },
+
   /**
    * Find the most relevant Claude tab across windows.
    * Priority:
@@ -173,10 +181,15 @@ const DataService = {
           type: 'STORE_READ',
           storeId,
         });
-        return response?.data || null;
+        if (!response || !Object.prototype.hasOwnProperty.call(response, 'data')) {
+          throw new Error('Invalid STORE_READ response from Claude tab');
+        }
+        return response.data ?? this.cloneDefaultData(config);
       } catch (error) {
-        console.warn(`[DataService] Failed to read ${storeId} from content script:`, error);
-        return null;
+        const label = config.label || storeId;
+        throw new Error(
+          `Failed to read ${label}. Open or reload a Claude tab, then try export again. ${error.message}`
+        );
       }
     }
 
@@ -278,14 +291,14 @@ const DataService = {
       }
 
       const data = await this.readStore(storeId);
-      if (data) {
-        // Export full store data (including all nested properties)
-        const { __meta, ...storeData } = data;
-        exportData[storeId] = {
-          version: __meta?.version || config.version,
-          ...storeData,
-        };
-      }
+      const exportableData = data ?? this.cloneDefaultData(config);
+
+      // Export full store data (including all nested properties)
+      const { __meta, ...storeData } = exportableData;
+      exportData[storeId] = {
+        version: __meta?.version || config.version,
+        ...storeData,
+      };
     }
 
     return exportData;
