@@ -303,6 +303,35 @@ test('annotation module creates highlights from valid selections and renders qui
   }
 });
 
+test('annotation selection bubble waits until mouseup before appearing for pointer selections', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+
+    env.messages[0].dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    selectText(env.messages[0], 'annotated');
+    document.dispatchEvent(new window.Event('selectionchange', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    const bubbleBeforeMouseUp = document.querySelector('.cl-annotation-bubble');
+    assert.ok(!bubbleBeforeMouseUp || bubbleBeforeMouseUp.style.display === 'none');
+
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true, button: 0 }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    const bubbleAfterMouseUp = document.querySelector('.cl-annotation-bubble');
+    assert.ok(bubbleAfterMouseUp);
+    assert.equal(bubbleAfterMouseUp.style.display, 'flex');
+  } finally {
+    env.cleanup();
+  }
+});
+
 test('annotation module updates, deletes, navigates, and opens distinct sidebar manager', async () => {
   const env = await setupAnnotationEnvironment();
 

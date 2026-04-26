@@ -138,9 +138,11 @@ export default class AnnotationModule extends BaseModule {
     this.selectionCheckTimer = null;
     this.managedTimers = new Set();
     this.supportsHighlightRendering = false;
+    this.isPointerSelectionActive = false;
 
     this.handleDocumentClick = this.handleDocumentClick.bind(this);
     this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleSelectionEvent = this.handleSelectionEvent.bind(this);
     this.handleViewportChange = this.handleViewportChange.bind(this);
     this.handleManagerNavigate = this.handleManagerNavigate.bind(this);
@@ -267,7 +269,7 @@ export default class AnnotationModule extends BaseModule {
 
   setupSelectionListeners() {
     document.addEventListener('mousedown', this.handleMouseDown);
-    document.addEventListener('mouseup', this.handleSelectionEvent);
+    document.addEventListener('mouseup', this.handleMouseUp);
     document.addEventListener('keyup', this.handleSelectionEvent);
     document.addEventListener('selectionchange', this.handleSelectionEvent);
     document.addEventListener('click', this.handleDocumentClick, true);
@@ -277,9 +279,20 @@ export default class AnnotationModule extends BaseModule {
   }
 
   handleMouseDown(event) {
+    this.isPointerSelectionActive =
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !isInjectedAnnotationSurface(event.target);
+
     if (!isInjectedAnnotationSurface(event.target)) {
       this.bubble.hide();
     }
+  }
+
+  handleMouseUp(event) {
+    this.isPointerSelectionActive = false;
+    this.handleSelectionEvent(event);
   }
 
   clearUIElements() {
@@ -366,6 +379,9 @@ export default class AnnotationModule extends BaseModule {
       return;
     }
     if (isInjectedAnnotationSurface(event?.target)) {
+      return;
+    }
+    if (event?.type === 'selectionchange' && this.isPointerSelectionActive) {
       return;
     }
     this.clearManagedTimer(this.selectionCheckTimer);
@@ -688,7 +704,7 @@ export default class AnnotationModule extends BaseModule {
     this.clearManagedTimer(this.hoverTimer);
     this.clearManagedTimers();
     document.removeEventListener('mousedown', this.handleMouseDown);
-    document.removeEventListener('mouseup', this.handleSelectionEvent);
+    document.removeEventListener('mouseup', this.handleMouseUp);
     document.removeEventListener('keyup', this.handleSelectionEvent);
     document.removeEventListener('selectionchange', this.handleSelectionEvent);
     document.removeEventListener('click', this.handleDocumentClick, true);
