@@ -332,6 +332,51 @@ test('annotation selection bubble waits until mouseup before appearing for point
   }
 });
 
+test('annotation selection bubble supports multi-click word and paragraph selections', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true, button: 0 }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    selectText(env.messages[0], 'annotated');
+    env.messages[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 2 }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    const bubble = document.querySelector('.cl-annotation-bubble');
+    assert.ok(bubble);
+    assert.equal(bubble.style.display, 'flex');
+    assert.equal(env.module.bubble.activeSelection?.selectedText, 'annotated');
+
+    env.module.bubble.hide();
+    window.getSelection().removeAllRanges();
+
+    const paragraph = env.messages[0].querySelector('p');
+    const paragraphRange = document.createRange();
+    paragraphRange.setStart(paragraph, 0);
+    paragraphRange.setEnd(paragraph, paragraph.childNodes.length);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(paragraphRange);
+
+    env.messages[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 3 }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+
+    assert.equal(bubble.style.display, 'flex');
+    assert.equal(env.module.bubble.activeSelection?.selectedText, 'Hello annotated text');
+  } finally {
+    env.cleanup();
+  }
+});
+
 test('annotation module updates, deletes, navigates, and opens distinct sidebar manager', async () => {
   const env = await setupAnnotationEnvironment();
 

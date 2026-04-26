@@ -143,6 +143,7 @@ export default class AnnotationModule extends BaseModule {
     this.handleDocumentClick = this.handleDocumentClick.bind(this);
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleSelectionClick = this.handleSelectionClick.bind(this);
     this.handleSelectionEvent = this.handleSelectionEvent.bind(this);
     this.handleViewportChange = this.handleViewportChange.bind(this);
     this.handleManagerNavigate = this.handleManagerNavigate.bind(this);
@@ -270,6 +271,7 @@ export default class AnnotationModule extends BaseModule {
   setupSelectionListeners() {
     document.addEventListener('mousedown', this.handleMouseDown);
     document.addEventListener('mouseup', this.handleMouseUp);
+    document.addEventListener('click', this.handleSelectionClick);
     document.addEventListener('keyup', this.handleSelectionEvent);
     document.addEventListener('selectionchange', this.handleSelectionEvent);
     document.addEventListener('click', this.handleDocumentClick, true);
@@ -293,6 +295,12 @@ export default class AnnotationModule extends BaseModule {
   handleMouseUp(event) {
     this.isPointerSelectionActive = false;
     this.handleSelectionEvent(event);
+  }
+
+  handleSelectionClick(event) {
+    if (event?.detail >= 2) {
+      this.handleSelectionEvent(event);
+    }
   }
 
   clearUIElements() {
@@ -705,6 +713,7 @@ export default class AnnotationModule extends BaseModule {
     this.clearManagedTimers();
     document.removeEventListener('mousedown', this.handleMouseDown);
     document.removeEventListener('mouseup', this.handleMouseUp);
+    document.removeEventListener('click', this.handleSelectionClick);
     document.removeEventListener('keyup', this.handleSelectionEvent);
     document.removeEventListener('selectionchange', this.handleSelectionEvent);
     document.removeEventListener('click', this.handleDocumentClick, true);

@@ -78,6 +78,19 @@ test('annotation selection serializer accepts one message and code block selecti
     assert.equal(codeResult.userMessagePreview, 'Hello annotated text');
     assert.equal(codeResult.isClaudeResponse, true);
     assert.equal(codeResult.selectedText, 'code sample');
+
+    const paragraph = messages[0].querySelector('p');
+    const paragraphRange = document.createRange();
+    paragraphRange.setStart(paragraph, 0);
+    paragraphRange.setEnd(paragraph, paragraph.childNodes.length);
+    const paragraphSelection = window.getSelection();
+    paragraphSelection.removeAllRanges();
+    paragraphSelection.addRange(paragraphRange);
+
+    const paragraphResult = serializeSelection(paragraphSelection, messages);
+    assert.ok(paragraphResult);
+    assert.equal(paragraphResult.selectedText, 'Hello annotated text');
+    assert.deepEqual(paragraphResult.range, { start: 0, end: 20 });
   } finally {
     cleanup();
   }
