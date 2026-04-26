@@ -431,6 +431,91 @@ test('annotation navigate scrolls to the restored text range when available', as
   }
 });
 
+test('annotation module syncs stored metadata after version-driven message drift', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+    selectText(env.messages[1], 'response');
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+    document
+      .querySelector('[data-annotation-color="yellow"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+
+    const inserted = document.createElement('div');
+    inserted.setAttribute('data-test-render-count', '1.5');
+    inserted.innerHTML = `<div data-testid="user-message"><p>Inserted drift message</p></div>`;
+    env.messages[0].before(inserted);
+    env.messages.splice(0, 0, inserted);
+
+    const responseMessage = env.messages[2];
+    responseMessage.querySelector('p').textContent = 'Intro Claude response text with more detail';
+
+    await env.module.updateUI();
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+
+    assert.equal(env.module.annotationStates[0].status, 'resolved');
+    assert.equal(env.module.annotationStates[0].messageIndex, 2);
+    assert.equal(env.storedAnnotations[0].messageIndex, 2);
+    assert.equal(
+      env.storedAnnotations[0].messagePreview,
+      'Intro Claude response text with more detail'
+    );
+    assert.equal(env.storedAnnotations[0].userMessagePreview, 'Hello annotated text');
+    assert.equal(env.storedAnnotations[0].isClaudeResponse, true);
+    assert.deepEqual(env.storedAnnotations[0].range, { start: 13, end: 21 });
+  } finally {
+    env.cleanup();
+  }
+});
+
+test('annotation quick panel and counter hide unresolved annotations after version drift', async () => {
+  const env = await setupAnnotationEnvironment();
+
+  try {
+    await env.module.init();
+    selectText(env.messages[1], 'response');
+    document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 120);
+    });
+    document
+      .querySelector('[data-annotation-color="yellow"]')
+      .dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+
+    const panel = document.getElementById('claude-annotations-panel');
+    const counter = document.getElementById('claude-annotations-fixed-btn-counter');
+    assert.match(panel.textContent, /response/);
+    assert.equal(counter.textContent, '1');
+    assert.equal(counter.classList.contains('hidden'), false);
+
+    env.messages[1].querySelector('p').textContent = 'Completely different output';
+    await env.module.updateUI();
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+
+    assert.equal(env.module.annotationStates[0].status, 'unresolved');
+    assert.doesNotMatch(panel.textContent, /response/);
+    assert.match(panel.textContent, /No items to display/);
+    assert.equal(counter.textContent, '0');
+    assert.equal(counter.classList.contains('hidden'), true);
+  } finally {
+    env.cleanup();
+  }
+});
+
 test('annotation module destroy removes selection listeners and pending timers', async () => {
   const env = await setupAnnotationEnvironment();
 

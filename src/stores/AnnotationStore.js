@@ -37,6 +37,8 @@ export class AnnotationStore {
       note: '',
       color: 'yellow',
       tags: [],
+      userMessagePreview: '',
+      isClaudeResponse: annotation?.messageSender === 'claude',
       ...annotation,
       conversationUrl: this.normalizeUrl(annotation.conversationUrl),
       id: annotation.id || crypto.randomUUID(),
@@ -104,6 +106,11 @@ export class AnnotationStore {
       const annotations = data.annotations || [];
       for (const annotation of annotations) {
         await this.store.put({
+          note: '',
+          color: 'yellow',
+          tags: [],
+          userMessagePreview: '',
+          isClaudeResponse: annotation?.messageSender === 'claude',
           ...annotation,
           conversationUrl: this.normalizeUrl(annotation.conversationUrl),
           id: annotation.id || crypto.randomUUID(),

@@ -1,4 +1,10 @@
-import { generatePreview, generateSignature, isUserMessage } from '../../utils/MarkerUtils.js';
+import {
+  generatePreview,
+  generateSignature,
+  getUserMessageText,
+  isUserMessage,
+  resolveMarkerIndex,
+} from '../../utils/MarkerUtils.js';
 
 export const ANNOTATION_COLORS = {
   yellow: {
@@ -31,6 +37,8 @@ const SHOW_TEXT = 4;
 const FILTER_ACCEPT = 1;
 const FILTER_REJECT = 2;
 const CONTEXT_LENGTH = 32;
+const MESSAGE_PREVIEW_LENGTH = 160;
+const USER_MESSAGE_PREVIEW_LENGTH = 300;
 
 const CONTENT_ROOT_SELECTORS = [
   '[data-testid="user-message"]',
@@ -119,6 +127,100 @@ export function getMessageContentRoot(messageEl) {
 
 export function getMessageSender(messageEl) {
   return isUserMessage(messageEl) ? 'user' : 'claude';
+}
+
+function getUserMessagePreview(messageEl, messages = [], messageIndex = -1) {
+  const userText = getUserMessageText(messageEl, messages, messageIndex);
+  return userText.substring(0, USER_MESSAGE_PREVIEW_LENGTH).trim();
+}
+
+function normalizePreviewText(text, maxLength = USER_MESSAGE_PREVIEW_LENGTH) {
+  return (text || '').toLowerCase().trim().substring(0, maxLength);
+}
+
+function buildMarkerResolutionShape(annotation) {
+  return {
+    id: annotation.id,
+    index: annotation.messageIndex,
+    contentSignature: annotation.contentSignature,
+    messagePreview: annotation.messagePreview || '',
+    userMessagePreview: annotation.userMessagePreview || '',
+    isClaudeResponse:
+      annotation.isClaudeResponse !== undefined
+        ? annotation.isClaudeResponse
+        : annotation.messageSender === 'claude',
+  };
+}
+
+function buildResolvedSyncUpdates(
+  annotation,
+  messageEl,
+  messageIndex,
+  restoredRange,
+  messages = []
+) {
+  const updates = {};
+  const nextSignature = generateSignature(messageEl);
+  const nextPreview = generatePreview(messageEl, MESSAGE_PREVIEW_LENGTH);
+  const nextSender = getMessageSender(messageEl);
+  const nextIsClaudeResponse = nextSender === 'claude';
+  const nextUserMessagePreview = getUserMessagePreview(messageEl, messages, messageIndex);
+
+  if (annotation.messageIndex !== messageIndex) {
+    updates.messageIndex = messageIndex;
+  }
+  if (annotation.contentSignature !== nextSignature) {
+    updates.contentSignature = nextSignature;
+  }
+  if ((annotation.messagePreview || '') !== nextPreview) {
+    updates.messagePreview = nextPreview;
+  }
+  if ((annotation.userMessagePreview || '') !== nextUserMessagePreview) {
+    updates.userMessagePreview = nextUserMessagePreview;
+  }
+  if ((annotation.messageSender || '') !== nextSender) {
+    updates.messageSender = nextSender;
+  }
+  if (
+    (annotation.isClaudeResponse ?? annotation.messageSender === 'claude') !== nextIsClaudeResponse
+  ) {
+    updates.isClaudeResponse = nextIsClaudeResponse;
+  }
+  if (
+    annotation.range?.start !== restoredRange.start ||
+    annotation.range?.end !== restoredRange.end
+  ) {
+    updates.range = restoredRange;
+  }
+
+  return updates;
+}
+
+function findClaudeResponseCandidateByUserPreview(annotation, messages = []) {
+  const isClaudeResponse =
+    annotation.isClaudeResponse !== undefined
+      ? annotation.isClaudeResponse
+      : annotation.messageSender === 'claude';
+  const normalizedUserPreview = normalizePreviewText(annotation.userMessagePreview);
+  if (!isClaudeResponse || !normalizedUserPreview) {
+    return null;
+  }
+
+  const candidates = messages
+    .map((messageElement, messageIndex) => ({ messageElement, messageIndex }))
+    .filter(({ messageElement }) => !isUserMessage(messageElement))
+    .filter(
+      ({ messageElement, messageIndex }) =>
+        normalizePreviewText(getUserMessagePreview(messageElement, messages, messageIndex)) ===
+        normalizedUserPreview
+    )
+    .sort(
+      (left, right) =>
+        Math.abs(left.messageIndex - (annotation.messageIndex || 0)) -
+        Math.abs(right.messageIndex - (annotation.messageIndex || 0))
+    );
+
+  return candidates[0]?.messageElement || null;
 }
 
 export function getMessageForNode(node, messages = []) {
@@ -288,19 +390,26 @@ export function serializeSelection(selection, messages = []) {
     messageIndex,
     messageSender: getMessageSender(startMessage),
     contentSignature: generateSignature(startMessage),
-    messagePreview: generatePreview(startMessage, 160),
+    messagePreview: generatePreview(startMessage, MESSAGE_PREVIEW_LENGTH),
+    userMessagePreview: getUserMessagePreview(startMessage, messages, messageIndex),
+    isClaudeResponse: !isUserMessage(startMessage),
     selectedText,
     range: { start, end },
     context: buildSelectionContext(contentRoot, start, end),
   };
 }
 
-function resolveAtExactOffset(annotation, messageEl, messageIndex) {
+function resolveAtExactOffset(annotation, messageEl, messageIndex, messages = []) {
   const contentRoot = getMessageContentRoot(messageEl);
   const range = createRangeFromOffsets(contentRoot, annotation.range?.start, annotation.range?.end);
   if (!range || range.toString() !== annotation.selectedText) {
     return null;
   }
+
+  const restoredRange = {
+    start: annotation.range.start,
+    end: annotation.range.end,
+  };
 
   return {
     status: 'resolved',
@@ -309,14 +418,18 @@ function resolveAtExactOffset(annotation, messageEl, messageIndex) {
     messageIndex,
     contentRoot,
     range,
-    restoredRange: {
-      start: annotation.range.start,
-      end: annotation.range.end,
-    },
+    restoredRange,
+    syncUpdates: buildResolvedSyncUpdates(
+      annotation,
+      messageEl,
+      messageIndex,
+      restoredRange,
+      messages
+    ),
   };
 }
 
-function findWithContext(annotation, messageEl, messageIndex) {
+function findWithContext(annotation, messageEl, messageIndex, messages = []) {
   if (!annotation.selectedText || !annotation.context) {
     return null;
   }
@@ -343,6 +456,13 @@ function findWithContext(annotation, messageEl, messageIndex) {
           contentRoot,
           range,
           restoredRange: { start, end },
+          syncUpdates: buildResolvedSyncUpdates(
+            annotation,
+            messageEl,
+            messageIndex,
+            { start, end },
+            messages
+          ),
         };
       }
     }
@@ -353,10 +473,20 @@ function findWithContext(annotation, messageEl, messageIndex) {
   return null;
 }
 
-export function restoreAnnotation(annotation, messages = []) {
+export function restoreAnnotation(annotation, messages = [], options = {}) {
+  const { updateCallback = null } = options;
   if (!annotation || !Array.isArray(messages) || messages.length === 0) {
     return { status: 'unresolved', annotation };
   }
+
+  const markerResolution = resolveMarkerIndex(buildMarkerResolutionShape(annotation), messages, {
+    strictMode: false,
+  });
+  const markerCandidate =
+    markerResolution.index !== null && markerResolution.index !== undefined
+      ? messages[markerResolution.index]
+      : null;
+  const claudeResponseCandidate = findClaudeResponseCandidateByUserPreview(annotation, messages);
 
   const signatureMatches = messages
     .map((messageElement, messageIndex) => ({ messageElement, messageIndex }))
@@ -365,6 +495,8 @@ export function restoreAnnotation(annotation, messages = []) {
     );
 
   const exactCandidates = uniqueElements([
+    markerCandidate,
+    claudeResponseCandidate,
     messages[annotation.messageIndex],
     ...signatureMatches.map(match => match.messageElement),
   ]);
@@ -375,21 +507,29 @@ export function restoreAnnotation(annotation, messages = []) {
       continue;
     }
 
-    const resolved = resolveAtExactOffset(annotation, messageElement, messageIndex);
+    const resolved = resolveAtExactOffset(annotation, messageElement, messageIndex, messages);
     if (resolved) {
+      if (updateCallback && Object.keys(resolved.syncUpdates || {}).length > 0) {
+        updateCallback(annotation.id, resolved.syncUpdates);
+      }
       return resolved;
     }
   }
 
   const fallbackCandidates = uniqueElements([
+    markerCandidate,
+    claudeResponseCandidate,
     messages[annotation.messageIndex],
     ...signatureMatches.map(match => match.messageElement),
   ]);
 
   for (const messageElement of fallbackCandidates) {
     const messageIndex = messages.indexOf(messageElement);
-    const resolved = findWithContext(annotation, messageElement, messageIndex);
+    const resolved = findWithContext(annotation, messageElement, messageIndex, messages);
     if (resolved) {
+      if (updateCallback && Object.keys(resolved.syncUpdates || {}).length > 0) {
+        updateCallback(annotation.id, resolved.syncUpdates);
+      }
       return resolved;
     }
   }

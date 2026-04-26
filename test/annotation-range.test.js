@@ -64,6 +64,8 @@ test('annotation selection serializer accepts one message and code block selecti
     assert.ok(userResult);
     assert.equal(userResult.messageIndex, 0);
     assert.equal(userResult.messageSender, 'user');
+    assert.equal(userResult.userMessagePreview, 'Hello annotated text');
+    assert.equal(userResult.isClaudeResponse, false);
     assert.equal(userResult.selectedText, 'annotated');
     assert.deepEqual(userResult.range, { start: 6, end: 15 });
 
@@ -73,6 +75,8 @@ test('annotation selection serializer accepts one message and code block selecti
     assert.ok(codeResult);
     assert.equal(codeResult.messageIndex, 1);
     assert.equal(codeResult.messageSender, 'claude');
+    assert.equal(codeResult.userMessagePreview, 'Hello annotated text');
+    assert.equal(codeResult.isClaudeResponse, true);
     assert.equal(codeResult.selectedText, 'code sample');
   } finally {
     cleanup();
@@ -150,6 +154,68 @@ test('annotation restore uses exact offsets, context fallback, and unresolved re
     const unresolved = restoreAnnotation(annotation, messages);
     assert.equal(unresolved.status, 'unresolved');
     assert.equal(unresolved.annotation.id, annotation.id);
+  } finally {
+    cleanup();
+  }
+});
+
+test('annotation restore re-associates version-shifted claude responses via user message preview', () => {
+  const cleanup = setupDom(`
+    <main>
+      <div data-test-render-count="1">
+        <div data-testid="user-message"><p>Question anchor prompt</p></div>
+      </div>
+      <div data-test-render-count="2">
+        <div class="font-claude-message"><p>Alpha target omega</p></div>
+      </div>
+      <div data-test-render-count="3">
+        <div data-testid="user-message"><p>Trailing message</p></div>
+      </div>
+    </main>
+  `);
+
+  try {
+    const messages = Array.from(document.querySelectorAll('[data-test-render-count]'));
+    const selection = selectText(messages[1], 'target');
+    const serialized = serializeSelection(selection, messages);
+    const annotation = {
+      ...serialized,
+      id: 'annotation-version-aware',
+      conversationUrl: '/chat/test',
+      note: '',
+      color: 'yellow',
+      createdAt: '2026-04-11T10:00:00.000Z',
+      updatedAt: '2026-04-11T10:00:00.000Z',
+    };
+
+    const inserted = document.createElement('div');
+    inserted.setAttribute('data-test-render-count', '1.5');
+    inserted.innerHTML = `<div data-testid="user-message"><p>Inserted drift message</p></div>`;
+    messages[0].before(inserted);
+
+    messages[1].querySelector('p').textContent = 'Intro Alpha target omega revised';
+    const driftedMessages = [inserted, messages[0], messages[1], messages[2]];
+    const syncCalls = [];
+
+    const resolved = restoreAnnotation(annotation, driftedMessages, {
+      updateCallback: (annotationId, updates) => syncCalls.push({ annotationId, updates }),
+    });
+
+    assert.equal(resolved.status, 'resolved');
+    assert.equal(resolved.messageIndex, 2);
+    assert.equal(resolved.range.toString(), 'target');
+    assert.deepEqual(resolved.restoredRange, { start: 12, end: 18 });
+    assert.deepEqual(syncCalls, [
+      {
+        annotationId: 'annotation-version-aware',
+        updates: {
+          messageIndex: 2,
+          contentSignature: resolved.syncUpdates.contentSignature,
+          messagePreview: 'Intro Alpha target omega revised',
+          range: { start: 12, end: 18 },
+        },
+      },
+    ]);
   } finally {
     cleanup();
   }

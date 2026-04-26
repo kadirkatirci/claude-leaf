@@ -110,6 +110,10 @@ function isInjectedAnnotationSurface(target) {
   );
 }
 
+function areValuesEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export default class AnnotationModule extends BaseModule {
   constructor() {
     super('annotations');
@@ -206,6 +210,9 @@ export default class AnnotationModule extends BaseModule {
     this.subscribe(Events.HUB_CONTENT_CHANGED, async () => {
       await this.updateUI();
     });
+    this.subscribe(Events.HUB_VERSION_CHANGED, async () => {
+      await this.waitAndUpdateUI();
+    });
     window.addEventListener(NAVIGATE_EVENT, this.handleManagerNavigate);
     window.addEventListener(QUICK_UPDATE_EVENT, this.handleQuickUpdate);
     window.addEventListener(DATA_CHANGED_EVENT, this.handleDataChanged);
@@ -295,6 +302,10 @@ export default class AnnotationModule extends BaseModule {
     await this.updateUI();
   }
 
+  getVisibleAnnotationStates(states = this.annotationStates) {
+    return (states || []).filter(state => state?.status === 'resolved');
+  }
+
   async updateUI() {
     if (!this.enabled) {
       return;
@@ -311,14 +322,32 @@ export default class AnnotationModule extends BaseModule {
       return;
     }
     const messages = this.dom.findMessages();
-    this.annotationStates = annotations.map(annotation => restoreAnnotation(annotation, messages));
+    const pendingSyncUpdates = new Map();
+    this.annotationStates = annotations.map(annotation =>
+      restoreAnnotation(annotation, messages, {
+        updateCallback: (_annotationId, updates) => {
+          if (!updates || Object.keys(updates).length === 0) {
+            return;
+          }
+          pendingSyncUpdates.set(annotation.id, {
+            ...(pendingSyncUpdates.get(annotation.id) || {}),
+            ...updates,
+          });
+        },
+      })
+    );
 
     if (this.supportsHighlightRendering) {
       this.registry.render(this.annotationStates);
     }
 
-    this.updateButtonCounter(annotations.length);
-    this.panel.updateAnnotations(this.annotationStates);
+    const visibleAnnotationStates = this.getVisibleAnnotationStates();
+    this.updateButtonCounter(visibleAnnotationStates.length);
+    this.panel.updateAnnotations(visibleAnnotationStates);
+
+    if (pendingSyncUpdates.size > 0) {
+      void this.syncResolvedAnnotationMetadata(annotations, pendingSyncUpdates);
+    }
   }
 
   async waitAndUpdateUI() {
@@ -382,6 +411,8 @@ export default class AnnotationModule extends BaseModule {
       messageSender: selectionData.messageSender,
       contentSignature: selectionData.contentSignature,
       messagePreview: selectionData.messagePreview,
+      userMessagePreview: selectionData.userMessagePreview,
+      isClaudeResponse: selectionData.isClaudeResponse,
       selectedText: selectionData.selectedText,
       note: '',
       color,
@@ -439,6 +470,26 @@ export default class AnnotationModule extends BaseModule {
       method: source,
     });
     await this.updateUI();
+  }
+
+  async syncResolvedAnnotationMetadata(annotations, pendingSyncUpdates) {
+    const annotationsById = new Map(annotations.map(annotation => [annotation.id, annotation]));
+
+    for (const [annotationId, updates] of pendingSyncUpdates.entries()) {
+      const existing = annotationsById.get(annotationId);
+      if (!existing) {
+        continue;
+      }
+
+      const changedUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key, value]) => !areValuesEqual(existing[key], value))
+      );
+      if (Object.keys(changedUpdates).length === 0) {
+        continue;
+      }
+
+      await annotationStore.update(annotationId, changedUpdates);
+    }
   }
 
   handleMouseMove(event) {
@@ -502,7 +553,7 @@ export default class AnnotationModule extends BaseModule {
           // Force expand the note if it's not already
           if (this.panel.expandedNotes) {
             this.panel.expandedNotes.add(annotationId);
-            this.panel.updateAnnotations(this.annotationStates);
+            this.panel.updateAnnotations(this.getVisibleAnnotationStates());
           }
 
           this.setManagedTimeout(() => {
@@ -610,7 +661,7 @@ export default class AnnotationModule extends BaseModule {
       module: 'annotations',
       method,
       state: isVisible ? 'open' : 'close',
-      annotation_count: this.annotationStates.length,
+      annotation_count: this.getVisibleAnnotationStates().length,
     });
     if (isVisible) {
       void this.updateUI();
