@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-04-26
+type: minor
+title: Text highlights and local annotations
+
+### Added
+- Annotation module for highlighting selected text in Claude and your own messages, with local notes, color tags, and dedicated quick-panel and sidebar manager views
+- Deep-link support for opening annotations and jumping back to the related conversation and highlighted passage
+- Annotation support for pointer, double-click, and paragraph selections, with panel-focused editing, exact text navigation, and version-aware restoration after message edits
+
+### Fixed
+- Prevented malformed Claude tab responses from breaking popup export flows
+- Restored the Bookmarks sidebar label after Claude starts with the sidebar collapsed
+- Limited Claude Web Guardian checks to supported chat routes so unsupported Claude pages no longer trigger unnecessary monitoring
+
 ## [1.2.1] - 2026-04-17
 type: patch
 title: Usage tracker percentage accuracy
