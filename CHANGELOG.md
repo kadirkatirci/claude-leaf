@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-05-17
+type: patch
+title: Badge and button visibility fix
+
+### Fixed
+- Restored visibility of bookmark buttons, emoji marker buttons, and edit history badges that disappeared after a recent Claude UI update
+
 ## [1.3.0] - 2026-04-26
 type: minor
 title: Text highlights and local annotations
