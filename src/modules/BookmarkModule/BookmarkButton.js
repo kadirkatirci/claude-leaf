@@ -4,6 +4,7 @@
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
 import { cn } from '../../utils/ClassNames.js';
+import { protectClippingAncestors } from '../../utils/ClippingVisibilityGuard.js';
 
 const BOOKMARK_BUTTON_TOP = '8px';
 const BOOKMARK_BUTTON_OUTSIDE_RIGHT = '-72px';
@@ -16,10 +17,29 @@ export class BookmarkButton {
     this.buttons = new WeakMap(); // messageElement -> button
     this.hoverCleanups = new Map(); // messageElement -> cleanup function (Map supports forEach)
     this.buttonStates = new WeakMap(); // messageElement -> isBookmarked state
+    this.visibilityCleanup = new WeakMap();
   }
 
   setButtonVisibility(button, visible) {
     HoverButtonManager.setButtonVisibility(button, visible);
+  }
+
+  ensureButtonVisibilityHost(element) {
+    this.releaseButtonVisibilityHost(element);
+    this.visibilityCleanup.set(
+      element,
+      protectClippingAncestors(element, {
+        axes: { horizontal: true, vertical: false },
+      })
+    );
+  }
+
+  releaseButtonVisibilityHost(element) {
+    const release = this.visibilityCleanup.get(element);
+    if (release) {
+      release();
+      this.visibilityCleanup.delete(element);
+    }
   }
 
   /**
@@ -32,6 +52,7 @@ export class BookmarkButton {
 
       // Update existing button if it exists
       if (this.buttons.has(message)) {
+        this.ensureButtonVisibilityHost(message);
         // Only update if state changed (avoid unnecessary DOM manipulation)
         const currentState = this.buttonStates.get(message);
         if (currentState !== bookmarked) {
@@ -111,6 +132,9 @@ export class BookmarkButton {
     });
 
     messageElement.appendChild(button);
+
+    this.ensureButtonVisibilityHost(messageElement);
+
     return button;
   }
 
@@ -168,7 +192,10 @@ export class BookmarkButton {
    */
   removeAll() {
     // Clean up hover listeners
-    this.hoverCleanups.forEach(cleanup => cleanup());
+    this.hoverCleanups.forEach((cleanup, messageElement) => {
+      cleanup();
+      this.releaseButtonVisibilityHost(messageElement);
+    });
     this.hoverCleanups.clear();
 
     // Remove buttons from DOM (WeakMap doesn't support forEach, so we query DOM)
@@ -177,6 +204,7 @@ export class BookmarkButton {
     // Reset WeakMaps (they'll be garbage collected when elements are removed)
     this.buttons = new WeakMap();
     this.buttonStates = new WeakMap();
+    this.visibilityCleanup = new WeakMap();
   }
 
   /**

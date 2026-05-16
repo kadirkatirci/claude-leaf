@@ -3,6 +3,10 @@
  * Provides common badge functionality with hover effects and click handlers
  */
 import DOMUtils from '../../utils/DOMUtils.js';
+import {
+  inferOverflowGuardAxes,
+  protectClippingAncestors,
+} from '../../utils/ClippingVisibilityGuard.js';
 
 export default class MessageBadge {
   /**
@@ -14,6 +18,8 @@ export default class MessageBadge {
     this.getTheme = getTheme;
     this.onClick = onClick;
     this.badgeCache = new WeakMap(); // Track badges by message element
+    this.visibilityCleanup = new WeakMap();
+    this.trackedElements = new Set();
   }
 
   setBadgeHoverState(badge, hovered) {
@@ -54,6 +60,26 @@ export default class MessageBadge {
     }
   }
 
+  ensureBadgeVisibility(element, position = {}) {
+    this.releaseBadgeVisibility(element);
+
+    const axes = inferOverflowGuardAxes(position);
+    if (!axes.horizontal && !axes.vertical) {
+      return;
+    }
+
+    const release = protectClippingAncestors(element, { axes });
+    this.visibilityCleanup.set(element, release);
+  }
+
+  releaseBadgeVisibility(element) {
+    const release = this.visibilityCleanup.get(element);
+    if (release) {
+      release();
+      this.visibilityCleanup.delete(element);
+    }
+  }
+
   /**
    * Create and attach a badge to an element
    * @param {HTMLElement} element - Element to attach badge to
@@ -80,6 +106,7 @@ export default class MessageBadge {
     // Check if badge already exists
     const existingBadge = this.badgeCache.get(element);
     if (existingBadge) {
+      this.ensureBadgeVisibility(element, position);
       // Update existing badge
       if (this.hasBadgeContentChanged(existingBadge, content)) {
         this.setBadgeContent(existingBadge, content); // Use innerHTML to support SVG strings
@@ -122,11 +149,14 @@ export default class MessageBadge {
       this.ensureParentPosition(element);
     }
 
+    this.ensureBadgeVisibility(element, position);
+
     // Append badge
     element.appendChild(badge);
 
     // Cache badge
     this.badgeCache.set(element, badge);
+    this.trackedElements.add(element);
 
     return badge;
   }
@@ -168,8 +198,10 @@ export default class MessageBadge {
   remove(element) {
     const badge = this.badgeCache.get(element);
     if (badge) {
+      this.releaseBadgeVisibility(element);
       badge.remove();
       this.badgeCache.delete(element);
+      this.trackedElements.delete(element);
     }
   }
 
@@ -178,10 +210,16 @@ export default class MessageBadge {
    * @param {string} selector - CSS selector for badges (optional, uses cache if not provided)
    */
   removeAll(selector) {
-    if (selector) {
-      document.querySelectorAll(selector).forEach(badge => badge.remove());
-    }
+    this.trackedElements.forEach(element => {
+      this.releaseBadgeVisibility(element);
+      const badge = this.badgeCache.get(element);
+      if (badge?.matches(selector || '.message-badge')) {
+        badge.remove();
+      }
+    });
     this.badgeCache = new WeakMap();
+    this.visibilityCleanup = new WeakMap();
+    this.trackedElements.clear();
   }
 
   /**
@@ -216,6 +254,7 @@ export default class MessageBadge {
       if (should) {
         // Badge should exist
         const badgeData = getBadgeData(element, index);
+        this.ensureBadgeVisibility(element, badgeData.position);
         if (!this.has(element)) {
           // Add new badge
           this.create(element, badgeData);

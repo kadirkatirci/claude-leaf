@@ -5,6 +5,7 @@ import DOMUtils from '../../utils/DOMUtils.js';
 import HoverButtonManager from '../../utils/HoverButtonManager.js';
 import IconLibrary from '../../components/primitives/IconLibrary.js';
 import { cn, ClaudeClasses } from '../../utils/ClassNames.js';
+import { protectClippingAncestors } from '../../utils/ClippingVisibilityGuard.js';
 
 export class MarkerButton {
   constructor(
@@ -23,6 +24,7 @@ export class MarkerButton {
     this.onMarkerUpdate = onMarkerUpdate;
     this.buttonCache = new WeakMap(); // Track buttons by message element
     this.hoverCleanups = new Map(); // Track cleanup functions by message element (Map supports forEach)
+    this.visibilityCleanup = new WeakMap();
   }
 
   /**
@@ -32,6 +34,7 @@ export class MarkerButton {
     messages.forEach((messageEl, index) => {
       // Skip if button already exists
       if (this.buttonCache.has(messageEl)) {
+        this.ensureButtonVisibilityHost(messageEl);
         // Update button state if marker changed
         const existingMarker = markers.find(m => m.index === index);
         this.updateButtonState(messageEl, existingMarker);
@@ -113,6 +116,8 @@ export class MarkerButton {
     // Append to message
     messageEl.style.position = 'relative';
     messageEl.appendChild(button);
+
+    this.ensureButtonVisibilityHost(messageEl);
 
     return button;
   }
@@ -241,11 +246,33 @@ export class MarkerButton {
    */
   removeAll() {
     // Clean up hover listeners
-    this.hoverCleanups.forEach(cleanup => cleanup());
+    this.hoverCleanups.forEach((cleanup, messageEl) => {
+      cleanup();
+      this.releaseButtonVisibilityHost(messageEl);
+    });
     this.hoverCleanups.clear();
 
     // Remove buttons
     document.querySelectorAll('.emoji-marker-btn').forEach(btn => btn.remove());
     this.buttonCache = new WeakMap();
+    this.visibilityCleanup = new WeakMap();
+  }
+
+  ensureButtonVisibilityHost(element) {
+    this.releaseButtonVisibilityHost(element);
+    this.visibilityCleanup.set(
+      element,
+      protectClippingAncestors(element, {
+        axes: { horizontal: true, vertical: false },
+      })
+    );
+  }
+
+  releaseButtonVisibilityHost(element) {
+    const release = this.visibilityCleanup.get(element);
+    if (release) {
+      release();
+      this.visibilityCleanup.delete(element);
+    }
   }
 }

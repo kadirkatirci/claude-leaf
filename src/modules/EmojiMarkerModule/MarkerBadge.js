@@ -3,6 +3,7 @@
  */
 import DOMUtils from '../../utils/DOMUtils.js';
 import { cn } from '../../utils/ClassNames.js';
+import { protectClippingAncestors } from '../../utils/ClippingVisibilityGuard.js';
 
 export class MarkerBadge {
   constructor(getTheme, emojiPicker, getFavoriteEmojis, onMarkerUpdate, onMarkerRemove) {
@@ -12,6 +13,8 @@ export class MarkerBadge {
     this.onMarkerUpdate = onMarkerUpdate;
     this.onMarkerRemove = onMarkerRemove;
     this.badgeCache = new WeakMap(); // Track badges by message element
+    this.visibilityCleanup = new WeakMap();
+    this.messageElements = new Set();
   }
 
   /**
@@ -23,6 +26,7 @@ export class MarkerBadge {
       const marker = markers.find(m => m.index === index);
 
       if (marker) {
+        this.ensureBadgeVisibilityHost(messageEl);
         // Badge should exist
         if (!this.badgeCache.has(messageEl)) {
           // Add new badge
@@ -98,8 +102,11 @@ export class MarkerBadge {
     messageEl.style.position = 'relative';
     messageEl.appendChild(badge);
 
+    this.ensureBadgeVisibilityHost(messageEl);
+
     // Cache badge
     this.badgeCache.set(messageEl, badge);
+    this.messageElements.add(messageEl);
   }
 
   /**
@@ -108,8 +115,10 @@ export class MarkerBadge {
   removeBadge(messageEl) {
     const badge = this.badgeCache.get(messageEl);
     if (badge) {
+      this.releaseBadgeVisibilityHost(messageEl);
       badge.remove();
       this.badgeCache.delete(messageEl);
+      this.messageElements.delete(messageEl);
     }
   }
 
@@ -117,8 +126,31 @@ export class MarkerBadge {
    * Remove all badges (used in destroy)
    */
   removeAll() {
+    this.messageElements.forEach(messageEl => {
+      this.releaseBadgeVisibilityHost(messageEl);
+    });
+    this.messageElements.clear();
     document.querySelectorAll('.emoji-marker-badge').forEach(badge => badge.remove());
     this.badgeCache = new WeakMap();
+    this.visibilityCleanup = new WeakMap();
+  }
+
+  ensureBadgeVisibilityHost(element) {
+    this.releaseBadgeVisibilityHost(element);
+    this.visibilityCleanup.set(
+      element,
+      protectClippingAncestors(element, {
+        axes: { horizontal: true, vertical: false },
+      })
+    );
+  }
+
+  releaseBadgeVisibilityHost(element) {
+    const release = this.visibilityCleanup.get(element);
+    if (release) {
+      release();
+      this.visibilityCleanup.delete(element);
+    }
   }
 
   /**
